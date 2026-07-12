@@ -1,0 +1,25 @@
+{
+  "name": "moonmate",
+  "version": "0.1.0",
+  "private": true,
+  "description": "함께 준비하는 주기·컨디션 커뮤니케이션 앱",
+  "packageManager": "pnpm@11.3.0",
+  "engines": {
+    "node": "^24.3.0"
+  },
+  "scripts": {
+    "lint": "pnpm -r --if-present lint",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm test:core && pnpm test:mobile && pnpm test:firebase",
+    "test:core": "pnpm --filter @moonmate/product-core test",
+    "test:mobile": "pnpm --filter @moonmate/mobile test",
+    "test:firebase": "pnpm --dir firebase check",
+    "check:architecture": "node scripts/check-architecture.mjs",
+    "check:mobile": "pnpm --filter @moonmate/mobile lint && pnpm --filter @moonmate/mobile typecheck && pnpm --filter @moonmate/mobile test && pnpm --filter @moonmate/mobile bundle:ios && pnpm --filter @moonmate/mobile bundle:android",
+    "check:firebase": "pnpm --dir firebase check",
+    "check:release": "node scripts/check-release.mjs",
+    "start:mobile": "pnpm --filter @moonmate/mobile start",
+    "android": "pnpm --filter @moonmate/mobile android",
+    "ios": "pnpm --filter @moonmate/mobile ios"
+  }
+}

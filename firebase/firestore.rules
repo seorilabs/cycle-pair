@@ -1,0 +1,92 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function activePair(pairId) {
+      return get(/databases/$(database)/documents/pairs/$(pairId));
+    }
+
+    function isActivePairMember(pairId) {
+      let pair = activePair(pairId);
+      return isSignedIn()
+        && pair.data.status == 'active'
+        && pair.data.memberUids.size() == 2
+        && request.auth.uid in pair.data.memberUids;
+    }
+
+    // Firestore cannot hide selected fields inside a readable document.
+    // Raw cycle and daily-log records therefore live in owner-only collections.
+    match /users/{uid}/privateCycles/{cycleId} {
+      allow read, write: if isOwner(uid);
+    }
+
+    match /users/{uid}/privateDailyLogs/{logId} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // Sharing consent is scoped to one Pair. A new Pair has no settings
+    // document and therefore starts with every health field private.
+    match /users/{uid}/shareSettings/{pairId} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // The Functions Admin SDK owns pair lifecycle state. Clients may only read
+    // their own membership mirror.
+    match /users/{uid}/pairMemberships/{pairId} {
+      allow read: if isOwner(uid);
+      allow write: if false;
+    }
+
+    // A revoke writes an inbox item for each former member. The app must purge
+    // its offline partner cache before acknowledging through a callable.
+    match /users/{uid}/cacheTombstones/{tombstoneId} {
+      allow read: if isOwner(uid);
+      allow write: if false;
+    }
+
+    match /pairs/{pairId} {
+      allow read: if isSignedIn()
+        && resource.data.status == 'active'
+        && resource.data.memberUids.size() == 2
+        && request.auth.uid in resource.data.memberUids;
+      allow write: if false;
+
+      // Projection writes are server-only. Reads re-check current pair status,
+      // so a revoke blocks access as soon as its transaction commits.
+      match /projections/{ownerUid} {
+        allow read: if isActivePairMember(pairId);
+        allow write: if false;
+      }
+    }
+
+    // Invite codes are bearer secrets. Only a SHA-256 digest is persisted and
+    // every lifecycle operation goes through authenticated callable Functions.
+    match /pairInvites/{inviteHash} {
+      allow read, write: if false;
+    }
+
+    match /pairBindings/{uid} {
+      allow read, write: if false;
+    }
+
+    match /connectionStates/{uid} {
+      allow read, write: if false;
+    }
+
+    match /pairTombstones/{pairId} {
+      allow read, write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

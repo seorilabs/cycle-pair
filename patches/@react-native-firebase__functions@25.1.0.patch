@@ -1,0 +1,19 @@
+diff --git a/RNFBFunctions.podspec b/RNFBFunctions.podspec
+index fe0174fadc538e67cf95a2960246ab8b9b691546..4b7d4857635b71911011365f8dc6250cd09ed916 100644
+--- a/RNFBFunctions.podspec
++++ b/RNFBFunctions.podspec
+@@ -36,6 +36,14 @@ Pod::Spec.new do |s|
+
+   install_modules_dependencies(s);
+
++  if defined?(add_rncore_dependency)
++    add_rncore_dependency(s)
++  end
++
++  s.pod_target_xcconfig = {
++    "CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES" => "YES",
++  }
++
+   # Fail fast for old architecture users, but safely in case the variable goes away
+   # completely in future react-native versions
+   if defined?(ENV["RCT_NEW_ARCH_ENABLED"]) != nil && (ENV["RCT_NEW_ARCH_ENABLED"] == '0')

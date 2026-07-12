@@ -1,0 +1,11 @@
+{
+  "developmentProjectId": "seorilabs-moonmate-dev",
+  "region": "asia-northeast3",
+  "firestoreRulesDeployed": true,
+  "nativeAppsRegistered": true,
+  "productionProjectConfigured": false,
+  "billingLinked": false,
+  "functionsDeployed": false,
+  "productionAuthConfigured": false,
+  "appCheckEnforced": false
+}

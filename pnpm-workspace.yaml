@@ -1,0 +1,18 @@
+packages:
+  - apps/*
+  - packages/*
+  - firebase/functions
+
+allowBuilds:
+  '@firebase/util': true
+  '@sentry/cli': true
+  '@swc/core': true
+  esbuild: true
+  protobufjs: true
+  re2: true
+
+patchedDependencies:
+  '@react-native-firebase/app@25.1.0': patches/@react-native-firebase__app@25.1.0.patch
+  '@react-native-firebase/auth@25.1.0': patches/@react-native-firebase__auth@25.1.0.patch
+  '@react-native-firebase/firestore@25.1.0': patches/@react-native-firebase__firestore@25.1.0.patch
+  '@react-native-firebase/functions@25.1.0': patches/@react-native-firebase__functions@25.1.0.patch

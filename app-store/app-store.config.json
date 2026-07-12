@@ -1,0 +1,158 @@
+{
+  "schemaVersion": 1,
+  "appId": "moonmate",
+  "status": "planning-approved-release-blocked",
+  "bundleId": "확정 필요",
+  "developmentBundleId": "com.seorilabs.moonmate.dev",
+  "appleTeamId": "확정 필요",
+  "sku": "확정 필요",
+  "primaryLanguage": "ko-KR",
+  "platform": "iOS",
+  "appType": "app",
+  "freeOrPaid": "확정 필요",
+  "contactEmail": "cs@seorilabs.com",
+  "supportUrl": "확정 필요",
+  "marketingUrl": "확정 필요",
+  "privacyPolicyUrl": "확정 필요",
+  "copyright": "확정 필요",
+  "workingName": {
+    "ko-KR": "문메이트",
+    "en-US": "MoonMate"
+  },
+  "storeListing": {
+    "appName": {
+      "ko-KR": "확정 필요",
+      "en-US": "확정 필요"
+    },
+    "subtitle": {
+      "ko-KR": "함께 준비하는 우리의 주기",
+      "en-US": "Prepare for the cycle together"
+    },
+    "promotionalText": {
+      "ko-KR": "확정 필요",
+      "en-US": "확정 필요"
+    },
+    "description": {
+      "ko-KR": "확정 필요",
+      "en-US": "확정 필요"
+    },
+    "keywords": {
+      "ko-KR": "확정 필요",
+      "en-US": "확정 필요"
+    }
+  },
+  "categories": {
+    "primary": "Health & Fitness 후보",
+    "secondary": "Lifestyle 후보"
+  },
+  "contentDeclarations": {
+    "ads": "no",
+    "tracking": "no",
+    "requiresSignIn": "yes",
+    "healthContent": "yes-cycle-and-condition-records",
+    "fertilityOrContraception": "no",
+    "medicalDiagnosisOrTreatment": "no",
+    "userGeneratedContent": "확정 필요-private-pair-notes-and-events",
+    "realtimeChat": "no",
+    "madeForKids": "no",
+    "ageRating": "확정 필요",
+    "contentRights": "first-party-content-only"
+  },
+  "exportCompliance": {
+    "usesEncryption": true,
+    "usesNonExemptEncryption": false,
+    "basis": "standard Apple OS, HTTPS/TLS and Firebase SDK transport only",
+    "consoleAnswer": "확정 필요"
+  },
+  "digitalServicesAct": {
+    "euDistributionPlanned": "확정 필요",
+    "status": "확정 필요",
+    "displayContactEmail": "cs@seorilabs.com",
+    "displayContactPhone": "확정 필요"
+  },
+  "appPrivacy": {
+    "status": "확정 필요",
+    "tracking": "no",
+    "privacyPolicyUrl": "확정 필요",
+    "dataTypes": {
+      "userId": {
+        "collected": true,
+        "purposes": [
+          "appFunctionality"
+        ],
+        "usedForTracking": false
+      },
+      "health": {
+        "collected": true,
+        "purposes": [
+          "appFunctionality"
+        ],
+        "usedForTracking": false,
+        "notes": "owner-private records and explicit partner projection"
+      },
+      "purchases": {
+        "collected": true,
+        "purposes": [
+          "appFunctionality"
+        ],
+        "usedForTracking": false
+      },
+      "productInteraction": {
+        "collected": true,
+        "purposes": [
+          "analytics"
+        ],
+        "usedForTracking": false,
+        "notes": "no sensitive values or cycle phase"
+      },
+      "crashAndPerformance": {
+        "collected": true,
+        "purposes": [
+          "analytics"
+        ],
+        "usedForTracking": false,
+        "notes": "no PII or free text"
+      }
+    }
+  },
+  "review": {
+    "signInRequired": true,
+    "username": "확정 필요",
+    "password": "확정 필요",
+    "notes": "Pair 두 명의 명시적 연결, owner-private 원본과 선택형 partner projection, 비의료·비피임 목적, 중립 알림을 설명해야 함",
+    "contactFirstName": "Seorilabs",
+    "contactLastName": "Support",
+    "contactEmail": "cs@seorilabs.com",
+    "contactPhone": "확정 필요"
+  },
+  "testFlight": {
+    "betaAppDescription": "두 명이 서로 다른 계정과 기기로 초대, 공유, 회수, 연결 해제를 검증하는 MoonMate 내부 테스트",
+    "feedbackEmail": "cs@seorilabs.com",
+    "twoPersonTestStatus": "확정 필요"
+  },
+  "monetization": {
+    "model": "premium-subscription",
+    "downloadPrice": "확정 필요",
+    "subscriptionProducts": "확정 필요"
+  },
+  "assets": {
+    "appIcon1024": "확정 필요",
+    "iphoneScreenshots69": [
+      "확정 필요"
+    ],
+    "iphoneScreenshots65": [],
+    "ipadScreenshots13": [],
+    "appleWatchScreenshots": []
+  },
+  "signing": {
+    "releaseCertificate": "확정 필요",
+    "releaseProvisioningProfile": "확정 필요"
+  },
+  "manualEvidence": {
+    "appStoreConnectApp": "확정 필요",
+    "appPrivacyReview": "확정 필요",
+    "ageRating": "확정 필요",
+    "testFlightTwoPersonTest": "확정 필요",
+    "deploymentApproval": "확정 필요"
+  }
+}

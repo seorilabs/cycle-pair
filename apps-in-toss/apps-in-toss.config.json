@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "appId": "moonmate",
+  "status": "conditional-policy-review-required",
+  "scaffoldStatus": "deferred",
+  "adoptionDecision": "conditional-pending-policy-review",
+  "appName": "확정 필요",
+  "appNameStatus": "확정 필요",
+  "workingName": {
+    "ko-KR": "문메이트",
+    "en-US": "MoonMate"
+  },
+  "subtitle": "함께 준비하는 우리의 주기",
+  "category": "확정 필요",
+  "featureUrls": [
+    "확정 필요"
+  ],
+  "customerSupportEmail": "cs@seorilabs.com",
+  "tdsRequired": "확정 필요",
+  "productBehavior": {
+    "sensitiveHealthData": true,
+    "firebaseAuthentication": true,
+    "externalFirebaseStorage": true,
+    "twoPersonPartnerSharing": true,
+    "singleSharingCounterpart": true,
+    "pushNotifications": true,
+    "premiumSubscription": true,
+    "ads": false,
+    "fertilityOrContraception": false,
+    "realtimeChat": false,
+    "publicUserGeneratedContent": false,
+    "privatePairNotesAndEvents": true
+  },
+  "compatibilityReview": {
+    "healthDataPolicy": "확정 필요",
+    "partnerSharingPolicy": "확정 필요",
+    "privatePairContentPolicy": "확정 필요",
+    "authenticationBridge": "확정 필요",
+    "firebaseAndAppCheck": "확정 필요",
+    "notificationChannel": "확정 필요",
+    "purchaseSupport": "확정 필요",
+    "accountDeletionAndExport": "확정 필요",
+    "reviewedAt": "확정 필요",
+    "evidenceUrls": [
+      "확정 필요"
+    ]
+  },
+  "privacy": {
+    "ownerPrivateData": true,
+    "partnerProjectionOnly": true,
+    "sensitiveValuesInAnalytics": false,
+    "cyclePhaseInAnalytics": false,
+    "neutralLockScreenNotification": true
+  },
+  "releaseAssets": {
+    "logo600": "확정 필요",
+    "thumbnail1932x828": "확정 필요",
+    "screenshots636x1048": [
+      "확정 필요"
+    ]
+  },
+  "manualEvidence": {
+    "policyCompatibilityApproval": "확정 필요",
+    "consoleApp": "확정 필요",
+    "sandboxTwoPersonTest": "확정 필요",
+    "deploymentApproval": "확정 필요"
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "appId": "moonmate",
+  "status": "planning-approved-release-blocked",
+  "packageName": "확정 필요",
+  "developmentPackageName": "com.seorilabs.moonmate.dev",
+  "defaultLanguage": "ko-KR",
+  "appType": "app",
+  "freeOrPaid": "확정 필요",
+  "contactEmail": "cs@seorilabs.com",
+  "contactWebsite": "확정 필요",
+  "privacyPolicyUrl": "확정 필요",
+  "workingName": {
+    "ko-KR": "문메이트",
+    "en-US": "MoonMate"
+  },
+  "storeListing": {
+    "appName": {
+      "ko-KR": "확정 필요",
+      "en-US": "확정 필요"
+    },
+    "shortDescription": {
+      "ko-KR": "생리주기를 함께 이해하고 대비하는 커플 케어 앱",
+      "en-US": "A private cycle and condition sharing app for two"
+    },
+    "fullDescription": {
+      "ko-KR": "확정 필요",
+      "en-US": "확정 필요"
+    },
+    "video": {
+      "ko-KR": "확정 필요",
+      "en-US": "확정 필요"
+    }
+  },
+  "category": {
+    "primary": "Health & Fitness 후보",
+    "secondary": "Lifestyle 후보"
+  },
+  "release": {
+    "initialTrack": "internal",
+    "aabPath": "확정 필요",
+    "releaseNotes": {
+      "ko-KR": "확정 필요",
+      "en-US": "확정 필요"
+    }
+  },
+  "contentDeclarations": {
+    "ads": "no",
+    "healthContent": "yes-cycle-and-condition-records",
+    "fertilityOrContraception": "no",
+    "userGeneratedContent": "확정 필요-private-pair-notes-and-events",
+    "realtimeChat": "no",
+    "dataSafety": "확정 필요",
+    "dataSafetyCsv": "확정 필요",
+    "contentRating": "확정 필요",
+    "targetAudience": "확정 필요",
+    "koreaDistribution": "확정 필요",
+    "koreaGameRating": "not-applicable-app"
+  },
+  "privacy": {
+    "tracking": "no",
+    "sensitiveValuesInAnalytics": "no",
+    "cyclePhaseInAnalytics": "no",
+    "partnerSharing": "explicit-user-selected-projection-only",
+    "accountDeletionUrl": "확정 필요"
+  },
+  "monetization": {
+    "model": "premium-subscription",
+    "downloadPrice": "확정 필요",
+    "subscriptionProducts": "확정 필요"
+  },
+  "assets": {
+    "playIcon": "확정 필요",
+    "featureGraphic": "확정 필요",
+    "phoneScreenshots": [
+      "확정 필요"
+    ],
+    "sevenInchTabletScreenshots": [],
+    "tenInchTabletScreenshots": []
+  },
+  "manualEvidence": {
+    "playConsoleApp": "확정 필요",
+    "dataSafetyReview": "확정 필요",
+    "contentRating": "확정 필요",
+    "internalTwoPersonTest": "확정 필요",
+    "deploymentApproval": "확정 필요"
+  }
+}
