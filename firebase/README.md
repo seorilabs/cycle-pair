@@ -89,4 +89,41 @@ pnpm --dir firebase check
 
 `test:rules`는 실제 프로젝트 대신 Firebase Emulator 전용 `demo-moonmate` project ID를 사용한다. `.firebaserc`는 개발 프로젝트를 가리키며 운영 프로젝트 alias는 출시 준비 때 별도 추가한다.
 
+## 개발 프로젝트 배포·실검증
+
+`seorilabs-moonmate-dev`는 결제 연결, Node.js 22 2nd Gen Functions 7개, Firestore trigger 3개가 `asia-northeast3`에 배포돼 있다. 신규 프로젝트의 기본 compute 서비스 계정은 다음 최소 역할을 사용한다.
+
+- `roles/cloudbuild.builds.builder`: Functions build
+- `roles/datastore.user`: Functions runtime의 Firestore read/write
+- `roles/eventarc.eventReceiver`: Firestore event 수신
+- `roles/run.invoker`: Eventarc가 Cloud Run target 호출
+- Pub/Sub service agent의 `roles/iam.serviceAccountTokenCreator`
+
+Seorilabs 조직은 Domain Restricted Sharing으로 `allUsers` IAM binding을 거부한다. 따라서 callable 4개는 Cloud Run Invoker IAM check를 비활성화한다. 이는 callable 내부 Firebase Auth를 끄는 설정이 아니다. 요청은 Cloud Run에 진입한 뒤 `request.auth`가 없으면 `UNAUTHENTICATED`로 거부되고, 운영 전에는 App Check도 별도 강제한다.
+
+Functions 재배포 후 다음 상태를 반드시 재확인한다.
+
+```bash
+for service in createpairinvite acceptpairinvite revokepair acknowledgecachetombstone; do
+  gcloud run services update "$service" \
+    --project=seorilabs-moonmate-dev \
+    --region=asia-northeast3 \
+    --no-invoker-iam-check
+done
+
+gcloud functions list --v2 \
+  --project=seorilabs-moonmate-dev \
+  --regions=asia-northeast3
+```
+
+실제 개발 프로젝트 smoke는 dev project ID를 강제하며 UID, ID token, 초대 token을 출력하지 않는다. 성공과 실패 모두 생성한 문서·익명 계정을 정리한다.
+
+```bash
+MOONMATE_FIREBASE_PROJECT=seorilabs-moonmate-dev \
+MOONMATE_FIREBASE_WEB_API_KEY="$(jq -r '.client[0].api_key[0].current_key' \
+  apps/mobile/android/app/google-services.json)" \
+MOONMATE_ADMIN_ACCESS_TOKEN="$(gcloud auth print-access-token)" \
+pnpm test:firebase:live
+```
+
 `release-readiness.json`은 실제 클라우드 gate의 repo-local inventory다. 결제 연결, Functions 배포, 운영 Auth, App Check가 실제로 확인된 뒤에만 해당 값을 `true`로 변경한다.

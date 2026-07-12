@@ -8,6 +8,7 @@
 | architecture | pnpm check:architecture | product-core 플랫폼 SDK import 금지 |
 | mobile | pnpm check:mobile | RN lint, typecheck, unit test, iOS/Android production JS bundle |
 | Firebase 전체 | pnpm test:firebase 또는 pnpm check:firebase | Functions build·unit test, Rules emulator, Auth/Firestore/Functions E2E |
+| Firebase 실제 개발 | pnpm test:firebase:live | dev 프로젝트의 실제 Auth·callable·3종 projection trigger·revoke·cleanup |
 | 전체 | pnpm lint && pnpm typecheck && pnpm test | repo 정적·자동 테스트 |
 | release inventory | pnpm check:release | 마켓·Firebase·privacy blocker 목록 |
 
@@ -23,12 +24,14 @@ check:release는 현재 의도적으로 실패해야 한다. 영구 ID, 정책 �
 | Firestore Rules | PASS | Emulator 8 tests |
 | Firebase 통합 | PASS | Auth+Firestore+Functions Emulator 1 E2E, 7 functions load |
 | 실제 Firebase Auth·Rules | PASS | `seorilabs-moonmate-dev`, anonymous auth 활성화, 서울 Firestore, owner write/read 200·other read 403 후 테스트 계정/데이터 삭제 |
-| 실제 Firebase Functions | BLOCKED | 프로젝트 결제 연결 권한 403로 `asia-northeast3` 배포 미완료 |
+| Firebase 개발 결제 | PASS | 기존 Seorilabs 앱과 동일한 결제 계정 연결, `billingEnabled: true` 재조회 |
+| 실제 Firebase Functions | PASS | Node.js 22 2nd Gen 7개, `asia-northeast3`, 전부 ACTIVE |
+| 실제 Firebase 2계정 | PASS | 익명 계정 2개 초대·수락, 기본 비공개, cycle·daily·shareSettings trigger, 공유 회수, revoke·양쪽 tombstone ack, 테스트 계정·문서 cleanup |
 | iOS native | PASS | Xcode clean Debug build, iPhone 16 Pro Simulator 설치·기동, 온보딩 화면 확인 |
 | Android native | PASS | JDK 17 `assembleDebug`, 4 ABI build |
 | release inventory | EXPECTED FAIL | 출시 이름·영구 ID·정책·서명·콘솔·deployment approval 미확정 |
 
-현재 자동 QA는 로컬 product-core, UI 세로 슬라이스, Firebase emulator 보안 경계와 실제 개발 프로젝트의 Auth·owner-private Rules를 증명한다. Functions 배포 전이므로 Android/iOS 실제 2인 초대·수락·projection 동기화, 계정 삭제·내보내기, FCM, 결제, 스토어 산출물은 아직 증명하지 않는다.
+현재 자동 QA는 로컬 product-core, UI 세로 슬라이스, Firebase emulator 보안 경계와 실제 개발 프로젝트의 Auth·owner-private Rules·Functions·2계정 backend lifecycle을 증명한다. Android/iOS 실제 기기 2대 UI 흐름, 제품 계정 삭제·내보내기, FCM, 구독 결제, 스토어 산출물은 아직 증명하지 않는다.
 
 ## core 필수 테스트
 

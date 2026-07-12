@@ -14,6 +14,7 @@
     "test:core": "pnpm --filter @moonmate/product-core test",
     "test:mobile": "pnpm --filter @moonmate/mobile test",
     "test:firebase": "pnpm --dir firebase check",
+    "test:firebase:live": "node scripts/smoke-live-firebase.mjs",
     "check:architecture": "node scripts/check-architecture.mjs",
     "check:mobile": "pnpm --filter @moonmate/mobile lint && pnpm --filter @moonmate/mobile typecheck && pnpm --filter @moonmate/mobile test && pnpm --filter @moonmate/mobile bundle:ios && pnpm --filter @moonmate/mobile bundle:android",
     "check:firebase": "pnpm --dir firebase check",

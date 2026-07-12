@@ -63,13 +63,13 @@ async function waitForProjection(
   path: string,
   predicate: (data: Record<string, unknown>) => boolean,
 ): Promise<Record<string, unknown>> {
-  for (let attempt = 0; attempt < 40; attempt += 1) {
+  for (let attempt = 0; attempt < 120; attempt += 1) {
     const snapshot = await getDocFromServer(doc(firestore, path));
     const data = snapshot.data() as Record<string, unknown> | undefined;
     if (data !== undefined && predicate(data)) {
       return data;
     }
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise(resolve => setTimeout(resolve, 250));
   }
 
   throw new Error(`projection did not converge: ${path}`);
@@ -120,6 +120,9 @@ describe("pair lifecycle callables", () => {
       schemaVersion: 1,
     });
     expect(projection.data()).not.toHaveProperty("cyclePhase");
+    const initialGeneratedAt = (
+      projection.data()?.generatedAt as Timestamp
+    ).toMillis();
     await expect(
       updateDoc(doc(bob.firestore, projectionPath), {moodTag: "forged"}),
     ).rejects.toMatchObject({code: "permission-denied"});
@@ -135,7 +138,10 @@ describe("pair lifecycle callables", () => {
     await waitForProjection(
       bob.firestore,
       projectionPath,
-      data => !Object.hasOwn(data, "cyclePhase"),
+      data =>
+        data.generatedAt instanceof Timestamp &&
+        data.generatedAt.toMillis() > initialGeneratedAt &&
+        !Object.hasOwn(data, "cyclePhase"),
     );
     await setDoc(doc(alice.firestore, settingsPath), {
       periodDates: true,

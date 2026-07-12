@@ -4,8 +4,11 @@
   "firestoreRulesDeployed": true,
   "nativeAppsRegistered": true,
   "productionProjectConfigured": false,
-  "billingLinked": false,
-  "functionsDeployed": false,
+  "billingLinked": true,
+  "functionsDeployed": true,
+  "runtimeIamConfigured": true,
+  "callableInvokerIamCheckDisabled": true,
+  "livePairSmokeVerified": true,
   "productionAuthConfigured": false,
   "appCheckEnforced": false
 }

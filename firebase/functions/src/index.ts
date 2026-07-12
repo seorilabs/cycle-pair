@@ -34,6 +34,11 @@ setGlobalOptions({
 const callableOptions = {
   enforceAppCheck,
   cors: true,
+  // Firebase Auth/App Check are verified by the callable protocol inside the
+  // function. Cloud Run must accept the request before those tokens can be read.
+  // The Seorilabs domain-restricted-sharing policy requires the deployed Cloud
+  // Run service to use --no-invoker-iam-check instead of an allUsers binding.
+  invoker: "public" as const,
 };
 
 type JsonRecord = Record<string, unknown>;
