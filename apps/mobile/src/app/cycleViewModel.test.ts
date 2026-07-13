@@ -1,4 +1,4 @@
-import { createInitialState } from './MoonMateStore';
+import { createInitialState } from './CyclePairStore';
 import { buildCycleViewModel } from './cycleViewModel';
 
 describe('cycle view model roles', () => {

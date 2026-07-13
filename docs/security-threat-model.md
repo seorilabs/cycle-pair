@@ -1,4 +1,4 @@
-# MoonMate MVP 위협모델
+# Cycle Pair MVP 위협모델
 
 ## 범위
 

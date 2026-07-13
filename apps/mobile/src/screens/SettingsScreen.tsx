@@ -1,7 +1,7 @@
 import React from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
-import { ShareField, useMoonMate } from '../app/MoonMateStore';
-import { Card, Chip, Screen, SectionHeader, ToggleRow } from '../components/Ui';
+import { ShareField, useCyclePair } from '../app/CyclePairStore';
+import { Card, Chip, PrimaryButton, Screen, SectionHeader, ToggleRow } from '../components/Ui';
 import { colors, spacing } from '../theme';
 
 const shareRows: Array<{ key: ShareField; label: string }> = [
@@ -31,11 +31,13 @@ export function SettingsScreen() {
     backendKind,
     backendBusy,
     backendError,
+    openPairing,
+    continueToSharing,
     toggleShare,
     toggleNotifications,
     disconnectPair,
     resetApp,
-  } = useMoonMate();
+  } = useCyclePair();
   const selectedCount = Object.values(state.shareSettings).filter(Boolean).length;
 
   function confirmDisconnect() {
@@ -62,23 +64,45 @@ export function SettingsScreen() {
       <Card style={styles.profileCard}>
         <View style={styles.profileAvatar}><Text style={styles.profileAvatarText}>나</Text></View>
         <View style={styles.profileCopy}>
-          <Text style={styles.profileTitle}>내 MoonMate</Text>
-          <Text style={styles.profileBody}>{state.partnerName} 님과 연결됨 · {backendKind === 'firebase' ? 'Firebase 동기화' : '테스트 미리보기'}</Text>
+          <Text style={styles.profileTitle}>내 Cycle Pair</Text>
+          <Text style={styles.profileBody}>
+            {state.paired ? `${state.partnerName} 님과 연결됨` : '혼자 기록 중'} · {backendKind === 'firebase' ? 'Firebase 동기화' : '테스트 미리보기'}
+          </Text>
         </View>
         <Chip label="Free" />
       </Card>
 
-      <SectionHeader title="공유 범위" action={<Text style={styles.count}>{selectedCount}개 공유 중</Text>} />
-      <Card style={styles.rowsCard}>
-        {shareRows.map(row => (
-          <ToggleRow
-            key={row.key}
-            title={row.label}
-            value={state.shareSettings[row.key]}
-            onValueChange={() => toggleShare(row.key)}
-          />
-        ))}
-      </Card>
+      <SectionHeader
+        title="공유 범위"
+        action={state.paired && state.sharingCompleted ? <Text style={styles.count}>{selectedCount}개 공유 중</Text> : undefined}
+      />
+      {state.paired && state.sharingCompleted ? (
+        <Card style={styles.rowsCard}>
+          {shareRows.map(row => (
+            <ToggleRow
+              key={row.key}
+              title={row.label}
+              value={state.shareSettings[row.key]}
+              onValueChange={() => toggleShare(row.key)}
+            />
+          ))}
+        </Card>
+      ) : state.paired ? (
+        <Card tone="primary" style={styles.soloShareCard}>
+          <Text style={styles.soloShareTitle}>공유 설정을 완료해 주세요</Text>
+          <Text style={styles.soloShareBody}>
+            Pair는 연결됐지만 아직 공유 중인 건강 정보는 없습니다.
+          </Text>
+          <PrimaryButton label="공유 설정 계속하기" onPress={continueToSharing} />
+        </Card>
+      ) : (
+        <Card tone="primary" style={styles.soloShareCard}>
+          <Text style={styles.soloShareTitle}>현재 공유 중인 정보가 없어요</Text>
+          <Text style={styles.soloShareBody}>
+            파트너를 연결한 뒤에도 직접 켠 항목만 별도 projection으로 공유됩니다.
+          </Text>
+        </Card>
+      )}
 
       <SectionHeader title="알림과 개인정보" />
       <Card style={styles.rowsCard}>
@@ -95,7 +119,7 @@ export function SettingsScreen() {
       <SectionHeader title="구독" />
       <Card tone="primary" style={styles.subscriptionCard}>
         <View style={styles.subscriptionCopy}>
-          <Text style={styles.subscriptionEyebrow}>MoonMate Plus · 설계 중</Text>
+          <Text style={styles.subscriptionEyebrow}>Cycle Pair Plus · 설계 중</Text>
           <Text style={styles.subscriptionTitle}>광고 없이, 신뢰를 먼저</Text>
           <Text style={styles.subscriptionBody}>결제 경계와 영수증 서버 검증이 준비될 때까지 실제 구매는 노출하지 않아요.</Text>
         </View>
@@ -103,14 +127,18 @@ export function SettingsScreen() {
 
       <SectionHeader title="연결과 데이터" />
       <Card style={styles.rowsCard}>
-        <SettingLink title={backendBusy ? '연결 해제 처리 중…' : '파트너 연결 해제'} description="접근권 즉시 회수 · 캐시 tombstone 동기화" onPress={confirmDisconnect} danger />
+        {state.paired ? (
+          <SettingLink title={backendBusy ? '연결 해제 처리 중…' : '파트너 연결 해제'} description="접근권 즉시 회수 · 캐시 tombstone 동기화" onPress={confirmDisconnect} danger />
+        ) : (
+          <SettingLink title="파트너 연결하기" description="필요할 때 한 사람만 선택적으로 연결" onPress={openPairing} />
+        )}
         {backendKind === 'preview' ? <SettingLink title="개발 데이터 초기화" onPress={confirmReset} danger /> : null}
       </Card>
 
       {backendError ? <Text style={styles.syncError}>{backendError}</Text> : null}
 
       <View style={styles.footer}>
-        <Text style={styles.brand}>☾ MoonMate</Text>
+        <Text style={styles.brand}>∞ Cycle Pair</Text>
         <Text style={styles.version}>0.1.0 · 의료 도구 아님</Text>
       </View>
     </Screen>
@@ -127,6 +155,9 @@ const styles = StyleSheet.create({
   profileTitle: { color: colors.text, fontSize: 16, fontWeight: '900' },
   profileBody: { color: colors.textMuted, fontSize: 11 },
   count: { color: colors.primary, fontSize: 12, fontWeight: '800' },
+  soloShareCard: { gap: spacing.xs },
+  soloShareTitle: { color: colors.primaryDark, fontSize: 14, fontWeight: '900' },
+  soloShareBody: { color: colors.textMuted, fontSize: 12, lineHeight: 18 },
   rowsCard: { paddingVertical: 0 },
   linkRow: { flexDirection: 'row', alignItems: 'center', minHeight: 62, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   linkCopy: { flex: 1, gap: spacing.xs },

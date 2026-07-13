@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { ShareField, useMoonMate } from '../app/MoonMateStore';
-import { Body, Card, PrimaryButton, Screen, SecondaryButton, Title, ToggleRow } from '../components/Ui';
+import { ShareField, useCyclePair } from '../app/CyclePairStore';
+import { Body, Card, PrimaryButton, Screen, SecondaryButton, TextButton, Title, ToggleRow } from '../components/Ui';
 import { colors, spacing } from '../theme';
 
 const fields: Array<{ key: ShareField; title: string; description: string }> = [
@@ -14,12 +14,22 @@ const fields: Array<{ key: ShareField; title: string; description: string }> = [
 ];
 
 export function SharingScreen() {
-  const { state, toggleShare, useRecommendedSharing, completeSharing } = useMoonMate();
+  const {
+    state,
+    backendBusy,
+    goBack,
+    toggleShare,
+    useRecommendedSharing,
+    completeSharing,
+  } = useCyclePair();
   const selectedCount = Object.values(state.shareSettings).filter(Boolean).length;
 
   return (
     <Screen contentStyle={styles.content}>
-      <Text style={styles.step}>3 / 3</Text>
+      <View style={styles.header}>
+        <TextButton label="이전" disabled={backendBusy} onPress={goBack} />
+        <Text style={styles.step}>연결 후 선택</Text>
+      </View>
       <Title>{state.partnerName} 님에게{`\n`}무엇을 보여줄까요?</Title>
       <Body muted style={styles.intro}>
         처음에는 아무것도 공유하지 않아요. 지금 고르거나, 나중에 설정에서 바꿀 수 있어요.
@@ -60,7 +70,13 @@ export function SharingScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingBottom: spacing.xl },
-  step: { color: colors.primary, fontSize: 13, fontWeight: '800', marginBottom: spacing.lg },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.lg,
+  },
+  step: { color: colors.primary, fontSize: 13, fontWeight: '800' },
   intro: { marginTop: spacing.md, marginBottom: spacing.lg },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: spacing.lg },
   summaryLabel: { color: colors.text, fontSize: 16, fontWeight: '800' },

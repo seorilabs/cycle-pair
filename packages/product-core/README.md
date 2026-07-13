@@ -1,6 +1,6 @@
-# `@moonmate/product-core`
+# `@cyclepair/product-core`
 
-MoonMate의 플랫폼 독립 TypeScript 코어다. 도메인 모델, 순수 계산, projection 정책과 port interface만 포함한다. Firebase, React Native, AppsInToss, 스토어 SDK, 네트워크·디바이스 API를 import하지 않는다.
+Cycle Pair의 플랫폼 독립 TypeScript 코어다. 도메인 모델, 순수 계산, projection 정책과 port interface만 포함한다. Firebase, React Native, AppsInToss, 스토어 SDK, 네트워크·디바이스 API를 import하지 않는다.
 
 ## 제공 범위
 

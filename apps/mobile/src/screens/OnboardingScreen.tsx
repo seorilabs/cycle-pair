@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useMoonMate } from '../app/MoonMateStore';
+import { useCyclePair } from '../app/CyclePairStore';
+import { useHardwareBack } from '../app/useHardwareBack';
 import { Body, Eyebrow, PrimaryButton, Screen, TextButton, Title } from '../components/Ui';
 import { colors, radius, spacing } from '../theme';
 
@@ -9,7 +10,7 @@ const pages = [
     eyebrow: '둘이 함께, 원하는 만큼만',
     title: '말하지 않아도\n서로를 이해하도록',
     body: '주기와 오늘의 컨디션을 직접 고른 범위만 공유해요.',
-    visual: '☾',
+    visual: '∞',
     bubbles: ['내 주기', '파트너 케어'],
   },
   {
@@ -29,19 +30,29 @@ const pages = [
 ] as const;
 
 export function OnboardingScreen() {
-  const { completeOnboarding } = useMoonMate();
+  const { completeOnboarding } = useCyclePair();
   const [pageIndex, setPageIndex] = useState(0);
   const page = pages[pageIndex];
   const isLast = pageIndex === pages.length - 1;
+  const goToPreviousPage = useCallback(() => {
+    if (pageIndex === 0) return false;
+    setPageIndex(current => current - 1);
+    return true;
+  }, [pageIndex]);
+
+  useHardwareBack(goToPreviousPage);
 
   return (
     <Screen scroll={false} contentStyle={styles.content}>
       <View style={styles.topRow}>
         <View style={styles.brand}>
-          <Text style={styles.brandMoon}>☾</Text>
-          <Text style={styles.brandText}>MoonMate</Text>
+          <Text style={styles.brandMark}>∞</Text>
+          <Text style={styles.brandText}>Cycle Pair</Text>
         </View>
-        {!isLast ? <TextButton label="건너뛰기" onPress={completeOnboarding} /> : null}
+        <View style={styles.topActions}>
+          {pageIndex > 0 ? <TextButton label="이전" onPress={goToPreviousPage} /> : null}
+          {!isLast ? <TextButton label="건너뛰기" onPress={completeOnboarding} /> : null}
+        </View>
       </View>
 
       <View style={styles.visualWrap}>
@@ -90,8 +101,9 @@ const styles = StyleSheet.create({
   content: { paddingBottom: spacing.xl },
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brand: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  brandMoon: { color: colors.primary, fontSize: 28, fontWeight: '800' },
+  brandMark: { color: colors.primary, fontSize: 28, fontWeight: '800' },
   brandText: { color: colors.text, fontSize: 18, fontWeight: '800', letterSpacing: -0.3 },
+  topActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
   visualWrap: { flex: 1, minHeight: 270, alignItems: 'center', justifyContent: 'center' },
   visualCircle: {
     width: 132,

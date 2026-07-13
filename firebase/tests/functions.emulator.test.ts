@@ -23,7 +23,7 @@ import {
 } from "firebase/functions";
 import {afterAll, describe, expect, test} from "vitest";
 
-const PROJECT_ID = "demo-moonmate";
+const PROJECT_ID = "demo-cyclepair";
 const apps: FirebaseApp[] = [];
 
 interface EmulatorClient {

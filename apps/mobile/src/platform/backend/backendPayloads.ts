@@ -2,12 +2,12 @@ import type {
   CycleSeed,
   DailyCheckIn,
   ShareField,
-} from '../../app/MoonMateStore';
+} from '../../app/CyclePairStore';
 import type {
   BackendShareSettings,
   PrivateCycleRecord,
   PrivateDailyLogRecord,
-} from './MoonMateBackend';
+} from './CyclePairBackend';
 
 const moodTags: Record<NonNullable<DailyCheckIn['mood']>, string> = {
   '힘들어요': 'very-low',

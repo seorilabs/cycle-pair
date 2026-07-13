@@ -11,7 +11,7 @@
   "functions": [
     {
       "source": "firebase/functions",
-      "codebase": "moonmate",
+      "codebase": "cyclepair",
       "runtime": "nodejs22",
       "ignore": [
         "node_modules",

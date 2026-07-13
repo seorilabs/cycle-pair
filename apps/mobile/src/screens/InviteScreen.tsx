@@ -1,18 +1,20 @@
 import React, { useState } from 'react';
 import { Share, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useMoonMate } from '../app/MoonMateStore';
+import { useCyclePair } from '../app/CyclePairStore';
 import {
   Body,
   Card,
   PrimaryButton,
   Screen,
   SecondaryButton,
+  TextButton,
   Title,
 } from '../components/Ui';
 import { colors, radius, spacing } from '../theme';
 
 export function InviteScreen() {
   const {
+    state,
     backendKind,
     backendSession,
     invite,
@@ -21,8 +23,11 @@ export function InviteScreen() {
     createInvite,
     acceptInvite,
     previewLinkPartner,
-  } = useMoonMate();
+    goBack,
+    continueToSharing,
+  } = useCyclePair();
   const [inviteToken, setInviteToken] = useState('');
+  const isConnected = state.paired && Boolean(state.sharingPairId);
 
   async function shareInvite() {
     if (!invite) return;
@@ -34,10 +39,17 @@ export function InviteScreen() {
 
   return (
     <Screen contentStyle={styles.content}>
-      <Text style={styles.step}>2 / 3</Text>
-      <Title>함께할 한 사람을{`\n`}초대해 주세요</Title>
+      <View style={styles.header}>
+        <TextButton label="닫기" disabled={backendBusy} onPress={goBack} />
+        <Text style={styles.step}>선택 기능</Text>
+      </View>
+      <Title>
+        {isConnected ? `파트너 연결을\n확인했어요` : `함께할 한 사람을\n초대해 주세요`}
+      </Title>
       <Body muted style={styles.intro}>
-        연결은 정확히 두 사람만 가능해요. 상대는 내가 허용한 항목만 볼 수 있어요.
+        {isConnected
+          ? '이전 단계로 돌아가도 연결은 유지돼요. 다음 단계에서 공유 범위를 정할 수 있어요.'
+          : '연결하지 않아도 내 기록은 계속 사용할 수 있어요. 상대는 연결 후에도 내가 허용한 항목만 볼 수 있습니다.'}
       </Body>
 
       <View style={styles.illustration}>
@@ -48,11 +60,19 @@ export function InviteScreen() {
           <Text style={styles.heart}>♡</Text>
         </View>
         <View style={[styles.avatar, styles.avatarRight]}>
-          <Text style={styles.avatarText}>?</Text>
+          <Text style={styles.avatarText}>{isConnected ? '✓' : '?'}</Text>
         </View>
       </View>
 
-      {backendKind === 'preview' ? (
+      {isConnected ? (
+        <Card style={styles.connectedCard}>
+          <Text style={styles.previewLabel}>파트너 연결 완료</Text>
+          <Text style={styles.previewBody}>
+            연결을 새로 만들 필요 없이 기존 Pair를 그대로 사용해요.
+          </Text>
+          <PrimaryButton label="공유 설정으로 계속" onPress={continueToSharing} />
+        </Card>
+      ) : backendKind === 'preview' ? (
         <Card style={styles.previewCard}>
           <Text style={styles.previewLabel}>테스트 미리보기</Text>
           <Text style={styles.previewBody}>
@@ -121,7 +141,13 @@ export function InviteScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingBottom: spacing.xl },
-  step: { color: colors.primary, fontSize: 13, fontWeight: '800', marginBottom: spacing.lg },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.lg,
+  },
+  step: { color: colors.primary, fontSize: 13, fontWeight: '800' },
   intro: { marginTop: spacing.md },
   illustration: {
     height: 150,
@@ -162,6 +188,7 @@ const styles = StyleSheet.create({
   codeCard: { alignItems: 'stretch', gap: spacing.md },
   acceptCard: { marginTop: spacing.lg, gap: spacing.md },
   previewCard: { gap: spacing.md },
+  connectedCard: { gap: spacing.md },
   previewLabel: { color: colors.primary, fontSize: 12, fontWeight: '900' },
   previewBody: { color: colors.textMuted, fontSize: 12, lineHeight: 18 },
   cardTitle: { color: colors.text, fontSize: 16, fontWeight: '900' },

@@ -1,14 +1,62 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { buildCycleViewModel, formatKoreanDate } from '../app/cycleViewModel';
-import { useMoonMate } from '../app/MoonMateStore';
-import { Body, Card, Chip, PrimaryButton, Screen, SectionHeader } from '../components/Ui';
+import { useCyclePair } from '../app/CyclePairStore';
+import { Body, Card, Chip, PrimaryButton, Screen, SectionHeader, Title } from '../components/Ui';
 import { colors, spacing } from '../theme';
 
 export function PartnerScreen() {
-  const { state } = useMoonMate();
-  const viewModel = buildCycleViewModel(state);
+  const { state, openPairing, continueToSharing } = useCyclePair();
   const [acknowledged, setAcknowledged] = useState(false);
+  const viewModel = buildCycleViewModel(state);
+
+  if (!state.paired) {
+    return (
+      <Screen contentStyle={styles.content}>
+        <Text style={styles.soloEyebrow}>선택 기능</Text>
+        <Title>혼자 기록하다가{`\n`}필요할 때 연결해요</Title>
+        <Body muted style={styles.soloIntro}>
+          주기와 오늘의 컨디션은 파트너 없이도 계속 관리할 수 있어요.
+        </Body>
+
+        <Card tone="primary" style={styles.soloCard}>
+          <View style={styles.soloIcon}><Text style={styles.soloIconText}>♡</Text></View>
+          <Text style={styles.soloTitle}>한 사람과 선택적으로 공유</Text>
+          <Text style={styles.soloBody}>
+            상대가 초대를 수락한 뒤에도 기본값은 비공개예요. 보여줄 항목은 직접 고릅니다.
+          </Text>
+          <PrimaryButton label="파트너 연결하기" onPress={openPairing} />
+        </Card>
+
+        <Card style={styles.soloPrivacyCard}>
+          <Text style={styles.privacyTitle}>지금은 내 기록만 저장돼요</Text>
+          <Text style={styles.privacyBody}>
+            연결 전에는 partner projection이 만들어지지 않고 다른 사용자가 내 기록을 볼 수 없습니다.
+          </Text>
+        </Card>
+      </Screen>
+    );
+  }
+
+  if (!state.sharingCompleted) {
+    return (
+      <Screen contentStyle={styles.content}>
+        <Text style={styles.soloEyebrow}>연결 완료</Text>
+        <Title>보여줄 항목을{`\n`}직접 선택해 주세요</Title>
+        <Body muted style={styles.soloIntro}>
+          Pair는 연결됐지만 아직 어떤 건강 정보도 공유되지 않았어요.
+        </Body>
+        <Card tone="primary" style={styles.soloCard}>
+          <Text style={styles.soloTitle}>기본값은 모두 비공개</Text>
+          <Text style={styles.soloBody}>
+            공유 설정을 마친 뒤에도 언제든 항목별로 다시 끌 수 있습니다.
+          </Text>
+          <PrimaryButton label="공유 설정 계속하기" onPress={continueToSharing} />
+        </Card>
+      </Screen>
+    );
+  }
+
   const remote = state.partnerProjection;
   const moodCopy: Record<string, string> = {
     'very-low': '오늘은 많이 힘들어요',
@@ -99,6 +147,14 @@ export function PartnerScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingBottom: spacing.xl },
+  soloEyebrow: { color: colors.primary, fontSize: 12, fontWeight: '900', marginBottom: spacing.sm },
+  soloIntro: { marginTop: spacing.md },
+  soloCard: { alignItems: 'stretch', gap: spacing.md, marginTop: spacing.xl },
+  soloIcon: { width: 56, height: 56, borderRadius: 28, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
+  soloIconText: { color: colors.primary, fontSize: 31 },
+  soloTitle: { color: colors.primaryDark, fontSize: 18, fontWeight: '900' },
+  soloBody: { color: colors.textMuted, fontSize: 13, lineHeight: 20 },
+  soloPrivacyCard: { gap: spacing.xs, marginTop: spacing.lg },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg, marginBottom: spacing.xl },
   avatar: { width: 62, height: 62, borderRadius: 31, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
   avatarText: { color: '#FFFFFF', fontSize: 22, fontWeight: '900' },

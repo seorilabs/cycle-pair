@@ -1,8 +1,8 @@
-import { addDays, daysBetween, localDate, parseLocalDate, type LocalDate } from '@moonmate/product-core';
+import { addDays, daysBetween, localDate, parseLocalDate, type LocalDate } from '@cyclepair/product-core';
 import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { buildCycleViewModel, formatKoreanDate } from '../app/cycleViewModel';
-import { useMoonMate } from '../app/MoonMateStore';
+import { useCyclePair } from '../app/CyclePairStore';
 import { Body, Card, Chip, Screen, SectionHeader } from '../components/Ui';
 import { colors, radius, spacing } from '../theme';
 
@@ -26,7 +26,7 @@ function isBetween(value: LocalDate, start?: LocalDate, end?: LocalDate): boolea
 }
 
 export function CalendarScreen() {
-  const { state } = useMoonMate();
+  const { state } = useCyclePair();
   const viewModel = buildCycleViewModel(state);
   const todayParts = dateParts(viewModel.today);
   const [cursor, setCursor] = useState({ year: todayParts.year, month: todayParts.month });
@@ -47,7 +47,7 @@ export function CalendarScreen() {
     <Screen contentStyle={styles.content}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.eyebrow}>함께 보는 일정</Text>
+          <Text style={styles.eyebrow}>{state.paired ? '함께 보는 일정' : '나만의 일정'}</Text>
           <Text style={styles.title}>주기 캘린더</Text>
         </View>
         <View style={styles.privateBadge}><Text style={styles.privateBadgeText}>내 원본</Text></View>
@@ -114,7 +114,9 @@ export function CalendarScreen() {
           </Text>
           <Text style={styles.eventBody}>
             {!state.isLogger
-              ? '상대가 직접 공유한 정보만 확인할 수 있어요.'
+              ? state.paired
+                ? '상대가 직접 공유한 정보만 확인할 수 있어요.'
+                : '주기 예측 없이 오늘의 컨디션 기록을 사용할 수 있어요.'
               : viewModel.predictionStart && viewModel.predictionEnd
               ? `${formatKoreanDate(viewModel.predictionStart)}부터 ${formatKoreanDate(viewModel.predictionEnd)} 사이로 넓게 봐주세요.`
               : '기록이 더 쌓이면 예상 범위를 보여드려요.'}
@@ -126,8 +128,12 @@ export function CalendarScreen() {
       <Card tone="mint" style={styles.sharedCalendarCard}>
         <Text style={styles.sharedIcon}>＋</Text>
         <View style={styles.sharedCopy}>
-          <Text style={styles.sharedTitle}>기념일·공동 일정</Text>
-          <Text style={styles.sharedBody}>Pair 동기화가 연결되면 두 사람이 함께 추가하고 수정할 수 있어요.</Text>
+          <Text style={styles.sharedTitle}>{state.paired ? '기념일·공동 일정' : '파트너 연결은 선택 사항'}</Text>
+          <Text style={styles.sharedBody}>
+            {state.paired
+              ? '두 사람이 함께 추가하고 수정할 수 있어요.'
+              : '혼자 기록을 계속 사용하다가 필요할 때 공동 일정을 켤 수 있어요.'}
+          </Text>
         </View>
       </Card>
 

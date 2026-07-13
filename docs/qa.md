@@ -1,4 +1,4 @@
-# MoonMate QA
+# Cycle Pair QA
 
 ## 게이트
 
@@ -12,30 +12,31 @@
 | 전체 | pnpm lint && pnpm typecheck && pnpm test | repo 정적·자동 테스트 |
 | release inventory | pnpm check:release | 마켓·Firebase·privacy blocker 목록 |
 
-check:release는 현재 의도적으로 실패해야 한다. 영구 ID, 정책 답변, 서명 빌드, 콘솔 입력이 확정되지 않았기 때문이다.
+check:release는 현재 의도적으로 실패해야 한다. 정책 답변, 서명 빌드, 콘솔 입력과 deployment approval이 확정되지 않았기 때문이다.
 
-## 2026-07-12 구현 슬라이스 검증 현황
+## 2026-07-13 Cycle Pair 전환 검증 현황
 
 | 항목 | 결과 | 증거 |
 | --- | --- | --- |
 | product-core | PASS | 6 files, 32 tests; architecture/typecheck/build PASS |
-| mobile | PASS | ESLint, TypeScript, Jest 4 suites/11 tests, iOS/Android production JS bundle |
+| mobile | PASS | ESLint, TypeScript, Jest 4 suites/24 tests, iOS/Android production JS bundle |
 | Firebase Functions | PASS | TypeScript build, 정책/projection 9 tests |
 | Firestore Rules | PASS | Emulator 8 tests |
 | Firebase 통합 | PASS | Auth+Firestore+Functions Emulator 1 E2E, 7 functions load |
-| 실제 Firebase Auth·Rules | PASS | `seorilabs-moonmate-dev`, anonymous auth 활성화, 서울 Firestore, owner write/read 200·other read 403 후 테스트 계정/데이터 삭제 |
+| 실제 Firebase Auth·Rules | PASS | `seorilabs-cyclepair-dev`, anonymous auth 활성화, 서울 Firestore, owner write/read 200·other read 403 후 테스트 계정/데이터 삭제 |
 | Firebase 개발 결제 | PASS | 기존 Seorilabs 앱과 동일한 결제 계정 연결, `billingEnabled: true` 재조회 |
 | 실제 Firebase Functions | PASS | Node.js 22 2nd Gen 7개, `asia-northeast3`, 전부 ACTIVE |
 | 실제 Firebase 2계정 | PASS | 익명 계정 2개 초대·수락, 기본 비공개, cycle·daily·shareSettings trigger, 공유 회수, revoke·양쪽 tombstone ack, 테스트 계정·문서 cleanup |
-| iOS native | PASS | Xcode clean Debug build, iPhone 16 Pro Simulator 설치·기동, 온보딩 화면 확인 |
-| Android native | PASS | JDK 17 `assembleDebug`, 4 ABI build |
-| release inventory | EXPECTED FAIL | 출시 이름·영구 ID·정책·서명·콘솔·deployment approval 미확정 |
+| iOS native | PASS | `CyclePair` scheme, `com.seorilabs.cyclepair`, arm64 iPhone 16 Pro Simulator build·설치·온보딩 기동 |
+| Android native | PASS | JDK 17 daemon 선택, `com.seorilabs.cyclepair` `assembleDebug`, Seeker Android 16 실기기 설치·세로 기동·온보딩 hardware back·solo 홈·선택형 Pair 진입/복귀 |
+| release inventory | EXPECTED FAIL | 운영 Firebase·App Check·정책·서명·마켓 콘솔·deployment approval 미확정 |
 
 현재 자동 QA는 로컬 product-core, UI 세로 슬라이스, Firebase emulator 보안 경계와 실제 개발 프로젝트의 Auth·owner-private Rules·Functions·2계정 backend lifecycle을 증명한다. Android/iOS 실제 기기 2대 UI 흐름, 제품 계정 삭제·내보내기, FCM, 구독 결제, 스토어 산출물은 아직 증명하지 않는다.
 
 ## core 필수 테스트
 
 - Pair는 정확히 서로 다른 두 Member만 허용
+- Pair 없이도 owner-private 설정·기록·예측 화면에 진입 가능
 - 사용자당 active Pair 하나
 - 주기 날짜는 LocalDate로 계산
 - 유효 간격 15~60일만 예측에 사용
@@ -66,8 +67,8 @@ Emulator에서 최소 다음을 자동 검증한다.
 ## Analytics·로그 테스트
 
 - 이벤트 schema에 date, symptom, mood, note, condition, helpPreferences, cyclePhase, UID, Pair ID가 없다.
-- mm_cycle_log는 payload 없이 성공 사실만 보낸다.
-- mm_care_tip_view에 phase가 없다.
+- cp_cycle_log는 payload 없이 성공 사실만 보낸다.
+- cp_care_tip_view에 phase가 없다.
 - Crashlytics error message와 breadcrumb에 자유 텍스트 기록이 없다.
 - 초대코드, Firebase token, 영수증 원문을 로그에 남기지 않는다.
 
@@ -109,6 +110,6 @@ Emulator에서 최소 다음을 자동 검증한다.
 ## 사람 승인
 
 - planning 승인: 완료
-- agent QA: 현재 로컬 구현 슬라이스 완료 (2026-07-12)
+- agent QA: Cycle Pair 앱 정체성·dev Firebase 전환 완료 (2026-07-13)
 - 2인 사람 테스트: 미완료
 - deployment 승인: 미완료

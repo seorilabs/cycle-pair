@@ -16,8 +16,8 @@ import {
   type LocalDate,
   type Mood,
   type PartnerProjection,
-} from '@moonmate/product-core';
-import { DailyCheckIn, MoonMateState } from './MoonMateStore';
+} from '@cyclepair/product-core';
+import { DailyCheckIn, CyclePairState } from './CyclePairStore';
 
 const SELF_MEMBER_ID = 'local-self';
 const PARTNER_MEMBER_ID = 'remote-partner';
@@ -64,7 +64,7 @@ export function todayLocalDate(): LocalDate {
   return localDate(date.getFullYear(), date.getMonth() + 1, date.getDate());
 }
 
-function buildCurrentCycle(state: MoonMateState) {
+function buildCurrentCycle(state: CyclePairState) {
   const lastStart = parseLocalDate(state.seed.lastPeriodStart);
   return createCycle({
     id: 'current-cycle',
@@ -85,7 +85,7 @@ function mapHelpPreferences(checkIn: DailyCheckIn): HelpPreference[] | undefined
   return checkIn.carePreference ? [preferenceToDomain[checkIn.carePreference]] : undefined;
 }
 
-export function buildCycleViewModel(state: MoonMateState): CycleViewModel {
+export function buildCycleViewModel(state: CyclePairState): CycleViewModel {
   const today = todayLocalDate();
   const currentCycle = state.isLogger ? buildCurrentCycle(state) : undefined;
   const prediction = currentCycle

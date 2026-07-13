@@ -10,7 +10,7 @@ import {
 import {doc, getDoc, setDoc, updateDoc} from "firebase/firestore";
 import {afterAll, beforeAll, beforeEach, describe, test} from "vitest";
 
-const PROJECT_ID = "demo-moonmate";
+const PROJECT_ID = "demo-cyclepair";
 
 let testEnv: RulesTestEnvironment;
 

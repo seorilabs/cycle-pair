@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { CycleSeed, useMoonMate } from '../app/MoonMateStore';
-import { Body, Card, Chip, PrimaryButton, Screen, Stepper, Title } from '../components/Ui';
+import { CycleSeed, useCyclePair } from '../app/CyclePairStore';
+import { Body, Card, Chip, PrimaryButton, Screen, Stepper, TextButton, Title } from '../components/Ui';
 import { colors, radius, spacing } from '../theme';
 
 function shiftDate(value: string, days: number): string {
@@ -20,40 +20,61 @@ function formatDate(value: string): string {
 }
 
 export function SetupScreen() {
-  const { state, completeSetup } = useMoonMate();
-  const [isLogger, setLogger] = useState(true);
+  const { state, completeSetup, goBack } = useCyclePair();
+  const [isLogger, setLogger] = useState(state.isLogger);
   const [seed, setSeed] = useState<CycleSeed>(state.seed);
-  const [consentAccepted, setConsentAccepted] = useState(false);
+  const [consentAccepted, setConsentAccepted] = useState(
+    Boolean(state.sensitiveDataConsentAcceptedAt),
+  );
+  const roleLocked = Boolean(state.sensitiveDataConsentAcceptedAt);
 
   return (
     <Screen contentStyle={styles.content}>
-      <Text style={styles.step}>1 / 3</Text>
-      <Title>나에게 맞게{`\n`}기본값을 알려주세요</Title>
+      <View style={styles.header}>
+        <TextButton label="이전" onPress={goBack} />
+        <Text style={styles.step}>기본 설정</Text>
+      </View>
+      <Title>내 기록을 위한{`\n`}기본값을 알려주세요</Title>
       <Body muted style={styles.intro}>
-        처음부터 정확할 필요 없어요. 기록이 쌓이면 다시 계산하고, 이 값은 파트너에게 자동 공개되지 않아요.
+        처음부터 정확할 필요 없어요. 파트너 연결 없이 바로 시작할 수 있고, 이 값은 누구에게도 자동 공개되지 않아요.
       </Body>
 
       <Text style={styles.label}>나는</Text>
       <View style={styles.roleGrid}>
         <Pressable
           accessibilityRole="radio"
-          accessibilityState={{ checked: isLogger }}
+          accessibilityState={{ checked: isLogger, disabled: roleLocked }}
+          disabled={roleLocked}
           onPress={() => setLogger(true)}
-          style={[styles.roleCard, isLogger && styles.roleCardSelected]}>
-          <Text style={styles.roleIcon}>☾</Text>
+          style={[
+            styles.roleCard,
+            isLogger && styles.roleCardSelected,
+            roleLocked && styles.roleCardLocked,
+          ]}>
+          <Text style={styles.roleIcon}>∞</Text>
           <Text style={styles.roleTitle}>내 주기를 기록해요</Text>
           <Text style={styles.roleBody}>기록하고 원하는 항목만 공유할게요</Text>
         </Pressable>
         <Pressable
           accessibilityRole="radio"
-          accessibilityState={{ checked: !isLogger }}
+          accessibilityState={{ checked: !isLogger, disabled: roleLocked }}
+          disabled={roleLocked}
           onPress={() => setLogger(false)}
-          style={[styles.roleCard, !isLogger && styles.roleCardSelected]}>
+          style={[
+            styles.roleCard,
+            !isLogger && styles.roleCardSelected,
+            roleLocked && styles.roleCardLocked,
+          ]}>
           <Text style={styles.roleIcon}>♡</Text>
-          <Text style={styles.roleTitle}>파트너만 챙겨요</Text>
-          <Text style={styles.roleBody}>내 주기 기록 없이 함께할게요</Text>
+          <Text style={styles.roleTitle}>내 주기는 기록하지 않아요</Text>
+          <Text style={styles.roleBody}>오늘의 컨디션만 기록할게요</Text>
         </Pressable>
       </View>
+      {roleLocked ? (
+        <Text style={styles.roleLockNote}>
+          기본 설정을 저장한 뒤에는 기록 경계를 보호하기 위해 여기서 역할을 변경할 수 없어요.
+        </Text>
+      ) : null}
 
       {isLogger ? (
         <>
@@ -102,7 +123,7 @@ export function SetupScreen() {
       ) : (
         <Card tone="primary" style={styles.partnerOnlyCard}>
           <Chip label="기록 없이 시작" selected />
-          <Body style={styles.partnerOnlyBody}>파트너가 직접 공유한 내용과 도움 선호만 보여드려요.</Body>
+          <Body style={styles.partnerOnlyBody}>주기 예측 없이도 오늘의 기분·증상·도움 선호를 기록할 수 있어요.</Body>
         </Card>
       )}
 
@@ -124,7 +145,7 @@ export function SetupScreen() {
 
       <View style={styles.footer}>
         <PrimaryButton
-          label="파트너 연결로 계속"
+          label="저장하고 시작"
           disabled={!consentAccepted}
           onPress={() => completeSetup({
             isLogger,
@@ -139,6 +160,7 @@ export function SetupScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingBottom: spacing.xl },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   step: { color: colors.primary, fontSize: 13, fontWeight: '800', marginBottom: spacing.lg },
   intro: { marginTop: spacing.md, marginBottom: spacing.xl },
   label: { color: colors.text, fontSize: 16, fontWeight: '800', marginBottom: spacing.md, marginTop: spacing.lg },
@@ -154,6 +176,13 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   roleCardSelected: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
+  roleCardLocked: { opacity: 0.78 },
+  roleLockNote: {
+    color: colors.textMuted,
+    fontSize: 11,
+    lineHeight: 17,
+    marginTop: spacing.sm,
+  },
   roleIcon: { color: colors.primary, fontSize: 30, fontWeight: '700' },
   roleTitle: { color: colors.text, fontSize: 15, fontWeight: '800', lineHeight: 20 },
   roleBody: { color: colors.textMuted, fontSize: 12, lineHeight: 17 },

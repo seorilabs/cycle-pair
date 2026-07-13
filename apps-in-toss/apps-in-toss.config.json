@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "appId": "moonmate",
+  "appId": "cyclepair",
   "status": "conditional-policy-review-required",
   "scaffoldStatus": "deferred",
   "adoptionDecision": "conditional-pending-policy-review",
   "appName": "확정 필요",
   "appNameStatus": "확정 필요",
   "workingName": {
-    "ko-KR": "문메이트",
-    "en-US": "MoonMate"
+    "ko-KR": "Cycle Pair",
+    "en-US": "Cycle Pair"
   },
   "subtitle": "함께 준비하는 우리의 주기",
   "category": "확정 필요",

@@ -1,9 +1,8 @@
 {
   "schemaVersion": 1,
-  "appId": "moonmate",
+  "appId": "cyclepair",
   "status": "planning-approved-release-blocked",
-  "packageName": "확정 필요",
-  "developmentPackageName": "com.seorilabs.moonmate.dev",
+  "packageName": "com.seorilabs.cyclepair",
   "defaultLanguage": "ko-KR",
   "appType": "app",
   "freeOrPaid": "확정 필요",
@@ -11,13 +10,13 @@
   "contactWebsite": "확정 필요",
   "privacyPolicyUrl": "확정 필요",
   "workingName": {
-    "ko-KR": "문메이트",
-    "en-US": "MoonMate"
+    "ko-KR": "Cycle Pair",
+    "en-US": "Cycle Pair"
   },
   "storeListing": {
     "appName": {
-      "ko-KR": "확정 필요",
-      "en-US": "확정 필요"
+      "ko-KR": "Cycle Pair",
+      "en-US": "Cycle Pair"
     },
     "shortDescription": {
       "ko-KR": "생리주기를 함께 이해하고 대비하는 커플 케어 앱",
@@ -70,7 +69,7 @@
     "subscriptionProducts": "확정 필요"
   },
   "assets": {
-    "playIcon": "확정 필요",
+    "playIcon": "play-store/assets/icon-512.png",
     "featureGraphic": "확정 필요",
     "phoneScreenshots": [
       "확정 필요"

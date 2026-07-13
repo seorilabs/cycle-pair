@@ -32,9 +32,14 @@ const sections = [
     blockers: [
       !(await exists('firebase/firestore.rules')) && 'Security Rules 미구현',
       !(await exists('.firebaserc')) && 'Firebase project ID 확정 필요',
+      !firebaseReadiness?.firestoreRulesDeployed && 'Firestore Rules 실제 배포 미검증',
+      !firebaseReadiness?.nativeAppsRegistered && 'Firebase native 앱 등록 미검증',
       !firebaseReadiness?.productionProjectConfigured && '운영 Firebase 프로젝트 미확정',
       !firebaseReadiness?.billingLinked && '결제 계정 연결 미완료',
       !firebaseReadiness?.functionsDeployed && 'Cloud Functions 실제 배포 미검증',
+      !firebaseReadiness?.runtimeIamConfigured && 'Functions runtime IAM 미검증',
+      !firebaseReadiness?.callableInvokerIamCheckDisabled && 'Callable invoker IAM 설정 미검증',
+      !firebaseReadiness?.livePairSmokeVerified && '실제 Firebase Pair smoke 미검증',
       !firebaseReadiness?.productionAuthConfigured && '운영 로그인 제공자 미확정',
       !firebaseReadiness?.appCheckEnforced && 'App Check 강제 미검증',
     ].filter(Boolean),
@@ -42,14 +47,14 @@ const sections = [
   {
     market: 'Google Play',
     blockers: [
-      (await containsUnknown('play-store/google-play.config.json')) && '출시 package/콘솔 메타데이터 확정 필요',
+      (await containsUnknown('play-store/google-play.config.json')) && 'Play Console 메타데이터 확정 필요',
       '서명된 AAB 및 Console 입력 미검증',
     ],
   },
   {
     market: 'App Store',
     blockers: [
-      (await containsUnknown('app-store/app-store.config.json')) && '출시 bundle ID/콘솔 메타데이터 확정 필요',
+      (await containsUnknown('app-store/app-store.config.json')) && 'App Store Connect 메타데이터 확정 필요',
       'archive/TestFlight/App Store Connect 입력 미검증',
     ],
   },

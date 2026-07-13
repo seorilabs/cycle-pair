@@ -1,4 +1,4 @@
-# MoonMate 제품 명세
+# Cycle Pair 제품 명세
 
 ## 문서 상태
 
@@ -8,11 +8,12 @@
 | 승인 근거 | 2026-07-12 사용자 요청: 구현 시작 |
 | 앱 분류 | non-game |
 | 기본 스택 | React Native + Firebase |
-| 작업명 | MoonMate는 내부 코드명, 최종 이름은 확정 필요 |
+| 출시 이름 | Cycle Pair |
+| Android/iOS 식별자 | com.seorilabs.cyclepair |
 | 배포 승인 | 미승인, release-candidate 이후 별도 승인 필요 |
-| 원 기획 | Obsidian Vault: 프로젝트/개인/앱 제작 공장/기획 인박스/moonmate 최초 기획서 |
+| 원 기획 | Obsidian Vault: 프로젝트/개인/앱 제작 공장/기획 인박스/moonmate 최초 기획서 (초기 코드명) |
 
-이 문서는 planning 승인 이후 제품 실행 source of truth다. 출시용 앱 이름, Android package name, iOS bundle ID, AppsInToss appName은 확정하지 않는다. 개발용 Firebase project ID는 `seorilabs-moonmate-dev`다.
+이 문서는 planning 승인 이후 제품 실행 source of truth다. 출시 이름은 `Cycle Pair`, Android package name과 iOS bundle ID는 `com.seorilabs.cyclepair`, 개발용 Firebase project ID는 `seorilabs-cyclepair-dev`다. AppsInToss 영구 appName은 콘솔 가용성과 정책 적합성 확인 전까지 확정하지 않는다.
 
 ## 제품 약속
 
@@ -65,12 +66,12 @@ flowchart TD
   A[온보딩] --> B[로그인]
   B --> C[주기 기록 여부 선택]
   C --> D[본인 전용 초기 기록]
-  C --> E[파트너 초대]
-  D --> E
+  D --> I[홈에서 혼자 기록]
+  I --> E[선택적으로 파트너 초대]
   E --> F[상대의 명시적 수락]
   F --> G[정확히 2명 Pair 활성화]
   G --> H[필드별 공유 설정]
-  H --> I[홈]
+  H --> I
   I --> J[기록과 예측]
   I --> K[공동 캘린더]
   I --> L[파트너 projection과 케어 가이드]
@@ -83,7 +84,7 @@ flowchart TD
 | --- | --- | --- |
 | 온보딩·로그인 | 비의료 도구와 공유 통제권 설명 | 민감정보 별도 동의 전에는 건강 기록 저장 금지 |
 | 초기 설정 | recordsCycles, 최근 생리 시작일, 평균 주기 입력 | 필수값 누락 시 예측 대신 기록만 제공 |
-| 초대·수락 | 1회성 초대 생성, 명시적 수락 | 자기 초대, 만료 초대, 제3자 연결 차단 |
+| 초대·수락 | 메인에서 선택적으로 1회성 초대 생성, 명시적 수락 | 연결 없이도 본인 기록 사용, 자기 초대·만료 초대·제3자 연결 차단 |
 | 공유 설정 | 필드별 켜기·끄기 | 기본값은 모든 건강 필드 비공개 |
 | 홈 | 내 상태와 허용된 파트너 정보 | 가임기·배란기·피임 표현 없음 |
 | 기록 | 주기·증상·기분·컨디션·도움 선호 | 로컬 우선 저장 후 동기화 상태 표시 |
@@ -118,17 +119,17 @@ flowchart TD
 
 - 알림은 opt-in이며 조용한 시간을 제공한다.
 - 잠금화면 제목과 본문에는 생리, PMS, 주기 국면, 증상, 기분, 파트너 이름을 넣지 않는다.
-- 기본 문구는 “문메이트에 확인할 새 소식이 있어요.”처럼 중립적으로 쓴다.
+- 기본 문구는 “Cycle Pair에 확인할 새 소식이 있어요.”처럼 중립적으로 쓴다.
 - 상세 건강정보는 앱 잠금 해제와 권한 확인 이후에만 표시한다.
 
 ## Analytics 정책
 
-- prefix는 mm_를 사용한다.
+- prefix는 cp_를 사용한다.
 - 허용 이벤트: 온보딩 완료, 초대 발송, Pair 연결, 공유 설정 변경, 기록 완료, 파트너 화면 열기, 구독 완료.
 - 이벤트에는 생리일, 증상, 기분, 메모, cyclePhase, 예정일, Pair ID, 상대 ID를 보내지 않는다.
-- mm_cycle_log는 기록 성공 사실만 보내며 기록 내용은 보내지 않는다.
-- mm_share_setting_update는 변경된 필드 이름이 아닌 개수만 보낼 수 있다.
-- mm_care_tip_view의 phase 파라미터는 사용하지 않는다.
+- cp_cycle_log는 기록 성공 사실만 보내며 기록 내용은 보내지 않는다.
+- cp_share_setting_update는 변경된 필드 이름이 아닌 개수만 보낼 수 있다.
+- cp_care_tip_view의 phase 파라미터는 사용하지 않는다.
 - 광고 식별자 기반 추적과 건강정보 기반 세분화는 금지한다.
 
 ## 수익화
@@ -143,13 +144,13 @@ flowchart TD
 
 | 타깃 | 상태 |
 | --- | --- |
-| Google Play | 대상, 등록과 배포 값은 확정 필요 |
-| App Store | 대상, 등록과 배포 값은 확정 필요 |
+| Google Play | 앱 이름·package name 확정, Console 등록과 배포 값은 확정 필요 |
+| App Store | 앱 이름·bundle ID 확정, Connect 등록과 배포 값은 확정 필요 |
 | AppsInToss | 정책 적합성 확인 전 조건부, 스캐폴드 보류 |
 
 ## 출시 전 남은 제품 결정
 
-- 최종 앱 이름과 상표·스토어 중복 검토. 2026-07-12 기준 `MoonMate`는 주기·기분 기록과 파트너 공유를 제공하는 동명 앱이 App Store·Google Play에 이미 있어 출시명으로 사용하지 않는다.
+- `Cycle Pair`의 출시 전 최종 선행상표 검토. 초기 코드명 `MoonMate`는 주기·기분 기록과 파트너 공유를 제공하는 동명 앱이 App Store·Google Play에 이미 있어 폐기했다.
 - 로그인 제공자
 - 다운로드 가격과 무료·프리미엄 경계
 - 구독 상품과 가격

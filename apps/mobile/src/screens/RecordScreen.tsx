@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { DailyCheckIn, useMoonMate } from '../app/MoonMateStore';
+import { DailyCheckIn, useCyclePair } from '../app/CyclePairStore';
 import { Body, Card, Chip, PrimaryButton, Screen, SectionHeader, Title } from '../components/Ui';
 import { colors, radius, spacing } from '../theme';
 
@@ -19,7 +19,7 @@ const preferences: NonNullable<DailyCheckIn['carePreference']>[] = [
 ];
 
 export function RecordScreen({ onDone, onCancel }: { onDone(): void; onCancel(): void }) {
-  const { state, saveCheckIn } = useMoonMate();
+  const { state, saveCheckIn } = useCyclePair();
   const [draft, setDraft] = useState<DailyCheckIn>(state.checkIn);
 
   function toggleSymptom(value: string) {

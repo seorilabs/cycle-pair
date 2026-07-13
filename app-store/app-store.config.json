@@ -1,10 +1,9 @@
 {
   "schemaVersion": 1,
-  "appId": "moonmate",
+  "appId": "cyclepair",
   "status": "planning-approved-release-blocked",
-  "bundleId": "확정 필요",
-  "developmentBundleId": "com.seorilabs.moonmate.dev",
-  "appleTeamId": "확정 필요",
+  "bundleId": "com.seorilabs.cyclepair",
+  "appleTeamId": "HCDUXX4Z3X",
   "sku": "확정 필요",
   "primaryLanguage": "ko-KR",
   "platform": "iOS",
@@ -16,13 +15,13 @@
   "privacyPolicyUrl": "확정 필요",
   "copyright": "확정 필요",
   "workingName": {
-    "ko-KR": "문메이트",
-    "en-US": "MoonMate"
+    "ko-KR": "Cycle Pair",
+    "en-US": "Cycle Pair"
   },
   "storeListing": {
     "appName": {
-      "ko-KR": "확정 필요",
-      "en-US": "확정 필요"
+      "ko-KR": "Cycle Pair",
+      "en-US": "Cycle Pair"
     },
     "subtitle": {
       "ko-KR": "함께 준비하는 우리의 주기",
@@ -126,7 +125,7 @@
     "contactPhone": "확정 필요"
   },
   "testFlight": {
-    "betaAppDescription": "두 명이 서로 다른 계정과 기기로 초대, 공유, 회수, 연결 해제를 검증하는 MoonMate 내부 테스트",
+    "betaAppDescription": "두 명이 서로 다른 계정과 기기로 초대, 공유, 회수, 연결 해제를 검증하는 Cycle Pair 내부 테스트",
     "feedbackEmail": "cs@seorilabs.com",
     "twoPersonTestStatus": "확정 필요"
   },
@@ -136,7 +135,7 @@
     "subscriptionProducts": "확정 필요"
   },
   "assets": {
-    "appIcon1024": "확정 필요",
+    "appIcon1024": "app-store/assets/app-icon-1024.png",
     "iphoneScreenshots69": [
       "확정 필요"
     ],

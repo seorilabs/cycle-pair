@@ -11,7 +11,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MainTab } from '../app/MoonMateStore';
+import { MainTab } from '../app/CyclePairStore';
 import { colors, radius, spacing } from '../theme';
 
 export function Screen({
@@ -96,10 +96,23 @@ export function SecondaryButton({
   );
 }
 
-export function TextButton({ label, onPress }: { label: string; onPress(): void }) {
+export function TextButton({
+  label,
+  onPress,
+  disabled = false,
+}: {
+  label: string;
+  onPress(): void;
+  disabled?: boolean;
+}) {
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} hitSlop={10}>
-      <Text style={styles.textButton}>{label}</Text>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      hitSlop={10}>
+      <Text style={[styles.textButton, disabled && styles.textButtonDisabled]}>{label}</Text>
     </Pressable>
   );
 }
@@ -231,7 +244,7 @@ export function Stepper({
 }
 
 const tabs: Array<{ key: MainTab; label: string; icon: string }> = [
-  { key: 'home', label: '오늘', icon: '☾' },
+  { key: 'home', label: '오늘', icon: '∞' },
   { key: 'calendar', label: '달력', icon: '◫' },
   { key: 'partner', label: '함께', icon: '♡' },
   { key: 'settings', label: '설정', icon: '⋯' },
@@ -310,6 +323,7 @@ const styles = StyleSheet.create({
   buttonPressed: { opacity: 0.72, transform: [{ scale: 0.99 }] },
   buttonDisabled: { opacity: 0.45 },
   textButton: { color: colors.primary, fontSize: 15, fontWeight: '700' },
+  textButtonDisabled: { color: colors.textSubtle },
   eyebrow: {
     color: colors.primary,
     fontSize: 13,

@@ -2,7 +2,7 @@
 
 ## 상태
 
-Accepted for development · 2026-07-12
+Superseded by [ADR-0004](./0004-cycle-pair-identity.md) · 2026-07-13
 
 ## 배경
 
@@ -29,3 +29,5 @@ Accepted for development · 2026-07-12
 - 출시명 변경 없이 실제 모바일↔Firebase 어댑터를 검증할 수 있다.
 - Firebase 개발 프로젝트는 이후 폐기하거나 새 출시 식별자의 운영 프로젝트와 명확히 분리할 수 있다.
 - 2026-07-12 개발 프로젝트에 결제를 연결하고 Functions 7개와 실제 익명 계정 2개의 backend lifecycle을 검증했다. 이는 운영 프로젝트·로그인·App Check 또는 스토어 배포 승인을 의미하지 않는다.
+
+2026-07-13 출시 이름과 영구 앱 ID가 확정되면서 이 ADR의 임시 이름·식별자 결정은 ADR-0004로 대체됐다. 위 내용은 초기 개발 환경의 역사적 기록으로 보존한다.

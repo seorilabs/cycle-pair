@@ -2,11 +2,13 @@
 
 현재 상태는 구현 시작 가능, 등록·배포 불가다. 기계 판독 source of truth는 [google-play.config.json](../play-store/google-play.config.json)이다.
 
-현재 Android applicationId com.seorilabs.moonmate.dev는 로컬 스캐폴드용이며 Play Console package name으로 확정한 값이 아니다.
+출시 이름은 `Cycle Pair`, 영구 Android package name은 `com.seorilabs.cyclepair`로 확정했다. Play Console 앱 shell과 release signing은 아직 만들지 않았다.
 
 ## 확정된 내용
 
 - 앱 유형: app
+- 앱 이름: Cycle Pair
+- package name: com.seorilabs.cyclepair
 - 기본 locale: ko-KR
 - 카테고리 후보: Health & Fitness
 - 광고: 없음
@@ -35,15 +37,14 @@
 
 ## blocker
 
-- [ ] 최종 앱 이름
-- [ ] 영구 package name
 - [ ] free/paid 최초 선택
 - [ ] Play Console 앱 shell
 - [ ] privacy policy URL과 계정 삭제 URL
 - [ ] Data safety 검토·입력
 - [ ] target audience, IARC, 한국 배포·등급 판단
 - [ ] 구독 product ID, 가격, 혜택
-- [ ] 512 아이콘, 1024x500 feature graphic, 실제 phone screenshots
+- [ ] 1024x500 feature graphic과 실제 phone screenshots
+- [ ] large/xlarge 지원 기준 7-inch·10-inch tablet screenshots 각 2장 이상
 - [ ] signed AAB
 - [ ] internal track 2인 테스트
 - [ ] production access와 deployment 승인

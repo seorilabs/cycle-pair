@@ -1,5 +1,5 @@
 {
-  "name": "@moonmate/mobile",
+  "name": "@cyclepair/mobile",
   "version": "0.0.1",
   "private": true,
   "scripts": {
@@ -14,7 +14,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@moonmate/product-core": "workspace:*",
+    "@cyclepair/product-core": "workspace:*",
     "@react-native-async-storage/async-storage": "3.1.1",
     "@react-native-firebase/app": "25.1.0",
     "@react-native-firebase/auth": "25.1.0",

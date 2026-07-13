@@ -1,5 +1,5 @@
 {
-  "name": "@moonmate/firebase",
+  "name": "@cyclepair/firebase",
   "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@11.3.0",
@@ -7,9 +7,9 @@
     "build:functions": "pnpm --dir functions build",
     "test:functions": "pnpm --dir functions test",
     "test:functions:emulator:inner": "vitest run --config vitest.functions-emulator.config.ts",
-    "test:functions:emulator": "firebase --config ../firebase.json emulators:exec --only auth,firestore,functions --project demo-moonmate -- \"pnpm test:functions:emulator:inner\"",
+    "test:functions:emulator": "firebase --config ../firebase.json emulators:exec --only auth,firestore,functions --project demo-cyclepair -- \"pnpm test:functions:emulator:inner\"",
     "test:rules:inner": "vitest run --config vitest.rules.config.ts",
-    "test:rules": "firebase --config ../firebase.json emulators:exec --only firestore --project demo-moonmate -- \"pnpm test:rules:inner\"",
+    "test:rules": "firebase --config ../firebase.json emulators:exec --only firestore --project demo-cyclepair -- \"pnpm test:rules:inner\"",
     "test": "pnpm test:functions && pnpm test:rules && pnpm test:functions:emulator",
     "check": "pnpm build:functions && pnpm test"
   },

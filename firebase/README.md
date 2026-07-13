@@ -1,6 +1,6 @@
-# MoonMate Firebase 경계
+# Cycle Pair Firebase 경계
 
-이 디렉터리는 raw 건강 기록과 파트너 공유 projection을 문서 단위로 분리한다. 개발 프로젝트는 `seorilabs-moonmate-dev`, Firestore·Functions 리전은 `asia-northeast3`다. App Check 운영 정책은 아직 **확정 필요**다.
+이 디렉터리는 raw 건강 기록과 파트너 공유 projection을 문서 단위로 분리한다. 개발 프로젝트는 `seorilabs-cyclepair-dev`, Firestore·Functions 리전은 `asia-northeast3`다. App Check 운영 정책은 아직 **확정 필요**다.
 
 ```mermaid
 flowchart LR
@@ -66,7 +66,7 @@ OFF/누락/유효하지 않은 값은 `null`로 남기지 않고 문서에서 �
 - Tombstone 보존기간 및 삭제 작업: 확정 필요
 - Expired invite 보존기간/Firestore TTL policy: 확정 필요
 - Functions region: `asia-northeast3`
-- Firebase 프로젝트 전략: 민감 건강정보·Auth·Rules·운영 격리를 위한 앱별 개발 프로젝트 `seorilabs-moonmate-dev`
+- Firebase 프로젝트 전략: 민감 건강정보·Auth·Rules·운영 격리를 위한 앱별 개발 프로젝트 `seorilabs-cyclepair-dev`
 
 TTL 삭제는 즉시성 보안 경계가 아니다. 초대 accept는 항상 `expiresAt`을 트랜잭션 안에서 검사한다. revoke 접근 차단은 `/pairs/{pairId}.status`를 같은 트랜잭션에서 `revoked`로 변경하는 Security Rules 경계가 담당한다.
 
@@ -87,11 +87,11 @@ pnpm --dir firebase install --frozen-lockfile
 pnpm --dir firebase check
 ```
 
-`test:rules`는 실제 프로젝트 대신 Firebase Emulator 전용 `demo-moonmate` project ID를 사용한다. `.firebaserc`는 개발 프로젝트를 가리키며 운영 프로젝트 alias는 출시 준비 때 별도 추가한다.
+`test:rules`는 실제 프로젝트 대신 Firebase Emulator 전용 `demo-cyclepair` project ID를 사용한다. `.firebaserc`는 개발 프로젝트를 가리키며 운영 프로젝트 alias는 출시 준비 때 별도 추가한다.
 
 ## 개발 프로젝트 배포·실검증
 
-`seorilabs-moonmate-dev`는 결제 연결, Node.js 22 2nd Gen Functions 7개, Firestore trigger 3개가 `asia-northeast3`에 배포돼 있다. 신규 프로젝트의 기본 compute 서비스 계정은 다음 최소 역할을 사용한다.
+`seorilabs-cyclepair-dev`는 2026-07-13 기준 결제 연결, Node.js 22 2nd Gen Functions 7개, Firestore trigger 3개가 `asia-northeast3`에 배포돼 있고 실제 2계정 smoke를 통과했다. 신규 프로젝트의 기본 compute 서비스 계정은 다음 최소 역할을 사용한다.
 
 - `roles/cloudbuild.builds.builder`: Functions build
 - `roles/datastore.user`: Functions runtime의 Firestore read/write
@@ -106,23 +106,23 @@ Functions 재배포 후 다음 상태를 반드시 재확인한다.
 ```bash
 for service in createpairinvite acceptpairinvite revokepair acknowledgecachetombstone; do
   gcloud run services update "$service" \
-    --project=seorilabs-moonmate-dev \
+    --project=seorilabs-cyclepair-dev \
     --region=asia-northeast3 \
     --no-invoker-iam-check
 done
 
 gcloud functions list --v2 \
-  --project=seorilabs-moonmate-dev \
+  --project=seorilabs-cyclepair-dev \
   --regions=asia-northeast3
 ```
 
 실제 개발 프로젝트 smoke는 dev project ID를 강제하며 UID, ID token, 초대 token을 출력하지 않는다. 성공과 실패 모두 생성한 문서·익명 계정을 정리한다.
 
 ```bash
-MOONMATE_FIREBASE_PROJECT=seorilabs-moonmate-dev \
-MOONMATE_FIREBASE_WEB_API_KEY="$(jq -r '.client[0].api_key[0].current_key' \
+CYCLEPAIR_FIREBASE_PROJECT=seorilabs-cyclepair-dev \
+CYCLEPAIR_FIREBASE_WEB_API_KEY="$(jq -r '.client[0].api_key[0].current_key' \
   apps/mobile/android/app/google-services.json)" \
-MOONMATE_ADMIN_ACCESS_TOKEN="$(gcloud auth print-access-token)" \
+CYCLEPAIR_ADMIN_ACCESS_TOKEN="$(gcloud auth print-access-token)" \
 pnpm test:firebase:live
 ```
 

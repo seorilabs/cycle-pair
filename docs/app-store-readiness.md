@@ -2,11 +2,13 @@
 
 현재 상태는 구현 시작 가능, App Store Connect 등록·TestFlight 업로드 불가다. 기계 판독 source of truth는 [app-store.config.json](../app-store/app-store.config.json)이다.
 
-현재 iOS bundle ID com.seorilabs.moonmate.dev는 로컬 스캐폴드용이며 App Store Connect 영구 bundle ID로 확정한 값이 아니다.
+출시 이름은 `Cycle Pair`, 영구 iOS bundle ID는 `com.seorilabs.cyclepair`로 확정했다. App Store Connect 앱 shell과 release signing은 아직 만들지 않았다.
 
 ## 확정된 내용
 
 - 플랫폼: iOS
+- 앱 이름: Cycle Pair
+- bundle ID: com.seorilabs.cyclepair
 - 기본 locale: ko-KR
 - primary category 후보: Health & Fitness
 - 광고·tracking: 없음
@@ -33,8 +35,7 @@ Health 데이터 공유는 사용자 제어 기능의 본질이므로 review not
 
 ## blocker
 
-- [ ] 최종 앱 이름
-- [ ] 영구 bundle ID와 SKU
+- [ ] SKU
 - [ ] Apple Team과 signing 방식
 - [ ] App Store Connect 앱 shell
 - [ ] support URL, privacy policy URL
@@ -44,8 +45,8 @@ Health 데이터 공유는 사용자 제어 기능의 본질이므로 review not
 - [ ] export compliance 최종 답변
 - [ ] 심사 연락처 전화번호와 로그인 review 계정
 - [ ] 구독 product ID, 가격, 혜택
-- [ ] 1024 아이콘과 실제 iPhone screenshots
-- [ ] iPad 지원 여부와 필요 시 iPad 자산
+- [ ] 실제 iPhone screenshots
+- [ ] universal target iPad QA와 13-inch iPad screenshots
 - [ ] archive와 TestFlight 처리 완료
 - [ ] 2인 TestFlight 테스트
 - [ ] deployment 승인과 Submit for Review

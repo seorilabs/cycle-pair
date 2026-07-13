@@ -6,7 +6,7 @@
 
 - 민감 건강정보, Firebase 로그인, 외부 데이터 동기화, 두 사용자 간 공유, push, 구독 결제의 정책 적합성을 먼저 확인한다.
 - 정책 적합성 확인 전 apps/ait를 만들지 않는다.
-- 영구 appName을 추측하거나 선점하지 않는다.
+- 공개 표시 이름은 `Cycle Pair`로 확정했지만 영구 appName은 추측하거나 선점하지 않는다.
 - logo, thumbnail, screenshot 등 등록 자산을 만들거나 콘솔 앱을 생성하지 않는다.
 - 부적합하면 Google Play와 App Store만 출시한다.
 

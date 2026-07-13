@@ -3,7 +3,7 @@ module.exports = {
   testTimeout: 30000,
   setupFiles: ['<rootDir>/jest.setup.js'],
   moduleNameMapper: {
-    '^@moonmate/product-core$': '<rootDir>/../../packages/product-core/src/index.ts',
+    '^@cyclepair/product-core$': '<rootDir>/../../packages/product-core/src/index.ts',
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
   transformIgnorePatterns: [

@@ -16,7 +16,7 @@ importers:
 
   apps/mobile:
     dependencies:
-      '@moonmate/product-core':
+      '@cyclepair/product-core':
         specifier: workspace:*
         version: link:../../packages/product-core
       '@react-native-async-storage/async-storage':

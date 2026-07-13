@@ -1,17 +1,17 @@
 import {createHash} from 'node:crypto';
 import process from 'node:process';
 
-const projectId = process.env.MOONMATE_FIREBASE_PROJECT;
-const region = process.env.MOONMATE_FIREBASE_REGION ?? 'asia-northeast3';
-const apiKey = process.env.MOONMATE_FIREBASE_WEB_API_KEY;
-const adminAccessToken = process.env.MOONMATE_ADMIN_ACCESS_TOKEN;
+const projectId = process.env.CYCLEPAIR_FIREBASE_PROJECT;
+const region = process.env.CYCLEPAIR_FIREBASE_REGION ?? 'asia-northeast3';
+const apiKey = process.env.CYCLEPAIR_FIREBASE_WEB_API_KEY;
+const adminAccessToken = process.env.CYCLEPAIR_ADMIN_ACCESS_TOKEN;
 
-if (projectId !== 'seorilabs-moonmate-dev') {
-  throw new Error('live smoke는 seorilabs-moonmate-dev에서만 실행할 수 있습니다.');
+if (projectId !== 'seorilabs-cyclepair-dev') {
+  throw new Error('live smoke는 seorilabs-cyclepair-dev에서만 실행할 수 있습니다.');
 }
 if (!apiKey || !adminAccessToken) {
   throw new Error(
-    'MOONMATE_FIREBASE_WEB_API_KEY와 MOONMATE_ADMIN_ACCESS_TOKEN이 필요합니다.',
+    'CYCLEPAIR_FIREBASE_WEB_API_KEY와 CYCLEPAIR_ADMIN_ACCESS_TOKEN이 필요합니다.',
   );
 }
 

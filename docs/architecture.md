@@ -1,4 +1,4 @@
-# MoonMate 아키텍처
+# Cycle Pair 아키텍처
 
 ## 목표
 

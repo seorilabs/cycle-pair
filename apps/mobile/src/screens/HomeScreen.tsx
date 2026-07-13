@@ -1,12 +1,12 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { buildCycleViewModel, formatKoreanDate } from '../app/cycleViewModel';
-import { useMoonMate } from '../app/MoonMateStore';
+import { useCyclePair } from '../app/CyclePairStore';
 import { Card, Chip, Screen, SectionHeader, TextButton } from '../components/Ui';
 import { colors, spacing } from '../theme';
 
 export function HomeScreen({ onOpenRecord }: { onOpenRecord(): void }) {
-  const { state, setTab } = useMoonMate();
+  const { state, setTab } = useCyclePair();
   const viewModel = buildCycleViewModel(state);
   const hasCheckIn = Boolean(state.checkIn.mood || state.checkIn.symptoms.length || state.checkIn.carePreference);
   const partnerMoodCopy: Record<string, string> = {
@@ -26,7 +26,9 @@ export function HomeScreen({ onOpenRecord }: { onOpenRecord(): void }) {
           <Text style={styles.greeting}>
             {state.isLogger
               ? <>천천히, 내 몸의{`\n`}리듬을 살펴봐요</>
-              : <>함께, 상대의{`\n`}오늘을 살펴봐요</>}
+              : state.paired
+                ? <>함께, 상대의{`\n`}오늘을 살펴봐요</>
+                : <>오늘 나의{`\n`}컨디션을 살펴봐요</>}
           </Text>
         </View>
         <View style={styles.avatar}><Text style={styles.avatarText}>나</Text></View>
@@ -36,7 +38,7 @@ export function HomeScreen({ onOpenRecord }: { onOpenRecord(): void }) {
         <View style={styles.phaseTop}>
           <View style={styles.phaseRing}>
             <View style={styles.phaseRingInner}>
-              <Text style={styles.phaseMoon}>☾</Text>
+              <Text style={styles.phaseMark}>∞</Text>
             </View>
           </View>
           <View style={styles.phaseCopy}>
@@ -50,7 +52,9 @@ export function HomeScreen({ onOpenRecord }: { onOpenRecord(): void }) {
         <Text style={styles.phaseDescription}>
           {state.isLogger
             ? viewModel.phaseDescription
-            : '내 주기 날짜나 예측은 만들지 않고, 상대가 직접 공유한 내용만 보여드려요.'}
+            : state.paired
+              ? '내 주기 날짜나 예측은 만들지 않고, 상대가 직접 공유한 내용만 보여드려요.'
+              : '주기 예측 없이 오늘의 기분·증상·도움 선호를 나만의 기록으로 남길 수 있어요.'}
         </Text>
         <View style={styles.predictionRow}>
           <View>
@@ -85,21 +89,42 @@ export function HomeScreen({ onOpenRecord }: { onOpenRecord(): void }) {
         </Card>
       </Pressable>
 
-      <SectionHeader title={`${state.partnerName} 님의 오늘`} action={<TextButton label="자세히" onPress={() => setTab('partner')} />} />
-      <Card tone="accent" style={styles.partnerCard}>
-        <View style={styles.partnerHeader}>
-          <View style={styles.partnerAvatar}><Text style={styles.partnerAvatarText}>파</Text></View>
-          <View style={styles.partnerCopy}>
-            <Text style={styles.partnerTitle}>{partnerMood ? partnerMoodCopy[partnerMood] ?? '공유된 상태가 있어요' : '아직 공유된 상태가 없어요'}</Text>
-            <Text style={styles.partnerBody}>{state.partnerProjection ? '상대가 직접 허용한 정보예요' : '공유 항목을 기다리는 중이에요'}</Text>
-          </View>
-          <Chip label={state.partnerProjection ? '공유됨' : '비공개'} selected={Boolean(state.partnerProjection)} />
-        </View>
-        <View style={styles.careDivider} />
-        <Text style={styles.careEyebrow}>오늘의 케어 힌트</Text>
-        <Text style={styles.careTitle}>{viewModel.careTip.title}</Text>
-        <Text style={styles.careBody}>{viewModel.careTip.body}</Text>
-      </Card>
+      {state.paired && state.sharingCompleted ? (
+        <>
+          <SectionHeader title={`${state.partnerName} 님의 오늘`} action={<TextButton label="자세히" onPress={() => setTab('partner')} />} />
+          <Card tone="accent" style={styles.partnerCard}>
+            <View style={styles.partnerHeader}>
+              <View style={styles.partnerAvatar}><Text style={styles.partnerAvatarText}>파</Text></View>
+              <View style={styles.partnerCopy}>
+                <Text style={styles.partnerTitle}>{partnerMood ? partnerMoodCopy[partnerMood] ?? '공유된 상태가 있어요' : '아직 공유된 상태가 없어요'}</Text>
+                <Text style={styles.partnerBody}>{state.partnerProjection ? '상대가 직접 허용한 정보예요' : '공유 항목을 기다리는 중이에요'}</Text>
+              </View>
+              <Chip label={state.partnerProjection ? '공유됨' : '비공개'} selected={Boolean(state.partnerProjection)} />
+            </View>
+            <View style={styles.careDivider} />
+            <Text style={styles.careEyebrow}>오늘의 케어 힌트</Text>
+            <Text style={styles.careTitle}>{viewModel.careTip.title}</Text>
+            <Text style={styles.careBody}>{viewModel.careTip.body}</Text>
+          </Card>
+        </>
+      ) : (
+        <>
+          <SectionHeader
+            title={state.paired ? '공유 설정' : '파트너 연결'}
+            action={<TextButton label={state.paired ? '계속' : '선택'} onPress={() => setTab('partner')} />}
+          />
+          <Card tone="accent" style={styles.partnerCard}>
+            <Text style={styles.soloPartnerTitle}>
+              {state.paired ? '아직 공유된 정보가 없어요' : '지금은 혼자 기록하고 있어요'}
+            </Text>
+            <Text style={styles.soloPartnerBody}>
+              {state.paired
+                ? '파트너 탭에서 공유할 항목을 직접 선택해 주세요.'
+                : '내 기록과 예측은 그대로 사용할 수 있고, 연결은 나중에 선택할 수 있어요.'}
+            </Text>
+          </Card>
+        </>
+      )}
 
       <Text style={styles.disclaimer}>주기 예측과 케어 힌트는 참고 정보이며 의료 진단·치료 또는 피임 도구가 아닙니다.</Text>
     </Screen>
@@ -128,7 +153,7 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '-22deg' }],
   },
   phaseRingInner: { width: 62, height: 62, borderRadius: 31, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
-  phaseMoon: { color: colors.primary, fontSize: 36, lineHeight: 43, transform: [{ rotate: '22deg' }] },
+  phaseMark: { color: colors.primary, fontSize: 36, lineHeight: 43 },
   phaseCopy: { flex: 1 },
   phaseEyebrow: { color: colors.primary, fontSize: 12, fontWeight: '900', marginBottom: spacing.xs },
   phaseTitle: { color: colors.text, fontSize: 22, fontWeight: '900', letterSpacing: -0.4 },
@@ -153,6 +178,8 @@ const styles = StyleSheet.create({
   checkBody: { color: colors.textMuted, fontSize: 12, lineHeight: 17 },
   chevron: { color: colors.textSubtle, fontSize: 28 },
   partnerCard: { padding: spacing.xl },
+  soloPartnerTitle: { color: colors.text, fontSize: 17, fontWeight: '900' },
+  soloPartnerBody: { color: colors.textMuted, fontSize: 13, lineHeight: 20, marginTop: spacing.sm },
   partnerHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   partnerAvatar: { width: 46, height: 46, borderRadius: 23, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
   partnerAvatarText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
