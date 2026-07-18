@@ -1,6 +1,6 @@
 {
   "name": "@cyclepair/mobile",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "scripts": {
     "android": "react-native run-android",
@@ -15,13 +15,22 @@
   },
   "dependencies": {
     "@cyclepair/product-core": "workspace:*",
+    "@noble/hashes": "2.2.0",
     "@react-native-async-storage/async-storage": "3.1.1",
+    "@react-native-community/netinfo": "12.0.1",
+    "@react-native-firebase/analytics": "25.1.0",
     "@react-native-firebase/app": "25.1.0",
+    "@react-native-firebase/app-check": "25.1.0",
     "@react-native-firebase/auth": "25.1.0",
+    "@react-native-firebase/crashlytics": "25.1.0",
     "@react-native-firebase/firestore": "25.1.0",
     "@react-native-firebase/functions": "25.1.0",
+    "@react-native-firebase/messaging": "25.1.0",
     "react": "19.2.3",
     "react-native": "0.86.0",
+    "react-native-iap": "15.4.1",
+    "react-native-keychain": "10.0.0",
+    "react-native-nitro-modules": "0.36.1",
     "react-native-safe-area-context": "^5.5.2"
   },
   "devDependencies": {
@@ -40,6 +49,7 @@
     "@react-native/typescript-config": "0.86.0",
     "@testing-library/react-native": "14.0.1",
     "@types/jest": "^29.5.13",
+    "@types/node": "24.13.3",
     "@types/react": "^19.2.0",
     "@types/react-test-renderer": "^19.1.0",
     "eslint": "^8.19.0",

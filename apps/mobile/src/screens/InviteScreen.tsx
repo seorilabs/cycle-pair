@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useCyclePair } from '../app/CyclePairStore';
+import { buildInviteExpiryPresentation } from '../app/inviteExpiryPresentation';
 import {
   Body,
   Card,
@@ -11,6 +12,12 @@ import {
   Title,
 } from '../components/Ui';
 import { colors, radius, spacing } from '../theme';
+
+function formatExpiry(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '만료 시각을 확인할 수 없어요';
+  return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')} 만료`;
+}
 
 export function InviteScreen() {
   const {
@@ -27,12 +34,57 @@ export function InviteScreen() {
     continueToSharing,
   } = useCyclePair();
   const [inviteToken, setInviteToken] = useState('');
+  const [now, setNow] = useState(() => Date.now());
+  const createSubmittingRef = useRef(false);
+  const acceptSubmittingRef = useRef(false);
   const isConnected = state.paired && Boolean(state.sharingPairId);
+  const inviteExpiry = invite
+    ? buildInviteExpiryPresentation(invite.expiresAt, now)
+    : null;
+  const inviteExpired = inviteExpiry?.expired === true;
+  const inviteExpiresAtMillis = inviteExpiry?.expiresAtMillis ?? 0;
+
+  useEffect(() => {
+    if (!invite || inviteExpired) return;
+    const delay = Math.min(
+      30_000,
+      Math.max(1, inviteExpiresAtMillis - now),
+    );
+    const timer = setTimeout(() => setNow(Date.now()), delay);
+    return () => clearTimeout(timer);
+  }, [invite, inviteExpired, inviteExpiresAtMillis, now]);
+
+  async function createInviteSafely() {
+    if (createSubmittingRef.current || backendBusy) return;
+    createSubmittingRef.current = true;
+    try {
+      await createInvite();
+      setNow(Date.now());
+    } finally {
+      createSubmittingRef.current = false;
+    }
+  }
+
+  async function acceptInviteSafely() {
+    if (
+      acceptSubmittingRef.current ||
+      backendBusy ||
+      inviteToken.trim().length !== 43
+    ) {
+      return;
+    }
+    acceptSubmittingRef.current = true;
+    try {
+      await acceptInvite(inviteToken);
+    } finally {
+      acceptSubmittingRef.current = false;
+    }
+  }
 
   async function shareInvite() {
-    if (!invite) return;
+    if (!invite || inviteExpired || backendBusy) return;
     await Share.share({
-      message: `함께 준비해요. 24시간 안에 앱에서 이 초대 코드를 입력해 주세요:\n${invite.inviteToken}`,
+      message: `함께 준비해요. ${formatExpiry(invite.expiresAt)} 전까지 앱에서 이 초대 코드를 입력해 주세요:\n${invite.inviteToken}`,
       title: '파트너 초대',
     });
   }
@@ -70,7 +122,11 @@ export function InviteScreen() {
           <Text style={styles.previewBody}>
             연결을 새로 만들 필요 없이 기존 Pair를 그대로 사용해요.
           </Text>
-          <PrimaryButton label="공유 설정으로 계속" onPress={continueToSharing} />
+          <PrimaryButton
+            label="공유 설정으로 계속"
+            disabled={backendBusy}
+            onPress={continueToSharing}
+          />
         </Card>
       ) : backendKind === 'preview' ? (
         <Card style={styles.previewCard}>
@@ -86,16 +142,43 @@ export function InviteScreen() {
             <Text style={styles.cardTitle}>내가 초대할게요</Text>
             <Text style={styles.cardDescription}>서버에는 원문 대신 해시만 저장되는 1회용 코드예요.</Text>
             {invite ? (
-              <>
-                <Text style={styles.codeLabel}>24시간 뒤 만료</Text>
-                <Text selectable style={styles.code}>{invite.inviteToken}</Text>
-                <SecondaryButton label="초대 코드 공유하기" onPress={shareInvite} />
-              </>
+              inviteExpired ? (
+                <View style={styles.expiredInvite}>
+                  <Text style={styles.expiredTitle}>이 초대는 만료됐어요</Text>
+                  <Text style={styles.cardDescription}>
+                    만료된 코드는 사용할 수 없어요. 새 1회용 코드를 만들어 주세요.
+                  </Text>
+                  <PrimaryButton
+                    label={backendBusy ? '새 초대 만드는 중…' : '새 초대 만들기'}
+                    disabled={backendBusy || !backendSession}
+                    onPress={() => {
+                      createInviteSafely().catch(() => undefined);
+                    }}
+                  />
+                </View>
+              ) : (
+                <>
+                  <Text accessibilityRole="timer" style={styles.codeLabel}>
+                    {formatExpiry(invite.expiresAt)} ·{' '}
+                    {inviteExpiry?.remainingLabel}
+                  </Text>
+                  <Text selectable style={styles.code}>{invite.inviteToken}</Text>
+                  <SecondaryButton
+                    label="초대 코드 공유하기"
+                    disabled={backendBusy}
+                    onPress={() => {
+                      shareInvite().catch(() => undefined);
+                    }}
+                  />
+                </>
+              )
             ) : (
               <PrimaryButton
                 label={backendBusy ? '초대 코드 만드는 중…' : '1회용 초대 만들기'}
                 disabled={backendBusy || !backendSession}
-                onPress={createInvite}
+                onPress={() => {
+                  createInviteSafely().catch(() => undefined);
+                }}
               />
             )}
           </Card>
@@ -106,6 +189,7 @@ export function InviteScreen() {
               accessibilityLabel="초대 코드"
               autoCapitalize="none"
               autoCorrect={false}
+              editable={!backendBusy}
               multiline
               onChangeText={setInviteToken}
               placeholder="공유받은 43자 코드를 붙여넣기"
@@ -116,7 +200,9 @@ export function InviteScreen() {
             <PrimaryButton
               label={backendBusy ? '연결 확인 중…' : '초대 수락하기'}
               disabled={backendBusy || inviteToken.trim().length !== 43 || !backendSession}
-              onPress={() => acceptInvite(inviteToken)}
+              onPress={() => {
+                acceptInviteSafely().catch(() => undefined);
+              }}
             />
           </Card>
         </>
@@ -202,6 +288,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     textAlign: 'center',
   },
+  expiredInvite: { gap: spacing.md },
+  expiredTitle: { color: colors.danger, fontSize: 14, fontWeight: '900' },
   input: {
     minHeight: 76,
     borderRadius: radius.md,

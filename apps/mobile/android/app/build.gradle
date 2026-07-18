@@ -1,5 +1,8 @@
+import groovy.json.JsonSlurper
+
 apply plugin: "com.android.application"
 apply plugin: "com.google.gms.google-services"
+apply plugin: "com.google.firebase.crashlytics"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
@@ -73,11 +76,211 @@ def enableProguardInReleaseBuilds = false
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
+def firebaseEnvironmentManifestFile = new File(
+    rootProject.projectDir.parentFile,
+    "firebase-environments.json",
+)
+def firebaseEnvironments = new JsonSlurper().parse(firebaseEnvironmentManifestFile)
+def permanentApplicationId = firebaseEnvironments.permanentAppId
+if (permanentApplicationId != "com.seorilabs.cyclepair") {
+    throw new GradleException("Cycle Pair permanent Android application ID changed unexpectedly.")
+}
+def developmentFirebaseProjectId = firebaseEnvironments.development.projectId
+def mobileProjectDir = rootProject.projectDir.parentFile
+def legacyFirebaseConfigFiles = [
+    file("google-services.json"),
+    file("src/main/google-services.json"),
+]
+
+def firebaseConfigProblems = { String buildType, String environmentName ->
+    def environment = firebaseEnvironments[environmentName]
+    def configFile = new File(mobileProjectDir, environment.androidConfig)
+    def taskSuffix = buildType.substring(0, 1).toUpperCase() + buildType.substring(1)
+    def problems = []
+
+    def legacyConfig = legacyFirebaseConfigFiles.find { it.isFile() }
+    if (legacyConfig != null) {
+        problems.add(
+            "Legacy app-level google-services.json is not allowed; " +
+                "move it to the explicit debug or release source set.",
+        )
+        return problems
+    }
+    if (!configFile.isFile()) {
+        problems.add(
+            "Cycle Pair ${taskSuffix} Firebase config is missing at " +
+                "${environment.androidConfig}. Debug requires development; " +
+                "Release requires a separately provisioned production config.",
+        )
+        return problems
+    }
+
+    def config
+    try {
+        config = new JsonSlurper().parse(configFile)
+    } catch (Exception ignored) {
+        problems.add("Selected ${taskSuffix} google-services.json is not valid JSON.")
+        return problems
+    }
+
+    def projectId = config?.project_info?.project_id
+    def matchingClient = config?.client?.find { client ->
+        client?.client_info?.android_client_info?.package_name == permanentApplicationId
+    }
+    if (!(projectId instanceof String) || projectId.trim().isEmpty() ||
+        matchingClient == null ||
+        !(matchingClient?.client_info?.mobilesdk_app_id instanceof String) ||
+        matchingClient.client_info.mobilesdk_app_id.trim().isEmpty()) {
+        problems.add(
+            "Selected ${taskSuffix} Firebase config does not contain the " +
+                "permanent Cycle Pair Android app metadata.",
+        )
+        return problems
+    }
+
+    def expectedProjectId = environment.projectId
+    if (!(expectedProjectId instanceof String) || expectedProjectId.trim().isEmpty()) {
+        problems.add(
+            "${taskSuffix} Firebase project ID is not configured in " +
+                "apps/mobile/firebase-environments.json.",
+        )
+    } else if (projectId != expectedProjectId) {
+        problems.add(
+            "Selected ${taskSuffix} Firebase config does not match the tracked " +
+                "${environmentName} project.",
+        )
+    }
+    if (environmentName == "production" && projectId == developmentFirebaseProjectId) {
+        problems.add("Release cannot use the development Firebase project.")
+    }
+    return problems
+}
+
+def registerFirebaseConfigVerificationTask = { String buildType, String environmentName ->
+    def taskSuffix = buildType.substring(0, 1).toUpperCase() + buildType.substring(1)
+
+    return tasks.register("verify${taskSuffix}FirebaseConfig") {
+        group = "verification"
+        description = "Validates the ${environmentName} Firebase config selected for ${buildType}."
+
+        doLast {
+            def problems = firebaseConfigProblems(buildType, environmentName)
+            if (!problems.isEmpty()) {
+                throw new GradleException(
+                    "Cycle Pair ${taskSuffix} Firebase config is not ready:\n- " +
+                        problems.join("\n- "),
+                )
+            }
+        }
+    }
+}
+
+def verifyDebugFirebaseConfig = registerFirebaseConfigVerificationTask(
+    "debug",
+    "development",
+)
+def verifyReleaseFirebaseConfig = registerFirebaseConfigVerificationTask(
+    "release",
+    "production",
+)
+
+def releaseSigningPropertiesFile = rootProject.file("keystore.properties")
+def releaseSigningProperties = new Properties()
+if (releaseSigningPropertiesFile.exists()) {
+    releaseSigningPropertiesFile.withInputStream { stream ->
+        releaseSigningProperties.load(stream)
+    }
+}
+
+def releaseSigningValue = { propertyName, environmentName ->
+    def environmentValue = System.getenv(environmentName)
+    if (environmentValue != null && !environmentValue.trim().isEmpty()) {
+        return environmentValue
+    }
+
+    def propertyValue = releaseSigningProperties.getProperty(propertyName)
+    return propertyValue != null && !propertyValue.trim().isEmpty() ? propertyValue : null
+}
+
+def releaseStoreFilePath = releaseSigningValue(
+    "storeFile",
+    "CYCLEPAIR_ANDROID_UPLOAD_STORE_FILE",
+)
+def releaseStorePassword = releaseSigningValue(
+    "storePassword",
+    "CYCLEPAIR_ANDROID_UPLOAD_STORE_PASSWORD",
+)
+def releaseKeyAlias = releaseSigningValue(
+    "keyAlias",
+    "CYCLEPAIR_ANDROID_UPLOAD_KEY_ALIAS",
+)
+def releaseKeyPassword = releaseSigningValue(
+    "keyPassword",
+    "CYCLEPAIR_ANDROID_UPLOAD_KEY_PASSWORD",
+)
+def releaseStoreFile = releaseStoreFilePath == null ? null : file(releaseStoreFilePath)
+def releaseSigningProblems = []
+
+if (releaseStoreFilePath == null) {
+    releaseSigningProblems.add("storeFile / CYCLEPAIR_ANDROID_UPLOAD_STORE_FILE 누락")
+} else if (releaseStoreFile.canonicalFile == file("debug.keystore").canonicalFile ||
+    releaseStoreFile.name.equalsIgnoreCase("debug.keystore")) {
+    releaseSigningProblems.add("debug.keystore는 release 서명에 사용할 수 없음")
+} else if (!releaseStoreFile.isFile()) {
+    releaseSigningProblems.add("release storeFile 경로에 파일이 없음")
+}
+if (releaseStorePassword == null) {
+    releaseSigningProblems.add("storePassword / CYCLEPAIR_ANDROID_UPLOAD_STORE_PASSWORD 누락")
+}
+if (releaseKeyAlias == null) {
+    releaseSigningProblems.add("keyAlias / CYCLEPAIR_ANDROID_UPLOAD_KEY_ALIAS 누락")
+}
+if (releaseKeyPassword == null) {
+    releaseSigningProblems.add("keyPassword / CYCLEPAIR_ANDROID_UPLOAD_KEY_PASSWORD 누락")
+}
+
+def verifyReleaseSigning = tasks.register("verifyReleaseSigning") {
+    group = "verification"
+    description = "Fails release builds unless a non-debug upload key is configured."
+
+    doLast {
+        if (!releaseSigningProblems.isEmpty()) {
+            throw new GradleException(
+                "Cycle Pair release signing is not configured:\n- " +
+                    releaseSigningProblems.join("\n- ") +
+                    "\nUse ignored android/keystore.properties or the CYCLEPAIR_ANDROID_UPLOAD_* environment variables.",
+            )
+        }
+    }
+}
+
+def verifyReleasePrerequisites = tasks.register("verifyReleasePrerequisites") {
+    group = "verification"
+    description = "Lists every missing Firebase and signing prerequisite for a release build."
+
+    doLast {
+        def problems = []
+        firebaseConfigProblems("release", "production").each { problem ->
+            problems.add("Firebase: ${problem}")
+        }
+        releaseSigningProblems.each { problem ->
+            problems.add("Signing: ${problem}")
+        }
+        if (!problems.isEmpty()) {
+            throw new GradleException(
+                "Cycle Pair release prerequisites are not ready:\n- " +
+                    problems.join("\n- "),
+            )
+        }
+    }
+}
+
 android {
     ndkVersion rootProject.ext.ndkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
+    // React Native CLI autolinking statically parses these two literal values.
     namespace "com.seorilabs.cyclepair"
     defaultConfig {
         applicationId "com.seorilabs.cyclepair"
@@ -93,19 +296,43 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        if (releaseSigningProblems.isEmpty()) {
+            release {
+                storeFile releaseStoreFile
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            if (releaseSigningProblems.isEmpty()) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
     }
+}
+
+tasks.configureEach { task ->
+    if (task.name == "preDebugBuild" || task.name == "processDebugGoogleServices") {
+        task.dependsOn(verifyDebugFirebaseConfig)
+    }
+    if (task.name == "preReleaseBuild") {
+        task.dependsOn(verifyReleasePrerequisites)
+    }
+    if (task.name == "processReleaseGoogleServices") {
+        task.dependsOn(verifyReleaseFirebaseConfig)
+    }
+}
+
+verifyReleaseFirebaseConfig.configure {
+    mustRunAfter(verifyReleasePrerequisites)
 }
 
 dependencies {

@@ -12,7 +12,6 @@
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		7E5A229203C3E92BD3C063FC /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
-		A84F18A42F0C4D1B0053A2C1 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = A84F18A32F0C4D1B0053A2C1 /* GoogleService-Info.plist */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -21,10 +20,11 @@
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = CyclePair/Info.plist; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = CyclePair/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		3B4392A12AC88292D35C810B /* Pods-CyclePair.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-CyclePair.debug.xcconfig"; path = "Target Support Files/Pods-CyclePair/Pods-CyclePair.debug.xcconfig"; sourceTree = "<group>"; };
+		3C6A7B8C9D0E1F2031425364 /* CyclePair.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = CyclePair.entitlements; path = CyclePair/CyclePair.entitlements; sourceTree = "<group>"; };
+		3C6A7B8C9D0E1F2031425365 /* CyclePair-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "CyclePair-Bridging-Header.h"; path = "CyclePair/CyclePair-Bridging-Header.h"; sourceTree = "<group>"; };
 		5709B34CF0A7D63546082F79 /* Pods-CyclePair.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-CyclePair.release.xcconfig"; path = "Target Support Files/Pods-CyclePair/Pods-CyclePair.release.xcconfig"; sourceTree = "<group>"; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = CyclePair/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = CyclePair/LaunchScreen.storyboard; sourceTree = "<group>"; };
-		A84F18A32F0C4D1B0053A2C1 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = "CyclePair/GoogleService-Info.plist"; sourceTree = "<group>"; };
 		EA2962259BB2115066094058 /* Pods_CyclePair.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_CyclePair.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
@@ -44,12 +44,13 @@
 		13B07FAE1A68108700A75B9A /* CyclePair */ = {
 			isa = PBXGroup;
 			children = (
+				3C6A7B8C9D0E1F2031425365 /* CyclePair-Bridging-Header.h */,
+				3C6A7B8C9D0E1F2031425364 /* CyclePair.entitlements */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				761780EC2CA45674006654EE /* AppDelegate.swift */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
-				A84F18A32F0C4D1B0053A2C1 /* GoogleService-Info.plist */,
 			);
 			name = CyclePair;
 			sourceTree = "<group>";
@@ -109,13 +110,16 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "CyclePair" */;
 			buildPhases = (
 				C38B50BA6285516D6DCD4F65 /* [CP] Check Pods Manifest.lock */,
+				F1B2C3D4E5F60718293A4B5C /* [Firebase] Validate Environment Config */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				00EEFC60759A1932668264C0 /* [CP] Embed Pods Frameworks */,
 				E235C05ADACE081382539298 /* [CP] Copy Pods Resources */,
+				F1B2C3D4E5F60718293A4B5D /* [Firebase] Embed Environment Config */,
 				8A8CB6F0BE3E26D95B9DBE91 /* [CP-User] [RNFB] Core Configuration */,
+				0FE336B9764E52B27ED952B6 /* [CP-User] [RNFB] Crashlytics Configuration */,
 			);
 			buildRules = (
 			);
@@ -136,6 +140,11 @@
 				TargetAttributes = {
 					13B07F861A680F5B00A75B9A = {
 						LastSwiftMigration = 1120;
+						SystemCapabilities = {
+							com.apple.InAppPurchase = {
+								enabled = 1;
+							};
+						};
 					};
 				};
 			};
@@ -165,7 +174,6 @@
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				7E5A229203C3E92BD3C063FC /* PrivacyInfo.xcprivacy in Resources */,
-				A84F18A42F0C4D1B0053A2C1 /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -204,6 +212,20 @@
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-CyclePair/Pods-CyclePair-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
+		};
+		0FE336B9764E52B27ED952B6 /* [CP-User] [RNFB] Crashlytics Configuration */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${TARGET_NAME}",
+				"$(BUILT_PRODUCTS_DIR)/$(INFOPLIST_PATH)",
+			);
+			name = "[CP-User] [RNFB] Crashlytics Configuration";
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "#!/usr/bin/env bash\n#\n# Copyright (c) 2016-present Invertase Limited & Contributors\n#\n# Licensed under the Apache License, Version 2.0 (the \"License\");\n# you may not use this library except in compliance with the License.\n# You may obtain a copy of the License at\n#\n#   http://www.apache.org/licenses/LICENSE-2.0\n#\n# Unless required by applicable law or agreed to in writing, software\n# distributed under the License is distributed on an \"AS IS\" BASIS,\n# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n# See the License for the specific language governing permissions and\n# limitations under the License.\n#\nset -e\n\nif [[ ${PODS_ROOT} ]]; then\n  echo \"info: Exec FirebaseCrashlytics Run from Pods\"\n  \"${PODS_ROOT}/FirebaseCrashlytics/run\"\nelse\n  echo \"info: Exec FirebaseCrashlytics Run from framework\"\n  \"${PROJECT_DIR}/FirebaseCrashlytics.framework/run\"\nfi\n";
 		};
 		8A8CB6F0BE3E26D95B9DBE91 /* [CP-User] [RNFB] Core Configuration */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -257,6 +279,39 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-CyclePair/Pods-CyclePair-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
+		F1B2C3D4E5F60718293A4B5C /* [Firebase] Validate Environment Config */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "[Firebase] Validate Environment Config";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "/bin/bash \"${PROJECT_DIR}/../scripts/select-ios-firebase-config.sh\" validate\n";
+			showEnvVarsInLog = 0;
+		};
+		F1B2C3D4E5F60718293A4B5D /* [Firebase] Embed Environment Config */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "[Firebase] Embed Environment Config";
+			outputPaths = (
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/GoogleService-Info.plist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "/bin/bash \"${PROJECT_DIR}/../scripts/select-ios-firebase-config.sh\" embed\n";
+			showEnvVarsInLog = 0;
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -275,11 +330,18 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 3B4392A12AC88292D35C810B /* Pods-CyclePair.debug.xcconfig */;
 			buildSettings = {
+				APP_ATTEST_ENVIRONMENT = development;
+				APS_ENVIRONMENT = development;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = CyclePair/CyclePair.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
+				CYCLEPAIR_DEVELOPMENT_FIREBASE_PROJECT_ID = "seorilabs-cyclepair-dev";
 				DEVELOPMENT_TEAM = HCDUXX4Z3X;
 				ENABLE_BITCODE = NO;
+				FIREBASE_CONFIG_PATH = "Firebase/Debug/GoogleService-Info.plist";
+				FIREBASE_ENVIRONMENT = development;
+				FIREBASE_EXPECTED_PROJECT_ID = "seorilabs-cyclepair-dev";
 				INFOPLIST_FILE = CyclePair/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -295,6 +357,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.seorilabs.cyclepair;
 				PRODUCT_NAME = CyclePair;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_OBJC_BRIDGING_HEADER = "CyclePair/CyclePair-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -306,10 +369,17 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 5709B34CF0A7D63546082F79 /* Pods-CyclePair.release.xcconfig */;
 			buildSettings = {
+				APP_ATTEST_ENVIRONMENT = production;
+				APS_ENVIRONMENT = production;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = CyclePair/CyclePair.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
+				CYCLEPAIR_DEVELOPMENT_FIREBASE_PROJECT_ID = "seorilabs-cyclepair-dev";
 				DEVELOPMENT_TEAM = HCDUXX4Z3X;
+				FIREBASE_CONFIG_PATH = "Firebase/Release/GoogleService-Info.plist";
+				FIREBASE_ENVIRONMENT = production;
+				FIREBASE_EXPECTED_PROJECT_ID = "";
 				INFOPLIST_FILE = CyclePair/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -325,6 +395,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.seorilabs.cyclepair;
 				PRODUCT_NAME = CyclePair;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_OBJC_BRIDGING_HEADER = "CyclePair/CyclePair-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";

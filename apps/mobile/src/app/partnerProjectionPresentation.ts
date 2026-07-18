@@ -1,0 +1,317 @@
+import { isLocalDate, type LocalDate } from '@cyclepair/product-core';
+
+import type { RemotePartnerProjection } from '../platform/backend/CyclePairBackend';
+
+export const PARTNER_PROJECTION_STALE_AFTER_MS = 36 * 60 * 60 * 1_000;
+const MAX_CLOCK_SKEW_MS = 5 * 60 * 1_000;
+
+export type PartnerSharedFieldKey =
+  | 'cyclePhase'
+  | 'nextPeriodWindow'
+  | 'periodDates'
+  | 'moodTag'
+  | 'symptomTags'
+  | 'energyLevel'
+  | 'conditionCode'
+  | 'carePreferences'
+  | 'note';
+
+export interface PartnerSharedField {
+  readonly key: PartnerSharedFieldKey;
+  readonly label: string;
+  readonly value: string;
+}
+
+export interface PartnerProjectionFreshness {
+  readonly label: string;
+  readonly stale: boolean;
+}
+
+const hasDailyValues = (projection: RemotePartnerProjection): boolean =>
+  projection.moodTag !== undefined ||
+  projection.symptomTags !== undefined ||
+  projection.energyLevel !== undefined ||
+  projection.conditionCode !== undefined ||
+  projection.carePreferences !== undefined ||
+  projection.note !== undefined;
+
+const hasCycleDerivedValues = (
+  projection: RemotePartnerProjection,
+): boolean =>
+  projection.cyclePhase !== undefined ||
+  projection.nextPeriodWindow !== undefined;
+
+function deviceLocalDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Removes source-date-sensitive values before any screen or care rule uses
+ * them. Explicit historical period dates remain self-describing, while a
+ * daily check-in, phase, or prediction can never be presented as today's
+ * state without today's source LocalDate.
+ */
+export function getSafePartnerProjectionForToday(
+  projection?: RemotePartnerProjection | null,
+  now = new Date(),
+): RemotePartnerProjection | null {
+  if (!projection) return null;
+
+  const today = deviceLocalDate(now);
+  const hasTodaysDailyLog = projection.dailyLogDate === today;
+  const hasTodaysCycleComputation = projection.cycleAsOfDate === today;
+
+  return {
+    ownerUid: projection.ownerUid,
+    pairId: projection.pairId,
+    ...(projection.generatedAt ? { generatedAt: projection.generatedAt } : {}),
+    ...(projection.cycleAsOfDate
+      ? { cycleAsOfDate: projection.cycleAsOfDate }
+      : {}),
+    ...(projection.dailyLogDate
+      ? { dailyLogDate: projection.dailyLogDate }
+      : {}),
+    ...(projection.periodDates ? { periodDates: projection.periodDates } : {}),
+    ...(hasTodaysCycleComputation && projection.cyclePhase
+      ? { cyclePhase: projection.cyclePhase }
+      : {}),
+    ...(hasTodaysCycleComputation && projection.nextPeriodWindow
+      ? { nextPeriodWindow: projection.nextPeriodWindow }
+      : {}),
+    ...(hasTodaysDailyLog && projection.symptomTags
+      ? { symptomTags: projection.symptomTags }
+      : {}),
+    ...(hasTodaysDailyLog && projection.moodTag
+      ? { moodTag: projection.moodTag }
+      : {}),
+    ...(hasTodaysDailyLog && projection.energyLevel
+      ? { energyLevel: projection.energyLevel }
+      : {}),
+    ...(hasTodaysDailyLog && projection.conditionCode
+      ? { conditionCode: projection.conditionCode }
+      : {}),
+    ...(hasTodaysDailyLog && projection.carePreferences
+      ? { carePreferences: projection.carePreferences }
+      : {}),
+    ...(hasTodaysDailyLog && projection.note
+      ? { note: projection.note }
+      : {}),
+  };
+}
+
+const phaseCopy: Record<
+  NonNullable<RemotePartnerProjection['cyclePhase']>,
+  string
+> = {
+  menstrual: '월경 중',
+  follicular: '회복하는 시기',
+  luteal: '변화에 대비하는 시기',
+  unknown: '기록이 더 필요함',
+};
+
+const moodCopy: Readonly<Record<string, string>> = {
+  'very-low': '많이 힘들어요',
+  low: '조금 지쳐요',
+  neutral: '괜찮아요',
+  good: '기분이 좋아요',
+  'very-good': '아주 좋아요',
+};
+
+const symptomCopy: Readonly<Record<string, string>> = {
+  cramps: '복통',
+  headache: '두통',
+  fatigue: '피로',
+  bloating: '부종',
+  sensitive: '예민함',
+  'back-discomfort': '허리 불편',
+};
+
+const conditionCopy: Readonly<Record<string, string>> = {
+  comfortable: '편안해요',
+  tired: '피곤해요',
+  'low-energy': '기운이 없어요',
+  'needs-space': '공간이 필요해요',
+};
+
+const carePreferenceCopy: Readonly<Record<string, string>> = {
+  listen: '그냥 들어줘요',
+  'quiet-space': '쉬고 싶어요',
+  warmth: '따뜻하게 챙겨줘요',
+  'meal-support': '식사를 챙겨줘요',
+  'schedule-flexibility': '일정을 여유롭게 해줘요',
+  'practical-help': '실질적인 도움을 줘요',
+  'check-in': '가볍게 상태를 물어봐 줘요',
+  'no-action': '평소처럼 대해줘요',
+};
+
+const energyCopy: Readonly<Record<1 | 2 | 3 | 4 | 5, string>> = {
+  1: '매우 낮음',
+  2: '낮음',
+  3: '보통',
+  4: '좋음',
+  5: '매우 좋음',
+};
+
+function formatLocalDate(value: LocalDate): string {
+  const [, month, day] = value.split('-').map(Number);
+  return `${month}월 ${day}일`;
+}
+
+function orderedRange(range?: {
+  readonly startDate: string;
+  readonly endDate: string;
+}): { readonly start: LocalDate; readonly end: LocalDate } | undefined {
+  if (
+    !range ||
+    !isLocalDate(range.startDate) ||
+    !isLocalDate(range.endDate) ||
+    range.endDate < range.startDate
+  ) {
+    return undefined;
+  }
+  return { start: range.startDate, end: range.endDate };
+}
+
+function knownValues(
+  values: readonly string[] | undefined,
+  copy: Readonly<Record<string, string>>,
+): readonly string[] {
+  return [...new Set((values ?? []).map(value => copy[value]).filter(Boolean))];
+}
+
+/** Builds rows only from values explicitly present in the server projection. */
+export function buildPartnerSharedFields(
+  projection?: RemotePartnerProjection | null,
+  now = new Date(),
+): readonly PartnerSharedField[] {
+  const safeProjection = getSafePartnerProjectionForToday(projection, now);
+  if (!safeProjection) return [];
+  projection = safeProjection;
+
+  const fields: PartnerSharedField[] = [];
+  if (projection.cyclePhase) {
+    fields.push({
+      key: 'cyclePhase',
+      label: '현재 주기 국면',
+      value: phaseCopy[projection.cyclePhase],
+    });
+  }
+
+  const nextPeriodWindow = orderedRange(projection.nextPeriodWindow);
+  if (nextPeriodWindow) {
+    fields.push({
+      key: 'nextPeriodWindow',
+      label: '다음 예상 범위',
+      value: `${formatLocalDate(nextPeriodWindow.start)} ~ ${formatLocalDate(
+        nextPeriodWindow.end,
+      )}`,
+    });
+  }
+
+  const periodStart = projection.periodDates?.startDate;
+  if (isLocalDate(periodStart)) {
+    const periodEnd = projection.periodDates?.endDate;
+    const validEnd =
+      isLocalDate(periodEnd) && periodEnd >= periodStart
+        ? periodEnd
+        : undefined;
+    fields.push({
+      key: 'periodDates',
+      label: '공유한 생리 날짜',
+      value: validEnd
+        ? `${formatLocalDate(periodStart)} ~ ${formatLocalDate(validEnd)}`
+        : `${formatLocalDate(periodStart)} 시작`,
+    });
+  }
+
+  const mood = projection.moodTag ? moodCopy[projection.moodTag] : undefined;
+  if (mood) {
+    fields.push({ key: 'moodTag', label: '기분', value: mood });
+  }
+
+  const symptoms = knownValues(projection.symptomTags, symptomCopy);
+  if (symptoms.length > 0) {
+    fields.push({
+      key: 'symptomTags',
+      label: '증상',
+      value: symptoms.join(' · '),
+    });
+  }
+
+  if (projection.energyLevel) {
+    fields.push({
+      key: 'energyLevel',
+      label: '에너지',
+      value: `${projection.energyLevel}/5 · ${
+        energyCopy[projection.energyLevel]
+      }`,
+    });
+  }
+
+  const condition = projection.conditionCode
+    ? conditionCopy[projection.conditionCode]
+    : undefined;
+  if (condition) {
+    fields.push({ key: 'conditionCode', label: '컨디션', value: condition });
+  }
+
+  const preferences = knownValues(
+    projection.carePreferences,
+    carePreferenceCopy,
+  );
+  if (preferences.length > 0) {
+    fields.push({
+      key: 'carePreferences',
+      label: '원하는 도움',
+      value: preferences.join(' · '),
+    });
+  }
+
+  const note = projection.note?.trim().slice(0, 500);
+  if (note) {
+    fields.push({ key: 'note', label: '메모', value: note });
+  }
+
+  return fields;
+}
+
+function formatSyncedAt(date: Date): string {
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const hour = String(date.getHours()).padStart(2, '0');
+  const minute = String(date.getMinutes()).padStart(2, '0');
+  return `${year}년 ${month}월 ${day}일 ${hour}:${minute} 동기화`;
+}
+
+export function getPartnerProjectionFreshness(
+  projection?: RemotePartnerProjection | null,
+  now = new Date(),
+): PartnerProjectionFreshness {
+  if (!projection) {
+    return { label: '업데이트 정보 없음', stale: false };
+  }
+
+  const generatedAt = projection.generatedAt
+    ? new Date(projection.generatedAt)
+    : undefined;
+  if (!generatedAt || Number.isNaN(generatedAt.getTime())) {
+    return { label: '업데이트 시각 확인 불가', stale: true };
+  }
+
+  const age = now.getTime() - generatedAt.getTime();
+  const today = deviceLocalDate(now);
+  const sourceIsStale =
+    (hasDailyValues(projection) && projection.dailyLogDate !== today) ||
+    (hasCycleDerivedValues(projection) && projection.cycleAsOfDate !== today);
+  return {
+    label: formatSyncedAt(generatedAt),
+    stale:
+      sourceIsStale ||
+      age > PARTNER_PROJECTION_STALE_AFTER_MS ||
+      age < -MAX_CLOCK_SKEW_MS,
+  };
+}

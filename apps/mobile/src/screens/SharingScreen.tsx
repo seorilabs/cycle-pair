@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { ShareField, useCyclePair } from '../app/CyclePairStore';
 import { Body, Card, PrimaryButton, Screen, SecondaryButton, TextButton, Title, ToggleRow } from '../components/Ui';
@@ -10,19 +10,36 @@ const fields: Array<{ key: ShareField; title: string; description: string }> = [
   { key: 'periodDates', title: '실제 생리 날짜', description: '시작·종료 기록을 공유해요' },
   { key: 'mood', title: '오늘의 기분', description: '내가 직접 고른 기분만 보여줘요' },
   { key: 'symptoms', title: '증상', description: '민감할 수 있어 기본값은 꺼져 있어요' },
+  { key: 'energy', title: '에너지 정도', description: '1–5 단계 중 오늘 고른 값만 보여줘요' },
+  { key: 'condition', title: '오늘의 컨디션', description: '편안함·피곤함처럼 직접 고른 상태만 보여줘요' },
   { key: 'carePreference', title: '원하는 도움', description: '추측 대신 내가 선택한 배려 방식을 알려줘요' },
+  { key: 'note', title: '오늘의 메모', description: '자유 입력이라 특히 민감할 수 있어 기본값은 꺼져 있어요' },
 ];
 
 export function SharingScreen() {
   const {
     state,
     backendBusy,
+    backendError,
     goBack,
     toggleShare,
     useRecommendedSharing,
     completeSharing,
   } = useCyclePair();
+  const submittingRef = useRef(false);
+  const [saveAttempted, setSaveAttempted] = React.useState(false);
   const selectedCount = Object.values(state.shareSettings).filter(Boolean).length;
+
+  async function saveSharing() {
+    if (submittingRef.current || backendBusy) return;
+    submittingRef.current = true;
+    setSaveAttempted(true);
+    try {
+      await completeSharing();
+    } finally {
+      submittingRef.current = false;
+    }
+  }
 
   return (
     <Screen contentStyle={styles.content}>
@@ -47,6 +64,7 @@ export function SharingScreen() {
             title={field.title}
             description={field.description}
             value={state.shareSettings[field.key]}
+            disabled={backendBusy}
             onValueChange={() => toggleShare(field.key)}
           />
         ))}
@@ -60,9 +78,38 @@ export function SharingScreen() {
         </View>
       </Card>
 
+      {backendError && saveAttempted ? (
+        <View accessibilityRole="alert" style={styles.errorCard}>
+          <Text style={styles.errorText}>{backendError}</Text>
+          <TextButton
+            label="다시 시도"
+            disabled={backendBusy}
+            onPress={() => {
+              saveSharing().catch(() => undefined);
+            }}
+          />
+        </View>
+      ) : null}
+
       <View style={styles.buttons}>
-        <SecondaryButton label="추천 설정 적용" onPress={useRecommendedSharing} />
-        <PrimaryButton label={selectedCount === 0 ? '공유 없이 시작' : `${selectedCount}개 항목 공유하고 시작`} onPress={completeSharing} />
+        <SecondaryButton
+          label="추천 설정 적용"
+          disabled={backendBusy}
+          onPress={useRecommendedSharing}
+        />
+        <PrimaryButton
+          label={
+            backendBusy
+              ? '공유 설정 저장 중…'
+              : selectedCount === 0
+                ? '공유 없이 시작'
+                : `${selectedCount}개 항목 공유하고 시작`
+          }
+          disabled={backendBusy}
+          onPress={() => {
+            saveSharing().catch(() => undefined);
+          }}
+        />
       </View>
     </Screen>
   );
@@ -87,5 +134,13 @@ const styles = StyleSheet.create({
   privacyCopy: { flex: 1, gap: spacing.xs },
   privacyTitle: { color: colors.text, fontSize: 14, fontWeight: '800' },
   privacyBody: { color: colors.textMuted, fontSize: 12, lineHeight: 18 },
+  errorCard: {
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+    padding: spacing.md,
+    borderRadius: 12,
+    backgroundColor: colors.dangerSoft,
+  },
+  errorText: { color: colors.danger, fontSize: 12, lineHeight: 18 },
   buttons: { gap: spacing.md, marginTop: spacing.xl },
 });

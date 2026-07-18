@@ -8,6 +8,24 @@ require Pod::Executable.execute_command('node', ['-p',
 platform :ios, min_ios_version_supported
 prepare_react_native_project!
 
+# Cycle Pair does not use advertising identifiers. Keep Analytics linked
+# without AdSupport so telemetry cannot access IDFA.
+$RNFirebaseAnalyticsWithoutAdIdSupport = true
+
+# RNFirebase's Objective-C pods currently cannot be compiled as frameworks
+# against React Native's prebuilt RNCore. Keep the rest of the graph as static
+# frameworks, but make RNFirebase pods static libraries as recommended by the
+# RNFirebase maintainers (https://github.com/invertase/react-native-firebase/issues/8883).
+pre_install do |installer|
+  installer.pod_targets.each do |pod|
+    next unless pod.name.start_with?('RNFB')
+
+    def pod.build_type
+      Pod::BuildType.static_library
+    end
+  end
+end
+
 target 'CyclePair' do
   config = use_native_modules!
 

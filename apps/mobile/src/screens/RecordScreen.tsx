@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { DailyCheckIn, useCyclePair } from '../app/CyclePairStore';
-import { Body, Card, Chip, PrimaryButton, Screen, SectionHeader, Title } from '../components/Ui';
+import { Body, Card, Chip, PrimaryButton, Screen, SectionHeader, TextButton, Title } from '../components/Ui';
 import { colors, radius, spacing } from '../theme';
 
 const moods: Array<{ label: NonNullable<DailyCheckIn['mood']>; emoji: string }> = [
@@ -11,6 +11,13 @@ const moods: Array<{ label: NonNullable<DailyCheckIn['mood']>; emoji: string }> 
   { label: '좋아요', emoji: '😊' },
 ];
 const symptoms = ['복통', '두통', '피로', '부종', '예민함', '허리 불편'];
+const energyLevels: Array<NonNullable<DailyCheckIn['energy']>> = [1, 2, 3, 4, 5];
+const conditions: Array<NonNullable<DailyCheckIn['condition']>> = [
+  '편안해요',
+  '피곤해요',
+  '기운이 없어요',
+  '공간이 필요해요',
+];
 const preferences: NonNullable<DailyCheckIn['carePreference']>[] = [
   '쉬고 싶어요',
   '따뜻하게 챙겨줘요',
@@ -19,8 +26,10 @@ const preferences: NonNullable<DailyCheckIn['carePreference']>[] = [
 ];
 
 export function RecordScreen({ onDone, onCancel }: { onDone(): void; onCancel(): void }) {
-  const { state, saveCheckIn } = useCyclePair();
+  const { state, backendBusy, backendError, saveCheckIn } = useCyclePair();
   const [draft, setDraft] = useState<DailyCheckIn>(state.checkIn);
+  const [saveAttempted, setSaveAttempted] = useState(false);
+  const submittingRef = useRef(false);
 
   function toggleSymptom(value: string) {
     setDraft(current => ({
@@ -32,13 +41,26 @@ export function RecordScreen({ onDone, onCancel }: { onDone(): void; onCancel():
   }
 
   async function save() {
-    if (await saveCheckIn(draft)) onDone();
+    if (submittingRef.current || backendBusy) return;
+    submittingRef.current = true;
+    setSaveAttempted(true);
+    try {
+      if (await saveCheckIn(draft)) onDone();
+    } finally {
+      submittingRef.current = false;
+    }
   }
 
   return (
     <Screen contentStyle={styles.content}>
       <View style={styles.topBar}>
-        <Pressable accessibilityRole="button" onPress={onCancel} hitSlop={12}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="기록 화면 닫기"
+          accessibilityState={{ disabled: backendBusy }}
+          disabled={backendBusy}
+          onPress={onCancel}
+          hitSlop={12}>
           <Text style={styles.close}>×</Text>
         </Pressable>
         <Text style={styles.date}>오늘 기록</Text>
@@ -72,6 +94,40 @@ export function RecordScreen({ onDone, onCancel }: { onDone(): void; onCancel():
         ))}
       </View>
 
+      <SectionHeader title="에너지" />
+      <View style={styles.energyRow}>
+        {energyLevels.map(level => (
+          <Chip
+            key={level}
+            label={String(level)}
+            selected={draft.energy === level}
+            onPress={() =>
+              setDraft(current => ({
+                ...current,
+                energy: current.energy === level ? undefined : level,
+              }))
+            }
+          />
+        ))}
+      </View>
+
+      <SectionHeader title="컨디션" />
+      <View style={styles.chips}>
+        {conditions.map(condition => (
+          <Chip
+            key={condition}
+            label={condition}
+            selected={draft.condition === condition}
+            onPress={() =>
+              setDraft(current => ({
+                ...current,
+                condition: current.condition === condition ? undefined : condition,
+              }))
+            }
+          />
+        ))}
+      </View>
+
       <SectionHeader title="오늘 원하는 도움" />
       <Card style={styles.preferenceCard}>
         {preferences.map(preference => {
@@ -90,24 +146,88 @@ export function RecordScreen({ onDone, onCancel }: { onDone(): void; onCancel():
         })}
       </Card>
 
+      <SectionHeader title="메모" />
+      <TextInput
+        accessibilityLabel="오늘의 메모"
+        multiline
+        maxLength={500}
+        placeholder="남기고 싶은 내용이 있다면 적어주세요"
+        placeholderTextColor={colors.textSubtle}
+        value={draft.note ?? ''}
+        onChangeText={note => setDraft(current => ({ ...current, note }))}
+        style={styles.noteInput}
+        textAlignVertical="top"
+      />
+      <Text style={styles.characterCount}>{draft.note?.length ?? 0}/500</Text>
+
       {state.isLogger ? (
-        <Pressable
-          accessibilityRole="checkbox"
-          accessibilityState={{ checked: draft.periodStarted }}
-          onPress={() => setDraft(current => ({ ...current, periodStarted: !current.periodStarted }))}
-          style={[styles.periodButton, draft.periodStarted && styles.periodButtonSelected]}>
-          <View style={[styles.checkbox, draft.periodStarted && styles.checkboxSelected]}>
-            {draft.periodStarted ? <Text style={styles.check}>✓</Text> : null}
-          </View>
-          <View style={styles.periodCopy}>
-            <Text style={styles.periodTitle}>오늘 생리가 시작했어요</Text>
-            <Text style={styles.periodBody}>새 주기 시작일로 기록하고 예측을 다시 계산해요</Text>
-          </View>
-        </Pressable>
+        <View style={styles.periodGroup}>
+          <Pressable
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: draft.periodStarted }}
+            onPress={() =>
+              setDraft(current => ({
+                ...current,
+                periodStarted: !current.periodStarted,
+                periodEnded: false,
+              }))
+            }
+            style={[styles.periodButton, draft.periodStarted && styles.periodButtonSelected]}>
+            <View style={[styles.checkbox, draft.periodStarted && styles.checkboxSelected]}>
+              {draft.periodStarted ? <Text style={styles.check}>✓</Text> : null}
+            </View>
+            <View style={styles.periodCopy}>
+              <Text style={styles.periodTitle}>오늘 생리가 시작했어요</Text>
+              <Text style={styles.periodBody}>
+                {state.hasCycleSeed
+                  ? '새 주기 시작일로 기록하고 예측 기준을 갱신해요'
+                  : '새 주기 시작일로 기록해요 · 예측 기준은 설정에서 켤 수 있어요'}
+              </Text>
+            </View>
+          </Pressable>
+          <Pressable
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: draft.periodEnded }}
+            onPress={() =>
+              setDraft(current => ({
+                ...current,
+                periodStarted: false,
+                periodEnded: !current.periodEnded,
+              }))
+            }
+            style={[styles.periodButton, draft.periodEnded && styles.periodButtonSelected]}>
+            <View style={[styles.checkbox, draft.periodEnded && styles.checkboxSelected]}>
+              {draft.periodEnded ? <Text style={styles.check}>✓</Text> : null}
+            </View>
+            <View style={styles.periodCopy}>
+              <Text style={styles.periodTitle}>오늘 생리가 끝났어요</Text>
+              <Text style={styles.periodBody}>이번 주기의 종료일로 기록해요</Text>
+            </View>
+          </Pressable>
+        </View>
+      ) : null}
+
+      {backendError && saveAttempted ? (
+        <View accessibilityRole="alert" style={styles.errorCard}>
+          <Text style={styles.errorText}>{backendError}</Text>
+          <TextButton
+            label="다시 시도"
+            disabled={backendBusy}
+            onPress={() => {
+              save().catch(() => undefined);
+            }}
+          />
+        </View>
       ) : null}
 
       <View style={styles.footer}>
-        <PrimaryButton label="안전하게 저장하기" onPress={save} />
+        <PrimaryButton
+          label={backendBusy ? '저장 중…' : '안전하게 저장하기'}
+          disabled={backendBusy}
+          onPress={() => {
+            save().catch(() => undefined);
+          }}
+        />
         <Text style={styles.footerNote}>민감한 기분·증상 값은 Analytics로 보내지 않아요.</Text>
       </View>
     </Screen>
@@ -138,17 +258,30 @@ const styles = StyleSheet.create({
   moodLabel: { color: colors.textMuted, fontSize: 11, fontWeight: '700' },
   moodLabelSelected: { color: colors.primaryDark, fontWeight: '900' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  energyRow: { flexDirection: 'row', gap: spacing.sm },
   preferenceCard: { paddingVertical: spacing.sm },
   preferenceRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: 50 },
   radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
   radioSelected: { borderColor: colors.primary },
   radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.primary },
   preferenceText: { color: colors.text, fontSize: 15, fontWeight: '600' },
+  noteInput: {
+    minHeight: 112,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    color: colors.text,
+    fontSize: 14,
+    lineHeight: 20,
+    padding: spacing.md,
+  },
+  characterCount: { color: colors.textSubtle, fontSize: 11, textAlign: 'right', marginTop: spacing.xs },
+  periodGroup: { gap: spacing.sm, marginTop: spacing.xl },
   periodButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    marginTop: spacing.xl,
     padding: spacing.lg,
     borderRadius: radius.md,
     borderWidth: 1,
@@ -162,6 +295,14 @@ const styles = StyleSheet.create({
   periodCopy: { flex: 1, gap: spacing.xs },
   periodTitle: { color: colors.text, fontSize: 15, fontWeight: '800' },
   periodBody: { color: colors.textMuted, fontSize: 12, lineHeight: 17 },
+  errorCard: {
+    gap: spacing.sm,
+    marginTop: spacing.xl,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.dangerSoft,
+  },
+  errorText: { color: colors.danger, fontSize: 12, lineHeight: 18 },
   footer: { marginTop: spacing.xxl, gap: spacing.md },
   footerNote: { color: colors.textSubtle, fontSize: 11, textAlign: 'center' },
 });

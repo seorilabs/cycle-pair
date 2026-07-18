@@ -21,6 +21,27 @@ debug와 release 모두 `com.seorilabs.cyclepair`를 사용한다. 개발·운�
 - iOS: Xcode, Ruby 3.2, Bundler/CocoaPods
 - Firebase Functions 배포 런타임은 별도로 Node.js 22
 
+RNFirebase의 privacy-first native 기본값은 루트 `firebase.json`과 `apps/mobile/firebase.json`의 `react-native` 항목에 동일하게 유지한다. iOS RNFirebase build phase는 monorepo 루트까지 탐색하지 않으므로 mobile-local 파일이 실제 빌드 입력이며, Android도 같은 파일을 사용한다. 전역 자동 데이터 수집, Analytics·Crashlytics 수집과 Messaging 자동 초기화는 사용자의 동의·앱 초기화 코드가 명시적으로 켜기 전까지 모두 꺼져 있다. App Check token refresh만 backend 보호를 위해 별도로 켜며 Analytics 동의 상태와 결합하지 않는다.
+
+## Firebase 환경 선택
+
+영구 앱 ID는 환경에 따라 바꾸지 않는다. `firebase-environments.json`이 native config 경로와 public project ID의 source of truth이며, 실제 Firebase client config는 git에 넣지 않는다.
+
+| 빌드 | Firebase 환경 | Android config | iOS config |
+| --- | --- | --- | --- |
+| Debug | development (`seorilabs-cyclepair-dev`) | `android/app/src/debug/google-services.json` | `ios/Firebase/Debug/GoogleService-Info.plist` |
+| Release | production (`확정 필요`) | `android/app/src/release/google-services.json` | `ios/Firebase/Release/GoogleService-Info.plist` |
+
+각 경로의 `.example` 파일에서 확장자만 제거한 위치에 Firebase Console에서 받은 원본을 둔다. Android app root의 `google-services.json`, `src/main/google-services.json`, iOS target root의 `CyclePair/GoogleService-Info.plist`는 fallback 오연결을 막기 위해 허용하지 않는다.
+
+현재 production project/config는 생성하지 않았다. Release는 production project ID를 `firebase-environments.json`에 명시하고 두 플랫폼 config를 공급하기 전까지 의도적으로 실패한다. Debug config를 Release에 복사해 우회할 수 없다.
+
+## App Check
+
+앱 entry point는 Firebase 기반 화면을 렌더링하기 전에 App Check를 초기화하고 실패 시 backend 접근을 열지 않는다. Debug bundle은 tracked development project에서만 Android/iOS debug provider를 사용한다. Release bundle은 production project ID가 일치할 때만 Android Play Integrity와 iOS App Attest(DeviceCheck fallback)를 사용한다. debug token은 코드·설정 파일에 넣지 않고 개발 Firebase Console에만 등록한다.
+
+iOS는 App Check provider factory를 `FirebaseApp.configure()`보다 먼저 설치하며, App Attest entitlement는 Debug `development`, Release `production`으로 분리한다. 이 클라이언트 구현은 운영 콘솔 등록이나 강제를 증명하지 않는다. 출시 전 production project에서 Play Integrity/App Attest provider 등록, Firestore enforcement, `ENFORCE_APP_CHECK=true`로 배포된 Callable Functions를 각각 live 확인해야 한다.
+
 ## 명령
 
 루트에서 실행한다.
@@ -33,6 +54,23 @@ pnpm ios
 pnpm android
 ```
 
+RNFirebase 설정 drift는 다음 명령으로 확인한다.
+
+```bash
+pnpm check:native-firebase-config
+node scripts/check-native-firebase-config.mjs --require-environment development
+```
+
+첫 명령은 tracked 선택 구조와 현재 존재하는 local config를 검증하고, 두 번째 명령은 Android/iOS 개발 config가 모두 준비됐는지 강제한다. 운영 준비 시 `development`를 `production`으로 바꿔 실행한다.
+
+iOS를 빌드한 뒤에는 build product의 `Info.plist`까지 검증할 수 있다.
+
+```bash
+node scripts/check-native-firebase-config.mjs \
+  --built-plist /absolute/path/to/CyclePair.app/Info.plist \
+  --built-environment development
+```
+
 iOS 최초 준비:
 
 ```bash
@@ -42,7 +80,7 @@ cd ios
 bundle exec pod install
 ```
 
-RNFirebase 25.1.0과 React Native 0.86 prebuilt RNCore의 iOS 호환 수정은 `pnpm-workspace.yaml`의 임시 `patchedDependencies`로 고정돼 있다. 정식 상위 버전에 동일 수정이 포함되면 [ADR-0003](../../docs/adr/0003-rnfirebase-rn086-ios-compatibility.md)에 따라 제거한다.
+RNFirebase 25.1.0과 React Native 0.86 prebuilt RNCore의 iOS 호환 경계는 `Podfile`의 `pre_install`에서 RNFB Pod만 static library로 연결해 해결한다. 패키지 소스나 `node_modules` patch는 사용하지 않는다. 상위 버전에서 static framework 호환이 해결되면 [ADR-0003](../../docs/adr/0003-rnfirebase-rn086-ios-compatibility.md)에 따라 hook 제거를 clean build로 검증한다.
 
 Android Java 선택:
 
@@ -76,7 +114,18 @@ Android local debug build:
 
 ```bash
 cd apps/mobile/android
+./gradlew :app:verifyDebugFirebaseConfig
 ./gradlew assembleDebug
 ```
+
+Release Firebase gate는 upload key 없이 독립적으로 확인할 수 있다.
+
+```bash
+cd apps/mobile/android
+./gradlew :app:verifyReleaseFirebaseConfig
+./gradlew :app:verifyReleasePrerequisites
+```
+
+두 번째 명령은 production Firebase와 upload signing 누락을 한 번에 모두 열거한다.
 
 Debug keystore로 만든 산출물은 배포용이 아니다. 실제 AAB/archive, release signing, 마켓 업로드는 deployment approval 이후 별도 release gate에서 처리한다.

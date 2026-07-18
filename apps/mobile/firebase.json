@@ -1,3 +1,13 @@
 {
-  "react-native": {}
+  "react-native": {
+    "app_data_collection_default_enabled": false,
+    "app_check_token_auto_refresh": true,
+    "analytics_auto_collection_enabled": false,
+    "google_analytics_automatic_screen_reporting_enabled": false,
+    "crashlytics_auto_collection_enabled": false,
+    "crashlytics_debug_enabled": false,
+    "crashlytics_ndk_enabled": false,
+    "messaging_auto_init_enabled": false,
+    "messaging_ios_auto_register_for_remote_messages": false
+  }
 }

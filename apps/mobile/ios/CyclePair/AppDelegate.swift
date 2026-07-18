@@ -15,6 +15,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
+    // App Check's provider factory must exist before Firebase configures the
+    // default app. JavaScript selects debug vs production attestation before
+    // rendering any Firebase-backed feature.
+    RNFBAppCheckModule.sharedInstance()
     FirebaseApp.configure()
 
     let delegate = ReactNativeDelegate()

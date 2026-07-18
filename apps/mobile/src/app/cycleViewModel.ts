@@ -4,9 +4,11 @@ import {
   createShareSettings,
   determineCyclePhase,
   daysBetween,
+  isLocalDate,
   localDate,
   parseLocalDate,
   predictFromCycleSeed,
+  predictNextPeriod,
   projectForPartner,
   selectCareTips,
   type CareTip,
@@ -16,20 +18,25 @@ import {
   type LocalDate,
   type Mood,
   type PartnerProjection,
+  type Prediction,
 } from '@cyclepair/product-core';
 import { DailyCheckIn, CyclePairState } from './CyclePairStore';
+import { getSafePartnerProjectionForToday } from './partnerProjectionPresentation';
 
 const SELF_MEMBER_ID = 'local-self';
 const PARTNER_MEMBER_ID = 'remote-partner';
 
 const moodToDomain: Record<NonNullable<DailyCheckIn['mood']>, Mood> = {
-  '힘들어요': 'very-low',
-  '지쳐요': 'low',
-  '괜찮아요': 'neutral',
-  '좋아요': 'good',
+  힘들어요: 'very-low',
+  지쳐요: 'low',
+  괜찮아요: 'neutral',
+  좋아요: 'good',
 };
 
-const preferenceToDomain: Record<NonNullable<DailyCheckIn['carePreference']>, HelpPreference> = {
+const preferenceToDomain: Record<
+  NonNullable<DailyCheckIn['carePreference']>,
+  HelpPreference
+> = {
   '쉬고 싶어요': 'quiet-space',
   '따뜻하게 챙겨줘요': 'warmth',
   '그냥 들어줘요': 'listen',
@@ -37,11 +44,26 @@ const preferenceToDomain: Record<NonNullable<DailyCheckIn['carePreference']>, He
 };
 
 const phaseCopy: Record<CyclePhase, { title: string; description: string }> = {
-  menstrual: { title: '월경 중', description: '오늘의 몸 상태를 가장 먼저 살펴주세요' },
-  follicular: { title: '회복하는 시기', description: '컨디션은 사람마다 다르게 변할 수 있어요' },
-  ovulatory: { title: '회복하는 시기', description: '컨디션은 사람마다 다르게 변할 수 있어요' },
-  luteal: { title: '변화에 대비하는 시기', description: '예측보다 오늘 직접 남긴 상태가 우선이에요' },
-  unknown: { title: '기록이 더 필요해요', description: '주기가 쌓이면 참고 범위를 계산해 드려요' },
+  menstrual: {
+    title: '월경 중',
+    description: '오늘의 몸 상태를 가장 먼저 살펴주세요',
+  },
+  follicular: {
+    title: '회복하는 시기',
+    description: '컨디션은 사람마다 다르게 변할 수 있어요',
+  },
+  ovulatory: {
+    title: '회복하는 시기',
+    description: '컨디션은 사람마다 다르게 변할 수 있어요',
+  },
+  luteal: {
+    title: '변화에 대비하는 시기',
+    description: '예측보다 오늘 직접 남긴 상태가 우선이에요',
+  },
+  unknown: {
+    title: '기록이 더 필요해요',
+    description: '주기가 쌓이면 참고 범위를 계산해 드려요',
+  },
 };
 
 export interface CycleViewModel {
@@ -64,16 +86,60 @@ export function todayLocalDate(): LocalDate {
   return localDate(date.getFullYear(), date.getMonth() + 1, date.getDate());
 }
 
-function buildCurrentCycle(state: CyclePairState) {
-  const lastStart = parseLocalDate(state.seed.lastPeriodStart);
+function observedCycles(state: CyclePairState) {
+  const starts = new Set<string>([state.seed.lastPeriodStart]);
+  for (const entry of state.dailyHistory) {
+    if (entry.checkIn.periodStarted) starts.add(entry.localDate);
+  }
+  return [...starts].sort().map((start, index) =>
+    createCycle({
+      id: `cycle-${index}-${start}`,
+      memberId: SELF_MEMBER_ID,
+      startedOn: parseLocalDate(start),
+    }),
+  );
+}
+
+function predictionForState(
+  state: CyclePairState,
+  today: LocalDate,
+): Prediction {
+  const cycles = observedCycles(state);
+  const observed = predictNextPeriod(cycles, today);
+  if (observed) return observed;
+  const lastStart =
+    cycles.at(-1)?.startedOn ?? parseLocalDate(state.seed.lastPeriodStart);
+  return predictFromCycleSeed({
+    memberId: SELF_MEMBER_ID,
+    generatedOn: today,
+    lastPeriodStart: lastStart,
+    averageCycleLengthDays: state.seed.averageCycleLength,
+  });
+}
+
+function buildCurrentCycle(state: CyclePairState, lastStart: LocalDate) {
   return createCycle({
     id: 'current-cycle',
     memberId: SELF_MEMBER_ID,
     startedOn: lastStart,
+    ...(state.seed.lastPeriodStart === lastStart && state.seed.lastPeriodEnd
+      ? { endedOn: parseLocalDate(state.seed.lastPeriodEnd) }
+      : {}),
   });
 }
 
+const conditionToDomain: Record<
+  NonNullable<DailyCheckIn['condition']>,
+  ConditionCode
+> = {
+  편안해요: 'comfortable',
+  피곤해요: 'tired',
+  '기운이 없어요': 'low-energy',
+  '공간이 필요해요': 'needs-space',
+};
+
 function mapCondition(checkIn: DailyCheckIn): ConditionCode | undefined {
+  if (checkIn.condition) return conditionToDomain[checkIn.condition];
   if (checkIn.symptoms.includes('피로')) return 'tired';
   if (checkIn.symptoms.includes('예민함')) return 'sensitive';
   if (checkIn.symptoms.includes('복통')) return 'cramps';
@@ -81,26 +147,42 @@ function mapCondition(checkIn: DailyCheckIn): ConditionCode | undefined {
   return checkIn.mood ? 'comfortable' : undefined;
 }
 
-function mapHelpPreferences(checkIn: DailyCheckIn): HelpPreference[] | undefined {
-  return checkIn.carePreference ? [preferenceToDomain[checkIn.carePreference]] : undefined;
+function conditionFromSymptoms(
+  symptoms: readonly string[],
+): ConditionCode | undefined {
+  if (symptoms.includes('cramps')) return 'cramps';
+  if (symptoms.includes('headache')) return 'headache';
+  if (symptoms.includes('fatigue')) return 'tired';
+  if (symptoms.includes('sensitive')) return 'sensitive';
+  return undefined;
+}
+
+function mapHelpPreferences(
+  checkIn: DailyCheckIn,
+): HelpPreference[] | undefined {
+  return checkIn.carePreference
+    ? [preferenceToDomain[checkIn.carePreference]]
+    : undefined;
 }
 
 export function buildCycleViewModel(state: CyclePairState): CycleViewModel {
   const today = todayLocalDate();
-  const currentCycle = state.isLogger ? buildCurrentCycle(state) : undefined;
-  const prediction = currentCycle
-    ? predictFromCycleSeed({
-        memberId: SELF_MEMBER_ID,
-        generatedOn: today,
-        lastPeriodStart: currentCycle.startedOn,
-        averageCycleLengthDays: state.seed.averageCycleLength,
-      })
+  const hasPredictionBasis = state.isLogger && state.hasCycleSeed;
+  const prediction = hasPredictionBasis
+    ? predictionForState(state, today)
     : undefined;
-  const phaseResult = state.isLogger
+  const currentCycle = prediction
+    ? buildCurrentCycle(state, prediction.lastPeriodStart)
+    : undefined;
+  const effectiveCycleLength =
+    prediction?.averageCycleLengthDays ?? state.seed.averageCycleLength;
+  const phaseResult = hasPredictionBasis
     ? determineCyclePhase({
         on: today,
-        lastPeriodStart: parseLocalDate(state.seed.lastPeriodStart),
-        averageCycleLengthDays: state.seed.averageCycleLength,
+        lastPeriodStart:
+          prediction?.lastPeriodStart ??
+          parseLocalDate(state.seed.lastPeriodStart),
+        averageCycleLengthDays: effectiveCycleLength,
         periodLengthDays: state.seed.averagePeriodLength,
       })
     : { phase: 'unknown' as const, cycleDay: null };
@@ -111,9 +193,17 @@ export function buildCycleViewModel(state: CyclePairState): CycleViewModel {
     memberId: SELF_MEMBER_ID,
     date: today,
     ...(state.checkIn.mood ? { mood: moodToDomain[state.checkIn.mood] } : {}),
-    ...(state.checkIn.symptoms.length > 0 ? { symptoms: state.checkIn.symptoms } : {}),
-    ...(mapCondition(state.checkIn) ? { condition: mapCondition(state.checkIn) } : {}),
-    ...(mapHelpPreferences(state.checkIn) ? { helpPreferences: mapHelpPreferences(state.checkIn) } : {}),
+    ...(state.checkIn.symptoms.length > 0
+      ? { symptoms: state.checkIn.symptoms }
+      : {}),
+    ...(state.checkIn.energy ? { energy: state.checkIn.energy } : {}),
+    ...(mapCondition(state.checkIn)
+      ? { condition: mapCondition(state.checkIn) }
+      : {}),
+    ...(mapHelpPreferences(state.checkIn)
+      ? { helpPreferences: mapHelpPreferences(state.checkIn) }
+      : {}),
+    ...(state.checkIn.note ? { note: state.checkIn.note } : {}),
   });
 
   const selfSettings = createShareSettings(SELF_MEMBER_ID, today, {
@@ -122,14 +212,16 @@ export function buildCycleViewModel(state: CyclePairState): CycleViewModel {
     prediction: state.shareSettings.predictedPeriod,
     mood: state.shareSettings.mood,
     symptoms: state.shareSettings.symptoms,
-    condition: state.shareSettings.mood,
+    energy: state.shareSettings.energy,
+    condition: state.shareSettings.condition,
     helpPreferences: state.shareSettings.carePreference,
+    note: state.shareSettings.note,
   });
   const selfProjection = projectForPartner(
     {
       subjectMemberId: SELF_MEMBER_ID,
       asOf: today,
-      ...(state.isLogger ? { cyclePhase: phase } : {}),
+      ...(hasPredictionBasis ? { cyclePhase: phase } : {}),
       ...(currentCycle ? { currentCycle } : {}),
       ...(prediction ? { prediction } : {}),
       latestLog,
@@ -137,7 +229,7 @@ export function buildCycleViewModel(state: CyclePairState): CycleViewModel {
     selfSettings,
   );
 
-  const remote = state.partnerProjection;
+  const remote = getSafePartnerProjectionForToday(state.partnerProjection);
   const remoteMood =
     remote?.moodTag === 'very-low' ||
     remote?.moodTag === 'low' ||
@@ -158,19 +250,22 @@ export function buildCycleViewModel(state: CyclePairState): CycleViewModel {
       value === 'no-action',
   );
   const remoteSymptoms = remote?.symptomTags ?? [];
-  const remoteCondition: ConditionCode | undefined = remoteSymptoms.includes('cramps')
-    ? 'cramps'
-    : remoteSymptoms.includes('headache')
-      ? 'headache'
-      : remoteSymptoms.includes('fatigue')
-        ? 'tired'
-        : remoteSymptoms.includes('sensitive')
-          ? 'sensitive'
-          : undefined;
+  const remoteCondition: ConditionCode | undefined =
+    remote?.conditionCode ?? conditionFromSymptoms(remoteSymptoms);
+  const remotePeriodStart = isLocalDate(remote?.periodDates?.startDate)
+    ? remote.periodDates.startDate
+    : undefined;
+  const remotePeriodEnd =
+    remotePeriodStart &&
+    isLocalDate(remote?.periodDates?.endDate) &&
+    remote.periodDates.endDate >= remotePeriodStart
+      ? remote.periodDates.endDate
+      : undefined;
   let partnerAsOf = today;
-  if (remote?.generatedAt) {
+  const sourceLocalDate = remote?.dailyLogDate ?? remote?.cycleAsOfDate;
+  if (sourceLocalDate) {
     try {
-      partnerAsOf = parseLocalDate(remote.generatedAt.slice(0, 10));
+      partnerAsOf = parseLocalDate(sourceLocalDate);
     } catch {
       partnerAsOf = today;
     }
@@ -179,17 +274,19 @@ export function buildCycleViewModel(state: CyclePairState): CycleViewModel {
     subjectMemberId: remote?.ownerUid ?? PARTNER_MEMBER_ID,
     asOf: partnerAsOf,
     ...(remoteMood ? { mood: remoteMood } : {}),
+    ...(remote?.energyLevel ? { energy: remote.energyLevel } : {}),
     ...(remoteCondition ? { condition: remoteCondition } : {}),
-    ...(remotePreferences.length > 0 ? { helpPreferences: remotePreferences } : {}),
+    ...(remotePreferences.length > 0
+      ? { helpPreferences: remotePreferences }
+      : {}),
     ...(remoteSymptoms.length > 0 ? { symptoms: remoteSymptoms } : {}),
+    ...(remote?.note ? { note: remote.note } : {}),
     ...(remote?.cyclePhase ? { cyclePhase: remote.cyclePhase } : {}),
-    ...(remote?.periodDates
+    ...(remotePeriodStart
       ? {
           periodDates: {
-            start: parseLocalDate(remote.periodDates.startDate),
-            ...(remote.periodDates.endDate
-              ? { end: parseLocalDate(remote.periodDates.endDate) }
-              : {}),
+            start: remotePeriodStart,
+            ...(remotePeriodEnd ? { end: remotePeriodEnd } : {}),
           },
         }
       : {}),

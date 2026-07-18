@@ -57,6 +57,7 @@ export function PrimaryButton({
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
       testID={testID}
@@ -75,21 +76,26 @@ export function SecondaryButton({
   onPress,
   compact = false,
   danger = false,
+  disabled = false,
 }: {
   label: string;
   onPress(): void;
   compact?: boolean;
   danger?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityState={{ disabled }}
+      disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
         styles.secondaryButton,
         compact && styles.secondaryButtonCompact,
         danger && styles.dangerButton,
         pressed && styles.buttonPressed,
+        disabled && styles.buttonDisabled,
       ]}>
       <Text style={[styles.secondaryButtonText, danger && styles.dangerText]}>{label}</Text>
     </Pressable>
@@ -177,11 +183,13 @@ export function ToggleRow({
   description,
   value,
   onValueChange,
+  disabled = false,
 }: {
   title: string;
   description?: string;
   value: boolean;
   onValueChange(value: boolean): void;
+  disabled?: boolean;
 }) {
   return (
     <View style={styles.toggleRow}>
@@ -190,6 +198,10 @@ export function ToggleRow({
         {description ? <Text style={styles.toggleDescription}>{description}</Text> : null}
       </View>
       <Switch
+        accessibilityLabel={title}
+        accessibilityHint={description}
+        accessibilityState={{ checked: value, disabled }}
+        disabled={disabled}
         value={value}
         onValueChange={onValueChange}
         trackColor={{ false: colors.border, true: colors.primarySoft }}
@@ -207,6 +219,7 @@ export function Stepper({
   min,
   max,
   onChange,
+  disabled = false,
 }: {
   label: string;
   value: number;
@@ -214,6 +227,7 @@ export function Stepper({
   min: number;
   max: number;
   onChange(value: number): void;
+  disabled?: boolean;
 }) {
   return (
     <View style={styles.stepperRow}>
@@ -222,9 +236,10 @@ export function Stepper({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`${label} 줄이기`}
-          disabled={value <= min}
+          accessibilityState={{ disabled: disabled || value <= min }}
+          disabled={disabled || value <= min}
           onPress={() => onChange(value - 1)}
-          style={styles.stepperButton}>
+          style={[styles.stepperButton, disabled && styles.buttonDisabled]}>
           <Text style={styles.stepperSymbol}>−</Text>
         </Pressable>
         <Text style={styles.stepperValue}>
@@ -233,9 +248,10 @@ export function Stepper({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`${label} 늘리기`}
-          disabled={value >= max}
+          accessibilityState={{ disabled: disabled || value >= max }}
+          disabled={disabled || value >= max}
           onPress={() => onChange(value + 1)}
-          style={styles.stepperButton}>
+          style={[styles.stepperButton, disabled && styles.buttonDisabled]}>
           <Text style={styles.stepperSymbol}>＋</Text>
         </Pressable>
       </View>
@@ -259,6 +275,7 @@ export function BottomTabs({ value, onChange }: { value: MainTab; onChange(tab: 
         return (
           <Pressable
             accessibilityRole="tab"
+            accessibilityLabel={tab.label}
             accessibilityState={{ selected }}
             key={tab.key}
             onPress={() => onChange(tab.key)}
