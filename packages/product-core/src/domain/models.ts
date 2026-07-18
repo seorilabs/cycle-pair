@@ -1,4 +1,5 @@
 import type { LocalDate } from "./local-date.js";
+import type { IsoTimestamp } from "./iso-timestamp.js";
 
 export type MemberId = string;
 export type PairId = string;
@@ -161,17 +162,53 @@ export type EntitlementFeature =
 
 export type SubscriptionStatus =
   | "none"
+  | "pending"
   | "trialing"
   | "active"
   | "grace-period"
+  | "on-hold"
   | "canceled"
   | "expired"
   | "revoked"
+  | "refunded"
+  | "unknown";
+
+export type SubscriptionProvider = "google-play" | "app-store";
+
+export type SubscriptionRenewalState =
+  | "will-renew"
+  | "canceled"
+  | "billing-retry"
+  | "paused"
+  | "unknown";
+
+export type SubscriptionPaymentState =
+  | "pending"
+  | "paid"
+  | "grace-period"
+  | "on-hold"
+  | "expired"
+  | "revoked"
+  | "refunded"
   | "unknown";
 
 export interface SubscriptionSnapshot {
   readonly status: SubscriptionStatus;
+  /** Present on every newly server-verified snapshot. */
+  readonly provider?: SubscriptionProvider;
+  /** Exact App Store product ID or Google Play subscription product ID. */
+  readonly productId?: string;
+  /** Exact Google base plan ID or the app's normalized Apple plan ID. */
+  readonly basePlanId?: string;
+  readonly renewalState?: SubscriptionRenewalState;
+  readonly paymentState?: SubscriptionPaymentState;
+  /** Exact paid-through instant. This is authoritative for new snapshots. */
+  readonly expiresAt?: IsoTimestamp;
+  readonly gracePeriodExpiresAt?: IsoTimestamp;
+  readonly verifiedAt?: IsoTimestamp;
+  /** @deprecated Migration-only day-granular expiry. */
   readonly currentPeriodEnd?: LocalDate;
+  /** @deprecated Migration-only day-granular grace expiry. */
   readonly gracePeriodEnd?: LocalDate;
 }
 
@@ -184,6 +221,10 @@ export interface Entitlement {
     | "trial"
     | "grace-period"
     | "canceled-but-valid"
+    | "pending-payment"
+    | "account-hold"
+    | "revoked"
+    | "refunded"
     | "expired"
     | "invalid-subscription-state";
   readonly validUntil?: LocalDate;
