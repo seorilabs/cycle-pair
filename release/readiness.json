@@ -1,0 +1,135 @@
+{
+  "schemaVersion": 1,
+  "targetMarkets": {
+    "googlePlay": {
+      "included": true,
+      "status": "verified",
+      "verifiedAt": "2026-07-14",
+      "evidence": "Cycle Pair MVP Android native target"
+    },
+    "appStore": {
+      "included": true,
+      "status": "verified",
+      "verifiedAt": "2026-07-14",
+      "evidence": "Cycle Pair MVP iOS native target"
+    },
+    "appsInToss": {
+      "included": false,
+      "status": "verified",
+      "verifiedAt": "2026-07-14",
+      "evidence": "민감 건강정보, 계정, 파트너 공유, 구독을 포함한 현재 MVP 범위에서 AppsInToss를 명시적으로 제외"
+    }
+  },
+  "artifacts": {
+    "googlePlaySignedAab": {
+      "status": "missing",
+      "path": null,
+      "sha256": null,
+      "format": "android-app-bundle",
+      "packageName": "com.seorilabs.cyclepair",
+      "versionName": null,
+      "versionCode": null,
+      "signing": {
+        "certificateSha256": null
+      },
+      "verifiedAt": null,
+      "evidence": null
+    },
+    "appStoreArchive": {
+      "status": "missing",
+      "path": null,
+      "sha256": null,
+      "format": "xcarchive-zip",
+      "bundleId": "com.seorilabs.cyclepair",
+      "marketingVersion": null,
+      "buildNumber": null,
+      "signing": {
+        "teamId": "HCDUXX4Z3X"
+      },
+      "verifiedAt": null,
+      "evidence": null
+    },
+    "appsInTossPackage": {
+      "status": "missing",
+      "path": null,
+      "sha256": null,
+      "verifiedAt": null,
+      "evidence": null
+    }
+  },
+  "console": {
+    "googlePlayApp": {
+      "status": "missing",
+      "verifiedAt": null,
+      "evidence": null
+    },
+    "appStoreConnectApp": {
+      "status": "missing",
+      "verifiedAt": null,
+      "evidence": null
+    },
+    "appsInTossApp": {
+      "status": "missing",
+      "verifiedAt": null,
+      "evidence": null
+    }
+  },
+  "policy": {
+    "googlePlayDataSafety": {
+      "status": "missing",
+      "verifiedAt": null,
+      "evidence": null
+    },
+    "appStorePrivacy": {
+      "status": "missing",
+      "verifiedAt": null,
+      "evidence": null
+    },
+    "appsInTossCompatibility": {
+      "status": "missing",
+      "verifiedAt": null,
+      "evidence": null
+    }
+  },
+  "privacy": {
+    "privacyPolicy": {
+      "status": "missing",
+      "verifiedAt": null,
+      "evidence": null
+    },
+    "accountDeletionPage": {
+      "status": "missing",
+      "verifiedAt": null,
+      "evidence": null
+    },
+    "sensitiveHealthConsent": {
+      "status": "missing",
+      "verifiedAt": null,
+      "evidence": null
+    }
+  },
+  "manualTests": {
+    "googlePlayTwoPerson": {
+      "status": "missing",
+      "verifiedAt": null,
+      "evidence": null
+    },
+    "testFlightTwoPerson": {
+      "status": "missing",
+      "verifiedAt": null,
+      "evidence": null
+    },
+    "appsInTossSandboxTwoPerson": {
+      "status": "missing",
+      "verifiedAt": null,
+      "evidence": null
+    }
+  },
+  "approvals": {
+    "deployment": {
+      "status": "missing",
+      "verifiedAt": null,
+      "evidence": null
+    }
+  }
+}

@@ -94,7 +94,7 @@ Firestore Rules는 문서 읽기 중 일부 필드를 가릴 수 없다. 따라�
 - 사용자당 60분 동안 최대 5개 생성으로 rate limit한다.
 - 자기 초대와 이미 연결된 사용자 수락을 차단한다.
 - 수락 시 Pair와 사용자 연결 상태를 하나의 transaction으로 만든다.
-- 감사로그와 만료 문서 보존기간은 확정 필요다.
+- 만료된 invite 문서는 `expiresAt` 후 7일 보존하고 daily schedule이 정리한다.
 
 ## partner projection
 
@@ -138,7 +138,7 @@ sequenceDiagram
   B->>DB: ack
 ~~~
 
-owner-private 원본은 연결 해제만으로 삭제하지 않는다. 계정 삭제는 raw data, projection, invite, FCM token, subscription snapshot을 별도 recursive cleanup으로 처리한다. 보존기간과 백업 삭제 약속은 개인정보 처리방침 확정 전까지 출시 blocker다.
+owner-private 원본은 연결 해제만으로 삭제하지 않는다. 계정 삭제는 raw data, projection, invite, FCM token, subscription snapshot을 별도 recursive cleanup으로 처리한다. cache tombstone은 앱이 캐시 삭제를 완료해 `acknowledged`가 된 시점부터 30일 보존한다. pending/unacknowledged tombstone은 cleanup 대상이 아니며, query 뒤 transaction 재검증으로 상태 경합 시 삭제를 거부한다. 별도 Pair 감사로그와 백업 삭제 약속은 개인정보 처리방침 확정 전까지 출시 blocker다.
 
 ## 날짜와 동기화
 
@@ -168,7 +168,7 @@ owner-private 원본은 연결 해제만으로 삭제하지 않는다. 계정 �
 
 ## E2E 암호화
 
-MVP에서는 Firebase 저장·전송 암호화, Rules, projection 분리, App Check, 최소 수집을 사용한다. E2E는 서버 예측·알림·복구·다기기 동기화와 충돌하므로 이번 MVP에서 구현하지 않는다. 출시 전 위협모델을 검토하고, 실제 위험과 기능 요구를 바탕으로 후속 ADR에서 다시 결정한다.
+MVP에서는 Firebase 저장·전송 암호화, Rules, projection 분리, 최소 수집을 사용한다. 모바일 App Check attestation 경로는 구현했지만 운영 provider 등록과 Firestore/Callable 강제는 release gate로 남아 있어 현재 배포를 App Check 보호 상태로 표현하지 않는다. E2E는 서버 예측·알림·복구·다기기 동기화와 충돌하므로 이번 MVP에서 구현하지 않는다. 출시 전 위협모델을 검토하고, 실제 위험과 기능 요구를 바탕으로 후속 ADR에서 다시 결정한다.
 
 ## release invariant
 

@@ -14,7 +14,7 @@ MVP에는 애플리케이션 수준 E2E 암호화를 구현하지 않는다. 대
 
 - owner-private 원본과 partner projection 물리 분리
 - 최소 공유 기본값과 명시적 opt-in
-- Firebase Auth, Security Rules, App Check
+- Firebase Auth, Security Rules, 모바일 App Check attestation과 운영 강제 gate
 - HTTPS/TLS와 Firebase 저장 암호화
 - Admin Function의 명시적 권한 검사
 - 중립 알림

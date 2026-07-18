@@ -155,6 +155,6 @@ flowchart TD
 - 다운로드 가격과 무료·프리미엄 경계
 - 구독 상품과 가격
 - 개인정보 처리방침·민감정보 별도 동의문
-- 데이터·감사로그·tombstone 보존기간
+- Pair 감사로그·백업 삭제기간. 만료 invite는 `expiresAt` 후 7일, acknowledged cache tombstone은 `acknowledgedAt` 후 30일 보존으로 확정
 - 앱 연령등급
 - 최종 예측 설명 문구와 케어 콘텐츠 검수

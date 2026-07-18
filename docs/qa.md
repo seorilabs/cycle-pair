@@ -14,6 +14,26 @@
 
 check:release는 현재 의도적으로 실패해야 한다. 정책 답변, 서명 빌드, 콘솔 입력과 deployment approval이 확정되지 않았기 때문이다.
 
+## 2026-07-14 구현 검증 스냅샷
+
+아래는 문서 작성 시점까지 실제로 PASS가 확인된 단위별 결과다. 각 결과는 실행 시점의 worktree를 증명하며, 모든 후속 변경을 포함한 하나의 최종 release gate를 의미하지 않는다.
+
+| 항목 | 결과 | 증거·한계 |
+| --- | --- | --- |
+| product-core | PASS | 7 files, 42 tests; architecture PASS |
+| mobile lint·typecheck·unit | PASS | ESLint, TypeScript, Jest 29 suites/184 tests |
+| `check:mobile` | PASS | 최신 worktree에서 native Firebase selector, ESLint, TypeScript, Jest 29 suites/184 tests, iOS/Android production JS bundle을 한 번에 검증 |
+| Firebase Functions | PASS | Node.js 22, 11 files/61 tests; build PASS |
+| Firestore Rules | PASS | Emulator 19 tests |
+| App Check client/static | PASS | 환경·provider·fail-closed gate·재시도 targeted Jest 3 suites/8 tests, dependency·초기화·운영 evidence checker tests. 운영 token/강제 상태는 미검증 |
+| release checker unit | PASS | 31 tests; native Firebase selector, App Check, production capability·deployment provenance, AAB JAR signature·xcarchive plist/codesign 검사 PASS |
+| Android native | PASS | JDK 17 Debug APK에 RNFB App Check·Debug/Play Integrity provider가 링크되어 재빌드됨. `com.seorilabs.cyclepair`, 연결 실기기에서 solo 홈·기록 화면·hardware back·계정 설정을 확인했고 치명 로그 없음 |
+| iOS native | PASS | RNFB App Check·App Attest entitlement가 링크된 arm64 Simulator clean Debug build. 생성된 `Info.plist`의 global collection=false·App Check token refresh=true 검증 |
+| Firebase 전체·통합 | PASS | Node.js 22 `pnpm --dir firebase check`: Functions build, 61 unit tests, Rules 19 tests, Auth+Firestore+Functions Emulator E2E 5 tests. 외부 credential을 차단하고 repo 전용 port 9399/8380/5301 사용 |
+| release inventory | EXPECTED FAIL | production Firebase/config/deployment, 서명, 마켓 콘솔·정책, privacy, deployment approval blocker를 정상 탐지 |
+
+따라서 현재 판정은 `production-ready`가 아니라 `내부 alpha/closed beta 후보`다. 개발 Firebase의 2026-07-13 live 배포는 이후 Functions·Rules source 변경을 포함하지 않으므로 현재 source의 배포 검증으로 간주하지 않는다.
+
 ## 2026-07-13 Cycle Pair 전환 검증 현황
 
 | 항목 | 결과 | 증거 |

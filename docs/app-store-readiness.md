@@ -48,6 +48,7 @@ Health 데이터 공유는 사용자 제어 기능의 본질이므로 review not
 - [ ] 실제 iPhone screenshots
 - [ ] universal target iPad QA와 13-inch iPad screenshots
 - [ ] archive와 TestFlight 처리 완료
+- [ ] App Attest capability가 포함된 provisioning과 production Firebase App Check provider·Firestore/Callable 강제 live 검증
 - [ ] 2인 TestFlight 테스트
 - [ ] deployment 승인과 Submit for Review
 

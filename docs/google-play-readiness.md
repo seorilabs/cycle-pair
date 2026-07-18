@@ -1,8 +1,34 @@
 # Google Play readiness
 
-현재 상태는 구현 시작 가능, 등록·배포 불가다. 기계 판독 source of truth는 [google-play.config.json](../play-store/google-play.config.json)이다.
+현재 상태는 release candidate 준비 중이며 등록·배포 불가다. 마켓 메타데이터 source of truth는 [google-play.config.json](../play-store/google-play.config.json), artifact·Console·수동 검증 evidence는 [readiness.json](../release/readiness.json)이다.
 
 출시 이름은 `Cycle Pair`, 영구 Android package name은 `com.seorilabs.cyclepair`로 확정했다. Play Console 앱 shell과 release signing은 아직 만들지 않았다.
+
+Android `targetSdkVersion`은 36으로, 현재 Google Play의 신규 앱·업데이트 최소 기준인 API 35 이상을 충족한다. 이 값은 제출 시점에도 [Google 공식 요구사항](https://developer.android.com/google/play/requirements/target-sdk)에서 다시 확인한다.
+
+## Android release signing
+
+Debug 빌드는 저장소의 debug keystore만 사용하며 서명 비밀값 없이 실행할 수 있다. Release 빌드는 debug keystore로 fallback하지 않는다. upload key 설정이 없거나 `debug.keystore`를 지정하면 `preReleaseBuild`의 `verifyReleasePrerequisites` gate가 운영 Firebase와 서명 문제를 함께 열거하고 중단한다. 서명만 독립 확인할 때는 `./gradlew :app:verifyReleaseSigning`을 사용한다.
+
+로컬에서는 예제 파일을 복사한 뒤 실제 upload keystore의 저장소 외부 절대 경로와 비밀값을 입력한다. `keystore.properties`와 keystore 파일은 Git에서 무시된다.
+
+~~~bash
+cp apps/mobile/android/keystore.properties.example apps/mobile/android/keystore.properties
+pnpm --filter @cyclepair/mobile build:android:debug
+
+# deployment approval 후 release candidate를 만들 때만 실행
+cd apps/mobile/android
+./gradlew bundleRelease
+~~~
+
+CI는 파일 대신 아래 환경변수를 사용할 수 있다. 값이나 keystore를 로그·artifact·저장소에 남기지 않는다.
+
+- `CYCLEPAIR_ANDROID_UPLOAD_STORE_FILE`
+- `CYCLEPAIR_ANDROID_UPLOAD_STORE_PASSWORD`
+- `CYCLEPAIR_ANDROID_UPLOAD_KEY_ALIAS`
+- `CYCLEPAIR_ANDROID_UPLOAD_KEY_PASSWORD`
+
+서명 artifact를 만들고 별도로 검증한 뒤 `release/readiness.json`의 `artifacts.googlePlaySignedAab`에 repo-relative path, SHA-256, 검증 시각, evidence를 기록한다. 파일 또는 hash가 달라지면 `check:release`가 다시 차단한다.
 
 ## 확정된 내용
 
@@ -46,6 +72,7 @@
 - [ ] 1024x500 feature graphic과 실제 phone screenshots
 - [ ] large/xlarge 지원 기준 7-inch·10-inch tablet screenshots 각 2장 이상
 - [ ] signed AAB
+- [ ] production Firebase Play Integrity App Check provider 등록과 Firestore/Callable 강제 live 검증
 - [ ] internal track 2인 테스트
 - [ ] production access와 deployment 승인
 
