@@ -1,0 +1,46 @@
+import {describe, expect, test} from "vitest";
+
+import * as deployedFunctions from "../src/index.js";
+import {
+  ACCOUNT_DELETION_FINALIZER_SCHEDULE,
+} from "../src/domain/accountLifecycle.js";
+import {
+  RETENTION_CLEANUP_SCHEDULE,
+  RETENTION_CLEANUP_TIME_ZONE,
+} from "../src/domain/retentionPolicy.js";
+
+interface EndpointDefinition {
+  readonly scheduleTrigger?: {
+    readonly schedule?: string;
+    readonly timeZone?: string;
+  };
+}
+
+function endpoint(value: unknown): EndpointDefinition | undefined {
+  return (value as {readonly __endpoint?: EndpointDefinition}).__endpoint;
+}
+
+describe("Functions deployment manifest", () => {
+  test("contains the bounded daily Pair retention schedule", () => {
+    const endpoints = Object.entries(deployedFunctions)
+      .filter(([, value]) => endpoint(value) !== undefined);
+    const retentionEndpoint = endpoint(
+      deployedFunctions.cleanupExpiredPairRetentionData,
+    );
+
+    expect(endpoints).toHaveLength(24);
+    expect(retentionEndpoint?.scheduleTrigger).toMatchObject({
+      schedule: RETENTION_CLEANUP_SCHEDULE,
+      timeZone: RETENTION_CLEANUP_TIME_ZONE,
+    });
+  });
+
+  test("contains the bounded pending account deletion finalizer", () => {
+    const finalizerEndpoint = endpoint(
+      deployedFunctions.finalizePendingAccountDeletions,
+    );
+    expect(finalizerEndpoint?.scheduleTrigger).toMatchObject({
+      schedule: ACCOUNT_DELETION_FINALIZER_SCHEDULE,
+    });
+  });
+});

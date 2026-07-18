@@ -10,6 +10,13 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == uid;
     }
 
+    function accountMutationAllowed(uid) {
+      return isOwner(uid)
+        && !exists(
+          /databases/$(database)/documents/accountDeletionStates/$(uid)
+        );
+    }
+
     function activePair(pairId) {
       return get(/databases/$(database)/documents/pairs/$(pairId));
     }
@@ -22,20 +29,218 @@ service cloud.firestore {
         && request.auth.uid in pair.data.memberUids;
     }
 
+    function isOptionalString(data, field, maxLength) {
+      return !(field in data)
+        || (data[field] is string && data[field].size() <= maxLength);
+    }
+
+    function isOptionalBoolean(data, field) {
+      return !(field in data) || data[field] is bool;
+    }
+
+    function localDateTimestamp(value) {
+      return timestamp.date(
+        int(value[0:4]),
+        int(value[5:7]),
+        int(value[8:10])
+      );
+    }
+
+    function isGregorianLocalDate(value) {
+      return value is string
+        && value.matches('^\\d{4}-\\d{2}-\\d{2}$')
+        && localDateTimestamp(value).year() == int(value[0:4])
+        && localDateTimestamp(value).month() == int(value[5:7])
+        && localDateTimestamp(value).day() == int(value[8:10]);
+    }
+
+    // One UTC day of headroom covers legitimate LocalDates in UTC+14 while
+    // rejecting forged records dated materially in the future.
+    function isReasonableRecordedLocalDate(value) {
+      return isGregorianLocalDate(value)
+        && localDateTimestamp(value) >= timestamp.date(1900, 1, 1)
+        && localDateTimestamp(value) <= request.time + duration.value(1, 'd');
+    }
+
+    function isValidPeriodDates(value) {
+      return value is map
+        && value.keys().hasOnly(['startDate', 'endDate'])
+        && value.keys().hasAll(['startDate'])
+        && isReasonableRecordedLocalDate(value.startDate)
+        && (!('endDate' in value)
+          || (isReasonableRecordedLocalDate(value.endDate)
+            && value.endDate >= value.startDate));
+    }
+
+    function isValidPredictionWindow(value, periodStartDate) {
+      return value is map
+        && value.keys().hasOnly(['startDate', 'endDate'])
+        && value.keys().hasAll(['startDate', 'endDate'])
+        && isGregorianLocalDate(value.startDate)
+        && isGregorianLocalDate(value.endDate)
+        && value.startDate <= value.endDate
+        && localDateTimestamp(value.startDate) >= localDateTimestamp(periodStartDate)
+        && localDateTimestamp(value.endDate)
+          <= localDateTimestamp(periodStartDate) + duration.value(90, 'd');
+    }
+
+    function isValidPrivateCycle(cycleId) {
+      let data = request.resource.data;
+      return cycleId == 'current'
+        && data.keys().hasOnly([
+          'schemaVersion', 'recordsCycle', 'consentAcceptedAt', 'asOfDate',
+          'averageCycleLength', 'averagePeriodLength', 'periodDates',
+          'cyclePhase', 'nextPeriodWindow', 'updatedAt'
+        ])
+        && data.keys().hasAll([
+          'schemaVersion', 'recordsCycle', 'consentAcceptedAt', 'updatedAt'
+        ])
+        && data.schemaVersion == 1
+        && data.recordsCycle is bool
+        && data.consentAcceptedAt is string
+        && data.consentAcceptedAt.matches(
+          '^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}[.]\\d{3}Z$'
+        )
+        && data.updatedAt is timestamp
+        && data.updatedAt == request.time
+        && ((data.keys().hasOnly([
+              'schemaVersion', 'recordsCycle', 'consentAcceptedAt', 'updatedAt'
+            ]))
+          || (data.recordsCycle
+            && data.keys().hasAll([
+              'asOfDate', 'averageCycleLength', 'averagePeriodLength',
+              'periodDates', 'cyclePhase', 'nextPeriodWindow'
+            ])
+            && isReasonableRecordedLocalDate(data.asOfDate)
+            && data.averageCycleLength is int
+            && data.averageCycleLength >= 15
+            && data.averageCycleLength <= 60
+            && data.averagePeriodLength is int
+            && data.averagePeriodLength >= 1
+            && data.averagePeriodLength <= 14
+            && data.averagePeriodLength <= data.averageCycleLength
+            && isValidPeriodDates(data.periodDates)
+            && data.asOfDate >= data.periodDates.startDate
+            && data.cyclePhase in [
+              'menstrual', 'follicular', 'luteal', 'unknown'
+            ]
+            && isValidPredictionWindow(
+              data.nextPeriodWindow,
+              data.periodDates.startDate
+            )));
+    }
+
+    function isValidPrivateDailyLog(logId) {
+      let data = request.resource.data;
+      return data.keys().hasOnly([
+          'schemaVersion',
+          'localDate',
+          'lastMutationId',
+          'updatedAt',
+          'moodTag',
+          'symptomTags',
+          'energyLevel',
+          'conditionCode',
+          'carePreferences',
+          'note',
+          'periodStarted',
+          'periodEnded'
+        ])
+        && data.keys().hasAll([
+          'schemaVersion',
+          'localDate',
+          'lastMutationId',
+          'updatedAt'
+        ])
+        && data.schemaVersion == 2
+        && data.localDate == logId
+        && isReasonableRecordedLocalDate(data.localDate)
+        && data.lastMutationId is string
+        && data.lastMutationId.size() > 0
+        && data.lastMutationId.size() <= 128
+        && data.updatedAt is timestamp
+        && data.updatedAt == request.time
+        && isOptionalString(data, 'moodTag', 32)
+        && (!('moodTag' in data) || data.moodTag in [
+          'very-low', 'low', 'neutral', 'good', 'very-good'
+        ])
+        && (!('symptomTags' in data)
+          || (data.symptomTags is list
+            && data.symptomTags.size() <= 12
+            && data.symptomTags.hasOnly([
+              'cramps', 'headache', 'fatigue', 'bloating',
+              'sensitive', 'back-discomfort'
+            ])))
+        && (!('energyLevel' in data)
+          || (data.energyLevel is int
+            && data.energyLevel >= 1
+            && data.energyLevel <= 5))
+        && isOptionalString(data, 'conditionCode', 32)
+        && (!('conditionCode' in data) || data.conditionCode in [
+          'comfortable', 'tired', 'low-energy', 'needs-space'
+        ])
+        && (!('carePreferences' in data)
+          || (data.carePreferences is list
+            && data.carePreferences.size() <= 1
+            && data.carePreferences.hasOnly([
+              'quiet-space', 'warmth', 'listen', 'no-action'
+            ])))
+        && isOptionalString(data, 'note', 500)
+        && isOptionalBoolean(data, 'periodStarted')
+        && isOptionalBoolean(data, 'periodEnded')
+        && (!(('periodStarted' in data) && data.periodStarted == true)
+          || !(('periodEnded' in data) && data.periodEnded == true));
+    }
+
+    function isValidShareSettings() {
+      let data = request.resource.data;
+      return data.keys().hasOnly([
+          'schemaVersion', 'updatedAt', 'cyclePhase', 'nextPeriodWindow',
+          'periodDates', 'moodTag', 'symptomTags', 'energyLevel',
+          'conditionCode', 'carePreferences', 'note'
+        ])
+        && data.keys().hasAll([
+          'schemaVersion', 'updatedAt', 'cyclePhase', 'nextPeriodWindow',
+          'periodDates', 'moodTag', 'symptomTags', 'energyLevel',
+          'conditionCode', 'carePreferences', 'note'
+        ])
+        && data.schemaVersion == 1
+        && data.updatedAt is timestamp
+        && data.cyclePhase is bool
+        && data.nextPeriodWindow is bool
+        && data.periodDates is bool
+        && data.moodTag is bool
+        && data.symptomTags is bool
+        && data.energyLevel is bool
+        && data.conditionCode is bool
+        && data.carePreferences is bool
+        && data.note is bool;
+    }
+
     // Firestore cannot hide selected fields inside a readable document.
     // Raw cycle and daily-log records therefore live in owner-only collections.
     match /users/{uid}/privateCycles/{cycleId} {
-      allow read, write: if isOwner(uid);
+      allow read: if isOwner(uid);
+      allow create, update: if accountMutationAllowed(uid)
+        && isValidPrivateCycle(cycleId);
+      allow delete: if false;
     }
 
     match /users/{uid}/privateDailyLogs/{logId} {
-      allow read, write: if isOwner(uid);
+      allow read: if isOwner(uid);
+      allow create, update: if accountMutationAllowed(uid)
+        && isValidPrivateDailyLog(logId);
+      allow delete: if false;
     }
 
     // Sharing consent is scoped to one Pair. A new Pair has no settings
     // document and therefore starts with every health field private.
     match /users/{uid}/shareSettings/{pairId} {
-      allow read, write: if isOwner(uid);
+      allow read: if isOwner(uid);
+      allow create, update: if accountMutationAllowed(uid)
+        && isActivePairMember(pairId)
+        && isValidShareSettings();
+      allow delete: if false;
     }
 
     // The Functions Admin SDK owns pair lifecycle state. Clients may only read
@@ -52,6 +257,33 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // FCM registration tokens and delivery preferences are credentials owned
+    // exclusively by callable Functions. Even the owning client cannot read
+    // raw tokens back from Firestore or bypass the per-user device limit.
+    match /users/{uid}/notificationDevices/{deviceId} {
+      allow read, write: if false;
+    }
+
+    // Store evidence is verified and written only by Functions. The owner may
+    // read the normalized subscription and stable pseudonymous account token,
+    // but can never grant or mutate an entitlement from the client.
+    match /subscriptions/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if false;
+    }
+
+    match /purchaseStates/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if false;
+    }
+
+    // The document ID is sha256(provider:stablePurchaseId), never a raw receipt.
+    // A binding is visible only to its current owner and remains server-written.
+    match /purchaseTokens/{bindingId} {
+      allow read: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow write: if false;
+    }
+
     match /pairs/{pairId} {
       allow read: if isSignedIn()
         && resource.data.status == 'active'
@@ -64,6 +296,20 @@ service cloud.firestore {
       match /projections/{ownerUid} {
         allow read: if isActivePairMember(pairId);
         allow write: if false;
+      }
+
+      // Shared calendar writes go through callable Functions so membership,
+      // validation, audit fields, and mutation idempotency are enforced in one
+      // server transaction. Revoking the parent Pair immediately denies reads.
+      match /events/{eventId} {
+        allow read: if isActivePairMember(pairId);
+        allow write: if false;
+      }
+
+      // Mutation receipts are an implementation detail and may contain actor
+      // identifiers. Clients never need to read or write them directly.
+      match /eventMutations/{mutationId} {
+        allow read, write: if false;
       }
     }
 
@@ -82,6 +328,18 @@ service cloud.firestore {
     }
 
     match /pairTombstones/{pairId} {
+      allow read, write: if false;
+    }
+
+    // Account exports are generated only after a short-lived, single-use
+    // bearer ticket is consumed by the HTTPS function. The raw token and JSON
+    // are never stored; both the token-hash metadata and the per-user pointer
+    // remain inaccessible to every client SDK.
+    match /accountExportTickets/{tokenHash} {
+      allow read, write: if false;
+    }
+
+    match /accountExportStates/{uid} {
       allow read, write: if false;
     }
 

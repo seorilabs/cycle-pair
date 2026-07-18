@@ -1,7 +1,19 @@
 {
+  "react-native": {
+    "app_data_collection_default_enabled": false,
+    "app_check_token_auto_refresh": true,
+    "analytics_auto_collection_enabled": false,
+    "google_analytics_automatic_screen_reporting_enabled": false,
+    "crashlytics_auto_collection_enabled": false,
+    "crashlytics_debug_enabled": false,
+    "crashlytics_ndk_enabled": false,
+    "messaging_auto_init_enabled": false,
+    "messaging_ios_auto_register_for_remote_messages": false
+  },
   "auth": {
     "providers": {
-      "anonymous": true
+      "anonymous": true,
+      "emailPassword": true
     }
   },
   "firestore": {
@@ -25,20 +37,18 @@
   "emulators": {
     "auth": {
       "host": "127.0.0.1",
-      "port": 9099
+      "port": 9399
     },
     "firestore": {
       "host": "127.0.0.1",
-      "port": 8080
+      "port": 8380
     },
     "functions": {
       "host": "127.0.0.1",
-      "port": 5001
+      "port": 5301
     },
     "ui": {
-      "enabled": true,
-      "host": "127.0.0.1",
-      "port": 4000
+      "enabled": false
     },
     "singleProjectMode": true
   }
