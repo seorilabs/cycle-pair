@@ -1,0 +1,136 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: JS/TS 품질 검사
+    runs-on: seorilabs-rpi-arm64
+    timeout-minutes: 30
+
+    steps:
+      - name: 저장소 체크아웃
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: pnpm 설정
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11.3.0
+          run_install: false
+
+      - name: Node.js 설정
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.16.0
+          check-latest: false
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: 의존성 설치
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: TypeScript 타입 검사
+        run: pnpm typecheck
+
+      - name: 아키텍처 검사
+        run: pnpm check:architecture
+
+      - name: Native Firebase 환경 선택 검사
+        run: pnpm check:native-firebase-config
+
+      - name: 제품 코어 테스트
+        run: pnpm test:core
+
+      - name: 모바일 테스트
+        run: pnpm test:mobile
+
+      - name: iOS 및 Android 프로덕션 JS 번들 생성
+        run: |
+          mkdir -p apps/mobile/build/bundles
+          pnpm --filter @cyclepair/mobile bundle:ios
+          pnpm --filter @cyclepair/mobile bundle:android
+
+      - name: JS 번들 업로드
+        uses: actions/upload-artifact@v7
+        with:
+          name: cyclepair-js-bundles
+          path: apps/mobile/build/bundles/*.jsbundle
+          if-no-files-found: error
+          retention-days: 3
+
+  firebase:
+    name: Firebase 검사
+    runs-on: seorilabs-rpi-arm64
+    timeout-minutes: 40
+
+    steps:
+      - name: 저장소 체크아웃
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: pnpm 설정
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11.3.0
+          run_install: false
+
+      - name: Node.js 설정
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          check-latest: false
+          cache: pnpm
+          cache-dependency-path: firebase/pnpm-lock.yaml
+
+      - name: Java 설정
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Firebase 의존성 설치
+        run: pnpm --dir firebase install --frozen-lockfile
+
+      - name: Firebase 빌드 및 테스트
+        run: pnpm --dir firebase check
+
+      - name: 릴리스 판정기 회귀 테스트
+        run: pnpm test:release
+
+  required:
+    name: required
+    if: ${{ always() }}
+    needs:
+      - quality
+      - firebase
+    runs-on: seorilabs-rpi-arm64
+    timeout-minutes: 5
+
+    steps:
+      - name: 필수 검사 결과 확인
+        env:
+          QUALITY_RESULT: ${{ needs.quality.result }}
+          FIREBASE_RESULT: ${{ needs.firebase.result }}
+        run: |
+          test "$QUALITY_RESULT" = "success"
+          test "$FIREBASE_RESULT" = "success"

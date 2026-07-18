@@ -3,6 +3,7 @@ node_modules/
 .env
 .env.*
 !.env.example
+**/.secret.local
 *.log
 coverage/
 dist/
@@ -21,6 +22,8 @@ ui-debug.log
 **/.granite/
 **/.swc/
 *.ait
+# Native Firebase client configs are injected per build environment. Keep the
+# real files local or in CI secrets; tracked *.example markers document paths.
 google-services.json
 GoogleService-Info.plist
 **/service-account*.json
@@ -29,6 +32,9 @@ GoogleService-Info.plist
 **/*.p8
 **/*.p12
 **/*.jks
+**/*.keystore
+**/android/keystore.properties
+!**/android/keystore.properties.example
 **/*.key
 **/*.pem
 **/*.mobileprovision
