@@ -379,7 +379,7 @@
 				DEVELOPMENT_TEAM = HCDUXX4Z3X;
 				FIREBASE_CONFIG_PATH = "Firebase/Release/GoogleService-Info.plist";
 				FIREBASE_ENVIRONMENT = production;
-				FIREBASE_EXPECTED_PROJECT_ID = "";
+				FIREBASE_EXPECTED_PROJECT_ID = "seorilabs-cyclepair-prod";
 				INFOPLIST_FILE = CyclePair/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (

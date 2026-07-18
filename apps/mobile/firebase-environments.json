@@ -7,7 +7,7 @@
     "iosConfig": "ios/Firebase/Debug/GoogleService-Info.plist"
   },
   "production": {
-    "projectId": null,
+    "projectId": "seorilabs-cyclepair-prod",
     "androidConfig": "android/app/src/release/google-services.json",
     "iosConfig": "ios/Firebase/Release/GoogleService-Info.plist"
   }
