@@ -79,7 +79,10 @@ jobs:
 
   firebase:
     name: Firebase 검사
-    runs-on: seorilabs-rpi-arm64
+    # Firestore/Auth/Functions/Eventarc/Tasks/Logging 6종 에뮬레이터 + JVM 통합
+    # 스위트는 RPi ARM64 ARC 러너에서 과부하로 러너가 죽는다("lost communication").
+    # RPi-first 정책의 "가능하면" 예외에 해당하므로 hosted x64 러너로 라우팅한다.
+    runs-on: ubuntu-latest
     timeout-minutes: 40
 
     steps:
