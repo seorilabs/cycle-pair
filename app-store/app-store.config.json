@@ -158,7 +158,9 @@
   "assets": {
     "appIcon1024": "app-store/assets/app-icon-1024.png",
     "iphoneScreenshots69": [
-      "확정 필요"
+      "app-store/assets/iphone69-1-home-1290x2796.png",
+      "app-store/assets/iphone69-2-sharing-1290x2796.png",
+      "app-store/assets/iphone69-3-partner-1290x2796.png"
     ],
     "iphoneScreenshots65": [],
     "ipadScreenshots13": [],

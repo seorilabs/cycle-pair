@@ -91,9 +91,11 @@
   },
   "assets": {
     "playIcon": "play-store/assets/icon-512.png",
-    "featureGraphic": "확정 필요",
+    "featureGraphic": "play-store/assets/feature-graphic-1024x500.png",
     "phoneScreenshots": [
-      "확정 필요"
+      "play-store/assets/phone-1-home-1080x1920.png",
+      "play-store/assets/phone-2-sharing-1080x1920.png",
+      "play-store/assets/phone-3-partner-1080x1920.png"
     ],
     "sevenInchTabletScreenshots": [],
     "tenInchTabletScreenshots": []
