@@ -43,16 +43,16 @@
       "evidence": "billing account 01179A-37A44C-447C1D 연결, billingEnabled true live 확인(dev와 동일 공용 계정)"
     },
     "productionRuntimeIamConfigured": {
-      "status": "missing",
-      "projectId": null,
-      "verifiedAt": null,
-      "evidence": null
+      "status": "verified",
+      "projectId": "seorilabs-cyclepair-prod",
+      "verifiedAt": "2026-07-19T09:40:00Z",
+      "evidence": "함수 24종이 372245065596-compute@ 런타임 SA로 배포되어 전부 ACTIVE. compute SA에 cloudbuild.builds.builder/logging.logWriter/artifactregistry.writer/storage.objectViewer 및 5개 secret secretAccessor 부여 확인"
     },
     "productionCallableInvokerIamConfigured": {
-      "status": "missing",
-      "projectId": null,
-      "verifiedAt": null,
-      "evidence": null
+      "status": "verified",
+      "projectId": "seorilabs-cyclepair-prod",
+      "verifiedAt": "2026-07-19T09:40:00Z",
+      "evidence": "callable/HTTPS 16종 Cloud Run 서비스에 allUsers roles/run.invoker 바인딩 설정 확인(DRS 예외 적용 후)"
     },
     "productionLivePairSmoke": {
       "status": "missing",
@@ -122,35 +122,35 @@
   },
   "deployments": {
     "development": {
-      "status": "stale",
+      "status": "verified",
       "projectId": "seorilabs-cyclepair-dev",
       "region": "asia-northeast3",
-      "deployedAt": "2026-07-13",
-      "verifiedAt": "2026-07-13",
-      "evidence": "기존 일부 Rules/Functions 배포 확인 후 repository source가 변경됨",
-      "gitSha": null,
+      "deployedAt": "2026-07-19T09:35:00Z",
+      "verifiedAt": "2026-07-19T09:35:00Z",
+      "evidence": "현재 HEAD source(functions 24종 + Firestore rules/indexes)를 dev에 배포(automation SA 무인). callable/HTTPS 16종 allUsers run.invoker 설정, 전 함수 ACTIVE 확인",
+      "gitSha": "4aef38e2bd06095fbb43fd26523be0f24c224ed6",
       "source": {
         "algorithm": "sha256-deployment-source-v3",
-        "firebaseConfigSha256": null,
-        "firestoreRulesSha256": null,
-        "firestoreIndexesSha256": null,
-        "functionsSha256": null
+        "firebaseConfigSha256": "dc73b8a1e9dc424b171a0bba194b755b5e4b4f9d019b07199f19a24fa4fa47b9",
+        "firestoreRulesSha256": "98d34d67fda559b7f62d93d1c85c8adf289155b26d572bd61f112c1d7b155924",
+        "firestoreIndexesSha256": "235c6455eb6893ebc58e2ee9ffc17fed5f158d3e2553c01f643ec5f31217a875",
+        "functionsSha256": "f59ae529a42beec4ac993a0e926c6f09d339d44c3b68422b6fae5de364a6d234"
       }
     },
     "production": {
-      "status": "missing",
-      "projectId": null,
+      "status": "verified",
+      "projectId": "seorilabs-cyclepair-prod",
       "region": "asia-northeast3",
-      "deployedAt": null,
-      "verifiedAt": null,
-      "evidence": null,
-      "gitSha": null,
+      "deployedAt": "2026-07-19T09:35:00Z",
+      "verifiedAt": "2026-07-19T09:35:00Z",
+      "evidence": "현재 HEAD source(functions 24종 + Firestore rules/indexes)를 prod에 배포(automation SA 무인). compute API·compute SA 빌드역할·DRS 예외 반영 후 전 함수 ACTIVE, callable/HTTPS 16종 allUsers run.invoker 설정 확인",
+      "gitSha": "4aef38e2bd06095fbb43fd26523be0f24c224ed6",
       "source": {
         "algorithm": "sha256-deployment-source-v3",
-        "firebaseConfigSha256": null,
-        "firestoreRulesSha256": null,
-        "firestoreIndexesSha256": null,
-        "functionsSha256": null
+        "firebaseConfigSha256": "dc73b8a1e9dc424b171a0bba194b755b5e4b4f9d019b07199f19a24fa4fa47b9",
+        "firestoreRulesSha256": "98d34d67fda559b7f62d93d1c85c8adf289155b26d572bd61f112c1d7b155924",
+        "firestoreIndexesSha256": "235c6455eb6893ebc58e2ee9ffc17fed5f158d3e2553c01f643ec5f31217a875",
+        "functionsSha256": "f59ae529a42beec4ac993a0e926c6f09d339d44c3b68422b6fae5de364a6d234"
       }
     }
   }
