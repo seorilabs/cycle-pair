@@ -7,8 +7,8 @@
   "appType": "app",
   "freeOrPaid": "free",
   "contactEmail": "cs@seorilabs.com",
-  "contactWebsite": "확정 필요",
-  "privacyPolicyUrl": "확정 필요",
+  "contactWebsite": "확정 필요 (seorilabs-official 공통)",
+  "privacyPolicyUrl": "확정 필요 (seorilabs-official 공통)",
   "workingName": {
     "ko-KR": "Cycle Pair",
     "en-US": "Cycle Pair"
@@ -61,12 +61,33 @@
     "sensitiveValuesInAnalytics": "no",
     "cyclePhaseInAnalytics": "no",
     "partnerSharing": "explicit-user-selected-projection-only",
-    "accountDeletionUrl": "확정 필요"
+    "accountDeletionUrl": "확정 필요 (seorilabs-official 공통)"
   },
   "monetization": {
     "model": "premium-subscription",
-    "downloadPrice": "확정 필요",
-    "subscriptionProducts": "확정 필요"
+    "downloadPrice": "free",
+    "subscriptionProducts": [
+      {
+        "productId": "com.seorilabs.cyclepair.premium.monthly",
+        "type": "auto-renewable",
+        "billingPeriod": "P1M",
+        "price": {
+          "KRW": 3900
+        },
+        "freeTrial": "P7D",
+        "benefit": "상세 예측·전체 케어 콘텐츠·확장 이력"
+      },
+      {
+        "productId": "com.seorilabs.cyclepair.premium.yearly",
+        "type": "auto-renewable",
+        "billingPeriod": "P1Y",
+        "price": {
+          "KRW": 29000
+        },
+        "freeTrial": "P7D",
+        "benefit": "상세 예측·전체 케어 콘텐츠·확장 이력(연간 ~38% 절약)"
+      }
+    ]
   },
   "assets": {
     "playIcon": "play-store/assets/icon-512.png",
