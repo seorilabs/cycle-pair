@@ -64,9 +64,9 @@
       "evidence": null
     },
     "appStoreConnectApp": {
-      "status": "missing",
-      "verifiedAt": null,
-      "evidence": null
+      "status": "verified",
+      "verifiedAt": "2026-07-19",
+      "evidence": "App Store Connect 앱 레코드 생성 확인(App Store Connect API GET /v1/apps): APPLE_APP_ID 6792393652, bundleId com.seorilabs.cyclepair, SKU cycle-pair-app, team HCDUXX4Z3X"
     },
     "appsInTossApp": {
       "status": "missing",
