@@ -14,7 +14,7 @@
     "test:core": "pnpm --filter @cyclepair/product-core test",
     "test:mobile": "pnpm --filter @cyclepair/mobile test",
     "test:firebase": "pnpm --dir firebase check",
-    "test:release": "node --test scripts/check-release.test.mjs",
+    "test:release": "node --test scripts/check-release.test.mjs scripts/check-xcode-cloud-setup.test.mjs",
     "test:firebase:live": "node scripts/smoke-live-firebase.mjs",
     "check:architecture": "node scripts/check-architecture.mjs",
     "check:native-firebase-config": "node scripts/check-native-firebase-config.mjs",

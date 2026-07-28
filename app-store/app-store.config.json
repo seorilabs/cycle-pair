@@ -3,6 +3,7 @@
   "appId": "cyclepair",
   "status": "planning-approved-release-blocked",
   "bundleId": "com.seorilabs.cyclepair",
+  "appStoreConnectAppId": "6792393652",
   "appleTeamId": "HCDUXX4Z3X",
   "sku": "cycle-pair-app",
   "primaryLanguage": "ko-KR",
@@ -167,11 +168,26 @@
     "appleWatchScreenshots": []
   },
   "signing": {
-    "releaseCertificate": "확정 필요",
-    "releaseProvisioningProfile": "확정 필요"
+    "mode": "xcode-cloud-automatic",
+    "releaseCertificate": "Xcode Cloud managed certificate",
+    "releaseProvisioningProfile": "Xcode Cloud automatic signing"
+  },
+  "xcodeCloud": {
+    "status": "configured-hooks-locally-verified",
+    "verifiedAt": "2026-07-28",
+    "productId": "AC5DE27F-26A6-4833-B98C-E85DA18BDC11",
+    "workflowId": "EAA06E52-88D1-4172-A29B-E2B4EA2B03BB",
+    "workflowName": "Cycle Pair Release",
+    "repository": "seorilabs/cycle-pair",
+    "containerFilePath": "apps/mobile/ios/CyclePair.xcworkspace",
+    "scheme": "CyclePair",
+    "startCondition": "manual v* tag",
+    "distribution": "APP_STORE_ELIGIBLE",
+    "evidence": "App Store Connect API PATCH/GET verified. Build 14 failed because origin/main did not yet contain ci_scripts and CocoaPods support files were absent. The new hooks completed pod install and a code-signing-disabled Release iphoneos build locally.",
+    "unexpectedWorkflow": "Lizard Tycoon TestFlight is also attached to the CyclePair product; left unchanged."
   },
   "manualEvidence": {
-    "appStoreConnectApp": "확정 필요",
+    "appStoreConnectApp": "verified 2026-07-28: app 6792393652, Xcode Cloud product AC5DE27F-26A6-4833-B98C-E85DA18BDC11",
     "appPrivacyReview": "확정 필요",
     "ageRating": "확정 필요",
     "testFlightTwoPersonTest": "확정 필요",
