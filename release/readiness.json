@@ -65,8 +65,13 @@
     },
     "appStoreConnectApp": {
       "status": "verified",
-      "verifiedAt": "2026-07-19",
-      "evidence": "App Store Connect 앱 레코드 생성 확인(App Store Connect API GET /v1/apps): APPLE_APP_ID 6792393652, bundleId com.seorilabs.cyclepair, SKU cycle-pair-app, team HCDUXX4Z3X"
+      "verifiedAt": "2026-07-28",
+      "evidence": "App Store Connect API 재조회: app 6792393652, bundleId com.seorilabs.cyclepair"
+    },
+    "xcodeCloudProduct": {
+      "status": "verified",
+      "verifiedAt": "2026-07-28",
+      "evidence": "product AC5DE27F-26A6-4833-B98C-E85DA18BDC11, workflow EAA06E52-88D1-4172-A29B-E2B4EA2B03BB Cycle Pair Release, manual v* tag, APP_STORE_ELIGIBLE. Build 14는 origin/main에 ci_scripts가 없어 CocoaPods xcconfig/filelist 누락으로 실패. 새 hook으로 pod install 및 code-signing-disabled Release iphoneos 로컬 빌드 성공. Xcode Cloud secret 등록과 첫 정상 Archive 재검증 필요"
     },
     "appsInTossApp": {
       "status": "missing",

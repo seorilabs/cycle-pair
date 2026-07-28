@@ -1,0 +1,101 @@
+name: Deploy App Store via Xcode Cloud
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "빌드할 SemVer 태그. 비우면 최신 vX.Y.Z"
+        type: string
+        required: false
+        default: ""
+      upload_to_testflight:
+        description: "Xcode Cloud Archive와 TestFlight 업로드 시작"
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      release_tag:
+        type: string
+        required: false
+        default: ""
+      upload_to_testflight:
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cycle-pair-xcode-cloud-${{ inputs.release_tag || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  xcode-cloud:
+    name: Xcode Cloud tag dispatch
+    runs-on: ${{ github.event.repository.private && 'seorilabs-rpi-arm64' || 'ubuntu-latest' }}
+    timeout-minutes: 10
+    environment: app-store
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.16.0
+          check-latest: false
+          package-manager-cache: false
+
+      - name: Resolve release tag
+        id: release
+        shell: bash
+        env:
+          RELEASE_TAG_INPUT: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          tag="$RELEASE_TAG_INPUT"
+          if [ -z "$tag" ]; then
+            tag="$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n 1)"
+          fi
+          [[ "$tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || {
+            echo "vX.Y.Z 태그가 필요합니다. 받은 값: ${tag:-empty}" >&2
+            exit 1
+          }
+          git rev-parse --verify "refs/tags/$tag^{commit}" >/dev/null
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Validate or start Xcode Cloud build
+        id: xcode-cloud
+        shell: bash
+        env:
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_PRIVATE_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY_BASE64 }}
+          XCODE_CLOUD_WORKFLOW_NAME: Cycle Pair Release
+          SHOULD_START: ${{ inputs.upload_to_testflight }}
+        run: |
+          set -euo pipefail
+          args=(--tag "${{ steps.release.outputs.tag }}")
+          if [ "$SHOULD_START" = "true" ]; then
+            args+=(--start)
+          fi
+          node scripts/trigger-xcode-cloud-build.mjs "${args[@]}"
+
+      - name: Summary
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          {
+            echo "### App Store — Xcode Cloud"
+            echo ""
+            echo "- tag: ${{ steps.release.outputs.tag }}"
+            echo "- Xcode Cloud started: ${{ steps.xcode-cloud.outputs.started }}"
+            echo "- build number: ${{ steps.xcode-cloud.outputs.build_number }}"
+            echo "- GitHub macOS runner: 사용 안 함"
+            echo "- upload_to_testflight=false는 제품·workflow·tag만 검증"
+          } >> "$GITHUB_STEP_SUMMARY"

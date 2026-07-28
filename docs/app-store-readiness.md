@@ -1,8 +1,17 @@
 # App Store readiness
 
-현재 상태는 구현 시작 가능, App Store Connect 등록·TestFlight 업로드 불가다. 기계 판독 source of truth는 [app-store.config.json](../app-store/app-store.config.json)이다.
+현재 상태는 App Store Connect 앱과 Xcode Cloud workflow 구성 완료, 첫 정상
+TestFlight 빌드 대기다. 기계 판독 source of truth는
+[app-store.config.json](../app-store/app-store.config.json)이다.
 
-출시 이름은 `Cycle Pair`, 영구 iOS bundle ID는 `com.seorilabs.cyclepair`로 확정했다. App Store Connect 앱 shell과 release signing은 아직 만들지 않았다.
+출시 이름은 `Cycle Pair`, 영구 iOS bundle ID는
+`com.seorilabs.cyclepair`다. App Store Connect app ID는 `6792393652`,
+Xcode Cloud product는 `AC5DE27F-26A6-4833-B98C-E85DA18BDC11`,
+workflow는 `Cycle Pair Release`다.
+
+GitHub macOS runner는 사용하지 않는다. App Store Connect API가 `v*` tag를
+지정해 Xcode Cloud를 시작하고, Xcode Cloud managed signing으로
+`APP_STORE_ELIGIBLE` Archive를 만든다.
 
 ## 확정된 내용
 
@@ -17,6 +26,9 @@
 - 가임기·피임 표시, 채팅, 공개 커뮤니티: 없음
 - 파트너에게 선택적으로 공유할 수 있는 메모·공동 일정의 UGC 설문 분류는 확정 필요
 - TestFlight는 서로 다른 계정·기기 두 명으로 검증
+- Xcode Cloud: `Cycle Pair Release`, 수동 `v*` tag, 자동 branch build 없음
+- 첫 build 14는 remote에 `ci_scripts`가 없어 CocoaPods 파일이 생성되지 않아 실패
+- 새 hook으로 `pod install` 및 코드 서명 없는 Release iphoneos 로컬 빌드 성공
 
 ## App Privacy 초안
 
@@ -35,9 +47,11 @@ Health 데이터 공유는 사용자 제어 기능의 본질이므로 review not
 
 ## blocker
 
-- [ ] SKU
-- [ ] Apple Team과 signing 방식
-- [ ] App Store Connect 앱 shell
+- [x] SKU
+- [x] Apple Team과 Xcode Cloud automatic signing
+- [x] App Store Connect 앱 shell
+- [x] Xcode Cloud workflow 생성 및 API trigger 계약 구성
+- [ ] Xcode Cloud secret `FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64`
 - [ ] support URL, privacy policy URL
 - [ ] 앱 개인정보 답변
 - [ ] 연령등급
