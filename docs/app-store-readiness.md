@@ -6,7 +6,7 @@ TestFlight 빌드 대기다. 기계 판독 source of truth는
 
 출시 이름은 `Cycle Pair`, 영구 iOS bundle ID는
 `com.seorilabs.cyclepair`다. App Store Connect app ID는 `6792393652`,
-Xcode Cloud product는 `AC5DE27F-26A6-4833-B98C-E85DA18BDC11`,
+Xcode Cloud product는 `D071BF40-979E-4D7D-A7C5-2202072488D5`,
 workflow는 `Cycle Pair Release`다.
 
 GitHub macOS runner는 사용하지 않는다. App Store Connect API가 `v*` tag를
@@ -27,9 +27,9 @@ GitHub macOS runner는 사용하지 않는다. App Store Connect API가 `v*` tag
 - 파트너에게 선택적으로 공유할 수 있는 메모·공동 일정의 UGC 설문 분류는 확정 필요
 - TestFlight는 서로 다른 계정·기기 두 명으로 검증
 - Xcode Cloud: `Cycle Pair Release`
-  (`6744C7CB-5243-4AF0-B6B1-1DF791F38A04`), 수동 `v*` tag,
+  (`6310D1DD-4A04-4E5C-8B17-B86D7A744D09`), 수동 `v*` tag,
   자동 branch build 없음
-- 현재 Cycle Pair workflow build run은 0건
+- Cycle Pair workflow build 1은 Firebase 복원 후 Bundler 4.0.6 미설치로 실패
 - 새 hook으로 `pod install` 및 코드 서명 없는 Release iphoneos 로컬 빌드 성공
 
 ## App Privacy 초안
@@ -53,7 +53,7 @@ Health 데이터 공유는 사용자 제어 기능의 본질이므로 review not
 - [x] Apple Team과 Xcode Cloud automatic signing
 - [x] App Store Connect 앱 shell
 - [x] Xcode Cloud workflow 생성 및 API trigger 계약 구성
-- [ ] Xcode Cloud secret `FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64`
+- [x] Xcode Cloud secret `FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64`
 - [ ] support URL, privacy policy URL
 - [ ] 앱 개인정보 답변
 - [ ] 연령등급

@@ -9,11 +9,11 @@ test('Xcode Cloud workflow contract is pinned to Cycle Pair release', () => {
   assert.equal(config.appStoreConnectAppId, '6792393652');
   assert.equal(
     config.xcodeCloud.productId,
-    'AC5DE27F-26A6-4833-B98C-E85DA18BDC11',
+    'D071BF40-979E-4D7D-A7C5-2202072488D5',
   );
   assert.equal(
     config.xcodeCloud.workflowId,
-    '6744C7CB-5243-4AF0-B6B1-1DF791F38A04',
+    '6310D1DD-4A04-4E5C-8B17-B86D7A744D09',
   );
   assert.equal(config.xcodeCloud.workflowName, 'Cycle Pair Release');
   assert.equal(config.xcodeCloud.startCondition, 'manual v* tag');
@@ -35,9 +35,13 @@ test('GitHub dispatch uses ARC for API only and requires explicit upload opt-in'
 test('Xcode Cloud hooks install Pods, restore Firebase and apply cloud version', () => {
   const postClone = read('apps/mobile/ios/ci_scripts/ci_post_clone.sh');
   const preBuild = read('apps/mobile/ios/ci_scripts/ci_pre_xcodebuild.sh');
+  assert.match(postClone, /brew install ruby@3\.2/);
+  assert.match(postClone, /BUNDLED WITH/);
+  assert.match(postClone, /gem install bundler --version "\$\{BUNDLER_VERSION\}"/);
+  assert.match(postClone, /bundle "_\$\{BUNDLER_VERSION\}_" install/);
   assert.match(postClone, /pnpm install --frozen-lockfile/);
   assert.match(postClone, /restore-mobile-firebase-config\.mjs" --ios --require/);
-  assert.match(postClone, /bundle exec pod install/);
+  assert.match(postClone, /bundle "_\$\{BUNDLER_VERSION\}_" exec pod install/);
   assert.match(preBuild, /CI_TAG/);
   assert.match(preBuild, /CI_BUILD_NUMBER/);
   assert.match(preBuild, /agvtool new-marketing-version/);

@@ -175,19 +175,19 @@
   "xcodeCloud": {
     "status": "configured-backoffice-wiring",
     "verifiedAt": "2026-07-29",
-    "productId": "AC5DE27F-26A6-4833-B98C-E85DA18BDC11",
-    "workflowId": "6744C7CB-5243-4AF0-B6B1-1DF791F38A04",
+    "productId": "D071BF40-979E-4D7D-A7C5-2202072488D5",
+    "workflowId": "6310D1DD-4A04-4E5C-8B17-B86D7A744D09",
     "workflowName": "Cycle Pair Release",
     "repository": "seorilabs/cycle-pair",
     "containerFilePath": "apps/mobile/ios/CyclePair.xcworkspace",
     "scheme": "CyclePair",
     "startCondition": "manual v* tag",
     "distribution": "APP_STORE_ELIGIBLE",
-    "evidence": "App Store Connect API verified app 6792393652, bundle com.seorilabs.cyclepair, primary repository seorilabs/cycle-pair and workflow 6744C7CB-5243-4AF0-B6B1-1DF791F38A04. The workflow uses manual v* tags and APP_STORE_ELIGIBLE Archive; current workflow build run count is 0.",
-    "unexpectedWorkflow": "Lizard Tycoon TestFlight remains attached with repository seorilabs/lizard-tycoon. Backoffice must filter workflow repository and never select the first enabled workflow."
+    "evidence": "App Store Connect API verified app 6792393652, bundle com.seorilabs.cyclepair, product D071BF40-979E-4D7D-A7C5-2202072488D5, primary repository seorilabs/cycle-pair and workflow 6310D1DD-4A04-4E5C-8B17-B86D7A744D09. The workflow uses manual v* tags and APP_STORE_ELIGIBLE Archive; build 1 restored Firebase then failed because Bundler 4.0.6 was unavailable on the default Ruby.",
+    "supersededWorkflow": "Workflow 6744C7CB-5243-4AF0-B6B1-1DF791F38A04 was attached to the Lucid Slotmachine product instead of Cycle Pair. Backoffice must resolve the product by bundle ID and match the workflow repository."
   },
   "manualEvidence": {
-    "appStoreConnectApp": "verified 2026-07-29: app 6792393652, Xcode Cloud product AC5DE27F-26A6-4833-B98C-E85DA18BDC11, workflow 6744C7CB-5243-4AF0-B6B1-1DF791F38A04",
+    "appStoreConnectApp": "verified 2026-07-29: app 6792393652, Xcode Cloud product D071BF40-979E-4D7D-A7C5-2202072488D5, workflow 6310D1DD-4A04-4E5C-8B17-B86D7A744D09",
     "appPrivacyReview": "확정 필요",
     "ageRating": "확정 필요",
     "testFlightTwoPersonTest": "확정 필요",

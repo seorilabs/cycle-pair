@@ -3,9 +3,9 @@
 Cycle Pair iOS Archive와 TestFlight 배포는 GitHub macOS runner가 아니라
 Xcode Cloud에서 실행한다.
 
-- Product: `AC5DE27F-26A6-4833-B98C-E85DA18BDC11`
+- Product: `D071BF40-979E-4D7D-A7C5-2202072488D5`
 - Workflow: `Cycle Pair Release`
-- Workflow ID: `6744C7CB-5243-4AF0-B6B1-1DF791F38A04`
+- Workflow ID: `6310D1DD-4A04-4E5C-8B17-B86D7A744D09`
 - Trigger: 수동 `v*` tag
 - Action: `CyclePair` Release Archive, `APP_STORE_ELIGIBLE`
 - Signing: Team `HCDUXX4Z3X`, automatic
@@ -14,6 +14,10 @@ Xcode Cloud에서 실행한다.
 `GoogleService-Info.plist`는 Xcode Cloud secret
 `FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64`에서만 복원한다. 실제 plist와
 API key는 저장소에 커밋하지 않는다.
+
+`Gemfile.lock`의 `BUNDLED WITH` 버전이 요구하는 Ruby가 Xcode Cloud
+기본 Ruby보다 새로우면 `ruby@3.2`를 설치한 뒤 동일 Bundler 버전으로
+Pods를 설치한다.
 
 `ci_pre_xcodebuild.sh`는 `CI_TAG`와 `CI_BUILD_NUMBER`를 marketing version과
 build number로 반영한다.

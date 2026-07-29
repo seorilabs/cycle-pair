@@ -6,8 +6,8 @@ App Store Archive와 TestFlight 배포는 Xcode Cloud에서 수행한다. GitHub
 Actions는 macOS runner를 사용하지 않고 App Store Connect API로
 `Cycle Pair Release` workflow를 호출한다.
 
-- product: `AC5DE27F-26A6-4833-B98C-E85DA18BDC11`
-- workflow: `6744C7CB-5243-4AF0-B6B1-1DF791F38A04`
+- product: `D071BF40-979E-4D7D-A7C5-2202072488D5`
+- workflow: `6310D1DD-4A04-4E5C-8B17-B86D7A744D09`
 - repository: `seorilabs/cycle-pair`
 - workspace: `apps/mobile/ios/CyclePair.xcworkspace`
 - scheme: `CyclePair`
@@ -35,14 +35,17 @@ GitHub environment `app-store`에는 다음 secret이 필요하다.
 
 - Xcode Cloud 제품·저장소·workflow API 구성: 완료
 - `main` 자동 build 제거와 수동 `v*` trigger: 완료
-- 현재 `Cycle Pair Release` build run: 0건
+- Cycle Pair product 첫 build 1: post-clone 실패
+  - Firebase secret 복원까지 성공
+  - Xcode Cloud 기본 Ruby 2.6에 lockfile Bundler 4.0.6이 없어 중단
 - 새 hook 로컬 재현: `pod install` 성공, 코드 서명 없는 Release iphoneos
   `BUILD SUCCEEDED`
-- Xcode Cloud secret `FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64`: 미등록
+- Xcode Cloud secret `FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64`: 등록
 - 이 변경 반영 후 첫 정상 Archive/TestFlight 실행: 미수행
 - App Store 심사 제출: 미수행
 
-CyclePair 제품에 repository가 `seorilabs/lizard-tycoon`인
-`Lizard Tycoon TestFlight` workflow도 남아 있다. Backoffice는 요청
-repository와 workflow repository가 정확히 일치하는
-`APP_STORE_ELIGIBLE` iOS Archive만 선택하고, 모호하면 실행하지 않는다.
+이전 workflow `6744C7CB-5243-4AF0-B6B1-1DF791F38A04`는 Cycle Pair 앱이
+아니라 Lucid Slotmachine product에 잘못 생성돼 build 19가 clone 단계에서
+실패했다. Backoffice는 bundle ID로 product를 찾은 뒤 요청 repository와
+workflow repository가 정확히 일치하는 `APP_STORE_ELIGIBLE` iOS Archive만
+선택하고, 모호하면 실행하지 않는다.
