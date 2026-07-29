@@ -30,6 +30,8 @@ GitHub macOS runner는 사용하지 않는다. App Store Connect API가 `v*` tag
   (`6310D1DD-4A04-4E5C-8B17-B86D7A744D09`), 수동 `v*` tag,
   자동 branch build 없음
 - Cycle Pair workflow build 1은 Firebase 복원 후 Bundler 4.0.6 미설치로 실패
+- Cycle Pair workflow build 2는 Ruby/Bundler 설치 후 Intel image의
+  `json 2.21.0` C API probe 오판으로 실패해 `json 2.7.6`으로 고정
 - 새 hook으로 `pod install` 및 코드 서명 없는 Release iphoneos 로컬 빌드 성공
 
 ## App Privacy 초안

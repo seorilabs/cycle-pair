@@ -33,8 +33,10 @@ test('GitHub dispatch uses ARC for API only and requires explicit upload opt-in'
 });
 
 test('Xcode Cloud hooks install Pods, restore Firebase and apply cloud version', () => {
+  const gemfile = read('apps/mobile/Gemfile');
   const postClone = read('apps/mobile/ios/ci_scripts/ci_post_clone.sh');
   const preBuild = read('apps/mobile/ios/ci_scripts/ci_pre_xcodebuild.sh');
+  assert.match(gemfile, /gem 'json', '2\.7\.6'/);
   assert.match(postClone, /brew install ruby@3\.2/);
   assert.match(postClone, /BUNDLED WITH/);
   assert.match(postClone, /gem install bundler --version "\$\{BUNDLER_VERSION\}"/);
