@@ -173,21 +173,21 @@
     "releaseProvisioningProfile": "Xcode Cloud automatic signing"
   },
   "xcodeCloud": {
-    "status": "configured-hooks-locally-verified",
-    "verifiedAt": "2026-07-28",
+    "status": "configured-backoffice-wiring",
+    "verifiedAt": "2026-07-29",
     "productId": "AC5DE27F-26A6-4833-B98C-E85DA18BDC11",
-    "workflowId": "EAA06E52-88D1-4172-A29B-E2B4EA2B03BB",
+    "workflowId": "6744C7CB-5243-4AF0-B6B1-1DF791F38A04",
     "workflowName": "Cycle Pair Release",
     "repository": "seorilabs/cycle-pair",
     "containerFilePath": "apps/mobile/ios/CyclePair.xcworkspace",
     "scheme": "CyclePair",
     "startCondition": "manual v* tag",
     "distribution": "APP_STORE_ELIGIBLE",
-    "evidence": "App Store Connect API PATCH/GET verified. Build 14 failed because origin/main did not yet contain ci_scripts and CocoaPods support files were absent. The new hooks completed pod install and a code-signing-disabled Release iphoneos build locally.",
-    "unexpectedWorkflow": "Lizard Tycoon TestFlight is also attached to the CyclePair product; left unchanged."
+    "evidence": "App Store Connect API verified app 6792393652, bundle com.seorilabs.cyclepair, primary repository seorilabs/cycle-pair and workflow 6744C7CB-5243-4AF0-B6B1-1DF791F38A04. The workflow uses manual v* tags and APP_STORE_ELIGIBLE Archive; current workflow build run count is 0.",
+    "unexpectedWorkflow": "Lizard Tycoon TestFlight remains attached with repository seorilabs/lizard-tycoon. Backoffice must filter workflow repository and never select the first enabled workflow."
   },
   "manualEvidence": {
-    "appStoreConnectApp": "verified 2026-07-28: app 6792393652, Xcode Cloud product AC5DE27F-26A6-4833-B98C-E85DA18BDC11",
+    "appStoreConnectApp": "verified 2026-07-29: app 6792393652, Xcode Cloud product AC5DE27F-26A6-4833-B98C-E85DA18BDC11, workflow 6744C7CB-5243-4AF0-B6B1-1DF791F38A04",
     "appPrivacyReview": "확정 필요",
     "ageRating": "확정 필요",
     "testFlightTwoPersonTest": "확정 필요",
