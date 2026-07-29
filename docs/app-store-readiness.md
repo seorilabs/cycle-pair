@@ -33,7 +33,9 @@ GitHub macOS runner는 사용하지 않는다. App Store Connect API가 `v*` tag
 - Cycle Pair workflow build 2는 Ruby/Bundler 설치 후 Intel image의
   `json 2.21.0` C API probe 오판으로 실패해 `json 2.7.6`으로 고정
 - Cycle Pair workflow build 3은 bundle 설치 후 Archive `ARCHS`가 Ruby
-  native gem에 섞여 실패해 Ruby host CPU별 path·`ARCHFLAGS`로 분리
+  native gem에 섞여 실패해 Ruby host CPU별 path로 cache 분리
+- Cycle Pair workflow build 4는 `ARCHFLAGS`가 Ruby `mkmf`에 적용되지 않아
+  실패해 Bundler·CocoaPods를 Ruby host architecture로 직접 실행
 - 새 hook으로 `pod install` 및 코드 서명 없는 Release iphoneos 로컬 빌드 성공
 
 ## App Privacy 초안

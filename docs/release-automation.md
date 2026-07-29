@@ -46,7 +46,10 @@ GitHub environment `app-store`에는 다음 secret이 필요하다.
   - `json 2.7.6` 설치와 전체 `bundle install` 성공
   - Archive의 `ARCHS=arm64`가 Intel Ruby native gem에 섞여
     `bigdecimal`이 잘못된 arm64 binary로 생성됨
-  - Ruby host CPU별 bundle path와 `ARCHFLAGS`로 native gem cache 분리
+  - Ruby host CPU별 bundle path로 native gem cache 분리
+- Cycle Pair product build 4: post-clone 실패
+  - host CPU별 path는 적용됐으나 `ARCHFLAGS`를 Ruby `mkmf`가 사용하지 않음
+  - `arch`로 Bundler·CocoaPods 프로세스와 자식 컴파일러 아키텍처를 통일
 - 새 hook 로컬 재현: `pod install` 성공, 코드 서명 없는 Release iphoneos
   `BUILD SUCCEEDED`
 - Xcode Cloud secret `FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64`: 등록

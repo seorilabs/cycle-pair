@@ -64,10 +64,25 @@ echo "  Xcode Cloud secret에서 복원"
 echo "▸ CocoaPods 의존성 설치"
 cd "${MOBILE}"
 RUBY_HOST_CPU="$(ruby -rrbconfig -e 'print RbConfig::CONFIG.fetch("host_cpu")')"
-export ARCHFLAGS="-arch ${RUBY_HOST_CPU}"
+case "${RUBY_HOST_CPU}" in
+  x86_64)
+    RUBY_RUN_ARCH="x86_64"
+    ;;
+  arm64|aarch64)
+    RUBY_RUN_ARCH="arm64"
+    ;;
+  *)
+    echo "지원하지 않는 Ruby host CPU입니다: ${RUBY_HOST_CPU}" >&2
+    exit 1
+    ;;
+esac
+run_ruby_arch() {
+  /usr/bin/arch "-${RUBY_RUN_ARCH}" "$@"
+}
+echo "  Ruby native extension architecture: ${RUBY_RUN_ARCH}"
 bundle "_${BUNDLER_VERSION}_" config set --local path "vendor/bundle/${RUBY_HOST_CPU}"
-bundle "_${BUNDLER_VERSION}_" install
+run_ruby_arch bundle "_${BUNDLER_VERSION}_" install
 cd "${IOS}"
-bundle "_${BUNDLER_VERSION}_" exec pod install
+run_ruby_arch bundle "_${BUNDLER_VERSION}_" exec pod install
 
 echo "✅ Xcode Cloud post-clone 준비 완료"
