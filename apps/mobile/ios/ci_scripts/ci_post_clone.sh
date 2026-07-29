@@ -63,7 +63,9 @@ echo "  Xcode Cloud secret에서 복원"
 
 echo "▸ CocoaPods 의존성 설치"
 cd "${MOBILE}"
-bundle "_${BUNDLER_VERSION}_" config set --local path vendor/bundle
+RUBY_HOST_CPU="$(ruby -rrbconfig -e 'print RbConfig::CONFIG.fetch("host_cpu")')"
+export ARCHFLAGS="-arch ${RUBY_HOST_CPU}"
+bundle "_${BUNDLER_VERSION}_" config set --local path "vendor/bundle/${RUBY_HOST_CPU}"
 bundle "_${BUNDLER_VERSION}_" install
 cd "${IOS}"
 bundle "_${BUNDLER_VERSION}_" exec pod install

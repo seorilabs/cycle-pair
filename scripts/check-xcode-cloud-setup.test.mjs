@@ -40,6 +40,9 @@ test('Xcode Cloud hooks install Pods, restore Firebase and apply cloud version',
   assert.match(postClone, /brew install ruby@3\.2/);
   assert.match(postClone, /BUNDLED WITH/);
   assert.match(postClone, /gem install bundler --version "\$\{BUNDLER_VERSION\}"/);
+  assert.match(postClone, /RbConfig::CONFIG\.fetch\("host_cpu"\)/);
+  assert.match(postClone, /ARCHFLAGS="-arch \$\{RUBY_HOST_CPU\}"/);
+  assert.match(postClone, /vendor\/bundle\/\$\{RUBY_HOST_CPU\}/);
   assert.match(postClone, /bundle "_\$\{BUNDLER_VERSION\}_" install/);
   assert.match(postClone, /pnpm install --frozen-lockfile/);
   assert.match(postClone, /restore-mobile-firebase-config\.mjs" --ios --require/);

@@ -42,6 +42,11 @@ GitHub environment `app-store`에는 다음 secret이 필요하다.
   - Homebrew Ruby 3.2와 Bundler 4.0.6 설치까지 성공
   - Intel image에서 `json 2.21.0`의 Ruby C API probe 오판으로 중단
   - fallback 재선언이 없는 `json 2.7.6`으로 lockfile 고정
+- Cycle Pair product build 3: post-clone 실패
+  - `json 2.7.6` 설치와 전체 `bundle install` 성공
+  - Archive의 `ARCHS=arm64`가 Intel Ruby native gem에 섞여
+    `bigdecimal`이 잘못된 arm64 binary로 생성됨
+  - Ruby host CPU별 bundle path와 `ARCHFLAGS`로 native gem cache 분리
 - 새 hook 로컬 재현: `pod install` 성공, 코드 서명 없는 Release iphoneos
   `BUILD SUCCEEDED`
 - Xcode Cloud secret `FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64`: 등록
