@@ -26,8 +26,10 @@ GitHub macOS runner는 사용하지 않는다. App Store Connect API가 `v*` tag
 - 가임기·피임 표시, 채팅, 공개 커뮤니티: 없음
 - 파트너에게 선택적으로 공유할 수 있는 메모·공동 일정의 UGC 설문 분류는 확정 필요
 - TestFlight는 서로 다른 계정·기기 두 명으로 검증
-- Xcode Cloud: `Cycle Pair Release`, 수동 `v*` tag, 자동 branch build 없음
-- 첫 build 14는 remote에 `ci_scripts`가 없어 CocoaPods 파일이 생성되지 않아 실패
+- Xcode Cloud: `Cycle Pair Release`
+  (`6744C7CB-5243-4AF0-B6B1-1DF791F38A04`), 수동 `v*` tag,
+  자동 branch build 없음
+- 현재 Cycle Pair workflow build run은 0건
 - 새 hook으로 `pod install` 및 코드 서명 없는 Release iphoneos 로컬 빌드 성공
 
 ## App Privacy 초안

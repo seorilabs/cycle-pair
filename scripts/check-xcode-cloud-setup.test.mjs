@@ -13,7 +13,7 @@ test('Xcode Cloud workflow contract is pinned to Cycle Pair release', () => {
   );
   assert.equal(
     config.xcodeCloud.workflowId,
-    'EAA06E52-88D1-4172-A29B-E2B4EA2B03BB',
+    '6744C7CB-5243-4AF0-B6B1-1DF791F38A04',
   );
   assert.equal(config.xcodeCloud.workflowName, 'Cycle Pair Release');
   assert.equal(config.xcodeCloud.startCondition, 'manual v* tag');

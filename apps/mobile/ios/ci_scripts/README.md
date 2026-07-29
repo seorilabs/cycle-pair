@@ -5,7 +5,7 @@ Xcode Cloud에서 실행한다.
 
 - Product: `AC5DE27F-26A6-4833-B98C-E85DA18BDC11`
 - Workflow: `Cycle Pair Release`
-- Workflow ID: `EAA06E52-88D1-4172-A29B-E2B4EA2B03BB`
+- Workflow ID: `6744C7CB-5243-4AF0-B6B1-1DF791F38A04`
 - Trigger: 수동 `v*` tag
 - Action: `CyclePair` Release Archive, `APP_STORE_ELIGIBLE`
 - Signing: Team `HCDUXX4Z3X`, automatic

@@ -7,7 +7,7 @@ Actions는 macOS runner를 사용하지 않고 App Store Connect API로
 `Cycle Pair Release` workflow를 호출한다.
 
 - product: `AC5DE27F-26A6-4833-B98C-E85DA18BDC11`
-- workflow: `EAA06E52-88D1-4172-A29B-E2B4EA2B03BB`
+- workflow: `6744C7CB-5243-4AF0-B6B1-1DF791F38A04`
 - repository: `seorilabs/cycle-pair`
 - workspace: `apps/mobile/ios/CyclePair.xcworkspace`
 - scheme: `CyclePair`
@@ -35,14 +35,14 @@ GitHub environment `app-store`에는 다음 secret이 필요하다.
 
 - Xcode Cloud 제품·저장소·workflow API 구성: 완료
 - `main` 자동 build 제거와 수동 `v*` trigger: 완료
-- 첫 build 14: 실패
-  - 원인: 당시 `origin/main`에 `ci_scripts`가 없어 `pod install` 미실행
-  - 결과: Pods xcconfig와 file list 누락
+- 현재 `Cycle Pair Release` build run: 0건
 - 새 hook 로컬 재현: `pod install` 성공, 코드 서명 없는 Release iphoneos
   `BUILD SUCCEEDED`
 - Xcode Cloud secret `FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64`: 미등록
 - 이 변경 반영 후 첫 정상 Archive/TestFlight 실행: 미수행
 - App Store 심사 제출: 미수행
 
-CyclePair 제품에 `Lizard Tycoon TestFlight` workflow도 연결돼 있다. 다른 앱
-workflow이므로 이번 변경에서는 수정하거나 삭제하지 않았다.
+CyclePair 제품에 repository가 `seorilabs/lizard-tycoon`인
+`Lizard Tycoon TestFlight` workflow도 남아 있다. Backoffice는 요청
+repository와 workflow repository가 정확히 일치하는
+`APP_STORE_ELIGIBLE` iOS Archive만 선택하고, 모호하면 실행하지 않는다.
