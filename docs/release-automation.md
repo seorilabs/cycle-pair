@@ -50,6 +50,10 @@ GitHub environment `app-store`에는 다음 secret이 필요하다.
 - Cycle Pair product build 4: post-clone 실패
   - host CPU별 path는 적용됐으나 `ARCHFLAGS`를 Ruby `mkmf`가 사용하지 않음
   - `arch`로 Bundler·CocoaPods 프로세스와 자식 컴파일러 아키텍처를 통일
+- Cycle Pair product build 5: post-clone 실패
+  - `arch` 실행만으로 `mkmf`의 Makefile `ARCH_FLAG`가 바뀌지 않음
+  - `CONFIGURE_ARGS --with-arch_flag`로 native extension compile·link target 고정
+  - 잘못 생성된 이전 cache와 겹치지 않는 bundle path 사용
 - 새 hook 로컬 재현: `pod install` 성공, 코드 서명 없는 Release iphoneos
   `BUILD SUCCEEDED`
 - Xcode Cloud secret `FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64`: 등록

@@ -80,7 +80,9 @@ run_ruby_arch() {
   /usr/bin/arch "-${RUBY_RUN_ARCH}" "$@"
 }
 echo "  Ruby native extension architecture: ${RUBY_RUN_ARCH}"
-bundle "_${BUNDLER_VERSION}_" config set --local path "vendor/bundle/${RUBY_HOST_CPU}"
+export CONFIGURE_ARGS="--with-arch_flag='-arch ${RUBY_RUN_ARCH}'"
+bundle "_${BUNDLER_VERSION}_" config set --local path \
+  "vendor/bundle/${RUBY_HOST_CPU}-mkmf-arch"
 run_ruby_arch bundle "_${BUNDLER_VERSION}_" install
 cd "${IOS}"
 run_ruby_arch bundle "_${BUNDLER_VERSION}_" exec pod install

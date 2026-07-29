@@ -42,7 +42,14 @@ test('Xcode Cloud hooks install Pods, restore Firebase and apply cloud version',
   assert.match(postClone, /gem install bundler --version "\$\{BUNDLER_VERSION\}"/);
   assert.match(postClone, /RbConfig::CONFIG\.fetch\("host_cpu"\)/);
   assert.match(postClone, /\/usr\/bin\/arch "-\$\{RUBY_RUN_ARCH\}" "\$@"/);
-  assert.match(postClone, /vendor\/bundle\/\$\{RUBY_HOST_CPU\}/);
+  assert.match(
+    postClone,
+    /CONFIGURE_ARGS="--with-arch_flag='-arch \$\{RUBY_RUN_ARCH\}'"/,
+  );
+  assert.match(
+    postClone,
+    /vendor\/bundle\/\$\{RUBY_HOST_CPU\}-mkmf-arch/,
+  );
   assert.match(
     postClone,
     /run_ruby_arch bundle "_\$\{BUNDLER_VERSION\}_" install/,

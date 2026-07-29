@@ -36,6 +36,8 @@ GitHub macOS runner는 사용하지 않는다. App Store Connect API가 `v*` tag
   native gem에 섞여 실패해 Ruby host CPU별 path로 cache 분리
 - Cycle Pair workflow build 4는 `ARCHFLAGS`가 Ruby `mkmf`에 적용되지 않아
   실패해 Bundler·CocoaPods를 Ruby host architecture로 직접 실행
+- Cycle Pair workflow build 5는 `arch` 실행만으로 `mkmf` Makefile target이
+  바뀌지 않아 실패해 `CONFIGURE_ARGS --with-arch_flag`로 compile·link 고정
 - 새 hook으로 `pod install` 및 코드 서명 없는 Release iphoneos 로컬 빌드 성공
 
 ## App Privacy 초안
