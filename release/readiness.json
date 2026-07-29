@@ -71,7 +71,7 @@
     "xcodeCloudProduct": {
       "status": "verified",
       "verifiedAt": "2026-07-29",
-      "evidence": "app 6792393652, product AC5DE27F-26A6-4833-B98C-E85DA18BDC11, primary repo seorilabs/cycle-pair, workflow 6744C7CB-5243-4AF0-B6B1-1DF791F38A04 Cycle Pair Release, manual v* tag, APP_STORE_ELIGIBLE. 현재 workflow build run 0건이며 Xcode Cloud secret 등록과 첫 정상 Archive 재검증 필요"
+      "evidence": "app 6792393652, product D071BF40-979E-4D7D-A7C5-2202072488D5, primary repo seorilabs/cycle-pair, workflow 6310D1DD-4A04-4E5C-8B17-B86D7A744D09 Cycle Pair Release, manual v* tag, APP_STORE_ELIGIBLE. Firebase secret은 등록됐고 build 1은 Firebase 복원 후 Bundler 4.0.6 미설치로 실패하여 hook 수정과 첫 정상 Archive 재검증 필요"
     },
     "appsInTossApp": {
       "status": "missing",

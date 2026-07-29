@@ -25,6 +25,34 @@ echo "▸ pnpm 11.3.0 설치"
 npm install --global pnpm@11.3.0
 pnpm --version
 
+echo "▸ Ruby 3.2 이상과 lockfile Bundler 준비"
+if ! ruby -rrubygems -e 'exit Gem::Version.new(RUBY_VERSION) >= Gem::Version.new("3.2.0") ? 0 : 1'; then
+  if ! brew list ruby@3.2 >/dev/null 2>&1; then
+    brew install ruby@3.2
+  fi
+  export PATH="$(brew --prefix ruby@3.2)/bin:${PATH}"
+fi
+ruby --version
+
+BUNDLER_VERSION="$(
+  awk '
+    /^BUNDLED WITH$/ {
+      getline
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "")
+      print
+      exit
+    }
+  ' "${MOBILE}/Gemfile.lock"
+)"
+if [ -z "${BUNDLER_VERSION}" ]; then
+  echo "Gemfile.lock의 BUNDLED WITH 버전을 찾지 못했습니다." >&2
+  exit 1
+fi
+if ! gem list --installed bundler --version "${BUNDLER_VERSION}" >/dev/null 2>&1; then
+  gem install bundler --version "${BUNDLER_VERSION}" --no-document
+fi
+bundle "_${BUNDLER_VERSION}_" --version
+
 echo "▸ JavaScript 의존성 설치"
 cd "${REPO}"
 pnpm install --frozen-lockfile
@@ -35,9 +63,28 @@ echo "  Xcode Cloud secret에서 복원"
 
 echo "▸ CocoaPods 의존성 설치"
 cd "${MOBILE}"
-bundle config set --local path vendor/bundle
-bundle install
+RUBY_HOST_CPU="$(ruby -rrbconfig -e 'print RbConfig::CONFIG.fetch("host_cpu")')"
+case "${RUBY_HOST_CPU}" in
+  x86_64)
+    RUBY_RUN_ARCH="x86_64"
+    ;;
+  arm64|aarch64)
+    RUBY_RUN_ARCH="arm64"
+    ;;
+  *)
+    echo "지원하지 않는 Ruby host CPU입니다: ${RUBY_HOST_CPU}" >&2
+    exit 1
+    ;;
+esac
+run_ruby_arch() {
+  /usr/bin/arch "-${RUBY_RUN_ARCH}" "$@"
+}
+echo "  Ruby native extension architecture: ${RUBY_RUN_ARCH}"
+export CONFIGURE_ARGS="--with-arch_flag='-arch ${RUBY_RUN_ARCH}'"
+bundle "_${BUNDLER_VERSION}_" config set --local path \
+  "vendor/bundle/${RUBY_HOST_CPU}-mkmf-arch"
+run_ruby_arch bundle "_${BUNDLER_VERSION}_" install
 cd "${IOS}"
-bundle exec pod install
+run_ruby_arch bundle "_${BUNDLER_VERSION}_" exec pod install
 
 echo "✅ Xcode Cloud post-clone 준비 완료"
