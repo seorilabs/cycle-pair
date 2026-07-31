@@ -13,6 +13,7 @@ import { AccountSettingsCard } from '../components/AccountSettingsCard';
 import { PrivacyCenterModal } from '../components/PrivacyCenterModal';
 import { SubscriptionSettingsCard } from '../components/SubscriptionSettingsCard';
 import { useSubscription } from '../app/subscription/SubscriptionContext';
+import { shouldShowSubscriptionEntry } from '../app/subscription/subscriptionVisibility';
 import {
   Card,
   Chip,
@@ -117,6 +118,7 @@ export function SettingsScreen() {
   const selectedCount = Object.values(state.shareSettings).filter(
     Boolean,
   ).length;
+  const showSubscription = shouldShowSubscriptionEntry(subscriptionState);
 
   useEffect(() => {
     setQuietStart(state.notificationQuietHours.start);
@@ -188,11 +190,15 @@ export function SettingsScreen() {
             {backendKind === 'firebase' ? 'Firebase 동기화' : '테스트 미리보기'}
           </Text>
         </View>
-        <Chip
-          label={
-            subscriptionState.entitlement.tier === 'premium' ? 'Plus' : 'Free'
-          }
-        />
+        {showSubscription ? (
+          <Chip
+            label={
+              subscriptionState.entitlement.tier === 'premium'
+                ? 'Plus'
+                : 'Free'
+            }
+          />
+        ) : null}
       </Card>
 
       <SectionHeader title="계정과 복구" />
@@ -463,8 +469,12 @@ export function SettingsScreen() {
         />
       </Card>
 
-      <SectionHeader title="구독" />
-      <SubscriptionSettingsCard />
+      {showSubscription ? (
+        <>
+          <SectionHeader title="구독" />
+          <SubscriptionSettingsCard />
+        </>
+      ) : null}
 
       <SectionHeader title="연결과 데이터" />
       <Card style={styles.rowsCard}>

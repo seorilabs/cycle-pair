@@ -124,8 +124,8 @@ export function SubscriptionSettingsCard() {
         </View>
       ) : (
         <Text style={styles.salesOff}>
-          신규 판매는 꺼져 있습니다. 상품·가격 승인 전에는 결제 버튼을
-          노출하지 않으며 기존 구매 복원과 구독 관리는 계속 사용할 수 있어요.
+          새 구독은 현재 제공하지 않아요. 기존 구독의 구매 복원과 관리는
+          계속 사용할 수 있어요.
         </Text>
       )}
 

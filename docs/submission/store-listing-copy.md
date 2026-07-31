@@ -31,8 +31,6 @@ Cycle Pair는 주기를 기록하는 사람과 가까운 한 사람이, 생리�
 - 잠금화면 알림은 건강정보를 드러내지 않는 중립 문구
 - 광고 없음, 제3자 추적 없음, 데이터 판매 없음
 - 언제든 데이터 내보내기·계정 삭제·연결 해제
-
-무료로 시작하고, 프리미엄 기능은 구독으로 확장할 수 있어요.
 ```
 
 **전체 설명 (en)**:
@@ -56,8 +54,6 @@ Cycle Pair helps someone who tracks their cycle and one close partner prepare to
 - Neutral lock-screen notifications that never reveal health details
 - No ads, no third-party tracking, no data sales
 - Export data, delete your account, or disconnect anytime
-
-Start free; expand premium features with a subscription.
 ```
 
 **출시 노트 (internal track 첫 배포, ko)**:

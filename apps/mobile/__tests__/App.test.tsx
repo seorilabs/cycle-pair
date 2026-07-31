@@ -136,6 +136,9 @@ describe('CyclePair mobile app', () => {
     await waitFor(() =>
       expect(view.getByText('공유 설정을 완료해 주세요')).toBeTruthy(),
     );
+    expect(view.queryByText('구독')).toBeNull();
+    expect(view.queryByText('현재 Free 플랜')).toBeNull();
+    expect(view.queryByText('구매 복원')).toBeNull();
     expect(view.queryByText('현재 주기 국면')).toBeNull();
     await fireEvent.press(view.getByText('공유 설정 계속하기'));
     await waitFor(() => expect(view.getByText('추천 설정 적용')).toBeTruthy());
