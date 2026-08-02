@@ -4,7 +4,7 @@
 TestFlight 빌드 대기다. 기계 판독 source of truth는
 [app-store.config.json](../app-store/app-store.config.json)이다.
 
-출시 이름은 `Cycle Pair`, 영구 iOS bundle ID는
+한국어 출시 이름은 `사이클 페어 : 친구/연인과 함께 컨디션을 공유해요.`, 영어 출시 이름은 `Cycle Pair`, 영구 iOS bundle ID는
 `com.seorilabs.cyclepair`다. App Store Connect app ID는 `6792393652`,
 Xcode Cloud product는 `D071BF40-979E-4D7D-A7C5-2202072488D5`,
 workflow는 `Cycle Pair Release`다.
@@ -16,7 +16,8 @@ GitHub macOS runner는 사용하지 않는다. App Store Connect API가 `v*` tag
 ## 확정된 내용
 
 - 플랫폼: iOS
-- 앱 이름: Cycle Pair
+- 한국어 앱 이름: 사이클 페어 : 친구/연인과 함께 컨디션을 공유해요.
+- 영어 앱 이름: Cycle Pair
 - bundle ID: com.seorilabs.cyclepair
 - 기본 locale: ko-KR
 - primary category 후보: Health & Fitness

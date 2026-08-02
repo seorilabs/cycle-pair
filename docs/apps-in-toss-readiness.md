@@ -1,12 +1,14 @@
 # AppsInToss readiness
 
-현재 상태는 conditional, scaffold deferred다. 기계 판독 source of truth는 [apps-in-toss.config.json](../apps-in-toss/apps-in-toss.config.json)이다.
+현재 상태는 build target implemented, release policy review required다. 기계 판독 source of truth는 [apps-in-toss.config.json](../apps-in-toss/apps-in-toss.config.json)이다.
 
 ## 결정
 
-- 민감 건강정보, Firebase 로그인, 외부 데이터 동기화, 두 사용자 간 공유, push, 구독 결제의 정책 적합성을 먼저 확인한다.
-- 정책 적합성 확인 전 apps/ait를 만들지 않는다.
-- 공개 표시 이름은 `Cycle Pair`로 확정했지만 영구 appName은 추측하거나 선점하지 않는다.
+- 2026-08-02 사용자 요청으로 AppsInToss build target을 채택했다.
+- 정식 한글 표시명은 `사이클 페어 : 친구/연인과 함께 컨디션을 공유해요.`다.
+- `cycle-pair`는 Console 등록 전 build용 appName 후보다. 가용성과 Console 등록값을 대조하기 전에는 영구 ID로 확정하지 않는다.
+- 첫 slice는 정해진 컨디션·도움 선호를 `Storage`에 로컬 날짜와 함께 저장하고 사용자가 공식 공유 화면을 여는 흐름만 제공한다. 날짜가 바뀌면 이전 선택은 자동 삭제한다.
+- 민감 건강정보, Firebase 로그인, 외부 데이터 동기화, Pair 계정 공유, push, 구독 결제의 정책 적합성은 전체 parity 전에 확인한다.
 - logo, thumbnail, screenshot 등 등록 자산을 만들거나 콘솔 앱을 생성하지 않는다.
 - 부적합하면 Google Play와 App Store만 출시한다.
 
@@ -25,10 +27,10 @@
 ## 채택 시 필요한 blocker
 
 - [ ] 정책 적합성 근거 링크와 검토일
-- [ ] 영구 appName
+- [ ] `cycle-pair` Console 가용성 확인과 영구 appName 등록
 - [ ] category와 feature URLs
 - [ ] 인증·저장·알림·구독 adapter 결정
-- [ ] TDSProvider와 initial route
+- [x] TDSProvider와 initial route
 - [ ] logo 600x600
 - [ ] thumbnail 1932x828
 - [ ] 실제 vertical screenshots 636x1048 최소 3장
@@ -36,4 +38,11 @@
 - [ ] console 수동 입력·정책 선언
 - [ ] deployment 승인
 
-AppsInToss 채택 전까지 .ait 성공 여부는 release blocker가 아니라 미채택 타깃 상태다. 채택한 뒤에는 .ait 패키징과 콘솔 등록·이미지·실결제·알림·sandbox QA를 별도 게이트로 관리한다.
+## 빌드
+
+```bash
+pnpm check:ait
+pnpm build:ait
+```
+
+성공 시 `apps/ait/cycle-pair.ait`가 생성된다. 릴리스 판정기는 `.ait` 헤더·metadata `appName`·SDK 2.x·RN 0.84·TDS·iOS/Android bundle·payload hash를 확인하고, Console 대조 전 provisional `appName`과 placeholder icon을 차단한다. Console 등록·정식 아이콘·등록 이미지·실결제·알림·sandbox QA는 각각 별도 게이트다. 현재 AIT slice는 주기 날짜·자유 텍스트·계정 식별자를 저장하거나 공유하지 않는다.

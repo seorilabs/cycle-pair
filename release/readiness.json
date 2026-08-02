@@ -14,10 +14,10 @@
       "evidence": "Cycle Pair MVP iOS native target"
     },
     "appsInToss": {
-      "included": false,
+      "included": true,
       "status": "verified",
-      "verifiedAt": "2026-07-14",
-      "evidence": "민감 건강정보, 계정, 파트너 공유, 구독을 포함한 현재 MVP 범위에서 AppsInToss를 명시적으로 제외"
+      "verifiedAt": "2026-08-02",
+      "evidence": "사용자 요청으로 AppsInToss build target을 포함. 로컬 컨디션 선택과 명시적 공유 slice부터 채택하며 전체 계정·Firebase·구독 parity는 정책 검토 후 별도 gate"
     }
   },
   "artifacts": {

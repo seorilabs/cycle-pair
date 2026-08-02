@@ -2,9 +2,9 @@
 
 현재 상태는 release candidate 준비 중이며 등록·배포 불가다. 마켓 메타데이터 source of truth는 [google-play.config.json](../play-store/google-play.config.json), artifact·Console·수동 검증 evidence는 [readiness.json](../release/readiness.json)이다.
 
-출시 이름은 `Cycle Pair`, 영구 Android package name은 `com.seorilabs.cyclepair`로 확정했다. Play Console 앱 shell과 release signing은 아직 만들지 않았다.
+한국어 출시 이름은 `사이클 페어 : 친구/연인과 함께 컨디션을 공유해요.`, 영어 출시 이름은 `Cycle Pair`, 영구 Android package name은 `com.seorilabs.cyclepair`로 확정했다. Play Console 앱 shell과 release signing은 아직 만들지 않았다.
 
-Android `targetSdkVersion`은 36으로, 현재 Google Play의 신규 앱·업데이트 최소 기준인 API 35 이상을 충족한다. 이 값은 제출 시점에도 [Google 공식 요구사항](https://developer.android.com/google/play/requirements/target-sdk)에서 다시 확인한다.
+Android `targetSdkVersion`은 36이다. 현재 API 35 최소 기준을 충족하며, 2026-08-31부터 적용되는 신규 앱·업데이트 API 36 기준에도 맞춘 값이다. 제출 시점에는 [Google 공식 요구사항](https://developer.android.com/google/play/requirements/target-sdk)을 다시 확인한다.
 
 ## Android release signing
 
@@ -17,9 +17,10 @@ cp apps/mobile/android/keystore.properties.example apps/mobile/android/keystore.
 pnpm --filter @cyclepair/mobile build:android:debug
 
 # deployment approval 후 release candidate를 만들 때만 실행
-cd apps/mobile/android
-./gradlew bundleRelease
+pnpm build:google-play
 ~~~
+
+`pnpm build:google-play`은 root와 mobile package version이 같은지 먼저 확인하고, 해당 버전을 기존 `resolve-release-version.mjs`에 전달해 `versionName`과 단조 증가 `versionCode`를 함께 주입한다. 예를 들어 `0.1.0`은 versionCode `1000`, `0.1.1`은 `1001`이다. 다음 업로드 전에는 두 `package.json`의 version을 함께 올려야 하며, 필요하면 같은 버전의 `--tag vX.Y.Z`를 명시할 수 있다. 태그와 package version이 다르면 빌드는 중단한다.
 
 CI는 파일 대신 아래 환경변수를 사용할 수 있다. 값이나 keystore를 로그·artifact·저장소에 남기지 않는다.
 
@@ -33,7 +34,8 @@ CI는 파일 대신 아래 환경변수를 사용할 수 있다. 값이나 keyst
 ## 확정된 내용
 
 - 앱 유형: app
-- 앱 이름: Cycle Pair
+- 한국어 앱 이름: 사이클 페어 : 친구/연인과 함께 컨디션을 공유해요.
+- 영어 앱 이름: Cycle Pair
 - package name: com.seorilabs.cyclepair
 - 기본 locale: ko-KR
 - 카테고리 후보: Health & Fitness

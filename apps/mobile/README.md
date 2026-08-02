@@ -1,6 +1,6 @@
 # Cycle Pair Mobile
 
-Google Play과 App Store용 React Native 0.86 앱이다. 제품 세로 슬라이스는 개발 Firebase 프로젝트에 연결돼 있으며, 출시 이름은 `Cycle Pair`, 영구 package/bundle ID는 `com.seorilabs.cyclepair`다.
+Google Play과 App Store용 React Native 0.86 앱이다. 제품 세로 슬라이스는 개발 Firebase 프로젝트에 연결돼 있으며, 한국어 출시 이름은 `사이클 페어 : 친구/연인과 함께 컨디션을 공유해요.`, 영어 출시 이름은 `Cycle Pair`, 영구 package/bundle ID는 `com.seorilabs.cyclepair`다.
 
 ## 구현 흐름
 

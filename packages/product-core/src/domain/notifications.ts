@@ -9,7 +9,7 @@ import type {
 
 const LOCAL_TIME_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
 const DEFAULT_LOCAL_TIME: LocalTime = "09:00";
-const NEUTRAL_TITLE = "Cycle Pair";
+const NEUTRAL_TITLE = "사이클 페어";
 const NEUTRAL_BODY = "함께 확인할 업데이트가 있어요.";
 
 export interface BuildNeutralNotificationScheduleInput {

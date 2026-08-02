@@ -1,6 +1,6 @@
 <resources>
-    <string name="app_name">Cycle Pair</string>
+    <string name="app_name">사이클 페어 : 친구/연인과 함께 컨디션을 공유해요.</string>
     <string name="notification_channel_id" translatable="false">cyclepair_updates</string>
     <string name="notification_channel_name">함께 확인할 업데이트</string>
-    <string name="notification_channel_description">민감한 표현 없이 Cycle Pair 업데이트를 알려드려요.</string>
+    <string name="notification_channel_description">민감한 표현 없이 사이클 페어 업데이트를 알려드려요.</string>
 </resources>

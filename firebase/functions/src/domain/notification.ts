@@ -31,7 +31,7 @@ export interface NeutralNotificationData {
 
 export interface NeutralNotificationContent {
   readonly notification: {
-    readonly title: "Cycle Pair";
+    readonly title: "사이클 페어";
     readonly body: "함께 확인할 업데이트가 있어요.";
   };
   readonly data: NeutralNotificationData;
@@ -249,7 +249,7 @@ export function neutralNotificationContent(
 ): NeutralNotificationContent {
   return {
     notification: {
-      title: "Cycle Pair",
+      title: "사이클 페어",
       body: "함께 확인할 업데이트가 있어요.",
     },
     data: neutralNotificationData(type),

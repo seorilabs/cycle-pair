@@ -5,6 +5,8 @@
   "scripts": {
     "android": "react-native run-android",
     "build:android:debug": "cd android && ./gradlew assembleDebug",
+    "build:android:play": "node ../../scripts/build-google-play.mjs",
+    "check:android:play": "cd android && ./gradlew :app:verifyReleasePrerequisites",
     "bundle:android": "react-native bundle --entry-file index.js --platform android --dev false --bundle-output build/bundles/main.android.jsbundle",
     "bundle:ios": "react-native bundle --entry-file index.js --platform ios --dev false --bundle-output build/bundles/main.ios.jsbundle",
     "ios": "react-native run-ios",

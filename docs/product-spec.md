@@ -1,4 +1,4 @@
-# Cycle Pair 제품 명세
+# 사이클 페어 제품 명세
 
 ## 문서 상태
 
@@ -8,12 +8,13 @@
 | 승인 근거 | 2026-07-12 사용자 요청: 구현 시작 |
 | 앱 분류 | non-game |
 | 기본 스택 | React Native + Firebase |
-| 출시 이름 | Cycle Pair |
+| 한국어 출시 이름 | 사이클 페어 : 친구/연인과 함께 컨디션을 공유해요. |
+| 영어 출시 이름 | Cycle Pair |
 | Android/iOS 식별자 | com.seorilabs.cyclepair |
 | 배포 승인 | 미승인, release-candidate 이후 별도 승인 필요 |
 | 원 기획 | Obsidian Vault: 프로젝트/개인/앱 제작 공장/기획 인박스/moonmate 최초 기획서 (초기 코드명) |
 
-이 문서는 planning 승인 이후 제품 실행 source of truth다. 출시 이름은 `Cycle Pair`, Android package name과 iOS bundle ID는 `com.seorilabs.cyclepair`, 개발용 Firebase project ID는 `seorilabs-cyclepair-dev`다. AppsInToss 영구 appName은 콘솔 가용성과 정책 적합성 확인 전까지 확정하지 않는다.
+이 문서는 planning 승인 이후 제품 실행 source of truth다. 한국어 출시 이름은 `사이클 페어 : 친구/연인과 함께 컨디션을 공유해요.`, 영어 출시 이름은 `Cycle Pair`다. 한국어 앱 내부 UI와 알림에는 짧은 브랜드 `사이클 페어`를 사용한다. Android package name과 iOS bundle ID는 `com.seorilabs.cyclepair`, 개발용 Firebase project ID는 `seorilabs-cyclepair-dev`다. AppsInToss 영구 appName은 콘솔 가용성과 정책 적합성 확인 전까지 확정하지 않는다.
 
 ## 제품 약속
 
@@ -35,6 +36,7 @@
 - 잠금화면에서 건강정보를 드러내지 않는 중립 알림
 - 데이터 내보내기, 계정 삭제, Pair 연결 해제
 - 무료 기능과 프리미엄 구독을 분리할 수 있는 entitlement 경계
+- AppsInToss에서 날짜·자유 텍스트·계정 식별자 없이 컨디션과 도움 선호를 로컬 저장하고 명시적으로 공유하는 최소 slice
 
 ### 제외
 
@@ -46,7 +48,7 @@
 - 위치 추적
 - 제3자 데이터 판매
 - E2E 암호화 구현
-- AppsInToss 앱 스캐폴드와 콘솔 등록
+- AppsInToss의 Firebase 계정·Pair 동기화·알림·구독 parity와 콘솔 등록
 
 E2E 암호화는 단순 제외가 아니라 MVP 이후 재검토 대상이다. 위협모델과 결정 기록은 [security-threat-model.md](./security-threat-model.md), [ADR-0001](./adr/0001-mvp-e2e-encryption.md)에 둔다.
 
@@ -63,19 +65,19 @@ E2E 암호화는 단순 제외가 아니라 MVP 이후 재검토 대상이다. �
 
 ~~~mermaid
 flowchart TD
-  A[온보딩] --> B[로그인]
-  B --> C[주기 기록 여부 선택]
-  C --> D[본인 전용 초기 기록]
-  D --> I[홈에서 혼자 기록]
-  I --> E[선택적으로 파트너 초대]
-  E --> F[상대의 명시적 수락]
-  F --> G[정확히 2명 Pair 활성화]
-  G --> H[필드별 공유 설정]
+  A["온보딩"] --> B["로그인"]
+  B --> C["주기 기록 여부 선택"]
+  C --> D["본인 전용 초기 기록"]
+  D --> I["홈에서 혼자 기록"]
+  I --> E["선택적으로 파트너 초대"]
+  E --> F["상대의 명시적 수락"]
+  F --> G["정확히 2명 Pair 활성화"]
+  G --> H["필드별 공유 설정"]
   H --> I
-  I --> J[기록과 예측]
-  I --> K[공동 캘린더]
-  I --> L[파트너 projection과 케어 가이드]
-  J --> M[중립 알림]
+  I --> J["기록과 예측"]
+  I --> K["공동 캘린더"]
+  I --> L["파트너 projection과 케어 가이드"]
+  J --> M["중립 알림"]
 ~~~
 
 ## 화면과 완료 조건
@@ -119,7 +121,7 @@ flowchart TD
 
 - 알림은 opt-in이며 조용한 시간을 제공한다.
 - 잠금화면 제목과 본문에는 생리, PMS, 주기 국면, 증상, 기분, 파트너 이름을 넣지 않는다.
-- 기본 문구는 “Cycle Pair에 확인할 새 소식이 있어요.”처럼 중립적으로 쓴다.
+- 기본 문구는 “사이클 페어에 확인할 새 소식이 있어요.”처럼 중립적으로 쓴다.
 - 상세 건강정보는 앱 잠금 해제와 권한 확인 이후에만 표시한다.
 
 ## Analytics 정책
@@ -146,11 +148,11 @@ flowchart TD
 | --- | --- |
 | Google Play | 앱 이름·package name 확정, Console 등록과 배포 값은 확정 필요 |
 | App Store | 앱 이름·bundle ID 확정, Connect 등록과 배포 값은 확정 필요 |
-| AppsInToss | 정책 적합성 확인 전 조건부, 스캐폴드 보류 |
+| AppsInToss | SDK 2.x 빌드 타깃 구현, 임시 `appName` 후보 사용. 정책·콘솔·sandbox 검증 전 배포 불가 |
 
 ## 출시 전 남은 제품 결정
 
-- `Cycle Pair`의 출시 전 최종 선행상표 검토. 초기 코드명 `MoonMate`는 주기·기분 기록과 파트너 공유를 제공하는 동명 앱이 App Store·Google Play에 이미 있어 폐기했다.
+- `사이클 페어`와 `Cycle Pair`의 출시 전 최종 선행상표 검토. 초기 코드명 `MoonMate`는 주기·기분 기록과 파트너 공유를 제공하는 동명 앱이 App Store·Google Play에 이미 있어 폐기했다.
 - 로그인 제공자
 - 다운로드 가격과 무료·프리미엄 경계
 - 구독 상품과 가격

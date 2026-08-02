@@ -67,6 +67,7 @@ describe("neutral notification schedule", () => {
 
     expect(schedule).toHaveLength(2);
     expect(schedule.map((item) => item.deliverOn)).toEqual(["2026-06-23", "2026-06-26"]);
+    expect(schedule.every((item) => item.title === "사이클 페어")).toBe(true);
     expect(schedule.every((item) => item.visibility === "private")).toBe(true);
     expect(schedule.every((item) => item.destination === "home")).toBe(true);
     expect(JSON.stringify(schedule)).not.toMatch(/생리|PMS|증상|주기|ovulat|fertil|배란|가임/i);

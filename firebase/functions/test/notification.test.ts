@@ -162,7 +162,7 @@ describe("neutral notification privacy boundary", () => {
     const eventUpdate = neutralNotificationContent("shared-event-update");
     expect(pairUpdate).toEqual({
       notification: {
-        title: "Cycle Pair",
+        title: "사이클 페어",
         body: "함께 확인할 업데이트가 있어요.",
       },
       data: {

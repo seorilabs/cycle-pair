@@ -41,7 +41,7 @@ export function FirebaseAppCheckGate({
 
   return (
     <View style={styles.container} testID="app-check-bootstrap">
-      <Text style={styles.title}>Cycle Pair를 안전하게 시작하는 중이에요</Text>
+      <Text style={styles.title}>사이클 페어를 안전하게 시작하는 중이에요</Text>
       {state === 'failed' ? (
         <>
           <Text style={styles.body}>

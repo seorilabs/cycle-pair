@@ -6,19 +6,19 @@
 - owner-private 원본과 partner projection을 물리적으로 분리한다.
 - 정확히 두 명인 Pair와 단일 공유 상대 제약을 서버에서 강제한다.
 - 민감정보가 로그, Analytics, 알림, 캐시에 새지 않게 한다.
-- Google Play·App Store를 우선 구현하고 AppsInToss는 adapter 자리만 예약한다.
+- Google Play·App Store 전체 앱과 AppsInToss의 최소 데이터 공유 slice를 독립 composition으로 유지한다.
 
 ## 레이어
 
 ~~~mermaid
 flowchart LR
-  UI[apps/mobile] --> APP[application composition]
-  APP --> CORE[packages/product-core]
-  APP --> ADAPTERS[Firebase and native adapters]
-  ADAPTERS --> FB[Firebase]
-  ADAPTERS --> STORE[StoreKit and Play Billing]
-  AIT[apps/ait deferred] -. future .-> CORE
-  AIT -. future adapter .-> FB
+  UI["apps mobile"] --> APP["application composition"]
+  APP --> CORE["packages product core"]
+  APP --> ADAPTERS["Firebase and native adapters"]
+  ADAPTERS --> FB["Firebase"]
+  ADAPTERS --> STORE["StoreKit and Play Billing"]
+  AIT["apps ait condition share"] --> CORE
+  AIT -. policy-gated adapter .-> FB
 ~~~
 
 product-core에는 domain entity, value object, pure use case, port, pure test fixture만 둔다. React Native, Firebase, AppsInToss, Apple, Google, 광고, Analytics SDK를 import하면 안 된다.
@@ -33,7 +33,7 @@ product-core에는 domain entity, value object, pure use case, port, pure test f
 | play-store | Google Play 등록 source of truth |
 | app-store | App Store 등록 source of truth |
 | apps-in-toss | 정책 검토와 조건부 등록 source of truth |
-| apps/ait | 정책 적합성과 appName 확정 후에만 생성 |
+| apps/ait | SDK 2.x RN 0.84 + TDS, 로컬 컨디션 선택과 명시적 공유 |
 
 `apps/mobile/src/platform/firebase`는 `@react-native-firebase` Auth·Firestore·Functions를 앱 전용 backend port 뒤에 둔다. 개발 단계에서는 익명 인증으로 2인 흐름을 검증하며, 운영 로그인 제공자가 확정되면 같은 port 뒤에서 계정 업그레이드 경로를 교체한다. 민감한 partner projection이 OS 수준 일반 캐시에 남지 않도록 Firestore native persistence는 현재 비활성화한다.
 
