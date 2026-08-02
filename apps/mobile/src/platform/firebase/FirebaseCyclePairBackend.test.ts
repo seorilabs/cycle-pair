@@ -11,7 +11,9 @@ jest.mock('@react-native-firebase/auth', () => ({
 
 jest.mock('@react-native-firebase/firestore', () => ({
   collection: jest.fn((...path: unknown[]) => ({ path })),
+  deleteDoc: jest.fn(),
   doc: jest.fn((...path: unknown[]) => ({ path })),
+  documentId: jest.fn(() => ({documentId: true})),
   getDoc: jest.fn(),
   getDocs: jest.fn(),
   getFirestore: jest.fn(() => ({})),
@@ -30,12 +32,19 @@ jest.mock('@react-native-firebase/functions', () => ({
   httpsCallable: jest.fn(),
 }));
 
-import { onSnapshot, setDoc } from '@react-native-firebase/firestore';
+import {
+  deleteDoc,
+  getDocs,
+  onSnapshot,
+  setDoc,
+} from '@react-native-firebase/firestore';
 
 import { secureOfflineMutationQueue } from '../local/SecureOfflineMutationQueue';
 import { firebaseCyclePairBackend } from './FirebaseCyclePairBackend';
 
 const onSnapshotMock = onSnapshot as jest.MockedFunction<typeof onSnapshot>;
+const deleteDocMock = deleteDoc as jest.MockedFunction<typeof deleteDoc>;
+const getDocsMock = getDocs as jest.MockedFunction<typeof getDocs>;
 const setDocMock = setDoc as jest.MockedFunction<typeof setDoc>;
 
 describe('firebaseCyclePairBackend Pair membership watch', () => {
@@ -122,5 +131,59 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
         mutationId: 'daily-direct-write',
       }),
     ]);
+  });
+
+  it('기록 삭제가 즉시 실패해도 암호화 큐에서 재시도한다', async () => {
+    deleteDocMock.mockRejectedValueOnce({code: 'firestore/permission-denied'});
+
+    await expect(
+      firebaseCyclePairBackend.deleteDailyLog(
+        uid,
+        '2026-07-14',
+        'daily-delete-direct-write',
+      ),
+    ).resolves.toEqual({
+      status: 'queued',
+      mutationId: 'daily-delete-direct-write',
+    });
+
+    await expect(secureOfflineMutationQueue.list(uid)).resolves.toEqual([
+      expect.objectContaining({
+        type: 'delete-daily-log',
+        uid,
+        localDate: '2026-07-14',
+        mutationId: 'daily-delete-direct-write',
+      }),
+    ]);
+  });
+
+  it('대기 중인 삭제를 원격의 이전 문서로 다시 표시하지 않는다', async () => {
+    deleteDocMock.mockRejectedValueOnce({code: 'firestore/unavailable'});
+    getDocsMock.mockResolvedValueOnce({
+      docs: [
+        {
+          id: '2026-07-14',
+          data: () => ({
+            localDate: '2026-07-14',
+            moodTag: 'good',
+            lastMutationId: 'older-write',
+          }),
+        },
+      ],
+    } as Awaited<ReturnType<typeof getDocs>>);
+
+    await firebaseCyclePairBackend.deleteDailyLog(
+      uid,
+      '2026-07-14',
+      'daily-delete-pending',
+    );
+
+    await expect(
+      firebaseCyclePairBackend.listDailyLogs(
+        uid,
+        '2026-07-01',
+        '2026-07-31',
+      ),
+    ).resolves.toEqual([]);
   });
 });

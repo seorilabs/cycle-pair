@@ -176,6 +176,11 @@ export interface CyclePairBackend {
     record: PrivateDailyLogRecord,
     mutationId: string,
   ): Promise<BackendWriteResult>;
+  deleteDailyLog(
+    uid: string,
+    localDate: string,
+    mutationId: string,
+  ): Promise<BackendWriteResult>;
   saveShareSettings(
     uid: string,
     pairId: string,

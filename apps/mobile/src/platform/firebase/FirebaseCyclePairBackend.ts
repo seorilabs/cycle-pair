@@ -3,6 +3,7 @@ import { fetch as fetchNetworkState } from '@react-native-community/netinfo';
 import { getAuth, signInAnonymously } from '@react-native-firebase/auth';
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -351,6 +352,15 @@ async function writeDailyLog(
   );
 }
 
+async function deleteDailyLogDocument(
+  uid: string,
+  localDate: string,
+): Promise<void> {
+  await deleteDoc(
+    doc(getFirestore(), 'users', uid, 'privateDailyLogs', localDate),
+  );
+}
+
 async function writePrivateSetup(
   uid: string,
   recordsCycle: boolean,
@@ -543,6 +553,8 @@ async function executeQueuedMutation(mutation: OfflineMutation): Promise<void> {
       mutation.record,
       mutation.mutationId,
     );
+  } else if (mutation.type === 'delete-daily-log') {
+    await deleteDailyLogDocument(mutation.uid, mutation.localDate);
   } else if (mutation.type === 'upsert-pair-event') {
     await call('upsertPairEvent', {
       pairId: mutation.pairId,
@@ -704,21 +716,36 @@ export const firebaseCyclePairBackend: CyclePairBackend = {
 
   async listDailyLogs(uid, fromDate, toDate) {
     const byDate = new Map<string, PrivateDailyLogSnapshot>();
-    for (const cached of await secureCyclePairCache.loadDailyLogs(
+    const cachedLogs = await secureCyclePairCache.loadDailyLogs(
       uid,
       fromDate,
       toDate,
-    )) {
+    );
+    for (const cached of cachedLogs) {
       byDate.set(cached.localDate, cached);
     }
+    const pendingMutations = await secureOfflineMutationQueue.list(uid);
+    const pendingDailyDates = new Set(
+      pendingMutations.flatMap(mutation =>
+        mutation.type === 'daily-log' || mutation.type === 'delete-daily-log'
+          ? [mutation.localDate]
+          : [],
+      ),
+    );
     await ensureFirestoreConfigured();
     try {
       const snapshots = await getDocs(
         buildPrivateDailyLogsQuery(uid, fromDate, toDate),
       );
-      const remoteLogs = snapshots.docs.map(snapshot =>
-        parseDailyLog(snapshot.id, snapshot.data()),
-      );
+      const remoteLogs = snapshots.docs
+        .map(snapshot => parseDailyLog(snapshot.id, snapshot.data()))
+        .filter(log => !pendingDailyDates.has(log.localDate));
+      const remoteDates = new Set(remoteLogs.map(log => log.localDate));
+      for (const cached of cachedLogs) {
+        if (remoteDates.has(cached.localDate)) continue;
+        await secureCyclePairCache.deleteDailyLog(uid, cached.localDate);
+        byDate.delete(cached.localDate);
+      }
       await secureCyclePairCache.saveDailyLogs(uid, remoteLogs);
       for (const log of remoteLogs) {
         byDate.set(log.localDate, log);
@@ -728,7 +755,7 @@ export const firebaseCyclePairBackend: CyclePairBackend = {
         throw error;
     }
 
-    for (const mutation of await secureOfflineMutationQueue.list(uid)) {
+    for (const mutation of pendingMutations) {
       if (
         mutation.type === 'daily-log' &&
         mutation.localDate >= fromDate &&
@@ -740,6 +767,12 @@ export const firebaseCyclePairBackend: CyclePairBackend = {
           mutationId: mutation.mutationId,
           updatedAt: mutation.createdAt,
         });
+      } else if (
+        mutation.type === 'delete-daily-log' &&
+        mutation.localDate >= fromDate &&
+        mutation.localDate <= toDate
+      ) {
+        byDate.delete(mutation.localDate);
       }
     }
 
@@ -783,6 +816,41 @@ export const firebaseCyclePairBackend: CyclePairBackend = {
       } catch {
         await secureOfflineMutationQueue.enqueue(mutation);
         return { status: 'queued', mutationId };
+      }
+    });
+  },
+
+  async deleteDailyLog(uid, localDate, mutationId) {
+    return serializeMutationWrite(uid, async () => {
+      const mutation = {
+        schemaVersion: 1 as const,
+        type: 'delete-daily-log' as const,
+        uid,
+        localDate,
+        mutationId,
+        createdAt: new Date().toISOString(),
+      };
+      await secureCyclePairCache.deleteDailyLog(uid, localDate);
+      if (await isDefinitelyOffline()) {
+        await secureOfflineMutationQueue.enqueue(mutation);
+        return { status: 'queued' as const, mutationId };
+      }
+      try {
+        await ensureFirestoreConfigured();
+        if (await secureOfflineMutationQueue.count(uid)) {
+          await secureOfflineMutationQueue.enqueue(mutation);
+          const report = await flushQueuedMutations(uid);
+          return {
+            status:
+              report.remaining > 0 ? ('queued' as const) : ('synced' as const),
+            mutationId,
+          };
+        }
+        await deleteDailyLogDocument(uid, localDate);
+        return { status: 'synced' as const, mutationId };
+      } catch {
+        await secureOfflineMutationQueue.enqueue(mutation);
+        return { status: 'queued' as const, mutationId };
       }
     });
   },

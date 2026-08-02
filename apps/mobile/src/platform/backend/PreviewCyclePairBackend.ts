@@ -73,6 +73,10 @@ export const previewCyclePairBackend: CyclePairBackend = {
     });
     return { status: 'synced', mutationId };
   },
+  async deleteDailyLog(uid, localDate, mutationId) {
+    dailyLogs.delete(dailyKey(uid, localDate));
+    return { status: 'synced', mutationId };
+  },
   async saveShareSettings(_uid, pairId) {
     return { status: 'synced', mutationId: `share-settings-${pairId}` };
   },

@@ -107,6 +107,25 @@ describe('secureCyclePairCache', () => {
     }
   });
 
+  it('선택한 일일 기록만 암호화 캐시에서 삭제한다', async () => {
+    await secureCyclePairCache.saveDailyLog('user-a', {
+      localDate: '2026-07-13',
+      record: {moodTag: 'low'},
+    });
+    await secureCyclePairCache.saveDailyLog('user-a', {
+      localDate: '2026-07-14',
+      record: {moodTag: 'good'},
+    });
+
+    await secureCyclePairCache.deleteDailyLog('user-a', '2026-07-14');
+
+    await expect(
+      secureCyclePairCache.loadDailyLogs('user-a', '2026-07-01', '2026-07-31'),
+    ).resolves.toEqual([
+      {localDate: '2026-07-13', record: {moodTag: 'low'}},
+    ]);
+  });
+
   it('기존 raw service cache를 읽되 다음 저장부터 원문 식별자를 제거한다', async () => {
     const setup = {
       recordsCycle: false,

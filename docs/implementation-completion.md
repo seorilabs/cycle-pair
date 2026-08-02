@@ -14,7 +14,7 @@
 
 | 영역 | 코드 상태 | 현재 검증 근거 | 출시 전 남은 근거 |
 | --- | --- | --- | --- |
-| 기록·달력 | 구현됨 | 다일 기록·주기 시작/종료·재실행 복원 unit/mobile tests, Android solo 홈 smoke | 두 OS 실기기 회귀 QA |
+| 기록·달력 | 구현됨 | 다일 기록·주기 시작/종료·재실행 복원, 캘린더 개별 삭제·암호화 오프라인 재시도·projection 재계산 unit/mobile/emulator tests | 두 OS 실기기 삭제·오프라인 복구 회귀 QA |
 | 암호화 오프라인 | 구현됨 | Keychain cache/queue, UID·Pair fence, 멱등 flush·logout drain unit tests | 네트워크 차단/복구 실기기 QA |
 | Pair·공동 일정 | 구현됨 | solo 진입, 초대·수락·해제, projection·event 코드/테스트, Rules 경계 | 최신 Functions 배포 후 2계정·2기기 E2E |
 | 인증·계정 | 구현됨 | 익명/email 승격·인증·reset·재인증·로그아웃, 삭제 receipt·Auth 소멸 후 복구를 포함한 unit/mobile·격리 Emulator E2E | 양 OS 실기기 삭제·응답 유실 회귀 |

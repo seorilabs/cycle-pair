@@ -73,7 +73,7 @@ check:release는 현재 의도적으로 실패해야 한다. 정책 답변, 서�
 
 Emulator에서 최소 다음을 자동 검증한다.
 
-1. owner는 자기 private profile, cycles, dailyLogs를 읽고 쓸 수 있다.
+1. owner는 자기 private profile, cycles, dailyLogs를 읽고 쓸 수 있으며 dailyLog를 삭제할 수 있다.
 2. partner와 제3자는 owner-private 경로를 읽을 수 없다.
 3. active partner는 자기 Pair의 projection만 읽을 수 있다.
 4. projection에는 공유 OFF 필드가 존재하지 않는다.
@@ -106,6 +106,7 @@ Emulator에서 최소 다음을 자동 검증한다.
 | 연결 | 초대 생성 | 다른 계정으로 수락 | 정확히 하나의 active Pair |
 | 기본 프라이버시 | 기록 저장 | 상대 화면 조회 | 건강 필드가 보이지 않음 |
 | 선택 공유 | mood만 켬 | 새로고침 | mood만 보임 |
+| 기록 삭제 | 최신 기록 삭제 | 상대 화면 조회 | 원본·암호화 캐시에서 제거되고 남은 최신 공유 기록으로 갱신 |
 | 공유 회수 | mood 끔 | 새로고침 | 이전 mood도 사라짐 |
 | 오프라인 해제 | Pair 해제 | 오프라인 유지 | 서버 접근 즉시 차단 |
 | tombstone | 해제 완료 | 다시 온라인 | 상대 캐시 삭제 후 ack |

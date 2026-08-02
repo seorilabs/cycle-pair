@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { addEventListener as addNetworkListener } from '@react-native-community/netinfo';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import React from 'react';
-import { BackHandler } from 'react-native';
+import { Alert, BackHandler } from 'react-native';
 import App from '../App';
 import type { CyclePairBackend } from '../src/platform/backend/CyclePairBackend';
 import { previewCyclePairBackend } from '../src/platform/backend/PreviewCyclePairBackend';
@@ -34,6 +34,14 @@ function installHardwareBackMock() {
       return handled;
     },
   };
+}
+
+function deviceLocalDate(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 describe('CyclePair mobile app', () => {
@@ -474,5 +482,60 @@ describe('CyclePair mobile app', () => {
       expect(storedValue).not.toContain('lastPeriodStart');
       expect(storedValue).not.toContain('checkIn');
     }
+  });
+
+  it('캘린더에서 확인한 내 기록을 재확인 후 삭제한다', async () => {
+    await AsyncStorage.setItem(
+      '@cyclepair/app-state/v1',
+      JSON.stringify({
+        schemaVersion: 4,
+        onboardingComplete: true,
+        neutralNotifications: false,
+        diagnosticsEnabled: false,
+      }),
+    );
+    const today = deviceLocalDate();
+    const deleteDailyLog = jest.fn(async () => ({
+      status: 'synced' as const,
+      mutationId: 'daily-delete-test',
+    }));
+    const backend: CyclePairBackend = {
+      ...previewCyclePairBackend,
+      async loadPrivateSetup() {
+        return {
+          recordsCycle: false,
+          consentAcceptedAt: '2026-07-13T00:00:00.000Z',
+        };
+      },
+      async listDailyLogs() {
+        return [
+          {
+            localDate: today,
+            record: {moodTag: 'good', note: '삭제할 기록'},
+          },
+        ];
+      },
+      deleteDailyLog,
+    };
+    jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, buttons) => {
+      buttons?.find(button => button.style === 'destructive')?.onPress?.();
+    });
+    const view = await render(<App backend={backend} />);
+
+    await waitFor(() => expect(view.getByText(/오늘 나의/)).toBeTruthy());
+    await fireEvent.press(view.getByLabelText('달력'));
+    await waitFor(() => expect(view.getByText('삭제할 기록')).toBeTruthy());
+    await fireEvent.press(view.getByText('기록 삭제'));
+
+    await waitFor(() =>
+      expect(deleteDailyLog).toHaveBeenCalledWith(
+        'preview-self',
+        today,
+        expect.stringMatching(/^daily-delete-/),
+      ),
+    );
+    await waitFor(() =>
+      expect(view.getByText('이 날짜에 저장된 내 기록이 없어요.')).toBeTruthy(),
+    );
   });
 });

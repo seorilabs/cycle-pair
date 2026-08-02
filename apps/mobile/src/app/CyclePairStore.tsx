@@ -178,6 +178,7 @@ export type CyclePairAction =
   | { type: 'COMPLETE_SHARING'; queued?: boolean }
   | { type: 'SET_TAB'; payload: MainTab }
   | { type: 'SAVE_CHECK_IN'; payload: DailyCheckIn }
+  | { type: 'DELETE_DAILY_LOG'; payload: string }
   | { type: 'SET_NOTIFICATIONS_ENABLED'; payload: boolean }
   | { type: 'SET_NOTIFICATION_QUIET_HOURS'; payload: NotificationQuietHours }
   | { type: 'SET_DIAGNOSTICS_ENABLED'; payload: boolean }
@@ -592,6 +593,18 @@ export function reduceCyclePairState(
         lastSavedAt: new Date().toISOString(),
       };
     }
+    case 'DELETE_DAILY_LOG':
+      return {
+        ...state,
+        dailyHistory: state.dailyHistory.filter(
+          entry => entry.localDate !== action.payload,
+        ),
+        checkIn:
+          action.payload === state.currentLocalDate
+            ? emptyDailyCheckIn()
+            : state.checkIn,
+        lastSavedAt: new Date().toISOString(),
+      };
     case 'SET_NOTIFICATIONS_ENABLED':
       return { ...state, neutralNotifications: action.payload };
     case 'SET_NOTIFICATION_QUIET_HOURS':
@@ -731,6 +744,7 @@ interface CyclePairContextValue {
   completeSharing(): Promise<void>;
   setTab(tab: MainTab): void;
   saveCheckIn(checkIn: DailyCheckIn): Promise<boolean>;
+  deleteDailyLog(localDate: string): Promise<boolean>;
   upsertPairEvent(event: PairEventInput): Promise<boolean>;
   deletePairEvent(eventId: string): Promise<boolean>;
   toggleNotifications(): Promise<void>;
@@ -1616,6 +1630,38 @@ export function CyclePairProvider({
       state.sensitiveDataConsentAcceptedAt,
     ],
   );
+  const deleteDailyLog = useCallback(
+    async (localDate: string) => {
+      if (!backendSession) {
+        reportBackendError(new Error('backend session unavailable'));
+        return false;
+      }
+      const mutationId = createMutationId('daily-delete');
+      setBackendBusy(true);
+      setBackendError(null);
+      dispatch({ type: 'SET_SYNC_STATUS', payload: 'syncing' });
+      try {
+        const write = await backend.deleteDailyLog(
+          backendSession.uid,
+          localDate,
+          mutationId,
+        );
+        dispatch({ type: 'DELETE_DAILY_LOG', payload: localDate });
+        dispatch({
+          type: 'SET_SYNC_STATUS',
+          payload: write.status === 'queued' ? 'queued' : 'synced',
+        });
+        return true;
+      } catch (error) {
+        dispatch({ type: 'SET_SYNC_STATUS', payload: 'error' });
+        reportBackendError(error);
+        return false;
+      } finally {
+        setBackendBusy(false);
+      }
+    },
+    [backend, backendSession, reportBackendError],
+  );
   const upsertPairEvent = useCallback(
     async (event: PairEventInput) => {
       const pairId = activePair?.pairId ?? state.sharingPairId;
@@ -1912,6 +1958,7 @@ export function CyclePairProvider({
       completeSharing,
       setTab,
       saveCheckIn,
+      deleteDailyLog,
       upsertPairEvent,
       deletePairEvent,
       toggleNotifications,
@@ -1946,6 +1993,7 @@ export function CyclePairProvider({
       completeSharing,
       setTab,
       saveCheckIn,
+      deleteDailyLog,
       upsertPairEvent,
       deletePairEvent,
       toggleNotifications,

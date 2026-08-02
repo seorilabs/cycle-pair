@@ -230,7 +230,7 @@ service cloud.firestore {
       allow read: if isOwner(uid);
       allow create, update: if accountMutationAllowed(uid)
         && isValidPrivateDailyLog(logId);
-      allow delete: if false;
+      allow delete: if accountMutationAllowed(uid);
     }
 
     // Sharing consent is scoped to one Pair. A new Pair has no settings

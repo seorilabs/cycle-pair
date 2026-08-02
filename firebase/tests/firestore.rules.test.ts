@@ -82,7 +82,7 @@ async function seedActivePair(): Promise<void> {
 }
 
 describe("owner-only raw records", () => {
-  test("owner can read and write cycle and daily-log documents", async () => {
+  test("owner can read, write, and delete daily-log documents", async () => {
     const ownerDb = testEnv.authenticatedContext("alice").firestore();
     const cycleRef = doc(ownerDb, "users/alice/privateCycles/current");
     const dailyRef = doc(ownerDb, "users/alice/privateDailyLogs/2026-07-12");
@@ -118,6 +118,7 @@ describe("owner-only raw records", () => {
     );
     await assertSucceeds(getDoc(cycleRef));
     await assertSucceeds(getDoc(dailyRef));
+    await assertSucceeds(deleteDoc(dailyRef));
   });
 
   test("cycle setup rejects unknown fields, invalid LocalDates, and unsafe ranges", async () => {
@@ -245,15 +246,22 @@ describe("owner-only raw records", () => {
         doc(context.firestore(), "users/alice/privateCycles/current"),
         {cyclePhase: "luteal"},
       );
+      await setDoc(
+        doc(context.firestore(), "users/alice/privateDailyLogs/2026-07-12"),
+        {localDate: "2026-07-12"},
+      );
     });
 
     const otherDb = testEnv.authenticatedContext("bob").firestore();
     const anonymousDb = testEnv.unauthenticatedContext().firestore();
     const ownerCyclePath = "users/alice/privateCycles/current";
+    const ownerDailyPath = "users/alice/privateDailyLogs/2026-07-12";
 
     await assertFails(getDoc(doc(otherDb, ownerCyclePath)));
     await assertFails(setDoc(doc(otherDb, ownerCyclePath), {cyclePhase: "x"}));
     await assertFails(getDoc(doc(anonymousDb, ownerCyclePath)));
+    await assertFails(deleteDoc(doc(otherDb, ownerDailyPath)));
+    await assertFails(deleteDoc(doc(anonymousDb, ownerDailyPath)));
   });
 
   test("pair-scoped share settings remain owner-only", async () => {
@@ -289,6 +297,10 @@ describe("owner-only raw records", () => {
         schemaVersion: 1,
         status: "in-progress",
       });
+      await setDoc(
+        doc(context.firestore(), "users/alice/privateDailyLogs/2026-07-13"),
+        {localDate: "2026-07-13"},
+      );
     });
     const ownerDb = testEnv.authenticatedContext("alice").firestore();
 
@@ -307,6 +319,11 @@ describe("owner-only raw records", () => {
         lastMutationId: "blocked-daily",
         updatedAt: serverTimestamp(),
       }),
+    );
+    await assertFails(
+      deleteDoc(
+        doc(ownerDb, "users/alice/privateDailyLogs/2026-07-13"),
+      ),
     );
     await assertFails(
       setDoc(doc(ownerDb, "users/alice/shareSettings/pair-1"), {

@@ -19,6 +19,7 @@ import * as Keychain from 'react-native-keychain';
 
 import {
   type DailyLogOfflineMutation,
+  type DeleteDailyLogOfflineMutation,
   type DeletePairEventOfflineMutation,
   type PrivateSetupOfflineMutation,
   type ShareSettingsOfflineMutation,
@@ -67,6 +68,20 @@ function dailyMutation(
       carePreferences: ['quiet-space'],
       note: '민감한 기록',
     },
+    ...overrides,
+  };
+}
+
+function deleteDailyLogMutation(
+  overrides: Partial<DeleteDailyLogOfflineMutation> = {},
+): DeleteDailyLogOfflineMutation {
+  return {
+    schemaVersion: 1,
+    type: 'delete-daily-log',
+    uid: 'user-a',
+    mutationId: 'daily-delete-2026-07-14',
+    createdAt: '2026-07-14T01:01:00.000Z',
+    localDate: '2026-07-14',
     ...overrides,
   };
 }
@@ -520,6 +535,20 @@ describe('secureOfflineMutationQueue', () => {
 
     await expect(secureOfflineMutationQueue.list('user-a')).resolves.toEqual([
       upsert,
+      remove,
+    ]);
+  });
+
+  it('오프라인 일일 기록 저장 다음 삭제 순서를 보존한다', async () => {
+    const createdAt = '2026-07-14T02:00:00.000Z';
+    const save = dailyMutation({mutationId: 'z-save', createdAt});
+    const remove = deleteDailyLogMutation({mutationId: 'a-delete', createdAt});
+
+    await secureOfflineMutationQueue.enqueue(save);
+    await secureOfflineMutationQueue.enqueue(remove);
+
+    await expect(secureOfflineMutationQueue.list('user-a')).resolves.toEqual([
+      save,
       remove,
     ]);
   });

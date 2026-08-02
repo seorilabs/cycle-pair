@@ -49,6 +49,11 @@ export interface DailyLogOfflineMutation extends OfflineMutationBase {
   readonly record: PrivateDailyLogRecord;
 }
 
+export interface DeleteDailyLogOfflineMutation extends OfflineMutationBase {
+  readonly type: 'delete-daily-log';
+  readonly localDate: string;
+}
+
 export interface PrivateSetupOfflineMutation extends OfflineMutationBase {
   readonly type: 'private-setup';
   readonly setup: PrivateSetupSnapshot;
@@ -76,6 +81,7 @@ export type OfflineMutation =
   | PrivateSetupOfflineMutation
   | ShareSettingsOfflineMutation
   | DailyLogOfflineMutation
+  | DeleteDailyLogOfflineMutation
   | UpsertPairEventOfflineMutation
   | DeletePairEventOfflineMutation;
 
@@ -352,6 +358,8 @@ function isOfflineMutation(value: unknown): value is StoredOfflineMutation {
         isReasonableRecordedLocalDate(value.localDate) &&
         isPrivateDailyLogRecord(value.record)
       );
+    case 'delete-daily-log':
+      return isReasonableRecordedLocalDate(value.localDate);
     case 'upsert-pair-event':
       return isNonEmptyString(value.pairId) && isPairEventInput(value.event);
     case 'delete-pair-event':

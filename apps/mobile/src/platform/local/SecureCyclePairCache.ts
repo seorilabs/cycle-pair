@@ -50,6 +50,7 @@ export interface SecureCyclePairCache {
     toDate: string,
   ): Promise<readonly PrivateDailyLogSnapshot[]>;
   saveDailyLog(uid: string, log: PrivateDailyLogSnapshot): Promise<void>;
+  deleteDailyLog(uid: string, localDate: string): Promise<void>;
   saveDailyLogs(
     uid: string,
     logs: readonly PrivateDailyLogSnapshot[],
@@ -486,6 +487,16 @@ class KeychainSecureCyclePairCache implements SecureCyclePairCache {
         value,
       });
       await removeService(legacyDailyService(uid, value.localDate));
+    });
+  }
+
+  async deleteDailyLog(uid: string, localDate: string): Promise<void> {
+    await secureUserDataFence.runWrite(uid, async () => {
+      await Promise.all(
+        [dailyService(uid, localDate), legacyDailyService(uid, localDate)].map(
+          removeService,
+        ),
+      );
     });
   }
 

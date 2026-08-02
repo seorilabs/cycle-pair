@@ -72,8 +72,14 @@ function isValidEventTimes(start?: string, end?: string): boolean {
 }
 
 export function CalendarScreen() {
-  const { state, backendBusy, backendError, upsertPairEvent, deletePairEvent } =
-    useCyclePair();
+  const {
+    state,
+    backendBusy,
+    backendError,
+    deleteDailyLog,
+    upsertPairEvent,
+    deletePairEvent,
+  } = useCyclePair();
   const viewModel = buildCycleViewModel(state);
   const todayParts = dateParts(viewModel.today);
   const [cursor, setCursor] = useState({
@@ -85,6 +91,7 @@ export function CalendarScreen() {
   const [retryOperation, setRetryOperation] = useState<
     | { readonly type: 'save'; readonly event: PairEventInput }
     | { readonly type: 'delete'; readonly eventId: string }
+    | { readonly type: 'delete-record'; readonly localDate: string }
     | null
   >(null);
   const operationRef = useRef(false);
@@ -189,6 +196,17 @@ export function CalendarScreen() {
     }
   }
 
+  async function removeDailyLog(recordDate: string) {
+    if (operationRef.current || backendBusy) return;
+    operationRef.current = true;
+    setRetryOperation({ type: 'delete-record', localDate: recordDate });
+    try {
+      if (await deleteDailyLog(recordDate)) setRetryOperation(null);
+    } finally {
+      operationRef.current = false;
+    }
+  }
+
   async function retryLastOperation() {
     if (!retryOperation) return;
     if (retryOperation.type === 'save') {
@@ -199,7 +217,36 @@ export function CalendarScreen() {
       }
       return;
     }
+    if (retryOperation.type === 'delete-record') {
+      await removeDailyLog(retryOperation.localDate);
+      return;
+    }
     await removeEvent(retryOperation.eventId);
+  }
+
+  function confirmDeleteDailyLog() {
+    if (!selectedHistory) return;
+    const includesCycleBoundary =
+      selectedHistory.checkIn.periodStarted ||
+      selectedHistory.checkIn.periodEnded;
+    Alert.alert(
+      '기록 삭제',
+      `${formatKoreanDate(parseLocalDate(selectedHistory.localDate))}의 컨디션 기록을 삭제할까요? 이 작업은 되돌릴 수 없어요.${
+        includesCycleBoundary
+          ? '\n\n설정에 저장된 주기 시작·종료 기준은 유지돼요.'
+          : ''
+      }`,
+      [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '삭제',
+          style: 'destructive',
+          onPress: () => {
+            removeDailyLog(selectedHistory.localDate).catch(() => undefined);
+          },
+        },
+      ],
+    );
   }
 
   function confirmDeleteEvent(eventId: string, title: string) {
@@ -468,6 +515,15 @@ export function CalendarScreen() {
               {selectedHistory.checkIn.note}
             </Text>
           ) : null}
+          <View style={styles.historyActions}>
+            <SecondaryButton
+              compact
+              danger
+              label={backendBusy ? '삭제 중…' : '기록 삭제'}
+              disabled={backendBusy}
+              onPress={confirmDeleteDailyLog}
+            />
+          </View>
         </Card>
       ) : (
         <Card style={styles.emptyCard}>
@@ -845,6 +901,7 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
   },
+  historyActions: { alignItems: 'flex-end', marginTop: spacing.xs },
   emptyCard: { alignItems: 'center', justifyContent: 'center', minHeight: 72 },
   emptyText: { color: colors.textMuted, fontSize: 13, textAlign: 'center' },
   sharedCalendarCard: {

@@ -28,7 +28,7 @@ flowchart LR
 ## 데이터 경계
 
 - `/users/{uid}/privateCycles/{recordId}`: owner만 읽기/쓰기
-- `/users/{uid}/privateDailyLogs/{logId}`: owner만 읽기/쓰기
+- `/users/{uid}/privateDailyLogs/{logId}`: owner만 읽기·추가·수정·삭제
 - `/users/{uid}/shareSettings/{pairId}`: 해당 사용자의 Pair-scoped 공유 동의, owner만 읽기/쓰기
 - `/pairs/{pairId}`: 정확히 2명의 대칭형 멤버, active 멤버만 읽기, 클라이언트 쓰기 금지
 - `/pairs/{pairId}/projections/{ownerUid}`: active Pair 멤버만 읽기, Admin SDK만 쓰기
@@ -53,6 +53,8 @@ Cycle projection은 고정 source of truth인 `privateCycles/current`를 읽는�
 Projection의 `generatedAt`은 서버가 projection 문서를 다시 materialize한 시각일 뿐 원본 건강 기록 시각이 아니다. 공유된 daily 필드에는 `dailyLogDate`, cycle 파생 필드에는 `cycleAsOfDate`를 함께 저장한다. 모바일은 이 source LocalDate가 기기 기준 오늘과 일치하지 않는 daily 상태·cycle phase·예상 범위를 오늘 정보나 케어 추천에 사용하지 않는다. 명시적인 과거 `periodDates`만 날짜 자체가 의미를 설명하므로 유지한다.
 
 Owner client가 쓰는 `privateCycles/current`와 `privateDailyLogs/{localDate}`는 allowlist schema, 실제 Gregorian LocalDate, 길이·enum·수치 범위, server timestamp를 Rules에서 검증한다. 기록 LocalDate는 UTC+14를 고려해 서버 수신 시각보다 최대 하루 앞선 값까지만 허용한다. `recordsCycle`은 owner-private setup을 기준으로 active Pair와 membership mirror에 Functions가 다시 동기화한다.
+
+일일 기록 삭제는 owner와 계정 삭제 barrier를 다시 확인한 뒤 허용한다. 모바일은 삭제를 기기 한정 암호화 캐시와 오프라인 mutation queue에 먼저 반영하고, 온라인 복구 시 서버 문서를 삭제한다. 삭제 trigger는 남아 있는 가장 최근 기록으로 partner projection을 다시 만들며, 다른 기기는 다음 authoritative 목록 조회에서 삭제된 캐시 항목을 제거한다.
 
 ## 공유 projection 계약
 

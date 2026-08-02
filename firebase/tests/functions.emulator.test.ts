@@ -12,6 +12,7 @@ import {
 import {
   Firestore,
   connectFirestoreEmulator,
+  deleteDoc,
   doc,
   getDocFromServer,
   getFirestore,
@@ -664,6 +665,20 @@ describe("pair lifecycle callables", () => {
         Array.isArray(data.symptomTags) &&
         data.symptomTags[0] === "headache" &&
         data.dailyLogDate === "2026-07-14",
+    );
+    await deleteDoc(
+      doc(alice.firestore, `users/${aliceUid}/privateDailyLogs/2026-07-14`),
+    );
+    await waitForProjection(
+      bob.firestore,
+      projectionPath,
+      data =>
+        Array.isArray(data.symptomTags) &&
+        data.symptomTags[0] === "cramps" &&
+        data.dailyLogDate === "2026-07-01" &&
+        !Object.hasOwn(data, "energyLevel") &&
+        !Object.hasOwn(data, "conditionCode") &&
+        !Object.hasOwn(data, "note"),
     );
     await setDoc(
       doc(alice.firestore, settingsPath),
