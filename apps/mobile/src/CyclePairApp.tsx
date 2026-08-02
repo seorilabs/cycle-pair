@@ -18,7 +18,7 @@ function LoadingScreen() {
   return (
     <View style={styles.loading}>
       <Text style={styles.loadingMark}>∞</Text>
-      <Text style={styles.loadingTitle}>Cycle Pair</Text>
+      <Text style={styles.loadingTitle}>사이클 페어</Text>
       <ActivityIndicator color={colors.primary} style={styles.spinner} />
     </View>
   );

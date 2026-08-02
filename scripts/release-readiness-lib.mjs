@@ -6,6 +6,8 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { inflateRawSync } from "node:zlib";
 
+import { AITReader, PlatformType } from "@apps-in-toss/ait-format";
+
 import { assertNativeFirebaseSelectionStructure } from "./native-firebase-selection-lib.mjs";
 
 const UNKNOWN_MARKER = "확정 필요";
@@ -209,7 +211,26 @@ function readAndroidApplicationId(androidAppGradle, firebaseEnvironments) {
 }
 
 function readAndroidVersionName(androidAppGradle) {
-  return androidAppGradle?.match(/versionName\s+["']([^"']+)["']/)?.[1] ?? null;
+  const literal = androidAppGradle?.match(
+    /^\s*versionName\s+["']([^"']+)["']\s*$/m
+  )?.[1];
+  if (literal) return literal;
+
+  const variableName = androidAppGradle?.match(
+    /^\s*versionName\s+([A-Za-z_$][\w$]*)\s*$/m
+  )?.[1];
+  if (!variableName) return null;
+
+  const escapedVariableName = variableName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const assignment = androidAppGradle.match(
+    new RegExp(
+      `def\\s+${escapedVariableName}\\s*=\\s*\\(([\\s\\S]*?)\\)\\.toString\\(\\)`
+    )
+  )?.[1];
+  if (!assignment) return null;
+
+  const stringLiterals = [...assignment.matchAll(/["']([^"']+)["']/g)];
+  return stringLiterals.at(-1)?.[1] ?? null;
 }
 
 function readIosBundleIdentifiers(iosProject) {
@@ -633,8 +654,88 @@ async function baseArtifactBlockers(root, artifact, label, expectedSuffix) {
   return blockers;
 }
 
-async function artifactBlockers(root, artifact, label) {
-  return baseArtifactBlockers(root, artifact, label, "");
+async function appsInTossArtifactBlockers(root, artifact, config) {
+  const label = "AppsInToss package";
+  const blockers = await baseArtifactBlockers(root, artifact, label, ".ait");
+  if (
+    typeof artifact?.path !== "string" ||
+    !(await exists(root, artifact.path))
+  ) {
+    return blockers;
+  }
+
+  let reader;
+  try {
+    reader = AITReader.fromBuffer(await readFile(path.join(root, artifact.path)));
+  } catch {
+    blockers.push(`${label} AIT 포맷 검증 실패`);
+    return blockers;
+  }
+
+  if (reader.formatVersion !== 1) {
+    blockers.push(`${label} format version 1 필요`);
+  }
+  if (!config?.appName || reader.appName !== config.appName) {
+    blockers.push(`${label} appName과 등록 설정 불일치`);
+  }
+  if (config?.buildTarget?.artifact !== artifact.path) {
+    blockers.push(`${label} 경로와 build target 불일치`);
+  }
+
+  const aitPackage = await readJson(root, "apps/ait/package.json");
+  const metadata = reader.metadata;
+  const embeddedDependencies = metadata?.packageJson?.dependencies;
+  const expectedRuntime = aitPackage?.dependencies?.["react-native"];
+  const expectedSdk = aitPackage?.dependencies?.["@apps-in-toss/framework"];
+  const expectedTds = aitPackage?.dependencies?.["@toss/tds-react-native"];
+  if (
+    metadata?.isGame !== false ||
+    metadata?.platform !== PlatformType.REACT_NATIVE ||
+    metadata?.runtimeVersion !== expectedRuntime ||
+    !/^0\.84\./.test(metadata?.runtimeVersion ?? "") ||
+    metadata?.sdkVersion !== expectedSdk ||
+    !/^2\./.test(metadata?.sdkVersion ?? "") ||
+    typeof expectedTds !== "string" ||
+    expectedTds.trim().length === 0 ||
+    embeddedDependencies?.["react-native"] !== expectedRuntime ||
+    embeddedDependencies?.["@apps-in-toss/framework"] !== expectedSdk ||
+    embeddedDependencies?.["@toss/tds-react-native"] !== expectedTds
+  ) {
+    blockers.push(`${label} SDK 2.x / RN 0.84 / TDS metadata 불일치`);
+  }
+
+  const entryNames = reader.listEntries();
+  const uniqueEntryNames = new Set(entryNames);
+  const runtimeSuffix = (expectedRuntime ?? "").replaceAll(".", "_");
+  const requiredEntries = [
+    `bundle.ios.${runtimeSuffix}.js`,
+    `bundle.android.${runtimeSuffix}.js`,
+  ];
+  if (
+    entryNames.length === 0 ||
+    entryNames.length !== uniqueEntryNames.size ||
+    requiredEntries.some((entry) => !uniqueEntryNames.has(entry)) ||
+    requiredEntries.some((entry) => !metadata?.bundleFiles?.includes(entry))
+  ) {
+    blockers.push(`${label} iOS/Android runtime bundle entry 불일치`);
+    return blockers;
+  }
+
+  try {
+    for (const entry of reader.bundle.index) {
+      const payload = await reader.readEntry(entry.name);
+      const payloadHash = createHash("sha256").update(payload).digest("hex");
+      if (
+        payload.length !== Number(entry.uncompressedSize) ||
+        payloadHash !== entry.sha256Hex
+      ) {
+        throw new Error("AIT entry integrity mismatch");
+      }
+    }
+  } catch {
+    blockers.push(`${label} bundle payload 무결성 검증 실패`);
+  }
+  return blockers;
 }
 
 async function androidArtifactBlockers(
@@ -1490,8 +1591,8 @@ export async function evaluateReleaseReadiness(root) {
       );
     }
     const targetSdk = parseAndroidTargetSdk(androidRootGradle);
-    if (targetSdk === null || targetSdk < 35) {
-      googlePlayBlockers.push("Google Play target API 35 이상 필요");
+    if (targetSdk === null || targetSdk < 36) {
+      googlePlayBlockers.push("Google Play target API 36 이상 필요");
     }
     if (releaseUsesDebugSigning(androidAppGradle)) {
       googlePlayBlockers.push("Android release가 debug signing을 참조함");
@@ -1566,11 +1667,33 @@ export async function evaluateReleaseReadiness(root) {
     if (appsInTossConfig === null || containsUnknown(appsInTossConfig)) {
       appsInTossBlockers.push("AppsInToss 설정에 미확정 값 존재");
     }
+    const aitGraniteConfig = await readText(root, "apps/ait/granite.config.ts");
+    const graniteAppName = aitGraniteConfig?.match(
+      /^\s*appName:\s*["']([^"']+)["'],?\s*$/m
+    )?.[1];
+    if (
+      appsInTossConfig?.appNameStatus !== "confirmed-console-match" ||
+      graniteAppName !== appsInTossConfig?.appName
+    ) {
+      appsInTossBlockers.push("AppsInToss appName Console 대조 미확정 또는 불일치");
+    }
+    if (/placehold\.co/i.test(aitGraniteConfig ?? "")) {
+      appsInTossBlockers.push("AppsInToss 정식 icon 미설정");
+    }
+    const appsInTossConsoleEvidence = releaseEvidence?.console?.appsInTossApp;
+    if (
+      hasAuditEvidence(appsInTossConsoleEvidence, {
+        allowNotApplicable: false,
+      }) &&
+      appsInTossConsoleEvidence?.appName !== appsInTossConfig?.appName
+    ) {
+      appsInTossBlockers.push("AppsInToss Console appName evidence 불일치");
+    }
     appsInTossBlockers.push(
-      ...(await artifactBlockers(
+      ...(await appsInTossArtifactBlockers(
         root,
         releaseEvidence?.artifacts?.appsInTossPackage,
-        "AppsInToss package"
+        appsInTossConfig
       )),
       ...evidenceBlocker(
         releaseEvidence?.console?.appsInTossApp,

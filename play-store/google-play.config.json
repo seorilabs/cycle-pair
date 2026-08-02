@@ -10,12 +10,12 @@
   "contactWebsite": "확정 필요 (seorilabs-official 공통)",
   "privacyPolicyUrl": "확정 필요 (seorilabs-official 공통)",
   "workingName": {
-    "ko-KR": "Cycle Pair",
+    "ko-KR": "사이클 페어 : 친구/연인과 함께 컨디션을 공유해요.",
     "en-US": "Cycle Pair"
   },
   "storeListing": {
     "appName": {
-      "ko-KR": "Cycle Pair",
+      "ko-KR": "사이클 페어 : 친구/연인과 함께 컨디션을 공유해요.",
       "en-US": "Cycle Pair"
     },
     "shortDescription": {
@@ -23,7 +23,7 @@
       "en-US": "A private cycle and condition sharing app for two"
     },
     "fullDescription": {
-      "ko-KR": "Cycle Pair는 주기를 기록하는 사람과 가까운 한 사람이, 생리주기와 그날의 컨디션을 '내가 허용한 만큼만' 나누며 함께 대비하도록 돕는 커플 케어 앱입니다. 의료 진단이나 피임·임신 가능성 판단 도구가 아닙니다.\n\n■ 두 사람을 위한 설계\n- 정확히 두 명이 서로 수락해 연결되는 대칭형 Pair\n- 연결 전에도 나만의 기록을 쓸 수 있어요\n\n■ 내가 정하는 공유\n- 생리 시작·종료일, 증상, 기분, 컨디션, 도움 선호를 기록\n- 필드별로 공유를 켜고 끌 수 있고, 기본값은 전부 비공개\n- 파트너에게는 내가 켠 정보만 전달돼요(원본은 나만 볼 수 있어요)\n\n■ 함께 준비\n- 다음 생리 예정일을 참고용으로 표시(개인차가 있으며 의료·피임 판단에 쓰지 않아요)\n- 공동 캘린더와 기념일, 내가 요청한 도움 중심의 케어 가이드\n\n■ 프라이버시 우선\n- 잠금화면 알림은 건강정보를 드러내지 않는 중립 문구\n- 광고 없음, 제3자 추적 없음, 데이터 판매 없음\n- 언제든 데이터 내보내기·계정 삭제·연결 해제",
+      "ko-KR": "사이클 페어는 주기를 기록하는 사람과 가까운 한 사람이, 생리주기와 그날의 컨디션을 '내가 허용한 만큼만' 나누며 함께 대비하도록 돕는 커플 케어 앱입니다. 의료 진단이나 피임·임신 가능성 판단 도구가 아닙니다.\n\n■ 두 사람을 위한 설계\n- 정확히 두 명이 서로 수락해 연결되는 대칭형 Pair\n- 연결 전에도 나만의 기록을 쓸 수 있어요\n\n■ 내가 정하는 공유\n- 생리 시작·종료일, 증상, 기분, 컨디션, 도움 선호를 기록\n- 필드별로 공유를 켜고 끌 수 있고, 기본값은 전부 비공개\n- 파트너에게는 내가 켠 정보만 전달돼요(원본은 나만 볼 수 있어요)\n\n■ 함께 준비\n- 다음 생리 예정일을 참고용으로 표시(개인차가 있으며 의료·피임 판단에 쓰지 않아요)\n- 공동 캘린더와 기념일, 내가 요청한 도움 중심의 케어 가이드\n\n■ 프라이버시 우선\n- 잠금화면 알림은 건강정보를 드러내지 않는 중립 문구\n- 광고 없음, 제3자 추적 없음, 데이터 판매 없음\n- 언제든 데이터 내보내기·계정 삭제·연결 해제",
       "en-US": "Cycle Pair helps someone who tracks their cycle and one close partner prepare together — sharing menstrual cycle and daily condition only as much as you allow. It is not a medical, diagnostic, or contraception tool.\n\nBuilt for two\n- A symmetric Pair of exactly two people who both accept the connection\n- Keep private records even before connecting\n\nYou control sharing\n- Log period start/end, symptoms, mood, condition, and help preferences\n- Turn sharing on or off per field; everything is private by default\n- Your partner sees only what you enable — originals stay yours\n\nPrepare together\n- See your next expected period as reference only (individual variation applies; not for medical or contraceptive decisions)\n- Shared calendar, anniversaries, and care tips centered on the help you ask for\n\nPrivacy first\n- Neutral lock-screen notifications that never reveal health details\n- No ads, no third-party tracking, no data sales\n- Export data, delete your account, or disconnect anytime"
     },
     "video": {
@@ -37,7 +37,7 @@
   },
   "release": {
     "initialTrack": "internal",
-    "aabPath": "확정 필요",
+    "aabPath": "apps/mobile/android/app/build/outputs/bundle/release/app-release.aab",
     "releaseNotes": {
       "ko-KR": "내부 테스트용 첫 빌드입니다. 기록, Pair 초대·수락·해제, 필드별 공유, 공동 캘린더, 계정 삭제·내보내기를 두 계정·두 기기로 확인해 주세요.",
       "en-US": "First internal test build. Please verify records, Pair invite/accept/disconnect, per-field sharing, shared calendar, and account deletion/export across two accounts on two devices."

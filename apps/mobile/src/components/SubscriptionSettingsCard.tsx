@@ -12,9 +12,9 @@ import {colors, spacing} from '../theme';
 function statusTitle(subscription: SubscriptionSnapshot): string {
   switch (subscription.status) {
     case 'active':
-      return 'Cycle Pair Plus 이용 중';
+      return '사이클 페어 Plus 이용 중';
     case 'trialing':
-      return 'Cycle Pair Plus 체험 중';
+      return '사이클 페어 Plus 체험 중';
     case 'grace-period':
       return '결제 확인 유예 기간';
     case 'pending':

@@ -47,7 +47,7 @@ export function OnboardingScreen() {
       <View style={styles.topRow}>
         <View style={styles.brand}>
           <Text style={styles.brandMark}>∞</Text>
-          <Text style={styles.brandText}>Cycle Pair</Text>
+          <Text style={styles.brandText}>사이클 페어</Text>
         </View>
         <View style={styles.topActions}>
           {pageIndex > 0 ? <TextButton label="이전" onPress={goToPreviousPage} /> : null}

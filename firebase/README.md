@@ -115,7 +115,7 @@ OFF/누락/유효하지 않은 값은 `null`로 남기지 않고 문서에서 �
 
 알림은 active Pair의 상대 기기에만 전송한다. 공유 projection에서 `generatedAt`만 바뀐 경우에는 보내지 않고, 실제 allowlist 공유 필드가 추가·변경·제거된 경우에만 `pair-update`/`home`을 보낸다. 공동 일정은 새로운 idempotency mutation이 실제 적용됐을 때만 `shared-event-update`/`calendar`를 보내므로 같은 `mutationId` 재시도는 재발송하지 않는다.
 
-FCM data payload는 정확히 `schemaVersion`, `type`, `destination` 세 필드뿐이다. 제목은 `Cycle Pair`, 본문은 `함께 확인할 업데이트가 있어요.`로 고정하며 이름, 날짜, 건강정보, 일정 내용, UID, Pair ID를 넣지 않는다. 수신 기기 IANA time zone의 quiet hours에는 건너뛰고, 등록 해제된 token은 조회 대상이 아니다. FCM이 invalid/unregistered로 판정한 token 문서는 서버가 삭제한다. raw token과 UID는 로그에 남기지 않는다.
+FCM data payload는 정확히 `schemaVersion`, `type`, `destination` 세 필드뿐이다. 제목은 `사이클 페어`, 본문은 `함께 확인할 업데이트가 있어요.`로 고정하며 이름, 날짜, 건강정보, 일정 내용, UID, Pair ID를 넣지 않는다. 수신 기기 IANA time zone의 quiet hours에는 건너뛰고, 등록 해제된 token은 조회 대상이 아니다. FCM이 invalid/unregistered로 판정한 token 문서는 서버가 삭제한다. raw token과 UID는 로그에 남기지 않는다.
 
 일반 로그아웃은 현재 Auth UID로 `unregisterNotificationDevice`가 성공하고 로컬 FCM token이 삭제될 때까지 Auth sign-out을 진행하지 않는다. unregister 실패 시 로컬 token과 로그인 상태를 보존해 재시도한다. 이후 Analytics·Crashlytics collection을 끄고 shell preference를 삭제하므로 알림·진단 opt-in이 다음 계정으로 상속되지 않는다. Auth sign-out 전 후속 정리가 실패하면 저장해 둔 shell preference를 먼저 복원하고 UID backend를 다시 활성화해 이전 opt-in도 provider 재마운트에서 복구한다. 계정 삭제는 먼저 진단 수집과 shell preference를 끈 뒤 FCM unregister를 시도한다. 이 pre-delete unregister가 실패해도 로컬 token은 폐기하고 삭제를 계속할 수 있는데, `deleteMyAccount`가 `users/{uid}/notificationDevices`를 recursive delete하는 서버 측 최종 보장을 제공하기 때문이다. 진단 비활성화나 shell reset 자체가 실패하면 계정 삭제를 시작하지 않는다.
 

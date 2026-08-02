@@ -33,7 +33,7 @@ export function PrivacyCenterModal({
       visible={visible}>
       <View style={styles.container}>
         <ScrollView contentContainerStyle={styles.content}>
-          <Text style={styles.eyebrow}>Cycle Pair 데이터 안내</Text>
+          <Text style={styles.eyebrow}>사이클 페어 데이터 안내</Text>
           <Text style={styles.title}>내 기록과 공유를 직접 통제해요</Text>
           <Text style={styles.meta}>제품 내 안내 버전 2026-07-14 · 민감정보 동의일 {consentDate}</Text>
 

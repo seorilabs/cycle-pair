@@ -4,7 +4,7 @@
 
 ## Evidence 규칙
 
-- `targetMarkets`는 현재 release candidate의 실제 대상이다. 마켓 제외는 `included: false`만으로 처리하지 않고 결정 시각과 근거가 있는 `verified` evidence를 요구한다. 현재 MVP 대상은 Google Play와 App Store이며 AppsInToss는 명시적으로 제외했다.
+- `targetMarkets`는 현재 release candidate의 실제 대상이다. 마켓 제외는 `included: false`만으로 처리하지 않고 결정 시각과 근거가 있는 `verified` evidence를 요구한다. 현재 대상은 Google Play, App Store, AppsInToss다. AppsInToss는 로컬 컨디션 선택·명시적 공유 slice부터 포함하며, 전체 기능 parity와 배포는 정책·콘솔·sandbox evidence가 있을 때만 통과한다.
 - 미완료 항목은 `status: "missing"`으로 유지한다.
 - 완료 항목은 실제 확인 후에만 `status: "verified"`, ISO 8601 `verifiedAt`, 재확인 가능한 `evidence`를 함께 기록한다.
 - 정책상 적용되지 않는 항목만 `status: "not-applicable"`과 판단 근거를 기록할 수 있다. Deployment approval과 실제 배포·수동 테스트에는 사용할 수 없다.

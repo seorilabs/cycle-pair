@@ -6,6 +6,26 @@ apply plugin: "com.google.firebase.crashlytics"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
+def resolveNodePackageJson = { String expression ->
+    def process = new ProcessBuilder("node", "--print", expression)
+        .directory(rootDir.parentFile)
+        .redirectErrorStream(true)
+        .start()
+    def output = process.inputStream.text.trim()
+    if (process.waitFor() != 0) {
+        throw new GradleException("Failed to resolve Node package: ${output}")
+    }
+    return output
+}
+
+def hermesCompilerPackageJson = resolveNodePackageJson(
+    "require.resolve('hermes-compiler/package.json', { paths: [require.resolve('react-native/package.json')] })",
+)
+def hermesCompilerDir = new File(hermesCompilerPackageJson).parentFile
+def operatingSystemName = System.getProperty("os.name").toLowerCase()
+def hermesOsBin = operatingSystemName.contains("mac") ? "osx-bin" :
+    operatingSystemName.contains("windows") ? "win64-bin" : "linux64-bin"
+
 /**
  * This is the configuration block to customize your React Native Android app.
  * By default you don't need to apply any configuration, just uncomment the lines you need.
@@ -50,6 +70,10 @@ react {
     /* Hermes Commands */
     //   The hermes compiler command to run. By default it is 'hermesc'
     // hermesCommand = "$rootDir/my-custom-hermesc/bin/hermesc"
+    hermesCommand = new File(
+        hermesCompilerDir,
+        "hermesc/${hermesOsBin}/hermesc",
+    ).absolutePath
     //
     //   The list of flags to pass to the Hermes compiler. By default is "-O", "-output-source-map"
     // hermesFlags = ["-O", "-output-source-map"]
@@ -75,6 +99,40 @@ def enableProguardInReleaseBuilds = false
  * this variant is about 6MiB larger per architecture than default.
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
+
+def releaseVersionName = (
+    project.findProperty("versionNameOverride") ?:
+        System.getenv("GOOGLE_PLAY_VERSION_NAME") ?:
+        System.getenv("APP_VERSION_NAME") ?:
+        "0.1.0"
+).toString()
+if (!(releaseVersionName ==~ /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/)) {
+    throw new GradleException("Google Play versionName must use numeric SemVer: ${releaseVersionName}")
+}
+def releaseVersionSegments = releaseVersionName.split(/\./).collect { segment ->
+    segment.toLong()
+}
+if (releaseVersionSegments[1] >= 1000 || releaseVersionSegments[2] >= 1000) {
+    throw new GradleException("Google Play versionName minor and patch must be 999 or lower.")
+}
+def derivedReleaseVersionCode =
+    releaseVersionSegments[0] * 1000000L +
+        releaseVersionSegments[1] * 1000L +
+        releaseVersionSegments[2]
+def releaseVersionCodeText = (
+    project.findProperty("versionCodeOverride") ?:
+        System.getenv("GOOGLE_PLAY_VERSION_CODE") ?:
+        System.getenv("APP_VERSION_CODE") ?:
+        derivedReleaseVersionCode.toString()
+).toString()
+if (!(releaseVersionCodeText ==~ /^[1-9]\d*$/)) {
+    throw new GradleException("versionCodeOverride must be a positive integer.")
+}
+def releaseVersionCodeLong = releaseVersionCodeText.toLong()
+if (releaseVersionCodeLong > 2100000000L) {
+    throw new GradleException("versionCodeOverride exceeds the Google Play maximum.")
+}
+def releaseVersionCode = releaseVersionCodeLong.toInteger()
 
 def firebaseEnvironmentManifestFile = new File(
     rootProject.projectDir.parentFile,
@@ -286,8 +344,8 @@ android {
         applicationId "com.seorilabs.cyclepair"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "0.1.0"
+        versionCode releaseVersionCode
+        versionName releaseVersionName
     }
     signingConfigs {
         debug {

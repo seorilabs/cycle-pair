@@ -7,6 +7,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { promisify } from "node:util";
 
+import { AITWriter, PlatformType } from "@apps-in-toss/ait-format";
+
 import {
   computeFirebaseSourceFingerprints,
   evaluateReleaseReadiness,
@@ -164,6 +166,96 @@ function appStoreArtifactEvidence(sha256) {
     buildNumber: 1,
     signing: { teamId: "FIXTURETEAM" },
   };
+}
+
+async function createAppsInTossArtifact({
+  appName = "cycle-pair",
+  platform = PlatformType.REACT_NATIVE,
+  tdsVersion = "2.0.4",
+} = {}) {
+  const runtimeVersion = "0.84.0";
+  const sdkVersion = "2.10.8";
+  const bundleFiles = [
+    "bundle.ios.0_84_0.js",
+    "bundle.android.0_84_0.js",
+  ];
+  const writer = new AITWriter({
+    appName,
+    deploymentId: "019fc07c-10ad-7d8a-8563-f549d8d2573d",
+  });
+  writer.setMetadata({
+    isGame: false,
+    platform,
+    runtimeVersion,
+    sdkVersion,
+    bundleFiles,
+    packageJson: {
+      dependencies: {
+        "@apps-in-toss/framework": sdkVersion,
+        ...(tdsVersion === null
+          ? {}
+          : { "@toss/tds-react-native": tdsVersion }),
+        "react-native": runtimeVersion,
+      },
+    },
+  });
+  for (const file of bundleFiles) {
+    writer.addFile(file, new TextEncoder().encode(`fixture ${file}`));
+  }
+  return Buffer.from(await writer.toBuffer());
+}
+
+async function configureAppsInTossReadyFixture(
+  root,
+  artifact,
+  {
+    appNameStatus = "confirmed-console-match",
+    icon = "https://example.com/icon.png",
+    tdsVersion = "2.0.4",
+  } = {}
+) {
+  const artifactPath = "artifacts/cyclepair.ait";
+  await write(root, artifactPath, artifact);
+  await write(root, "apps/ait/package.json", {
+    dependencies: {
+      "@apps-in-toss/framework": "2.10.8",
+      ...(tdsVersion === null
+        ? {}
+        : { "@toss/tds-react-native": tdsVersion }),
+      "react-native": "0.84.0",
+    },
+  });
+  await write(
+    root,
+    "apps/ait/granite.config.ts",
+    `export default {
+  appName: "cycle-pair",
+  icon: "${icon}",
+};\n`
+  );
+  await write(root, "apps-in-toss/apps-in-toss.config.json", {
+    appName: "cycle-pair",
+    appNameStatus,
+    buildTarget: { artifact: artifactPath },
+  });
+
+  const releaseEvidence = await readJsonFixture(root, "release/readiness.json");
+  releaseEvidence.targetMarkets.appsInToss = {
+    included: true,
+    ...verified("AppsInToss fixture target"),
+  };
+  releaseEvidence.artifacts.appsInTossPackage = {
+    ...verified(),
+    path: artifactPath,
+    sha256: createHash("sha256").update(artifact).digest("hex"),
+  };
+  releaseEvidence.console.appsInTossApp = {
+    ...verified(),
+    appName: "cycle-pair",
+  };
+  releaseEvidence.policy.appsInTossCompatibility = verified();
+  releaseEvidence.manualTests.appsInTossSandboxTwoPerson = verified();
+  await write(root, "release/readiness.json", releaseEvidence);
 }
 
 function xcarchiveEntries(bundleId = "com.seorilabs.cyclepair") {
@@ -680,6 +772,150 @@ test("모든 실제 evidence가 일치하면 ready를 계산한다", async (t) =
   assert.ok(result.sourceFingerprints.firebase.firestoreRules);
   assert.ok(result.sourceFingerprints.firebase.firestoreIndexes);
   assert.ok(result.sourceFingerprints.firebase.functions);
+});
+
+test("Android 동적 versionName의 기본값을 package version과 대조한다", async (t) => {
+  const root = await mkdtemp(
+    path.join(tmpdir(), "cyclepair-release-dynamic-version-")
+  );
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await createReadyFixture(root);
+  const gradlePath = "apps/mobile/android/app/build.gradle";
+  const gradle = await readFile(path.join(root, gradlePath), "utf8");
+  await write(
+    root,
+    gradlePath,
+    gradle
+      .replace(
+        "android {",
+        `def releaseVersionName = (
+  System.getenv("GOOGLE_PLAY_VERSION_NAME") ?:
+    "0.1.0"
+).toString()
+throw new Error("versionName must use numeric SemVer")
+android {`
+      )
+      .replace('versionName "0.1.0"', "versionName releaseVersionName")
+  );
+
+  const result = await evaluateReleaseReadiness(root);
+  const architecture = result.sections.find(
+    (section) => section.market === "Architecture"
+  );
+
+  assert.equal(
+    architecture.blockers.includes(
+      "Android versionName과 mobile package version 불일치"
+    ),
+    false,
+    JSON.stringify(architecture.blockers)
+  );
+});
+
+test("AppsInToss 실제 AIT metadata와 payload 무결성이 일치하면 통과한다", async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), "cyclepair-release-ait-valid-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await createReadyFixture(root);
+  await configureAppsInTossReadyFixture(
+    root,
+    await createAppsInTossArtifact()
+  );
+
+  const result = await evaluateReleaseReadiness(root);
+  const appsInToss = result.sections.find(
+    (section) => section.market === "AppsInToss"
+  );
+
+  assert.deepEqual(appsInToss.blockers, []);
+});
+
+test("hash만 맞는 임의 파일은 AppsInToss package가 아니다", async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), "cyclepair-release-ait-fake-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await createReadyFixture(root);
+  await configureAppsInTossReadyFixture(root, Buffer.from("not an AIT bundle"));
+
+  const result = await evaluateReleaseReadiness(root);
+  const appsInToss = result.sections.find(
+    (section) => section.market === "AppsInToss"
+  );
+
+  assert.ok(appsInToss.blockers.includes("AppsInToss package AIT 포맷 검증 실패"));
+});
+
+test("provisional appName과 placeholder icon은 AIT가 유효해도 차단한다", async (t) => {
+  const root = await mkdtemp(
+    path.join(tmpdir(), "cyclepair-release-ait-provisional-")
+  );
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await createReadyFixture(root);
+  await configureAppsInTossReadyFixture(
+    root,
+    await createAppsInTossArtifact(),
+    {
+      appNameStatus: "provisional-console-match-required",
+      icon: "https://placehold.co/600x600.png",
+    }
+  );
+
+  const result = await evaluateReleaseReadiness(root);
+  const appsInToss = result.sections.find(
+    (section) => section.market === "AppsInToss"
+  );
+
+  assert.ok(
+    appsInToss.blockers.includes(
+      "AppsInToss appName Console 대조 미확정 또는 불일치"
+    )
+  );
+  assert.ok(appsInToss.blockers.includes("AppsInToss 정식 icon 미설정"));
+});
+
+test("TDS가 package와 AIT metadata 양쪽에서 빠져도 차단한다", async (t) => {
+  const root = await mkdtemp(
+    path.join(tmpdir(), "cyclepair-release-ait-missing-tds-")
+  );
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await createReadyFixture(root);
+  await configureAppsInTossReadyFixture(
+    root,
+    await createAppsInTossArtifact({ tdsVersion: null }),
+    { tdsVersion: null }
+  );
+
+  const result = await evaluateReleaseReadiness(root);
+  const appsInToss = result.sections.find(
+    (section) => section.market === "AppsInToss"
+  );
+
+  assert.ok(
+    appsInToss.blockers.includes(
+      "AppsInToss package SDK 2.x / RN 0.84 / TDS metadata 불일치"
+    )
+  );
+});
+
+test("React Native가 아닌 AIT platform metadata를 차단한다", async (t) => {
+  const root = await mkdtemp(
+    path.join(tmpdir(), "cyclepair-release-ait-web-platform-")
+  );
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await createReadyFixture(root);
+  await configureAppsInTossReadyFixture(
+    root,
+    await createAppsInTossArtifact({ platform: PlatformType.WEB })
+  );
+
+  const result = await evaluateReleaseReadiness(root);
+  const appsInToss = result.sections.find(
+    (section) => section.market === "AppsInToss"
+  );
+
+  assert.ok(
+    appsInToss.blockers.includes(
+      "AppsInToss package SDK 2.x / RN 0.84 / TDS metadata 불일치"
+    )
+  );
 });
 
 test("운영 Firebase project ID가 없으면 ready가 될 수 없다", async (t) => {

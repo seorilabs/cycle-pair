@@ -1,4 +1,4 @@
-# 스토어 listing 문구 초안 (Cycle Pair)
+# 스토어 listing 문구 초안 (사이클 페어)
 
 > 상태: **초안 — 검수·상표 검토 전**. 확정 후 `play-store/google-play.config.json`·`app-store/app-store.config.json`의 해당 필드에 붙여넣는다.
 > 원칙(심사 안전): 의료·진단·피임·가임/배란 표현 금지, 광고·추적 없음, "내가 허용한 만큼만 공유"·비의료 커뮤니케이션 도구로 포지셔닝. `docs/product-spec.md` 기준.
@@ -6,13 +6,13 @@
 
 ## Google Play
 
-**앱 이름**: Cycle Pair
+**앱 이름**: 사이클 페어 : 친구/연인과 함께 컨디션을 공유해요.
 **짧은 설명(≤80자, ko)**: 생리주기와 오늘의 컨디션을 두 사람이 원하는 만큼만 나누는 커플 케어 앱
 **짧은 설명(en)**: Share your cycle and daily condition with one partner—only what you choose.
 
 **전체 설명 (ko)**:
 ```
-Cycle Pair는 주기를 기록하는 사람과 가까운 한 사람이, 생리주기와 그날의 컨디션을 '내가 허용한 만큼만' 나누며 함께 대비하도록 돕는 커플 케어 앱입니다. 의료 진단이나 피임·임신 가능성 판단 도구가 아닙니다.
+사이클 페어는 주기를 기록하는 사람과 가까운 한 사람이, 생리주기와 그날의 컨디션을 '내가 허용한 만큼만' 나누며 함께 대비하도록 돕는 커플 케어 앱입니다. 의료 진단이나 피임·임신 가능성 판단 도구가 아닙니다.
 
 ■ 두 사람을 위한 설계
 - 정확히 두 명이 서로 수락해 연결되는 대칭형 Pair
@@ -63,7 +63,7 @@ Cycle Pair helps someone who tracks their cycle and one close partner prepare to
 
 ## Apple App Store
 
-**앱 이름**: Cycle Pair
+**앱 이름**: 사이클 페어 : 친구/연인과 함께 컨디션을 공유해요.
 **부제(≤30자, ko)**: 함께 준비하는 우리의 주기  ／ (en) Prepare for the cycle together  *(config 기존값 유지)*
 
 **프로모션 텍스트(≤170자, ko)**:
@@ -94,6 +94,6 @@ cycle,period tracker,couple,partner,condition,mood,share,calendar,care,together,
 
 ### 확정 필요(사업/검수)
 - 다운로드 가격·무료/프리미엄 경계, 구독 상품·가격·체험 기간
-- `Cycle Pair` 최종 선행상표 검토
+- `사이클 페어`와 `Cycle Pair` 최종 선행상표 검토
 - 예측 설명 문구·케어 콘텐츠 최종 검수
 - en-US 카피 원어민 검수

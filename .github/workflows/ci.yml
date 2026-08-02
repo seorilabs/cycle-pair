@@ -35,12 +35,18 @@ jobs:
           run_install: false
 
       - name: Node.js 설정
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 24.16.0
           check-latest: false
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
+
+      - name: Java 설정
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
 
       - name: 의존성 설치
         run: pnpm install --frozen-lockfile
@@ -62,6 +68,12 @@ jobs:
 
       - name: 모바일 테스트
         run: pnpm test:mobile
+
+      - name: AppsInToss 테스트
+        run: pnpm test:ait
+
+      - name: 릴리스 판정기 회귀 테스트
+        run: pnpm test:release
 
       - name: iOS 및 Android 프로덕션 JS 번들 생성
         run: |
@@ -98,7 +110,7 @@ jobs:
           run_install: false
 
       - name: Node.js 설정
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           check-latest: false
@@ -117,8 +129,46 @@ jobs:
       - name: Firebase 빌드 및 테스트
         run: pnpm --dir firebase check
 
-      - name: 릴리스 판정기 회귀 테스트
-        run: pnpm test:release
+  ait_build:
+    name: AppsInToss 산출물 빌드
+    # AppsInToss SDK가 제공하는 Linux hermesc가 x86-64 바이너리이므로
+    # ARM64 ARC 러너가 아닌 hosted x64 러너에서 실제 .ait 산출물을 검증한다.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: 저장소 체크아웃
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: pnpm 설정
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11.3.0
+          run_install: false
+
+      - name: Node.js 설정
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.16.0
+          check-latest: false
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: 의존성 설치
+        run: pnpm install --frozen-lockfile
+
+      - name: AppsInToss 산출물 빌드
+        run: pnpm build:ait
+
+      - name: AppsInToss 산출물 업로드
+        uses: actions/upload-artifact@v7
+        with:
+          name: cycle-pair-ait
+          path: apps/ait/cycle-pair.ait
+          if-no-files-found: error
+          retention-days: 3
 
   required:
     name: required
@@ -126,6 +176,7 @@ jobs:
     needs:
       - quality
       - firebase
+      - ait_build
     runs-on: seorilabs-rpi-arm64
     timeout-minutes: 5
 
@@ -134,6 +185,8 @@ jobs:
         env:
           QUALITY_RESULT: ${{ needs.quality.result }}
           FIREBASE_RESULT: ${{ needs.firebase.result }}
+          AIT_BUILD_RESULT: ${{ needs.ait_build.result }}
         run: |
           test "$QUALITY_RESULT" = "success"
           test "$FIREBASE_RESULT" = "success"
+          test "$AIT_BUILD_RESULT" = "success"

@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "appId": "cyclepair",
-  "status": "conditional-policy-review-required",
-  "scaffoldStatus": "deferred",
-  "adoptionDecision": "conditional-pending-policy-review",
-  "appName": "확정 필요",
-  "appNameStatus": "확정 필요",
+  "status": "build-ready-policy-review-required",
+  "scaffoldStatus": "implemented",
+  "adoptionDecision": "approved-for-build-release-pending-policy-review",
+  "appName": "cycle-pair",
+  "appNameStatus": "provisional-console-match-required",
   "workingName": {
-    "ko-KR": "Cycle Pair",
+    "ko-KR": "사이클 페어 : 친구/연인과 함께 컨디션을 공유해요.",
     "en-US": "Cycle Pair"
   },
   "subtitle": "함께 준비하는 우리의 주기",
@@ -16,7 +16,14 @@
     "확정 필요"
   ],
   "customerSupportEmail": "cs@seorilabs.com",
-  "tdsRequired": "확정 필요",
+  "tdsRequired": true,
+  "buildTarget": {
+    "workspace": "apps/ait",
+    "command": "pnpm build:ait",
+    "artifact": "apps/ait/cycle-pair.ait",
+    "runtime": "React Native 0.84 with AppsInToss SDK 2.x",
+    "scope": "local-condition-and-care-preference-explicit-share"
+  },
   "productBehavior": {
     "sensitiveHealthData": true,
     "firebaseAuthentication": true,

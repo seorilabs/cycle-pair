@@ -1,16 +1,16 @@
-# Cycle Pair 계정·데이터 삭제 안내 (초안)
+# 사이클 페어 계정·데이터 삭제 안내 (초안)
 
 > 상태: **초안 — 게시 전**. Google Play는 앱 밖에서도 접근 가능한 계정 삭제 안내 URL을 요구한다. 아래 내용을 검토·게시하고 `[확정 필요]` 항목을 채운다.
 > 절차 설명은 Cloud Functions 삭제 흐름(`beginAccountDeletion` → `deleteMyAccount` → 15분 scheduled finalizer, device-only receipt) 구현을 기준으로 작성했다.
 
-- 서비스명: Cycle Pair
+- 서비스명: 사이클 페어
 - 운영 주체: `[확정 필요: 법인/사업자 정식 명칭]`
 - 문의: cs@seorilabs.com
 - 게시 URL: `[확정 필요: accountDeletionUrl]`
 
 ## 앱에서 계정 삭제하기
 
-1. Cycle Pair 앱을 연다.
+1. 사이클 페어 앱을 연다.
 2. 설정 → 개인정보/계정 영역의 **계정 삭제**를 선택한다.
 3. 보안을 위해 최근 로그인 재인증을 요청할 수 있다. 안내에 따라 재인증한다.
 4. 삭제를 확인하면 서버가 삭제를 시작하고, 완료 상태를 앱에서 확인할 수 있다.

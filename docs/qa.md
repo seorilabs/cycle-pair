@@ -7,6 +7,7 @@
 | core | pnpm test:core | 순수 도메인·예측·Pair·공유 필터 |
 | architecture | pnpm check:architecture | product-core 플랫폼 SDK import 금지 |
 | mobile | pnpm check:mobile | RN lint, typecheck, unit test, iOS/Android production JS bundle |
+| AppsInToss | pnpm check:ait && pnpm build:ait | SDK 2.x RN lint, typecheck, unit test, iOS/Android `.ait` bundle |
 | Firebase 전체 | pnpm test:firebase 또는 pnpm check:firebase | Functions build·unit test, Rules emulator, Auth/Firestore/Functions E2E |
 | Firebase 실제 개발 | pnpm test:firebase:live | dev 프로젝트의 실제 Auth·callable·3종 projection trigger·revoke·cleanup |
 | 전체 | pnpm lint && pnpm typecheck && pnpm test | repo 정적·자동 테스트 |
@@ -126,7 +127,7 @@ Emulator에서 최소 다음을 자동 검증한다.
 
 - Google Play: signed AAB, internal track 2인 테스트, Data safety와 실제 SDK 일치
 - App Store: archive, TestFlight 2인 테스트, App Privacy와 실제 SDK 일치
-- AppsInToss: 정책 적합성 승인 전 빌드·preview·콘솔 QA를 시작하지 않음
+- AppsInToss: 로컬 최소 slice의 lint·typecheck·unit test·`.ait` build를 수행. 정책 적합성, 영구 `appName`, 정식 자산, 콘솔 등록, sandbox QA는 별도 미완료 gate
 
 ## 사람 승인
 

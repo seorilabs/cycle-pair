@@ -1,4 +1,4 @@
-# ADR-0004: Cycle Pair 영구 앱 식별자와 개발 Firebase 전환
+# ADR-0004: 사이클 페어 영구 앱 식별자와 개발 Firebase 전환
 
 ## 상태
 
@@ -10,7 +10,7 @@ Accepted · 2026-07-13
 
 ## 결정
 
-- 공개 앱 이름은 한국어·영어 모두 `Cycle Pair`를 사용한다.
+- 공개 앱 이름은 한국어 `사이클 페어 : 친구/연인과 함께 컨디션을 공유해요.`, 영어 `Cycle Pair`를 사용한다. 한국어 앱 내부 UI와 알림에는 짧은 브랜드 `사이클 페어`를 사용한다.
 - React Native module과 native target은 공백 없는 `CyclePair`를 사용한다.
 - Android application ID와 iOS bundle ID는 모두 `com.seorilabs.cyclepair`를 사용한다.
 - debug와 release가 같은 영구 앱 ID를 사용한다. 두 환경을 한 기기에 동시에 설치해야 할 필요가 생기기 전에는 `.dev` suffix를 추가하지 않는다.

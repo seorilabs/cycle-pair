@@ -58,7 +58,7 @@ describe('CyclePair mobile app', () => {
     const view = await render(<App backend={previewCyclePairBackend} />);
 
     await waitFor(() => {
-      expect(view.getByText('Cycle Pair')).toBeTruthy();
+      expect(view.getByText('사이클 페어')).toBeTruthy();
       expect(view.getByText(/말하지 않아도/)).toBeTruthy();
       expect(view.getByText('건너뛰기')).toBeTruthy();
     });

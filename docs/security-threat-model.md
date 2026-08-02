@@ -2,7 +2,7 @@
 
 ## 범위
 
-민감한 주기·증상·기분 데이터, 두 사람의 Pair 관계, partner projection, 초대, 알림, 로컬 캐시, 계정 삭제를 다룬다. 광고, 채팅, 다중 연결, AppsInToss, E2E 암호화는 MVP 범위 밖이다.
+민감한 주기·증상·기분 데이터, 두 사람의 Pair 관계, partner projection, 초대, 알림, 로컬 캐시, 계정 삭제를 다룬다. 광고, 채팅, 다중 연결, AppsInToss의 계정·Firebase·구독 parity, E2E 암호화는 MVP 범위 밖이다. AppsInToss 최소 slice는 날짜·자유 텍스트·계정 식별자 없이 정해진 컨디션과 도움 선호만 기기 로컬에 저장하고 사용자가 명시적으로 공유한다.
 
 ## 보호 자산
 

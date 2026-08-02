@@ -43,7 +43,7 @@ export function AccountGateScreen({
   return (
     <Screen contentStyle={styles.content}>
       <View style={styles.brandBlock}>
-        <Text style={styles.brand}>∞ Cycle Pair</Text>
+        <Text style={styles.brand}>∞ 사이클 페어</Text>
         <Text style={styles.title}>
           {resetMode
             ? '비밀번호 다시 설정하기'

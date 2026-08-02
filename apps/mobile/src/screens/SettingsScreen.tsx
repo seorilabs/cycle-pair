@@ -183,7 +183,7 @@ export function SettingsScreen() {
           <Text style={styles.profileAvatarText}>나</Text>
         </View>
         <View style={styles.profileCopy}>
-          <Text style={styles.profileTitle}>내 Cycle Pair</Text>
+          <Text style={styles.profileTitle}>내 사이클 페어</Text>
           <Text style={styles.profileBody}>
             {state.paired ? `${state.partnerName} 님과 연결됨` : '혼자 기록 중'}{' '}
             ·{' '}
@@ -508,7 +508,7 @@ export function SettingsScreen() {
       ) : null}
 
       <View style={styles.footer}>
-        <Text style={styles.brand}>∞ Cycle Pair</Text>
+        <Text style={styles.brand}>∞ 사이클 페어</Text>
         <Text style={styles.version}>0.1.0 · 의료 도구 아님</Text>
       </View>
       <PrivacyCenterModal
