@@ -175,10 +175,7 @@ async function createAppsInTossArtifact({
 } = {}) {
   const runtimeVersion = "0.84.0";
   const sdkVersion = "2.10.8";
-  const bundleFiles = [
-    "bundle.ios.0_84_0.js",
-    "bundle.android.0_84_0.js",
-  ];
+  const bundleFiles = ["bundle.ios.0_84_0.js", "bundle.android.0_84_0.js"];
   const writer = new AITWriter({
     appName,
     deploymentId: "019fc07c-10ad-7d8a-8563-f549d8d2573d",
@@ -219,9 +216,7 @@ async function configureAppsInTossReadyFixture(
   await write(root, "apps/ait/package.json", {
     dependencies: {
       "@apps-in-toss/framework": "2.10.8",
-      ...(tdsVersion === null
-        ? {}
-        : { "@toss/tds-react-native": tdsVersion }),
+      ...(tdsVersion === null ? {} : { "@toss/tds-react-native": tdsVersion }),
       "react-native": "0.84.0",
     },
   });
@@ -316,18 +311,22 @@ async function signFixtureAab(root) {
     artifactPath,
     "fixture",
   ]);
-  const { stdout, stderr } = await execFileAsync("keytool", [
-    "-list",
-    "-v",
-    "-alias",
-    "fixture",
-    "-keystore",
-    keystorePath,
-    "-storepass",
-    password,
-  ], {
-    env: { ...process.env, LC_ALL: "C", LANG: "C" },
-  });
+  const { stdout, stderr } = await execFileAsync(
+    "keytool",
+    [
+      "-list",
+      "-v",
+      "-alias",
+      "fixture",
+      "-keystore",
+      keystorePath,
+      "-storepass",
+      password,
+    ],
+    {
+      env: { ...process.env, LC_ALL: "C", LANG: "C" },
+    }
+  );
   const fingerprint = `${stdout}\n${stderr}`
     .match(/SHA256:\s*([0-9A-F:]{64,})/i)?.[1]
     ?.replaceAll(":", "")
@@ -348,7 +347,12 @@ async function commitFixtureSource(root) {
   ]);
   await execFileAsync("git", ["-C", root, "add", "."]);
   await execFileAsync("git", ["-C", root, "commit", "-qm", "fixture source"]);
-  const { stdout } = await execFileAsync("git", ["-C", root, "rev-parse", "HEAD"]);
+  const { stdout } = await execFileAsync("git", [
+    "-C",
+    root,
+    "rev-parse",
+    "HEAD",
+  ]);
   return stdout.trim();
 }
 
@@ -397,8 +401,8 @@ async function createReadyFixture(root) {
   await write(
     root,
     "apps/mobile/android/app/build.gradle",
-    `def environment = [androidConfig: "android/app/src/release/google-services.json"]
-def selectedFirebaseConfig = environment.androidConfig
+    `def firebaseEnvironments = [androidConfig: "android/app/src/main/google-services.json"]
+def selectedFirebaseConfig = firebaseEnvironments.androidConfig
 def verifyDebugFirebaseConfig = tasks.register("verifyDebugFirebaseConfig")
 def verifyReleaseFirebaseConfig = tasks.register("verifyReleaseFirebaseConfig")
 def verifyReleaseSigning = tasks.register("verifyReleaseSigning")
@@ -424,47 +428,34 @@ tasks.configureEach { task ->
 }\n`
   );
   await write(root, "apps/mobile/firebase-environments.json", {
-    schemaVersion: 1,
+    schemaVersion: 2,
     permanentAppId: "com.seorilabs.cyclepair",
-    development: {
-      projectId: "cyclepair-fixture-dev",
-      androidConfig: "android/app/src/debug/google-services.json",
-      iosConfig: "ios/Firebase/Debug/GoogleService-Info.plist",
-    },
-    production: {
-      projectId: "cyclepair-fixture-prod",
-      androidConfig: "android/app/src/release/google-services.json",
-      iosConfig: "ios/Firebase/Release/GoogleService-Info.plist",
-    },
+    projectId: "cyclepair-fixture-prod",
+    androidConfig: "android/app/src/main/google-services.json",
+    iosConfig: "ios/Firebase/GoogleService-Info.plist",
   });
   for (const relativePath of [
-    "android/app/src/debug/google-services.json.example",
-    "android/app/src/release/google-services.json.example",
-    "ios/Firebase/Debug/GoogleService-Info.plist.example",
-    "ios/Firebase/Release/GoogleService-Info.plist.example",
+    "android/app/src/main/google-services.json.example",
+    "ios/Firebase/GoogleService-Info.plist.example",
   ]) {
     await write(root, `apps/mobile/${relativePath}`, "fixture marker\n");
   }
-  await write(
-    root,
-    "apps/mobile/android/app/src/release/google-services.json",
-    {
-      project_info: { project_id: "cyclepair-fixture-prod" },
-      client: [
-        {
-          client_info: {
-            mobilesdk_app_id: "fixture-android-app-id",
-            android_client_info: {
-              package_name: "com.seorilabs.cyclepair",
-            },
+  await write(root, "apps/mobile/android/app/src/main/google-services.json", {
+    project_info: { project_id: "cyclepair-fixture-prod" },
+    client: [
+      {
+        client_info: {
+          mobilesdk_app_id: "fixture-android-app-id",
+          android_client_info: {
+            package_name: "com.seorilabs.cyclepair",
           },
         },
-      ],
-    }
-  );
+      },
+    ],
+  });
   await write(
     root,
-    "apps/mobile/ios/Firebase/Release/GoogleService-Info.plist",
+    "apps/mobile/ios/Firebase/GoogleService-Info.plist",
     `<?xml version="1.0" encoding="UTF-8"?>
 <plist version="1.0"><dict>
 <key>PROJECT_ID</key><string>cyclepair-fixture-prod</string>
@@ -485,11 +476,9 @@ buildPhases = (
   [Firebase] Embed Environment Config,
   /* [CP-User] [RNFB] Core Configuration */,
 );
-FIREBASE_CONFIG_PATH = Firebase/Debug/GoogleService-Info.plist;
-FIREBASE_ENVIRONMENT = development;
-FIREBASE_EXPECTED_PROJECT_ID = "cyclepair-fixture-dev";
-FIREBASE_CONFIG_PATH = Firebase/Release/GoogleService-Info.plist;
-FIREBASE_ENVIRONMENT = production;
+FIREBASE_CONFIG_PATH = Firebase/GoogleService-Info.plist;
+FIREBASE_CONFIG_PATH = Firebase/GoogleService-Info.plist;
+FIREBASE_EXPECTED_PROJECT_ID = "cyclepair-fixture-prod";
 FIREBASE_EXPECTED_PROJECT_ID = "cyclepair-fixture-prod";
 APP_ATTEST_ENVIRONMENT = development;
 APP_ATTEST_ENVIRONMENT = production;
@@ -514,7 +503,11 @@ FirebaseApp.configure()
     "apps/mobile/ios/CyclePair/CyclePair.entitlements",
     "<key>com.apple.developer.devicecheck.appattest-environment</key>\n"
   );
-  await write(root, "apps/mobile/ios/Podfile.lock", "- RNFBAppCheck (25.1.0)\n");
+  await write(
+    root,
+    "apps/mobile/ios/Podfile.lock",
+    "- RNFBAppCheck (25.1.0)\n"
+  );
   await write(root, "apps/mobile/firebase.json", {
     "react-native": {
       app_data_collection_default_enabled: false,
@@ -525,7 +518,7 @@ FirebaseApp.configure()
     root,
     "apps/mobile/src/platform/firebase/FirebaseAppCheckBootstrap.ts",
     `import {initializeAppCheck, ReactNativeFirebaseAppCheckProvider} from '@react-native-firebase/app-check';
-const environment = app.options.projectId === firebaseEnvironments.production.projectId;
+const environment = app.options.projectId === firebaseEnvironments.projectId;
 const provider = new ReactNativeFirebaseAppCheckProvider();
 const mode = {developmentBundle: __DEV__};
 const development = {android: {provider: 'debug'}, apple: {provider: 'debug'}};
@@ -543,7 +536,7 @@ initializeAppCheck(app, {provider, isTokenAutoRefreshEnabled: true});
     "apps/mobile/scripts/select-ios-firebase-config.sh",
     `FIREBASE_CONFIG_PATH="configured"
 FIREBASE_EXPECTED_PROJECT_ID="configured"
-echo "Release cannot use the development Firebase project"
+echo "single tracked project"
 echo "GoogleService-Info.plist"
 `
   );
@@ -560,8 +553,7 @@ echo "GoogleService-Info.plist"
   });
   await write(root, ".firebaserc", {
     projects: {
-      default: "cyclepair-fixture-dev",
-      production: "cyclepair-fixture-prod",
+      default: "cyclepair-fixture-prod",
     },
   });
   await write(root, "firebase.json", {
@@ -652,16 +644,11 @@ export const value = 1;
     functionsSha256: fingerprints.functions,
   };
   await write(root, "firebase/release-readiness.json", {
-    schemaVersion: 3,
+    schemaVersion: 4,
     environment: {
-      developmentProjectId: "cyclepair-fixture-dev",
-      productionProjectId: "cyclepair-fixture-prod",
+      projectId: "cyclepair-fixture-prod",
       region: "asia-northeast3",
       nativeAppsRegistered: {
-        ...verified(),
-        projectId: "cyclepair-fixture-dev",
-      },
-      productionNativeAppsRegistered: {
         ...verified(),
         projectId: "cyclepair-fixture-prod",
       },
@@ -731,23 +718,13 @@ export const value = 1;
         },
       },
     },
-    deployments: {
-      development: {
-        ...verified(),
-        projectId: "cyclepair-fixture-dev",
-        region: "asia-northeast3",
-        deployedAt: "2026-07-14T00:00:00Z",
-        gitSha: deploymentGitSha,
-        source: deploymentSource,
-      },
-      production: {
-        ...verified(),
-        projectId: "cyclepair-fixture-prod",
-        region: "asia-northeast3",
-        deployedAt: "2026-07-14T00:00:00Z",
-        gitSha: deploymentGitSha,
-        source: deploymentSource,
-      },
+    deployment: {
+      ...verified(),
+      projectId: "cyclepair-fixture-prod",
+      region: "asia-northeast3",
+      deployedAt: "2026-07-14T00:00:00Z",
+      gitSha: deploymentGitSha,
+      source: deploymentSource,
     },
   });
 }
@@ -813,13 +790,12 @@ android {`
 });
 
 test("AppsInToss 실제 AIT metadata와 payload 무결성이 일치하면 통과한다", async (t) => {
-  const root = await mkdtemp(path.join(tmpdir(), "cyclepair-release-ait-valid-"));
+  const root = await mkdtemp(
+    path.join(tmpdir(), "cyclepair-release-ait-valid-")
+  );
   t.after(() => rm(root, { recursive: true, force: true }));
   await createReadyFixture(root);
-  await configureAppsInTossReadyFixture(
-    root,
-    await createAppsInTossArtifact()
-  );
+  await configureAppsInTossReadyFixture(root, await createAppsInTossArtifact());
 
   const result = await evaluateReleaseReadiness(root);
   const appsInToss = result.sections.find(
@@ -830,7 +806,9 @@ test("AppsInToss 실제 AIT metadata와 payload 무결성이 일치하면 통과
 });
 
 test("hash만 맞는 임의 파일은 AppsInToss package가 아니다", async (t) => {
-  const root = await mkdtemp(path.join(tmpdir(), "cyclepair-release-ait-fake-"));
+  const root = await mkdtemp(
+    path.join(tmpdir(), "cyclepair-release-ait-fake-")
+  );
   t.after(() => rm(root, { recursive: true, force: true }));
   await createReadyFixture(root);
   await configureAppsInTossReadyFixture(root, Buffer.from("not an AIT bundle"));
@@ -840,7 +818,9 @@ test("hash만 맞는 임의 파일은 AppsInToss package가 아니다", async (t
     (section) => section.market === "AppsInToss"
   );
 
-  assert.ok(appsInToss.blockers.includes("AppsInToss package AIT 포맷 검증 실패"));
+  assert.ok(
+    appsInToss.blockers.includes("AppsInToss package AIT 포맷 검증 실패")
+  );
 });
 
 test("provisional appName과 placeholder icon은 AIT가 유효해도 차단한다", async (t) => {
@@ -928,7 +908,7 @@ test("운영 Firebase project ID가 없으면 ready가 될 수 없다", async (t
     root,
     "apps/mobile/firebase-environments.json"
   );
-  environments.production.projectId = null;
+  environments.projectId = null;
   await write(root, "apps/mobile/firebase-environments.json", environments);
 
   const result = await evaluateReleaseReadiness(root);
@@ -938,9 +918,7 @@ test("운영 Firebase project ID가 없으면 ready가 될 수 없다", async (t
 
   assert.equal(result.ready, false);
   assert.ok(
-    firebase.blockers.includes(
-      "Firebase production project ID 미확정 또는 불일치"
-    )
+    firebase.blockers.includes("Firebase 단일 project ID 미확정 또는 불일치")
   );
 });
 
@@ -951,14 +929,11 @@ test("운영 native Firebase config가 없으면 ready가 될 수 없다", async
   t.after(() => rm(root, { recursive: true, force: true }));
   await createReadyFixture(root);
   await rm(
-    path.join(root, "apps/mobile/android/app/src/release/google-services.json"),
+    path.join(root, "apps/mobile/android/app/src/main/google-services.json"),
     { force: true }
   );
   await rm(
-    path.join(
-      root,
-      "apps/mobile/ios/Firebase/Release/GoogleService-Info.plist"
-    ),
+    path.join(root, "apps/mobile/ios/Firebase/GoogleService-Info.plist"),
     { force: true }
   );
 
@@ -968,10 +943,8 @@ test("운영 native Firebase config가 없으면 ready가 될 수 없다", async
   );
 
   assert.equal(result.ready, false);
-  assert.ok(
-    firebase.blockers.includes("운영 Android Firebase config 파일 없음")
-  );
-  assert.ok(firebase.blockers.includes("운영 iOS Firebase config 파일 없음"));
+  assert.ok(firebase.blockers.includes("Android Firebase config 파일 없음"));
+  assert.ok(firebase.blockers.includes("iOS Firebase config 파일 없음"));
 });
 
 test("Android Release Firebase variant guard가 없으면 ready가 될 수 없다", async (t) => {
@@ -1012,9 +985,9 @@ test("iOS Release Firebase embed 선택이 없으면 ready가 될 수 없다", a
   await write(
     root,
     projectPath,
-    project.replace(
-      "FIREBASE_CONFIG_PATH = Firebase/Release/GoogleService-Info.plist;",
-      "FIREBASE_CONFIG_PATH = Firebase/Debug/GoogleService-Info.plist;"
+    project.replaceAll(
+      "FIREBASE_CONFIG_PATH = Firebase/GoogleService-Info.plist;",
+      "FIREBASE_CONFIG_PATH = Firebase/Wrong/GoogleService-Info.plist;"
     )
   );
 
@@ -1026,7 +999,7 @@ test("iOS Release Firebase embed 선택이 없으면 ready가 될 수 없다", a
   assert.equal(result.ready, false);
   assert.ok(
     firebase.blockers.some((blocker) =>
-      blocker.includes("Firebase/Release/GoogleService-Info.plist")
+      blocker.includes("Firebase/GoogleService-Info.plist")
     )
   );
 });
@@ -1041,7 +1014,7 @@ test("운영 Firebase 배포 evidence가 없으면 ready가 될 수 없다", asy
     root,
     "firebase/release-readiness.json"
   );
-  delete readiness.deployments.production;
+  delete readiness.deployment;
   await write(root, "firebase/release-readiness.json", readiness);
 
   const result = await evaluateReleaseReadiness(root);
@@ -1052,7 +1025,7 @@ test("운영 Firebase 배포 evidence가 없으면 ready가 될 수 없다", asy
   assert.equal(result.ready, false);
   assert.ok(
     firebase.blockers.includes(
-      "운영 Firebase 배포 evidence가 stale 또는 미검증"
+      "단일 Firebase 배포 evidence가 stale 또는 미검증"
     )
   );
 });
@@ -1072,9 +1045,7 @@ test("App Check dependency가 없으면 문자열 evidence만으로 ready가 될
 
   assert.equal(result.ready, false);
   assert.ok(
-    firebase.blockers.includes(
-      "RNFirebase App Check 25.1.0 dependency 미확정"
-    )
+    firebase.blockers.includes("RNFirebase App Check 25.1.0 dependency 미확정")
   );
 });
 
@@ -1087,11 +1058,7 @@ test("App Check production provider source drift를 차단한다", async (t) => 
   const sourcePath =
     "apps/mobile/src/platform/firebase/FirebaseAppCheckBootstrap.ts";
   const source = await readFile(path.join(root, sourcePath), "utf8");
-  await write(
-    root,
-    sourcePath,
-    source.replace("playIntegrity", "debug")
-  );
+  await write(root, sourcePath, source.replace("playIntegrity", "debug"));
 
   const result = await evaluateReleaseReadiness(root);
   const firebase = result.sections.find(
@@ -1116,9 +1083,8 @@ test("App Check 운영 강제 evidence는 project/provider/service에 결합한�
     root,
     "firebase/release-readiness.json"
   );
-  readiness.environment.appCheckEnforcement = verified(
-    "문자열만 있는 수동 확인"
-  );
+  readiness.environment.appCheckEnforcement =
+    verified("문자열만 있는 수동 확인");
   await write(root, "firebase/release-readiness.json", readiness);
 
   const result = await evaluateReleaseReadiness(root);
@@ -1135,13 +1101,9 @@ test("App Check 운영 강제 evidence는 project/provider/service에 결합한�
       "App Check 운영 attestation provider evidence 불일치"
     )
   );
+  assert.ok(firebase.blockers.includes("Firestore App Check 운영 강제 미검증"));
   assert.ok(
-    firebase.blockers.includes("Firestore App Check 운영 강제 미검증")
-  );
-  assert.ok(
-    firebase.blockers.includes(
-      "Callable Functions App Check 운영 강제 미검증"
-    )
+    firebase.blockers.includes("Callable Functions App Check 운영 강제 미검증")
   );
 });
 
@@ -1216,7 +1178,7 @@ test("Rules source 변경은 이전 배포 evidence를 즉시 stale로 만든다
   assert.equal(result.ready, false);
   assert.ok(
     firebase.blockers.includes(
-      "개발 현재 Firestore Rules source와 배포 evidence 불일치"
+      "단일 현재 Firestore Rules source와 배포 evidence 불일치"
     )
   );
 });
@@ -1238,7 +1200,7 @@ test("Firestore indexes 변경은 이전 배포 evidence를 즉시 stale로 만�
   assert.equal(result.ready, false);
   assert.ok(
     firebase.blockers.includes(
-      "개발 현재 Firestore indexes source와 배포 evidence 불일치"
+      "단일 현재 Firestore indexes source와 배포 evidence 불일치"
     )
   );
 });
@@ -1265,7 +1227,7 @@ test("root firebase.json 변경은 이전 배포 evidence를 즉시 stale로 만
   assert.equal(result.ready, false);
   assert.ok(
     firebase.blockers.includes(
-      "개발 현재 firebase.json source와 배포 evidence 불일치"
+      "단일 현재 firebase.json source와 배포 evidence 불일치"
     )
   );
 });
@@ -1290,7 +1252,7 @@ test("Functions source 변경은 이전 배포 evidence를 즉시 stale로 만�
   assert.equal(result.ready, false);
   assert.ok(
     firebase.blockers.includes(
-      "개발 현재 Cloud Functions source와 배포 evidence 불일치"
+      "단일 현재 Cloud Functions source와 배포 evidence 불일치"
     )
   );
 });
@@ -1315,12 +1277,12 @@ test("Firebase workspace lockfile 변경은 Functions 배포 evidence를 stale �
   assert.equal(result.ready, false);
   assert.ok(
     firebase.blockers.includes(
-      "개발 현재 Cloud Functions source와 배포 evidence 불일치"
+      "단일 현재 Cloud Functions source와 배포 evidence 불일치"
     )
   );
   assert.ok(
     firebase.blockers.includes(
-      "개발 Firebase 배포 gitSha commit과 현재 deployment source 불일치"
+      "단일 Firebase 배포 gitSha commit과 현재 deployment source 불일치"
     )
   );
 });
@@ -1437,9 +1399,7 @@ test("운영 capability evidence는 production project ID에 결합한다", asyn
 
   assert.equal(result.ready, false);
   assert.ok(
-    firebase.blockers.includes(
-      "운영 Firebase 결제 계정 연결 project ID 불일치"
-    )
+    firebase.blockers.includes("운영 Firebase 결제 계정 연결 project ID 불일치")
   );
 });
 
@@ -1453,9 +1413,9 @@ test("Firebase 배포 evidence는 gitSha, region, deployedAt을 검증한다", a
     root,
     "firebase/release-readiness.json"
   );
-  readiness.deployments.production.gitSha = "not-a-git-sha";
-  readiness.deployments.production.region = "us-central1";
-  readiness.deployments.production.deployedAt = "2026-07-14";
+  readiness.deployment.gitSha = "not-a-git-sha";
+  readiness.deployment.region = "us-central1";
+  readiness.deployment.deployedAt = "2026-07-14";
   await write(root, "firebase/release-readiness.json", readiness);
 
   const result = await evaluateReleaseReadiness(root);
@@ -1465,16 +1425,16 @@ test("Firebase 배포 evidence는 gitSha, region, deployedAt을 검증한다", a
 
   assert.equal(result.ready, false);
   assert.ok(
-    firebase.blockers.includes("운영 Firebase 배포 region evidence 불일치")
+    firebase.blockers.includes("단일 Firebase 배포 region evidence 불일치")
   );
   assert.ok(
     firebase.blockers.includes(
-      "운영 Firebase 배포 gitSha evidence 없음 또는 형식 오류"
+      "단일 Firebase 배포 gitSha evidence 없음 또는 형식 오류"
     )
   );
   assert.ok(
     firebase.blockers.includes(
-      "운영 Firebase deployedAt RFC 3339 evidence 없음"
+      "단일 Firebase deployedAt RFC 3339 evidence 없음"
     )
   );
 });
@@ -1489,7 +1449,7 @@ test("형식만 맞는 gitSha는 현재 repository commit evidence가 아니다"
     root,
     "firebase/release-readiness.json"
   );
-  readiness.deployments.production.gitSha = "f".repeat(40);
+  readiness.deployment.gitSha = "f".repeat(40);
   await write(root, "firebase/release-readiness.json", readiness);
 
   const result = await evaluateReleaseReadiness(root);
@@ -1500,7 +1460,7 @@ test("형식만 맞는 gitSha는 현재 repository commit evidence가 아니다"
   assert.equal(result.ready, false);
   assert.ok(
     firebase.blockers.includes(
-      "운영 Firebase 배포 gitSha가 현재 repo commit에 없음"
+      "단일 Firebase 배포 gitSha가 현재 repo commit에 없음"
     )
   );
 });
@@ -1564,7 +1524,8 @@ test("실제 jarsigner 서명과 manifest/DEX가 일치하는 AAB evidence는 �
 
   assert.equal(result.ready, true, JSON.stringify(result.sections, null, 2));
   assert.deepEqual(
-    result.sections.find((section) => section.market === "Google Play").blockers,
+    result.sections.find((section) => section.market === "Google Play")
+      .blockers,
     []
   );
 });

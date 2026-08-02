@@ -7,7 +7,7 @@ const ROOT = resolve(import.meta.dirname, '..');
 const MANIFEST_PATH = resolve(ROOT, 'apps/mobile/firebase-environments.json');
 const manifest = JSON.parse(readFileSync(MANIFEST_PATH, 'utf8'));
 const expectedPackage = manifest.permanentAppId;
-const expectedProject = manifest.production.projectId;
+const expectedProject = manifest.projectId;
 
 function parseArgs(argv) {
   const args = new Set(argv);
@@ -17,7 +17,7 @@ function parseArgs(argv) {
   const restoreIos = restoreAll || args.delete('--ios');
   if (args.size > 0 || (!restoreAndroid && !restoreIos)) {
     throw new Error(
-      '사용법: restore-mobile-firebase-config.mjs --android|--ios|--all [--require]',
+      '사용법: restore-mobile-firebase-config.mjs --android|--ios|--all [--require]'
     );
   }
   return {requireConfig, restoreAndroid, restoreIos};
@@ -45,20 +45,24 @@ function writeConfig(relativePath, content) {
 function validateAndroid(content) {
   const config = JSON.parse(content.toString('utf8'));
   if (config?.project_info?.project_id !== expectedProject) {
-    throw new Error('Android Firebase config의 production project ID가 일치하지 않습니다.');
+    throw new Error(
+      'Android Firebase config의 tracked project ID가 일치하지 않습니다.'
+    );
   }
-  const matchingClient = config?.client?.find(candidate => (
-    candidate?.client_info?.android_client_info?.package_name === expectedPackage
-  ));
+  const matchingClient = config?.client?.find(
+    candidate =>
+      candidate?.client_info?.android_client_info?.package_name ===
+      expectedPackage
+  );
   if (!matchingClient?.client_info?.mobilesdk_app_id) {
-    throw new Error('Android Firebase config에 Cycle Pair release client가 없습니다.');
+    throw new Error('Android Firebase config에 Cycle Pair client가 없습니다.');
   }
 }
 
 function plistValue(xml, key) {
   const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const match = new RegExp(
-    `<key>\\s*${escapedKey}\\s*</key>\\s*<string>([^<]+)</string>`,
+    `<key>\\s*${escapedKey}\\s*</key>\\s*<string>([^<]+)</string>`
   ).exec(xml);
   return match?.[1]?.trim();
 }
@@ -66,7 +70,9 @@ function plistValue(xml, key) {
 function validateIos(content) {
   const xml = content.toString('utf8');
   if (plistValue(xml, 'PROJECT_ID') !== expectedProject) {
-    throw new Error('iOS Firebase config의 production project ID가 일치하지 않습니다.');
+    throw new Error(
+      'iOS Firebase config의 tracked project ID가 일치하지 않습니다.'
+    );
   }
   if (plistValue(xml, 'BUNDLE_ID') !== expectedPackage) {
     throw new Error('iOS Firebase config의 bundle ID가 일치하지 않습니다.');
@@ -77,28 +83,28 @@ function validateIos(content) {
 }
 
 try {
-  if (!expectedProject || expectedProject === manifest.development.projectId) {
-    throw new Error('production Firebase project source of truth가 올바르지 않습니다.');
+  if (!expectedProject) {
+    throw new Error('Firebase project source of truth가 올바르지 않습니다.');
   }
   const args = parseArgs(process.argv.slice(2));
   if (args.restoreAndroid) {
     const content = decodeEnvironment(
       'FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64',
-      args.requireConfig,
+      args.requireConfig
     );
     if (content !== null) {
       validateAndroid(content);
-      writeConfig(manifest.production.androidConfig, content);
+      writeConfig(manifest.androidConfig, content);
     }
   }
   if (args.restoreIos) {
     const content = decodeEnvironment(
       'FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64',
-      args.requireConfig,
+      args.requireConfig
     );
     if (content !== null) {
       validateIos(content);
-      writeConfig(manifest.production.iosConfig, content);
+      writeConfig(manifest.iosConfig, content);
     }
   }
 } catch (error) {

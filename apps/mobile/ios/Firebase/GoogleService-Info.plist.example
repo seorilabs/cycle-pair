@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NOTE</key>
+	<string>seorilabs-cyclepair-prod의 com.seorilabs.cyclepair 앱 GoogleService-Info.plist를 이 파일명에서 .example을 제거한 경로에 둡니다. Debug와 Release가 같은 파일을 사용합니다.</string>
+</dict>
+</plist>

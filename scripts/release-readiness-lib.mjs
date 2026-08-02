@@ -221,7 +221,10 @@ function readAndroidVersionName(androidAppGradle) {
   )?.[1];
   if (!variableName) return null;
 
-  const escapedVariableName = variableName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const escapedVariableName = variableName.replace(
+    /[.*+?^${}()|[\]\\]/g,
+    "\\$&"
+  );
   const assignment = androidAppGradle.match(
     new RegExp(
       `def\\s+${escapedVariableName}\\s*=\\s*\\(([\\s\\S]*?)\\)\\.toString\\(\\)`
@@ -267,30 +270,28 @@ function readXmlPlistString(xml, key) {
   return match === null ? null : decodeXml(match[1].trim());
 }
 
-async function productionNativeConfigBlockers(
+async function nativeConfigBlockers(
   root,
   firebaseEnvironments,
-  productionProjectId
+  expectedProjectId
 ) {
   const blockers = [];
   const permanentAppId = firebaseEnvironments?.permanentAppId;
-  const expectedAndroidPath = "android/app/src/release/google-services.json";
-  const expectedIosPath = "ios/Firebase/Release/GoogleService-Info.plist";
-  const configuredAndroidPath = firebaseEnvironments?.production?.androidConfig;
-  const configuredIosPath = firebaseEnvironments?.production?.iosConfig;
+  const expectedAndroidPath = "android/app/src/main/google-services.json";
+  const expectedIosPath = "ios/Firebase/GoogleService-Info.plist";
+  const configuredAndroidPath = firebaseEnvironments?.androidConfig;
+  const configuredIosPath = firebaseEnvironments?.iosConfig;
 
   if (configuredAndroidPath !== expectedAndroidPath) {
-    blockers.push(
-      "운영 Android Firebase config 경로가 release source set이 아님"
-    );
+    blockers.push("Android Firebase config 경로가 단일 main source set이 아님");
   }
   if (configuredIosPath !== expectedIosPath) {
-    blockers.push("운영 iOS Firebase config 경로가 Release 전용 경로가 아님");
+    blockers.push("iOS Firebase config 경로가 단일 공용 경로가 아님");
   }
 
   const androidPath = `apps/mobile/${expectedAndroidPath}`;
   if (!(await exists(root, androidPath))) {
-    blockers.push("운영 Android Firebase config 파일 없음");
+    blockers.push("Android Firebase config 파일 없음");
   } else {
     try {
       const config = await readJson(root, androidPath);
@@ -303,27 +304,27 @@ async function productionNativeConfigBlockers(
           )
         : undefined;
       if (
-        projectId !== productionProjectId ||
+        projectId !== expectedProjectId ||
         typeof client?.client_info?.mobilesdk_app_id !== "string" ||
         client.client_info.mobilesdk_app_id.trim().length === 0
       ) {
-        blockers.push("운영 Android Firebase config project/app ID 불일치");
+        blockers.push("Android Firebase config project/app ID 불일치");
       }
     } catch {
-      blockers.push("운영 Android Firebase config JSON 검증 실패");
+      blockers.push("Android Firebase config JSON 검증 실패");
     }
   }
 
   const iosPath = `apps/mobile/${expectedIosPath}`;
   const iosConfig = await readText(root, iosPath);
   if (iosConfig === null) {
-    blockers.push("운영 iOS Firebase config 파일 없음");
+    blockers.push("iOS Firebase config 파일 없음");
   } else if (
-    readXmlPlistString(iosConfig, "PROJECT_ID") !== productionProjectId ||
+    readXmlPlistString(iosConfig, "PROJECT_ID") !== expectedProjectId ||
     readXmlPlistString(iosConfig, "BUNDLE_ID") !== permanentAppId ||
     !readXmlPlistString(iosConfig, "GOOGLE_APP_ID")
   ) {
-    blockers.push("운영 iOS Firebase config project/app ID 불일치");
+    blockers.push("iOS Firebase config project/app ID 불일치");
   }
 
   return blockers;
@@ -666,7 +667,9 @@ async function appsInTossArtifactBlockers(root, artifact, config) {
 
   let reader;
   try {
-    reader = AITReader.fromBuffer(await readFile(path.join(root, artifact.path)));
+    reader = AITReader.fromBuffer(
+      await readFile(path.join(root, artifact.path))
+    );
   } catch {
     blockers.push(`${label} AIT 포맷 검증 실패`);
     return blockers;
@@ -792,7 +795,11 @@ async function androidArtifactBlockers(
     );
     for (const dexEntry of dexEntries) {
       const dex = readZipEntry(content, entries.get(dexEntry));
-      if (!/^dex\n0(?:35|37|38|39|40|41)\0/.test(dex.subarray(0, 8).toString("latin1"))) {
+      if (
+        !/^dex\n0(?:35|37|38|39|40|41)\0/.test(
+          dex.subarray(0, 8).toString("latin1")
+        )
+      ) {
         throw new Error("invalid DEX magic");
       }
     }
@@ -958,8 +965,16 @@ async function appStoreArtifactBlockers(
   );
   try {
     await execFileAsync("/usr/bin/unzip", ["-tqq", absolutePath]);
-    await execFileAsync("/usr/bin/unzip", ["-qq", absolutePath, "-d", temporaryDirectory]);
-    const archiveInfoPath = path.join(temporaryDirectory, archiveInfoEntries[0]);
+    await execFileAsync("/usr/bin/unzip", [
+      "-qq",
+      absolutePath,
+      "-d",
+      temporaryDirectory,
+    ]);
+    const archiveInfoPath = path.join(
+      temporaryDirectory,
+      archiveInfoEntries[0]
+    );
     const appInfoPath = path.join(temporaryDirectory, appInfoEntries[0]);
     const appPath = path.dirname(appInfoPath);
     const [bundleId, version, buildNumber, executable, archiveTeam] =
@@ -1069,12 +1084,10 @@ function appCheckEnforcementBlockers(entry, expectedProjectId) {
 
 async function appCheckClientSourceBlockers(root, mobilePackage) {
   const blockers = [];
-  const appCheckVersion = mobilePackage?.dependencies?.[
-    "@react-native-firebase/app-check"
-  ];
-  const firebaseAppVersion = mobilePackage?.dependencies?.[
-    "@react-native-firebase/app"
-  ];
+  const appCheckVersion =
+    mobilePackage?.dependencies?.["@react-native-firebase/app-check"];
+  const firebaseAppVersion =
+    mobilePackage?.dependencies?.["@react-native-firebase/app"];
   if (appCheckVersion !== "25.1.0" || appCheckVersion !== firebaseAppVersion) {
     blockers.push("RNFirebase App Check 25.1.0 dependency 미확정");
   }
@@ -1097,10 +1110,7 @@ async function appCheckClientSourceBlockers(root, mobilePackage) {
     readText(root, "apps/mobile/index.js"),
     readJson(root, "apps/mobile/firebase.json"),
     readText(root, "apps/mobile/ios/CyclePair/AppDelegate.swift"),
-    readText(
-      root,
-      "apps/mobile/ios/CyclePair/CyclePair-Bridging-Header.h"
-    ),
+    readText(root, "apps/mobile/ios/CyclePair/CyclePair-Bridging-Header.h"),
     readText(root, "apps/mobile/ios/CyclePair/CyclePair.entitlements"),
     readText(root, "apps/mobile/ios/CyclePair.xcodeproj/project.pbxproj"),
     readText(root, "apps/mobile/ios/Podfile.lock"),
@@ -1112,7 +1122,7 @@ async function appCheckClientSourceBlockers(root, mobilePackage) {
     "ReactNativeFirebaseAppCheckProvider",
     "initializeAppCheck",
     "app.options.projectId",
-    "firebaseEnvironments.production.projectId",
+    "firebaseEnvironments.projectId",
     "developmentBundle: __DEV__",
     "android: {provider: 'debug'}",
     "apple: {provider: 'debug'}",
@@ -1122,7 +1132,7 @@ async function appCheckClientSourceBlockers(root, mobilePackage) {
   ];
   if (
     bootstrap === null ||
-    requiredBootstrapEvidence.some(value => !bootstrap.includes(value))
+    requiredBootstrapEvidence.some((value) => !bootstrap.includes(value))
   ) {
     blockers.push("App Check 환경별 client initialization source 미검증");
   }
@@ -1142,8 +1152,10 @@ async function appCheckClientSourceBlockers(root, mobilePackage) {
     blockers.push("App Check token refresh와 privacy default 분리 미검증");
   }
 
-  const nativeHook = appDelegate?.indexOf("RNFBAppCheckModule.sharedInstance()") ?? -1;
-  const firebaseConfigure = appDelegate?.indexOf("FirebaseApp.configure()") ?? -1;
+  const nativeHook =
+    appDelegate?.indexOf("RNFBAppCheckModule.sharedInstance()") ?? -1;
+  const firebaseConfigure =
+    appDelegate?.indexOf("FirebaseApp.configure()") ?? -1;
   if (
     nativeHook < 0 ||
     firebaseConfigure < 0 ||
@@ -1159,15 +1171,14 @@ async function appCheckClientSourceBlockers(root, mobilePackage) {
     ) ||
     !iosProject?.includes("APP_ATTEST_ENVIRONMENT = development;") ||
     !iosProject?.includes("APP_ATTEST_ENVIRONMENT = production;") ||
-    (iosProject?.match(/SWIFT_OBJC_BRIDGING_HEADER = "?CyclePair\/CyclePair-Bridging-Header\.h"?;/g)
-      ?.length ?? 0) < 2
+    (iosProject?.match(
+      /SWIFT_OBJC_BRIDGING_HEADER = "?CyclePair\/CyclePair-Bridging-Header\.h"?;/g
+    )?.length ?? 0) < 2
   ) {
     blockers.push("iOS App Attest capability/build environment 미검증");
   }
   if (
-    !functionsSource?.includes(
-      'process.env.ENFORCE_APP_CHECK === "true"'
-    ) ||
+    !functionsSource?.includes('process.env.ENFORCE_APP_CHECK === "true"') ||
     !functionsSource?.includes("enforceAppCheck,")
   ) {
     blockers.push("Callable Functions App Check enforcement source 미검증");
@@ -1242,7 +1253,9 @@ async function firebaseDeploymentBlockers({
         "HEAD",
       ]);
       if (!isAncestor.ok) {
-        blockers.push(`${label} Firebase 배포 gitSha가 현재 HEAD ancestor가 아님`);
+        blockers.push(
+          `${label} Firebase 배포 gitSha가 현재 HEAD ancestor가 아님`
+        );
       }
       const sourceDiff = await gitCommand(root, [
         "diff",
@@ -1391,38 +1404,19 @@ export async function evaluateReleaseReadiness(root) {
   if (!(await exists(root, "firebase/firestore.rules"))) {
     firebaseBlockers.push("Security Rules 미구현");
   }
-  if (firebaseReadiness?.schemaVersion !== 3) {
-    firebaseBlockers.push("Firebase release-readiness schema v3 필요");
+  if (firebaseReadiness?.schemaVersion !== 4) {
+    firebaseBlockers.push("Firebase release-readiness schema v4 필요");
   }
-  const developmentProjectId =
-    firebaseReadiness?.environment?.developmentProjectId;
-  const trackedDevelopmentProjectId =
-    firebaseEnvironments?.development?.projectId;
+  const projectId = firebaseReadiness?.environment?.projectId;
+  const trackedProjectId = firebaseEnvironments?.projectId;
   if (
-    !developmentProjectId ||
-    developmentProjectId !== trackedDevelopmentProjectId ||
-    firebaseProjects?.projects?.default !== developmentProjectId
+    !projectId ||
+    projectId !== trackedProjectId ||
+    firebaseProjects?.projects?.default !== projectId
   ) {
-    firebaseBlockers.push("Firebase development project ID evidence 불일치");
+    firebaseBlockers.push("Firebase 단일 project ID 미확정 또는 불일치");
   }
-  const productionProjectId =
-    firebaseReadiness?.environment?.productionProjectId;
   const firebaseRegion = firebaseReadiness?.environment?.region;
-  const trackedProductionProjectId =
-    firebaseEnvironments?.production?.projectId;
-  if (
-    typeof productionProjectId !== "string" ||
-    productionProjectId.trim().length === 0 ||
-    productionProjectId !== trackedProductionProjectId ||
-    productionProjectId === developmentProjectId
-  ) {
-    firebaseBlockers.push("Firebase production project ID 미확정 또는 불일치");
-  }
-  if (firebaseProjects?.projects?.production !== productionProjectId) {
-    firebaseBlockers.push(
-      ".firebaserc production project alias 미확정 또는 불일치"
-    );
-  }
   try {
     await assertNativeFirebaseSelectionStructure(root, firebaseEnvironments);
   } catch (error) {
@@ -1432,45 +1426,29 @@ export async function evaluateReleaseReadiness(root) {
       }`
     );
   }
-  const [developmentDeploymentBlockers, productionDeploymentBlockers] =
-    await Promise.all([
-      firebaseDeploymentBlockers({
-        root,
-        deployment: firebaseReadiness?.deployments?.development,
-        expectedProjectId: developmentProjectId,
-        expectedRegion: firebaseRegion,
-        fingerprints: firebaseFingerprints,
-        label: "개발",
-      }),
-      firebaseDeploymentBlockers({
-        root,
-        deployment: firebaseReadiness?.deployments?.production,
-        expectedProjectId: productionProjectId,
-        expectedRegion: firebaseRegion,
-        fingerprints: firebaseFingerprints,
-        label: "운영",
-      }),
-    ]);
+  const deploymentBlockers = await firebaseDeploymentBlockers({
+    root,
+    deployment: firebaseReadiness?.deployment,
+    expectedProjectId: projectId,
+    expectedRegion: firebaseRegion,
+    fingerprints: firebaseFingerprints,
+    label: "단일",
+  });
   firebaseBlockers.push(
     ...(await appCheckClientSourceBlockers(root, mobilePackage)),
-    ...(await productionNativeConfigBlockers(
-      root,
-      firebaseEnvironments,
-      productionProjectId
-    )),
-    ...developmentDeploymentBlockers,
-    ...productionDeploymentBlockers
+    ...(await nativeConfigBlockers(root, firebaseEnvironments, projectId)),
+    ...deploymentBlockers
   );
   firebaseBlockers.push(
     ...projectEvidenceBlocker(
       firebaseReadiness?.environment?.nativeAppsRegistered,
-      developmentProjectId,
-      "개발 Firebase native 앱 등록 미검증"
+      projectId,
+      "Firebase native 앱 등록 미검증"
     ),
     ...projectEvidenceBlocker(
-      firebaseReadiness?.environment?.productionNativeAppsRegistered,
-      productionProjectId,
-      "운영 Firebase native 앱 등록 미검증"
+      firebaseReadiness?.environment?.nativeAppsRegistered,
+      projectId,
+      "Firebase release native 앱 등록 미검증"
     ),
     ...evidenceBlocker(
       firebaseReadiness?.environment?.billingLinked,
@@ -1491,28 +1469,28 @@ export async function evaluateReleaseReadiness(root) {
     ),
     ...productionCapabilityEvidenceBlockers({
       entry: firebaseReadiness?.environment?.productionBillingLinked,
-      expectedProjectId: productionProjectId,
+      expectedProjectId: projectId,
       label: "운영 Firebase 결제 계정 연결",
     }),
     ...productionCapabilityEvidenceBlockers({
       entry: firebaseReadiness?.environment?.productionRuntimeIamConfigured,
-      expectedProjectId: productionProjectId,
+      expectedProjectId: projectId,
       label: "운영 Functions runtime IAM",
     }),
     ...productionCapabilityEvidenceBlockers({
       entry:
         firebaseReadiness?.environment?.productionCallableInvokerIamConfigured,
-      expectedProjectId: productionProjectId,
+      expectedProjectId: projectId,
       label: "운영 Callable invoker IAM",
     }),
     ...productionCapabilityEvidenceBlockers({
       entry: firebaseReadiness?.environment?.productionLivePairSmoke,
-      expectedProjectId: productionProjectId,
+      expectedProjectId: projectId,
       label: "운영 Pair smoke",
     }),
     ...productionCapabilityEvidenceBlockers({
       entry: firebaseReadiness?.environment?.productionNotificationDelivery,
-      expectedProjectId: productionProjectId,
+      expectedProjectId: projectId,
       label: "운영 APNs/FCM 수신",
       requiredChecks: [
         ["androidFcmReceived", "운영 Android FCM 실제 수신 미검증"],
@@ -1520,9 +1498,8 @@ export async function evaluateReleaseReadiness(root) {
       ],
     }),
     ...productionCapabilityEvidenceBlockers({
-      entry:
-        firebaseReadiness?.environment?.productionGooglePlaySubscriptions,
-      expectedProjectId: productionProjectId,
+      entry: firebaseReadiness?.environment?.productionGooglePlaySubscriptions,
+      expectedProjectId: projectId,
       label: "운영 Google Play 구독 연동",
       requiredChecks: [
         ["developerApiVerified", "운영 Google Play Developer API 미검증"],
@@ -1531,7 +1508,7 @@ export async function evaluateReleaseReadiness(root) {
     }),
     ...productionCapabilityEvidenceBlockers({
       entry: firebaseReadiness?.environment?.productionAppleSubscriptions,
-      expectedProjectId: productionProjectId,
+      expectedProjectId: projectId,
       label: "운영 Apple 구독 연동",
       requiredChecks: [
         ["secretsVerified", "운영 Apple subscription secrets 미검증"],
@@ -1543,14 +1520,11 @@ export async function evaluateReleaseReadiness(root) {
     }),
     ...productionCapabilityEvidenceBlockers({
       entry: firebaseReadiness?.environment?.productionAccountExport,
-      expectedProjectId: productionProjectId,
+      expectedProjectId: projectId,
       label: "운영 계정 데이터 export",
       requiredChecks: [
         ["httpsInvokerVerified", "운영 export HTTPS invoker IAM 미검증"],
-        [
-          "cleanupSchedulerVerified",
-          "운영 export cleanup scheduler 미검증",
-        ],
+        ["cleanupSchedulerVerified", "운영 export cleanup scheduler 미검증"],
         [
           "legacyExportMyDataRemoved",
           "legacy exportMyData callable 제거 미검증",
@@ -1559,17 +1533,17 @@ export async function evaluateReleaseReadiness(root) {
     }),
     ...projectEvidenceBlocker(
       firebaseReadiness?.environment?.productionProject,
-      productionProjectId,
+      projectId,
       "운영 Firebase 프로젝트 미확정"
     ),
     ...projectEvidenceBlocker(
       firebaseReadiness?.environment?.productionAuth,
-      productionProjectId,
+      projectId,
       "운영 로그인 제공자 project-bound evidence 없음"
     ),
     ...appCheckEnforcementBlockers(
       firebaseReadiness?.environment?.appCheckEnforcement,
-      productionProjectId
+      projectId
     )
   );
 
@@ -1675,7 +1649,9 @@ export async function evaluateReleaseReadiness(root) {
       appsInTossConfig?.appNameStatus !== "confirmed-console-match" ||
       graniteAppName !== appsInTossConfig?.appName
     ) {
-      appsInTossBlockers.push("AppsInToss appName Console 대조 미확정 또는 불일치");
+      appsInTossBlockers.push(
+        "AppsInToss appName Console 대조 미확정 또는 불일치"
+      );
     }
     if (/placehold\.co/i.test(aitGraniteConfig ?? "")) {
       appsInTossBlockers.push("AppsInToss 정식 icon 미설정");

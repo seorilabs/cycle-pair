@@ -17,8 +17,8 @@
 | 기록·달력 | 구현됨 | 다일 기록·주기 시작/종료·재실행 복원, 캘린더 개별 삭제·암호화 오프라인 재시도·projection 재계산 unit/mobile/emulator tests | 두 OS 실기기 삭제·오프라인 복구 회귀 QA |
 | 암호화 오프라인 | 구현됨 | Keychain cache/queue, UID·Pair fence, 멱등 flush·logout drain unit tests | 네트워크 차단/복구 실기기 QA |
 | Pair·공동 일정 | 구현됨 | solo 진입, 초대·수락·해제, projection·event 코드/테스트, Rules 경계 | 최신 Functions 배포 후 2계정·2기기 E2E |
-| 인증·계정 | 구현됨 | 익명/email 승격·인증·reset·재인증·로그아웃, 삭제 receipt·Auth 소멸 후 복구를 포함한 unit/mobile·격리 Emulator E2E | 양 OS 실기기 삭제·응답 유실 회귀 |
-| 내보내기·삭제 | 구현됨 | 5분·단회 download ticket, recursive cleanup, deletion barrier Functions tests | 개발 배포 후 HTTPS/IAM·재인증·재시도 live smoke |
+| 인증·계정 | 구현됨 | 플랫폼 발급 Firebase Custom Token 게스트·email 승격·인증·reset·재인증·로그아웃, 삭제 receipt·Auth 소멸 후 복구를 포함한 unit/mobile·격리 Emulator E2E | prod 플랫폼·Firebase live smoke와 양 OS 실기기 삭제·응답 유실 회귀 |
+| 내보내기·삭제 | 구현됨 | 5분·단회 download ticket, recursive cleanup, deletion barrier Functions tests | 단일 prod 배포 후 HTTPS/IAM·재인증·재시도 live smoke |
 | 알림 | 구현됨 | opt-in, token 등록/회수, quiet hours, 중립 payload unit/Functions tests | APNs 키·권한, Android/iOS 실기기 수신 |
 | Analytics·Crashlytics | 구현됨 | allowlist schema·scrubber unit tests | DebugView·non-fatal 실기기 smoke와 최종 privacy 공개 |
 | App Check | 클라이언트 구현됨 | dependency·환경 fail-closed·provider 선택 unit/static tests | production provider 등록, Firestore/Callable 강제 live evidence, 양 OS 실기기 token smoke |
@@ -46,12 +46,12 @@
 - Google Play service account와 Real-time Developer Notifications
 - App Store Connect API key, App Store Server Notifications V2, subscription shared secret 사용 여부
 - iOS APNs key와 Push Notifications capability
-- production Firebase project, production Auth provider, App Check provider 등록·Firestore/Callable enforcement live evidence
+- 단일 Firebase project의 플랫폼 Custom Token 권한, Auth, App Check provider 등록·Firestore/Callable enforcement live evidence
 - 내보내기 HTTPS endpoint·만료 ticket cleanup schedule 배포, Domain Restricted Sharing invoker 설정, legacy raw JSON callable 제거
 
 ## 현재 판정
 
 - scoped MVP 코드: 내부 alpha/closed beta 후보 수준
-- 운영 backend: 최신 source 미배포. 2026-07-13 dev 배포 검증을 production 근거로 사용하지 않음
+- 운영 backend: 최신 source 미배포. 2026-07-13 dev 배포 검증을 단일 prod 근거로 사용하지 않음
 - 마켓: 서명·상품·개인정보·스토어 자산·콘솔 QA 미완료
 - 제출/배포: deployment approval 전이며 production-ready가 아님

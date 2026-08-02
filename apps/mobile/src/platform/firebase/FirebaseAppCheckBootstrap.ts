@@ -1,4 +1,4 @@
-import {getApp, type FirebaseApp} from '@react-native-firebase/app';
+import { getApp, type FirebaseApp } from '@react-native-firebase/app';
 import {
   initializeAppCheck,
   ReactNativeFirebaseAppCheckProvider,
@@ -7,7 +7,7 @@ import {
 
 import firebaseEnvironments from '../../../firebase-environments.json';
 
-export type AppCheckEnvironment = 'development' | 'production';
+export type AppCheckMode = 'debug' | 'production';
 
 interface FirebaseAppCheckProviderLike {
   configure(options: ReactNativeFirebaseAppCheckProviderOptionsMap): void;
@@ -23,37 +23,29 @@ interface FirebaseAppCheckInitializerDependencies {
   ) => Promise<unknown>;
 }
 
-export function resolveAppCheckEnvironment(
+export function resolveAppCheckMode(
   developmentBundle: boolean,
   projectId: string | undefined,
-): AppCheckEnvironment {
-  if (developmentBundle) {
-    if (projectId !== firebaseEnvironments.development.projectId) {
-      throw new Error('App Check development environment mismatch.');
-    }
-    return 'development';
+): AppCheckMode {
+  if (projectId !== firebaseEnvironments.projectId) {
+    throw new Error('App Check Firebase project mismatch.');
   }
-
-  const productionProjectId = firebaseEnvironments.production.projectId;
-  if (!productionProjectId || projectId !== productionProjectId) {
-    throw new Error('App Check production environment mismatch.');
-  }
-  return 'production';
+  return developmentBundle ? 'debug' : 'production';
 }
 
 export function appCheckProviderOptions(
-  environment: AppCheckEnvironment,
+  mode: AppCheckMode,
 ): ReactNativeFirebaseAppCheckProviderOptionsMap {
-  if (environment === 'development') {
+  if (mode === 'debug') {
     return {
-      android: {provider: 'debug'},
-      apple: {provider: 'debug'},
+      android: { provider: 'debug' },
+      apple: { provider: 'debug' },
     };
   }
 
   return {
-    android: {provider: 'playIntegrity'},
-    apple: {provider: 'appAttestWithDeviceCheckFallback'},
+    android: { provider: 'playIntegrity' },
+    apple: { provider: 'appAttestWithDeviceCheckFallback' },
   };
 }
 
@@ -67,12 +59,12 @@ export function createFirebaseAppCheckInitializer(
 
     initialization = (async () => {
       const app = dependencies.getFirebaseApp();
-      const environment = resolveAppCheckEnvironment(
+      const mode = resolveAppCheckMode(
         dependencies.developmentBundle,
         app.options.projectId,
       );
       const provider = dependencies.createProvider();
-      provider.configure(appCheckProviderOptions(environment));
+      provider.configure(appCheckProviderOptions(mode));
       await dependencies.initialize(app, provider);
     })().catch(error => {
       initialization = undefined;

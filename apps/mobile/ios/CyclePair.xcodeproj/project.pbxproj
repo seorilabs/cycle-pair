@@ -337,12 +337,10 @@
 				CODE_SIGN_ENTITLEMENTS = CyclePair/CyclePair.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				CYCLEPAIR_DEVELOPMENT_FIREBASE_PROJECT_ID = "seorilabs-cyclepair-dev";
 				DEVELOPMENT_TEAM = HCDUXX4Z3X;
 				ENABLE_BITCODE = NO;
-				FIREBASE_CONFIG_PATH = "Firebase/Debug/GoogleService-Info.plist";
-				FIREBASE_ENVIRONMENT = development;
-				FIREBASE_EXPECTED_PROJECT_ID = "seorilabs-cyclepair-dev";
+				FIREBASE_CONFIG_PATH = "Firebase/GoogleService-Info.plist";
+				FIREBASE_EXPECTED_PROJECT_ID = "seorilabs-cyclepair-prod";
 				INFOPLIST_FILE = CyclePair/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -376,10 +374,8 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = CyclePair/CyclePair.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
-				CYCLEPAIR_DEVELOPMENT_FIREBASE_PROJECT_ID = "seorilabs-cyclepair-dev";
 				DEVELOPMENT_TEAM = HCDUXX4Z3X;
-				FIREBASE_CONFIG_PATH = "Firebase/Release/GoogleService-Info.plist";
-				FIREBASE_ENVIRONMENT = production;
+				FIREBASE_CONFIG_PATH = "Firebase/GoogleService-Info.plist";
 				FIREBASE_EXPECTED_PROJECT_ID = "seorilabs-cyclepair-prod";
 				INFOPLIST_FILE = CyclePair/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;

@@ -1,6 +1,6 @@
 import { getApp } from '@react-native-firebase/app';
 import { fetch as fetchNetworkState } from '@react-native-community/netinfo';
-import { getAuth, signInAnonymously } from '@react-native-firebase/auth';
+import { getAuth } from '@react-native-firebase/auth';
 import {
   collection,
   deleteDoc,
@@ -41,8 +41,9 @@ import {
   sortDailyLogsNewestFirst,
 } from './privateDailyLogsQuery';
 import { ActivePairSnapshotCoordinator } from './ActivePairSnapshotCoordinator';
-import {replayOfflineMutations} from './replayOfflineMutations';
-import {SerializedWriteQueue} from './SerializedWriteQueue';
+import { replayOfflineMutations } from './replayOfflineMutations';
+import { SerializedWriteQueue } from './SerializedWriteQueue';
+import { isFirebaseGuestUser } from '../account/FirebaseGuestIdentity';
 
 const FUNCTIONS_REGION = 'asia-northeast3';
 const CONDITION_CODES = new Set<BackendConditionCode>([
@@ -595,13 +596,12 @@ export const firebaseCyclePairBackend: CyclePairBackend = {
   async initialize() {
     await ensureFirestoreConfigured();
     const auth = getAuth();
-    const credential = auth.currentUser
-      ? { user: auth.currentUser }
-      : await signInAnonymously(auth);
-    resumeBackendSession(credential.user.uid);
+    const user = auth.currentUser;
+    if (!user) throw new Error('Account session is unavailable.');
+    resumeBackendSession(user.uid);
     return {
-      uid: credential.user.uid,
-      isAnonymous: credential.user.isAnonymous,
+      uid: user.uid,
+      isAnonymous: isFirebaseGuestUser(user),
     };
   },
 
@@ -986,9 +986,7 @@ export const firebaseCyclePairBackend: CyclePairBackend = {
     );
     const initialObservedMembership = lastAuthoritativeMemberships.get(uid);
     const coordinator = new ActivePairSnapshotCoordinator({
-      ...(initialObservedMembership
-        ? { initialObservedMembership }
-        : {}),
+      ...(initialObservedMembership ? { initialObservedMembership } : {}),
       loadCachedMembership: () => secureCyclePairCache.loadMembership(uid),
       loadCachedPairIds: async () => [
         ...new Set([

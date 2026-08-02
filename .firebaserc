@@ -1,6 +1,5 @@
 {
   "projects": {
-    "default": "seorilabs-cyclepair-dev",
-    "production": "seorilabs-cyclepair-prod"
+    "default": "seorilabs-cyclepair-prod"
   }
 }

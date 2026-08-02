@@ -1,5 +1,5 @@
-import {readFileSync} from 'node:fs';
-import {resolve} from 'node:path';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 const requiredDisabledDefaults = {
   app_data_collection_default_enabled: false,
@@ -26,17 +26,11 @@ function readEnvironmentManifest() {
   return JSON.parse(
     readFileSync(resolve(__dirname, '../firebase-environments.json'), 'utf8'),
   ) as {
+    readonly schemaVersion: number;
     readonly permanentAppId: string;
-    readonly development: {
-      readonly projectId: string;
-      readonly androidConfig: string;
-      readonly iosConfig: string;
-    };
-    readonly production: {
-      readonly projectId: string | null;
-      readonly androidConfig: string;
-      readonly iosConfig: string;
-    };
+    readonly projectId: string;
+    readonly androidConfig: string;
+    readonly iosConfig: string;
   };
 }
 
@@ -46,33 +40,24 @@ describe('RNFirebase native config', () => {
     const mobileConfig = readConfig(resolve(__dirname, '../firebase.json'));
 
     expect(mobileConfig['react-native']).toEqual(rootConfig['react-native']);
-    expect(mobileConfig['react-native']).toMatchObject(requiredDisabledDefaults);
-    expect(mobileConfig['react-native']).toMatchObject(requiredSecurityDefaults);
+    expect(mobileConfig['react-native']).toMatchObject(
+      requiredDisabledDefaults,
+    );
+    expect(mobileConfig['react-native']).toMatchObject(
+      requiredSecurityDefaults,
+    );
     expect(Object.keys(mobileConfig)).toEqual(['react-native']);
   });
 
-  it('keeps permanent app IDs while selecting Firebase by build configuration', () => {
+  it('keeps permanent app IDs and one Firebase project for every build', () => {
     const environments = readEnvironmentManifest();
 
     expect(environments).toMatchObject({
+      schemaVersion: 2,
       permanentAppId: 'com.seorilabs.cyclepair',
-      development: {
-        projectId: 'seorilabs-cyclepair-dev',
-        androidConfig: 'android/app/src/debug/google-services.json',
-        iosConfig: 'ios/Firebase/Debug/GoogleService-Info.plist',
-      },
-      production: {
-        androidConfig: 'android/app/src/release/google-services.json',
-        iosConfig: 'ios/Firebase/Release/GoogleService-Info.plist',
-      },
+      projectId: 'seorilabs-cyclepair-prod',
+      androidConfig: 'android/app/src/main/google-services.json',
+      iosConfig: 'ios/Firebase/GoogleService-Info.plist',
     });
-    expect(
-      environments.production.projectId === null ||
-        (typeof environments.production.projectId === 'string' &&
-          environments.production.projectId.length > 0),
-    ).toBe(true);
-    expect(environments.production.projectId).not.toBe(
-      environments.development.projectId,
-    );
   });
 });

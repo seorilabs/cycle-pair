@@ -1,14 +1,7 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "permanentAppId": "com.seorilabs.cyclepair",
-  "development": {
-    "projectId": "seorilabs-cyclepair-dev",
-    "androidConfig": "android/app/src/debug/google-services.json",
-    "iosConfig": "ios/Firebase/Debug/GoogleService-Info.plist"
-  },
-  "production": {
-    "projectId": "seorilabs-cyclepair-prod",
-    "androidConfig": "android/app/src/release/google-services.json",
-    "iosConfig": "ios/Firebase/Release/GoogleService-Info.plist"
-  }
+  "projectId": "seorilabs-cyclepair-prod",
+  "androidConfig": "android/app/src/main/google-services.json",
+  "iosConfig": "ios/Firebase/GoogleService-Info.plist"
 }

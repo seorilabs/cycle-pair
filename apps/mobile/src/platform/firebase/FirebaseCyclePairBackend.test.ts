@@ -6,14 +6,13 @@ jest.mock('@react-native-firebase/app', () => ({
 
 jest.mock('@react-native-firebase/auth', () => ({
   getAuth: jest.fn(() => ({ currentUser: null })),
-  signInAnonymously: jest.fn(),
 }));
 
 jest.mock('@react-native-firebase/firestore', () => ({
   collection: jest.fn((...path: unknown[]) => ({ path })),
   deleteDoc: jest.fn(),
   doc: jest.fn((...path: unknown[]) => ({ path })),
-  documentId: jest.fn(() => ({documentId: true})),
+  documentId: jest.fn(() => ({ documentId: true })),
   getDoc: jest.fn(),
   getDocs: jest.fn(),
   getFirestore: jest.fn(() => ({})),
@@ -134,7 +133,9 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
   });
 
   it('기록 삭제가 즉시 실패해도 암호화 큐에서 재시도한다', async () => {
-    deleteDocMock.mockRejectedValueOnce({code: 'firestore/permission-denied'});
+    deleteDocMock.mockRejectedValueOnce({
+      code: 'firestore/permission-denied',
+    });
 
     await expect(
       firebaseCyclePairBackend.deleteDailyLog(
@@ -158,7 +159,7 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
   });
 
   it('대기 중인 삭제를 원격의 이전 문서로 다시 표시하지 않는다', async () => {
-    deleteDocMock.mockRejectedValueOnce({code: 'firestore/unavailable'});
+    deleteDocMock.mockRejectedValueOnce({ code: 'firestore/unavailable' });
     getDocsMock.mockResolvedValueOnce({
       docs: [
         {
@@ -179,11 +180,7 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
     );
 
     await expect(
-      firebaseCyclePairBackend.listDailyLogs(
-        uid,
-        '2026-07-01',
-        '2026-07-31',
-      ),
+      firebaseCyclePairBackend.listDailyLogs(uid, '2026-07-01', '2026-07-31'),
     ).resolves.toEqual([]);
   });
 });

@@ -38,6 +38,7 @@ describe("account export policy", () => {
     expect(() => authorizeRecentDurableAccount({
       uid: "alice",
       signInProvider: "anonymous",
+      seoriGuest: false,
       authTimeSeconds: nowSeconds,
     }, nowSeconds)).toThrowError(
       expect.objectContaining({code: "failed-precondition"}),
@@ -45,6 +46,7 @@ describe("account export policy", () => {
     expect(() => authorizeRecentDurableAccount({
       uid: "alice",
       signInProvider: "password",
+      seoriGuest: false,
       authTimeSeconds: nowSeconds - RECENT_AUTH_MAX_AGE_SECONDS - 1,
     }, nowSeconds)).toThrowError(
       expect.objectContaining({code: "failed-precondition"}),
@@ -101,6 +103,7 @@ describe("account deletion authorization", () => {
     expect(authorizeAccountDeletion({
       uid: "alice",
       signInProvider: "anonymous",
+      seoriGuest: false,
       authTimeSeconds: undefined,
     }, nowSeconds)).toBe("alice");
   });
@@ -109,18 +112,39 @@ describe("account deletion authorization", () => {
     expect(() => authorizeAccountDeletion({
       uid: "alice",
       signInProvider: undefined,
+      seoriGuest: false,
       authTimeSeconds: nowSeconds,
     }, nowSeconds)).toThrow(AccountPolicyError);
     expect(() => authorizeAccountDeletion({
       uid: "alice",
       signInProvider: "password",
+      seoriGuest: false,
       authTimeSeconds: nowSeconds - RECENT_AUTH_MAX_AGE_SECONDS - 1,
     }, nowSeconds)).toThrow(AccountPolicyError);
     expect(authorizeAccountDeletion({
       uid: "alice",
       signInProvider: "password",
+      seoriGuest: false,
       authTimeSeconds: nowSeconds - RECENT_AUTH_MAX_AGE_SECONDS,
     }, nowSeconds)).toBe("alice");
+  });
+
+  test("treats a platform custom-token guest as deletable but not durable", () => {
+    const platformGuest = {
+      uid: "pb_01K1J9ZVJ7AJ0DQRMA4RYB4R7P",
+      signInProvider: "custom",
+      seoriGuest: true,
+      authTimeSeconds: nowSeconds,
+    } as const;
+    expect(authorizeAccountDeletion(platformGuest, nowSeconds))
+      .toBe("pb_01K1J9ZVJ7AJ0DQRMA4RYB4R7P");
+    expect(() => authorizeRecentDurableAccount(platformGuest, nowSeconds))
+      .toThrowError(expect.objectContaining({code: "failed-precondition"}));
+
+    expect(authorizeRecentDurableAccount({
+      ...platformGuest,
+      signInProvider: "password",
+    }, nowSeconds)).toBe("pb_01K1J9ZVJ7AJ0DQRMA4RYB4R7P");
   });
 
   test("hashes only a 256-bit base64url deletion recovery receipt", () => {

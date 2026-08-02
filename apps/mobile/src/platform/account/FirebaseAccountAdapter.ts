@@ -9,7 +9,7 @@ import {
   reload,
   sendEmailVerification,
   sendPasswordResetEmail,
-  signInAnonymously,
+  signInWithCustomToken,
   signInWithEmailAndPassword,
   signOut,
   type User,
@@ -24,7 +24,12 @@ import {
   type AccountPort,
   type AccountSession,
 } from '../../domain/account/AccountPort';
-import {localPrivateDataCleaner} from '../local/LocalPrivateDataCleaner';
+import { localPrivateDataCleaner } from '../local/LocalPrivateDataCleaner';
+import { isFirebaseGuestUser } from './FirebaseGuestIdentity';
+import {
+  platformFirebaseGuestClient,
+  type PlatformFirebaseGuestClient,
+} from './PlatformFirebaseGuestClient';
 
 const FUNCTIONS_REGION = 'asia-northeast3';
 
@@ -54,12 +59,12 @@ function parseDataExportTicket(
   expectedUid: string,
 ): AccountExportDownloadTicket {
   const data = asRecord(value);
-  const expiresAt = typeof data?.expiresAt === 'string'
-    ? Date.parse(data.expiresAt)
-    : Number.NaN;
-  const downloadUrl = typeof data?.downloadUrl === 'string'
-    ? data.downloadUrl
-    : '';
+  const expiresAt =
+    typeof data?.expiresAt === 'string'
+      ? Date.parse(data.expiresAt)
+      : Number.NaN;
+  const downloadUrl =
+    typeof data?.downloadUrl === 'string' ? data.downloadUrl : '';
   let validDownloadUrl = false;
   try {
     const url = new URL(downloadUrl);
@@ -126,9 +131,10 @@ function parseDeletionStatus(value: unknown): AccountDeletionStatus {
   if (data.status === 'prepared' || data.status === 'pending') {
     return value as AccountDeletionStatus;
   }
-  const completedAt = typeof data.completedAt === 'string'
-    ? Date.parse(data.completedAt)
-    : Number.NaN;
+  const completedAt =
+    typeof data.completedAt === 'string'
+      ? Date.parse(data.completedAt)
+      : Number.NaN;
   if (
     data.status !== 'completed' ||
     !Number.isFinite(completedAt) ||
@@ -143,7 +149,7 @@ function toAccountSession(user: User): AccountSession {
   return {
     uid: user.uid,
     email: user.email,
-    isAnonymous: user.isAnonymous,
+    isAnonymous: isFirebaseGuestUser(user),
     emailVerified: user.emailVerified,
   };
 }
@@ -154,140 +160,161 @@ function requireCurrentUser(): User {
   return user;
 }
 
-export const firebaseAccountAdapter: AccountPort = {
-  currentSession() {
-    const user = getAuth().currentUser;
-    return user ? toAccountSession(user) : null;
-  },
-
-  async initialize() {
+export function createFirebaseAccountAdapter(
+  guestClient: PlatformFirebaseGuestClient = platformFirebaseGuestClient,
+): AccountPort {
+  async function createGuest(): Promise<AccountSession> {
     const auth = getAuth();
-    const user = auth.currentUser ?? (await signInAnonymously(auth)).user;
-    return toAccountSession(user);
-  },
-
-  async startGuest() {
-    const auth = getAuth();
-    // A persisted durable session may still exist if the app stopped after
-    // recording the explicit sign-out intent but before native sign-out
-    // completed. Never reuse or replace that identity as the new guest.
-    if (auth.currentUser) await signOut(auth);
-    return toAccountSession((await signInAnonymously(auth)).user);
-  },
-
-  subscribe(onSession, onError) {
-    return onAuthStateChanged(
-      getAuth(),
-      user => onSession(user ? toAccountSession(user) : null),
-      onError,
+    const credential = await guestClient.createCredential();
+    const signedIn = await signInWithCustomToken(
+      auth,
+      credential.firebaseCustomToken,
     );
-  },
-
-  async upgradeAnonymous(email, password) {
-    const user = requireCurrentUser();
-    if (!user.isAnonymous) {
-      throw new AccountOperationError('account/not-anonymous');
-    }
-    const uidBeforeUpgrade = user.uid;
-    const credential = EmailAuthProvider.credential(email, password);
-    const upgraded = (await linkWithCredential(user, credential)).user;
-    if (upgraded.uid !== uidBeforeUpgrade) {
+    if (signedIn.user.uid !== credential.appUserId) {
+      await signOut(auth);
       throw new AccountOperationError('account/uid-changed');
     }
-    return toAccountSession(upgraded);
-  },
+    return toAccountSession(signedIn.user);
+  }
 
-  async sendVerificationEmail() {
-    const user = requireCurrentUser();
-    if (!user.email || user.isAnonymous) {
-      throw new AccountOperationError('account/email-account-required');
-    }
-    if (!user.emailVerified) await sendEmailVerification(user);
-  },
+  return {
+    currentSession() {
+      const user = getAuth().currentUser;
+      return user ? toAccountSession(user) : null;
+    },
 
-  async reloadSession() {
-    const user = requireCurrentUser();
-    await reload(user);
-    return toAccountSession(requireCurrentUser());
-  },
+    async initialize() {
+      const auth = getAuth();
+      return auth.currentUser
+        ? toAccountSession(auth.currentUser)
+        : createGuest();
+    },
 
-  async signIn(email, password) {
-    const credential = await signInWithEmailAndPassword(
-      getAuth(),
-      email,
-      password,
-    );
-    return toAccountSession(credential.user);
-  },
+    async startGuest() {
+      const auth = getAuth();
+      // A persisted durable session may still exist if the app stopped after
+      // recording the explicit sign-out intent but before native sign-out
+      // completed. Never reuse or replace that identity as the new guest.
+      if (auth.currentUser) await signOut(auth);
+      return createGuest();
+    },
 
-  async sendPasswordResetEmail(email) {
-    await sendPasswordResetEmail(getAuth(), email);
-  },
+    subscribe(onSession, onError) {
+      return onAuthStateChanged(
+        getAuth(),
+        user => onSession(user ? toAccountSession(user) : null),
+        onError,
+      );
+    },
 
-  async reauthenticateWithPassword(password) {
-    const user = requireCurrentUser();
-    if (!user.email || user.isAnonymous) {
-      throw new AccountOperationError('account/email-account-required');
-    }
-    await reauthenticateWithCredential(
-      user,
-      EmailAuthProvider.credential(user.email, password),
-    );
-    await getIdToken(user, true);
-  },
+    async upgradeAnonymous(email, password) {
+      const user = requireCurrentUser();
+      if (!isFirebaseGuestUser(user)) {
+        throw new AccountOperationError('account/not-anonymous');
+      }
+      const uidBeforeUpgrade = user.uid;
+      const credential = EmailAuthProvider.credential(email, password);
+      const upgraded = (await linkWithCredential(user, credential)).user;
+      if (upgraded.uid !== uidBeforeUpgrade) {
+        throw new AccountOperationError('account/uid-changed');
+      }
+      return toAccountSession(upgraded);
+    },
 
-  async requestDataExport() {
-    const uid = requireCurrentUser().uid;
-    return parseDataExportTicket(
-      await callAccountFunction<{ uid: string }, unknown>(
-        'requestAccountDataExport',
-        { uid },
-      ),
-      uid,
-    );
-  },
+    async sendVerificationEmail() {
+      const user = requireCurrentUser();
+      if (!user.email || isFirebaseGuestUser(user)) {
+        throw new AccountOperationError('account/email-account-required');
+      }
+      if (!user.emailVerified) await sendEmailVerification(user);
+    },
 
-  async beginAccountDeletion() {
-    const uid = requireCurrentUser().uid;
-    return parseDeletionPreparation(
-      await callAccountFunction<{ uid: string }, unknown>(
-        'beginAccountDeletion',
-        { uid },
-      ),
-      uid,
-    );
-  },
+    async reloadSession() {
+      const user = requireCurrentUser();
+      await reload(user);
+      return toAccountSession(requireCurrentUser());
+    },
 
-  async getAccountDeletionStatus(uid, recoveryReceipt) {
-    if (!uid || !isRecoveryReceipt(recoveryReceipt)) {
-      throw new AccountOperationError('account/invalid-deletion-response');
-    }
-    return parseDeletionStatus(
-      await callAccountFunction<
-        { uid: string; recoveryReceipt: string },
-        unknown
-      >('getAccountDeletionStatus', { uid, recoveryReceipt }),
-    );
-  },
+    async signIn(email, password) {
+      const credential = await signInWithEmailAndPassword(
+        getAuth(),
+        email,
+        password,
+      );
+      return toAccountSession(credential.user);
+    },
 
-  async deleteMyAccount(recoveryReceipt) {
-    const uid = requireCurrentUser().uid;
-    if (!isRecoveryReceipt(recoveryReceipt)) {
-      throw new AccountOperationError('account/invalid-deletion-response');
-    }
-    return parseDeletionResult(
-      await callAccountFunction<
-        { uid: string; recoveryReceipt: string },
-        unknown
-      >('deleteMyAccount', { uid, recoveryReceipt }),
-    );
-  },
+    async sendPasswordResetEmail(email) {
+      await sendPasswordResetEmail(getAuth(), email);
+    },
 
-  async purgeLocalPrivateData(uid) {
-    await localPrivateDataCleaner.purgeUser(uid);
-  },
+    async reauthenticateWithPassword(password) {
+      const user = requireCurrentUser();
+      if (!user.email || isFirebaseGuestUser(user)) {
+        throw new AccountOperationError('account/email-account-required');
+      }
+      await reauthenticateWithCredential(
+        user,
+        EmailAuthProvider.credential(user.email, password),
+      );
+      await getIdToken(user, true);
+    },
 
-  async signOut() {
-    await signOut(getAuth());
-  },
-};
+    async requestDataExport() {
+      const uid = requireCurrentUser().uid;
+      return parseDataExportTicket(
+        await callAccountFunction<{ uid: string }, unknown>(
+          'requestAccountDataExport',
+          { uid },
+        ),
+        uid,
+      );
+    },
+
+    async beginAccountDeletion() {
+      const uid = requireCurrentUser().uid;
+      return parseDeletionPreparation(
+        await callAccountFunction<{ uid: string }, unknown>(
+          'beginAccountDeletion',
+          { uid },
+        ),
+        uid,
+      );
+    },
+
+    async getAccountDeletionStatus(uid, recoveryReceipt) {
+      if (!uid || !isRecoveryReceipt(recoveryReceipt)) {
+        throw new AccountOperationError('account/invalid-deletion-response');
+      }
+      return parseDeletionStatus(
+        await callAccountFunction<
+          { uid: string; recoveryReceipt: string },
+          unknown
+        >('getAccountDeletionStatus', { uid, recoveryReceipt }),
+      );
+    },
+
+    async deleteMyAccount(recoveryReceipt) {
+      const uid = requireCurrentUser().uid;
+      if (!isRecoveryReceipt(recoveryReceipt)) {
+        throw new AccountOperationError('account/invalid-deletion-response');
+      }
+      return parseDeletionResult(
+        await callAccountFunction<
+          { uid: string; recoveryReceipt: string },
+          unknown
+        >('deleteMyAccount', { uid, recoveryReceipt }),
+      );
+    },
+
+    async purgeLocalPrivateData(uid) {
+      await localPrivateDataCleaner.purgeUser(uid);
+    },
+
+    async signOut() {
+      await signOut(getAuth());
+    },
+  };
+}
+
+export const firebaseAccountAdapter = createFirebaseAccountAdapter();

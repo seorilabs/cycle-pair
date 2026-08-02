@@ -3,8 +3,11 @@ import path from "node:path";
 
 const LEGACY_CONFIG_PATHS = Object.freeze([
   "apps/mobile/android/app/google-services.json",
-  "apps/mobile/android/app/src/main/google-services.json",
+  "apps/mobile/android/app/src/debug/google-services.json",
+  "apps/mobile/android/app/src/release/google-services.json",
   "apps/mobile/ios/CyclePair/GoogleService-Info.plist",
+  "apps/mobile/ios/Firebase/Debug/GoogleService-Info.plist",
+  "apps/mobile/ios/Firebase/Release/GoogleService-Info.plist",
 ]);
 
 async function exists(root, relativePath) {
@@ -39,15 +42,9 @@ function assertPbxBuildSetting(text, key, value) {
 export async function assertNativeFirebaseSelectionStructure(root, manifest) {
   const [androidBuildFile, iosProjectFile, iosSelectorScript] =
     await Promise.all([
+      readFile(path.join(root, "apps/mobile/android/app/build.gradle"), "utf8"),
       readFile(
-        path.join(root, "apps/mobile/android/app/build.gradle"),
-        "utf8"
-      ),
-      readFile(
-        path.join(
-          root,
-          "apps/mobile/ios/CyclePair.xcodeproj/project.pbxproj"
-        ),
+        path.join(root, "apps/mobile/ios/CyclePair.xcodeproj/project.pbxproj"),
         "utf8"
       ),
       readFile(
@@ -63,14 +60,9 @@ export async function assertNativeFirebaseSelectionStructure(root, manifest) {
       );
     }
   }
-  for (const environmentName of ["development", "production"]) {
-    const environment = manifest[environmentName];
-    for (const key of ["androidConfig", "iosConfig"]) {
-      if (
-        !(await exists(root, `apps/mobile/${environment[key]}.example`))
-      ) {
-        throw new Error(`${environmentName} ${key} example marker가 없습니다.`);
-      }
+  for (const key of ["androidConfig", "iosConfig"]) {
+    if (!(await exists(root, `apps/mobile/${manifest[key]}.example`))) {
+      throw new Error(`${key} example marker가 없습니다.`);
     }
   }
 
@@ -81,7 +73,7 @@ export async function assertNativeFirebaseSelectionStructure(root, manifest) {
     "verifyReleaseFirebaseConfig",
     "processDebugGoogleServices",
     "processReleaseGoogleServices",
-    "environment.androidConfig",
+    "firebaseEnvironments.androidConfig",
   ]) {
     assertContains(
       androidBuildFile,
@@ -90,12 +82,7 @@ export async function assertNativeFirebaseSelectionStructure(root, manifest) {
     );
   }
 
-  const debugConfigPath = manifest.development.iosConfig.replace(/^ios\//, "");
-  const releaseConfigPath = manifest.production.iosConfig.replace(
-    /^ios\//,
-    ""
-  );
-  const releaseProjectId = manifest.production.projectId ?? "";
+  const configPath = manifest.iosConfig.replace(/^ios\//, "");
   for (const value of [
     "[Firebase] Validate Environment Config",
     "[Firebase] Embed Environment Config",
@@ -107,12 +94,8 @@ export async function assertNativeFirebaseSelectionStructure(root, manifest) {
     );
   }
   for (const [key, value] of [
-    ["FIREBASE_CONFIG_PATH", debugConfigPath],
-    ["FIREBASE_CONFIG_PATH", releaseConfigPath],
-    ["FIREBASE_ENVIRONMENT", "development"],
-    ["FIREBASE_ENVIRONMENT", "production"],
-    ["FIREBASE_EXPECTED_PROJECT_ID", manifest.development.projectId],
-    ["FIREBASE_EXPECTED_PROJECT_ID", releaseProjectId],
+    ["FIREBASE_CONFIG_PATH", configPath],
+    ["FIREBASE_EXPECTED_PROJECT_ID", manifest.projectId],
   ]) {
     assertPbxBuildSetting(iosProjectFile, key, value);
   }
@@ -120,7 +103,9 @@ export async function assertNativeFirebaseSelectionStructure(root, manifest) {
     iosProjectFile.includes("GoogleService-Info.plist in Resources") ||
     iosProjectFile.includes("CyclePair/GoogleService-Info.plist")
   ) {
-    throw new Error("iOS target에 legacy Firebase plist resource가 남아 있습니다.");
+    throw new Error(
+      "iOS target에 legacy Firebase plist resource가 남아 있습니다."
+    );
   }
 
   const targetPhaseStart = iosProjectFile.indexOf("buildPhases = (");
@@ -159,7 +144,7 @@ export async function assertNativeFirebaseSelectionStructure(root, manifest) {
   for (const value of [
     "FIREBASE_CONFIG_PATH",
     "FIREBASE_EXPECTED_PROJECT_ID",
-    "Release cannot use the development Firebase project",
+    "single tracked project",
     "GoogleService-Info.plist",
   ]) {
     assertContains(
