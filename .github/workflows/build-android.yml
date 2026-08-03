@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   candidate:
-    uses: seorilabs/.github/.github/workflows/rn-build-android.yml@9f1cd7dfa00dd09f380d28a9b87d515ded0005a8
+    uses: seorilabs/.github/.github/workflows/rn-build-android.yml@bf14204ee13dba657e31dcf1a71a64c0dc526ae3
     secrets: inherit
     with:
       release_tag: ${{ inputs.release_tag }}
@@ -27,3 +27,4 @@ jobs:
       node_version: 24.16.0
       java_version: "21"
       android_dir: apps/mobile/android
+      signing_properties_file: keystore.properties
