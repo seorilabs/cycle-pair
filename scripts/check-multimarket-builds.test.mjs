@@ -107,10 +107,13 @@ test('AppsInToss target uses supported SDK and a build-only candidate workflow',
   assert.ok(aitPackage.dependencies['@toss/tds-react-native']);
   assert.equal(aitPackage.scripts.build, 'ait build');
   assert.doesNotMatch(ciWorkflow, /\n  ait_build:/);
+  assert.match(buildWorkflow, /^name: Build Mini-app Candidate$/m);
+  assert.match(buildWorkflow, /workflow_dispatch:[\s\S]*?inputs:[\s\S]*?release_tag:/);
   assert.match(
     buildWorkflow,
     /rn-build-ait\.yml@73972d2b34e92145e61e3409c91085c40da10c54/,
   );
+  assert.match(buildWorkflow, /release_tag: \$\{\{ inputs\.release_tag \}\}/);
   assert.match(buildWorkflow, /build_command: "pnpm build:ait"/);
   assert.match(buildWorkflow, /artifact_path: "apps\/ait\/cycle-pair\.ait"/);
   assert.match(buildWorkflow, /runs_on: ubuntu-latest/);
@@ -120,12 +123,27 @@ test('AppsInToss target uses supported SDK and a build-only candidate workflow',
 test('Android candidate workflow creates a signed AAB without Play upload', async () => {
   const workflow = await readFile('.github/workflows/build-android.yml', 'utf8');
 
+  assert.match(workflow, /^name: Build Android Candidate$/m);
+  assert.match(workflow, /workflow_dispatch:[\s\S]*?inputs:[\s\S]*?release_tag:/);
   assert.match(
     workflow,
     /rn-deploy-google-play\.yml@73972d2b34e92145e61e3409c91085c40da10c54/,
   );
+  assert.match(workflow, /release_tag: \$\{\{ inputs\.release_tag \}\}/);
   assert.match(workflow, /upload: false/);
   assert.match(workflow, /android_dir: apps\/mobile\/android/);
   assert.match(workflow, /java_version: "21"/);
   assert.doesNotMatch(workflow, /track:|release_status:/);
+});
+
+test('candidate workflow names are not classified as market deployment workflows', async () => {
+  const workflows = await Promise.all([
+    readFile('.github/workflows/build-ait.yml', 'utf8'),
+    readFile('.github/workflows/build-android.yml', 'utf8'),
+  ]);
+  const marketWorkflowName = /^(?:name:\s*).*(?:AIT|AppsInToss|Toss|Google|Play|App Store|iOS)/im;
+
+  for (const workflow of workflows) {
+    assert.doesNotMatch(workflow, marketWorkflowName);
+  }
 });
