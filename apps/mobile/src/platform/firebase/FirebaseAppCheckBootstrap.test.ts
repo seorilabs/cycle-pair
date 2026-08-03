@@ -1,4 +1,4 @@
-import type {FirebaseApp} from '@react-native-firebase/app';
+import type { FirebaseApp } from '@react-native-firebase/app';
 
 jest.mock('@react-native-firebase/app', () => ({
   getApp: jest.fn(),
@@ -14,34 +14,32 @@ jest.mock('@react-native-firebase/app-check', () => ({
 import {
   appCheckProviderOptions,
   createFirebaseAppCheckInitializer,
-  resolveAppCheckEnvironment,
+  resolveAppCheckMode,
 } from './FirebaseAppCheckBootstrap';
 
-const developmentApp = {
-  options: {projectId: 'seorilabs-cyclepair-dev'},
+const firebaseApp = {
+  options: { projectId: 'seorilabs-cyclepair-prod' },
 } as FirebaseApp;
 
 describe('Firebase App Check bootstrap', () => {
-  it('uses debug attestation only for a development bundle on the tracked dev project', () => {
-    expect(
-      resolveAppCheckEnvironment(true, 'seorilabs-cyclepair-dev'),
-    ).toBe('development');
-    expect(appCheckProviderOptions('development')).toEqual({
-      android: {provider: 'debug'},
-      apple: {provider: 'debug'},
+  it('uses debug attestation for a development bundle on the single project', () => {
+    expect(resolveAppCheckMode(true, 'seorilabs-cyclepair-prod')).toBe('debug');
+    expect(appCheckProviderOptions('debug')).toEqual({
+      android: { provider: 'debug' },
+      apple: { provider: 'debug' },
     });
-    expect(() => resolveAppCheckEnvironment(true, 'unexpected-project')).toThrow(
-      'App Check development environment mismatch.',
+    expect(() => resolveAppCheckMode(true, 'unexpected-project')).toThrow(
+      'App Check Firebase project mismatch.',
     );
   });
 
-  it('fails closed until a distinct production project is configured', () => {
-    expect(() => resolveAppCheckEnvironment(false, 'seorilabs-cyclepair-dev')).toThrow(
-      'App Check production environment mismatch.',
+  it('uses production attestation for a release bundle on the same project', () => {
+    expect(resolveAppCheckMode(false, 'seorilabs-cyclepair-prod')).toBe(
+      'production',
     );
     expect(appCheckProviderOptions('production')).toEqual({
-      android: {provider: 'playIntegrity'},
-      apple: {provider: 'appAttestWithDeviceCheckFallback'},
+      android: { provider: 'playIntegrity' },
+      apple: { provider: 'appAttestWithDeviceCheckFallback' },
     });
   });
 
@@ -50,8 +48,8 @@ describe('Firebase App Check bootstrap', () => {
     const initialize = jest.fn(async () => undefined);
     const initializer = createFirebaseAppCheckInitializer({
       developmentBundle: true,
-      getFirebaseApp: () => developmentApp,
-      createProvider: () => ({configure}),
+      getFirebaseApp: () => firebaseApp,
+      createProvider: () => ({ configure }),
       initialize,
     });
 
@@ -61,13 +59,13 @@ describe('Firebase App Check bootstrap', () => {
 
     expect(first).toBe(second);
     expect(configure).toHaveBeenCalledWith({
-      android: {provider: 'debug'},
-      apple: {provider: 'debug'},
+      android: { provider: 'debug' },
+      apple: { provider: 'debug' },
     });
     expect(initialize).toHaveBeenCalledTimes(1);
     expect(initialize).toHaveBeenCalledWith(
-      developmentApp,
-      expect.objectContaining({configure}),
+      firebaseApp,
+      expect.objectContaining({ configure }),
     );
   });
 
@@ -78,8 +76,8 @@ describe('Firebase App Check bootstrap', () => {
       .mockResolvedValueOnce(undefined);
     const initializer = createFirebaseAppCheckInitializer({
       developmentBundle: true,
-      getFirebaseApp: () => developmentApp,
-      createProvider: () => ({configure: jest.fn()}),
+      getFirebaseApp: () => firebaseApp,
+      createProvider: () => ({ configure: jest.fn() }),
       initialize: () => initialize(),
     });
 

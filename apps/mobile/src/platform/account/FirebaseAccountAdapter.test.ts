@@ -26,11 +26,15 @@ const mockSendVerification = jest.fn(async (_user: unknown) => undefined);
 const mockSendReset = jest.fn(
   async (_auth: unknown, _email: string) => undefined,
 );
-const mockSignInAnonymously = jest.fn(
-  async (_auth: unknown): Promise<{ user: Record<string, unknown> }> => ({
+const mockSignInWithCustomToken = jest.fn(
+  async (
+    _auth: unknown,
+    _token: string,
+  ): Promise<{ user: Record<string, unknown> }> => ({
     user: mockAuthState.currentUser ?? user(),
   }),
 );
+const mockCreateGuestCredential = jest.fn();
 const mockSignInWithEmail = jest.fn(
   async (_auth: unknown, _email: string, _password: string) => undefined,
 );
@@ -43,7 +47,7 @@ jest.mock('react-native-keychain', () => ({
     AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY:
       'AccessibleAfterFirstUnlockThisDeviceOnly',
   },
-  STORAGE_TYPE: {AES_GCM_NO_AUTH: 'KeystoreAESGCM_NoAuth'},
+  STORAGE_TYPE: { AES_GCM_NO_AUTH: 'KeystoreAESGCM_NoAuth' },
   getAllGenericPasswordServices: jest.fn(async () => []),
   resetGenericPassword: jest.fn(async () => true),
 }));
@@ -71,7 +75,8 @@ jest.mock('@react-native-firebase/auth', () => ({
     mockSendVerification(firebaseUser),
   sendPasswordResetEmail: (auth: unknown, email: string) =>
     mockSendReset(auth, email),
-  signInAnonymously: (auth: unknown) => mockSignInAnonymously(auth),
+  signInWithCustomToken: (auth: unknown, token: string) =>
+    mockSignInWithCustomToken(auth, token),
   signInWithEmailAndPassword: (
     auth: unknown,
     email: string,
@@ -85,8 +90,13 @@ jest.mock('@react-native-firebase/functions', () => ({
   httpsCallable: jest.fn(() => mockCallableInvoke),
 }));
 
-import { firebaseAccountAdapter } from './FirebaseAccountAdapter';
+import { createFirebaseAccountAdapter } from './FirebaseAccountAdapter';
 import { EmailAuthProvider } from '@react-native-firebase/auth';
+
+const PLATFORM_GUEST_UID = 'pb_01K1J9ZVJ7AJ0DQRMA4RYB4R7P';
+const firebaseAccountAdapter = createFirebaseAccountAdapter({
+  createCredential: () => mockCreateGuestCredential(),
+});
 
 function user(overrides: Record<string, unknown> = {}) {
   return {
@@ -102,6 +112,10 @@ describe('FirebaseAccountAdapter', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockAuthState.currentUser = user();
+    mockCreateGuestCredential.mockResolvedValue({
+      firebaseCustomToken: 'firebase-custom-token',
+      appUserId: PLATFORM_GUEST_UID,
+    });
   });
 
   it('reuses the native persisted user during initialization', async () => {
@@ -112,27 +126,57 @@ describe('FirebaseAccountAdapter', () => {
       isAnonymous: true,
       emailVerified: false,
     });
-    expect(mockSignInAnonymously).not.toHaveBeenCalled();
+    expect(mockSignInWithCustomToken).not.toHaveBeenCalled();
   });
 
-  it('starts a new anonymous identity without reusing a persisted account', async () => {
+  it('starts a platform guest identity without reusing a persisted account', async () => {
     const persisted = user({
       email: 'user@example.com',
       isAnonymous: false,
       emailVerified: true,
     });
-    const guest = user({ uid: 'fresh-guest-uid' });
+    const guest = user({
+      uid: PLATFORM_GUEST_UID,
+      isAnonymous: false,
+    });
     mockAuthState.currentUser = persisted;
-    mockSignInAnonymously.mockResolvedValueOnce({ user: guest });
+    mockSignInWithCustomToken.mockResolvedValueOnce({ user: guest });
 
     await expect(firebaseAccountAdapter.startGuest()).resolves.toEqual({
-      uid: 'fresh-guest-uid',
+      uid: PLATFORM_GUEST_UID,
       email: null,
       isAnonymous: true,
       emailVerified: false,
     });
     expect(mockSignOut).toHaveBeenCalledWith(mockAuthState);
-    expect(mockSignInAnonymously).toHaveBeenCalledWith(mockAuthState);
+    expect(mockCreateGuestCredential).toHaveBeenCalledTimes(1);
+    expect(mockSignInWithCustomToken).toHaveBeenCalledWith(
+      mockAuthState,
+      'firebase-custom-token',
+    );
+  });
+
+  it('creates a platform guest when no persisted Firebase user exists', async () => {
+    const guest = user({ uid: PLATFORM_GUEST_UID, isAnonymous: false });
+    mockAuthState.currentUser = null;
+    mockSignInWithCustomToken.mockResolvedValueOnce({ user: guest });
+
+    await expect(firebaseAccountAdapter.initialize()).resolves.toMatchObject({
+      uid: PLATFORM_GUEST_UID,
+      isAnonymous: true,
+    });
+  });
+
+  it('signs out and fails closed when Firebase returns a different uid', async () => {
+    mockAuthState.currentUser = null;
+    mockSignInWithCustomToken.mockResolvedValueOnce({
+      user: user({ uid: 'unexpected-uid', isAnonymous: false }),
+    });
+
+    await expect(firebaseAccountAdapter.initialize()).rejects.toMatchObject({
+      code: 'account/uid-changed',
+    });
+    expect(mockSignOut).toHaveBeenCalledWith(mockAuthState);
   });
 
   it('links email credentials to the anonymous user while preserving its uid', async () => {
@@ -247,7 +291,9 @@ describe('FirebaseAccountAdapter', () => {
       exportSubjectUid: 'stable-uid',
       singleUse: true,
     });
-    await expect(firebaseAccountAdapter.beginAccountDeletion()).resolves.toEqual({
+    await expect(
+      firebaseAccountAdapter.beginAccountDeletion(),
+    ).resolves.toEqual({
       schemaVersion: 1,
       deletionSubjectUid: 'stable-uid',
       recoveryReceipt: 'r'.repeat(43),

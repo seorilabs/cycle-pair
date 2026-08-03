@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
-import { execFile } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
+import {execFile} from 'node:child_process';
+import {readFile} from 'node:fs/promises';
 import test from 'node:test';
-import { promisify } from 'node:util';
+import {promisify} from 'node:util';
 
 const execFileAsync = promisify(execFile);
 
@@ -23,47 +23,57 @@ test('Korean market title stays within Google Play limit and matches every displ
     graniteConfig,
     androidStrings,
     iosInfoPlist,
-  ] =
-    await Promise.all([
-      json('package.json'),
-      json('apps/mobile/app.json'),
-      json('play-store/google-play.config.json'),
-      json('app-store/app-store.config.json'),
-      json('apps-in-toss/apps-in-toss.config.json'),
-      readFile('apps/ait/granite.config.ts', 'utf8'),
-      readFile('apps/mobile/android/app/src/main/res/values/strings.xml', 'utf8'),
-      readFile('apps/mobile/ios/CyclePair/Info.plist', 'utf8'),
-    ]);
+  ] = await Promise.all([
+    json('package.json'),
+    json('apps/mobile/app.json'),
+    json('play-store/google-play.config.json'),
+    json('app-store/app-store.config.json'),
+    json('apps-in-toss/apps-in-toss.config.json'),
+    readFile('apps/ait/granite.config.ts', 'utf8'),
+    readFile('apps/mobile/android/app/src/main/res/values/strings.xml', 'utf8'),
+    readFile('apps/mobile/ios/CyclePair/Info.plist', 'utf8'),
+  ]);
 
   assert.ok([...OFFICIAL_KOREAN_NAME].length <= 30);
   assert.equal(playConfig.storeListing.appName['ko-KR'], OFFICIAL_KOREAN_NAME);
-  assert.equal(appStoreConfig.storeListing.appName['ko-KR'], OFFICIAL_KOREAN_NAME);
+  assert.equal(
+    appStoreConfig.storeListing.appName['ko-KR'],
+    OFFICIAL_KOREAN_NAME
+  );
   assert.equal(mobileApp.displayName, OFFICIAL_KOREAN_NAME);
   assert.equal(aitConfig.workingName['ko-KR'], OFFICIAL_KOREAN_NAME);
-  assert.match(graniteConfig, new RegExp(OFFICIAL_KOREAN_NAME.replace('.', '\\.')));
+  assert.match(
+    graniteConfig,
+    new RegExp(OFFICIAL_KOREAN_NAME.replace('.', '\\.'))
+  );
   assert.ok(
     androidStrings.includes(
-      `<string name="app_name">${OFFICIAL_KOREAN_NAME}</string>`,
-    ),
+      `<string name="app_name">${OFFICIAL_KOREAN_NAME}</string>`
+    )
   );
   assert.ok(iosInfoPlist.includes(`<string>${OFFICIAL_KOREAN_NAME}</string>`));
-  assert.equal(rootPackage.scripts['build:google-play'],
-    'node scripts/build-google-play.mjs');
+  assert.equal(
+    rootPackage.scripts['build:google-play'],
+    'node scripts/build-google-play.mjs'
+  );
   assert.equal(
     playConfig.release.aabPath,
-    'apps/mobile/android/app/build/outputs/bundle/release/app-release.aab',
+    'apps/mobile/android/app/build/outputs/bundle/release/app-release.aab'
   );
-  assert.equal(rootPackage.scripts['build:ait'],
-    'pnpm --filter @cyclepair/ait build');
+  assert.equal(
+    rootPackage.scripts['build:ait'],
+    'pnpm --filter @cyclepair/ait build'
+  );
 });
 
 test('Google Play build stays API 36, versioned, signed, and pnpm-safe for Hermes', async () => {
-  const [androidRoot, androidApp, mobilePackage, buildWrapper] = await Promise.all([
-    readFile('apps/mobile/android/build.gradle', 'utf8'),
-    readFile('apps/mobile/android/app/build.gradle', 'utf8'),
-    json('apps/mobile/package.json'),
-    readFile('scripts/build-google-play.mjs', 'utf8'),
-  ]);
+  const [androidRoot, androidApp, mobilePackage, buildWrapper] =
+    await Promise.all([
+      readFile('apps/mobile/android/build.gradle', 'utf8'),
+      readFile('apps/mobile/android/app/build.gradle', 'utf8'),
+      json('apps/mobile/package.json'),
+      readFile('scripts/build-google-play.mjs', 'utf8'),
+    ]);
 
   assert.match(androidRoot, /targetSdkVersion\s*=\s*36/);
   assert.match(androidApp, /hermes-compiler\/package\.json/);
@@ -71,12 +81,12 @@ test('Google Play build stays API 36, versioned, signed, and pnpm-safe for Herme
   assert.match(androidApp, /GOOGLE_PLAY_VERSION_NAME/);
   assert.match(androidApp, /GOOGLE_PLAY_VERSION_CODE/);
   assert.match(androidApp, /verifyReleasePrerequisites/);
-  assert.match(androidApp, /firebaseConfigProblems\("release", "production"\)/);
+  assert.match(androidApp, /firebaseConfigProblems\("release"\)/);
   assert.match(androidApp, /releaseSigningProblems\.each/);
   assert.match(androidApp, /task\.dependsOn\(verifyReleasePrerequisites\)/);
   assert.equal(
     mobilePackage.scripts['build:android:play'],
-    'node ../../scripts/build-google-play.mjs',
+    'node ../../scripts/build-google-play.mjs'
   );
   assert.match(buildWrapper, /resolve-release-version\.mjs/);
   assert.match(buildWrapper, /GOOGLE_PLAY_VERSION_NAME/);
@@ -84,13 +94,14 @@ test('Google Play build stays API 36, versioned, signed, and pnpm-safe for Herme
   assert.match(buildWrapper, /:app:verifyReleasePrerequisites/);
   assert.match(
     buildWrapper,
-    /runGradle\(':app:verifyReleasePrerequisites'\)[\s\S]*runGradle\(':app:bundleRelease'\)/,
+    /runGradle\(':app:verifyReleasePrerequisites'\)[\s\S]*runGradle\(':app:bundleRelease'\)/
   );
 
-  const { stdout } = await execFileAsync(
-    process.execPath,
-    ['scripts/resolve-release-version.mjs', '--tag', 'v0.1.0'],
-  );
+  const {stdout} = await execFileAsync(process.execPath, [
+    'scripts/resolve-release-version.mjs',
+    '--tag',
+    'v0.1.0',
+  ]);
   const resolvedVersion = JSON.parse(stdout);
   assert.equal(resolvedVersion.version_name, '0.1.0');
   assert.equal(resolvedVersion.android_version_code, '1000');

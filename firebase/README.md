@@ -1,6 +1,6 @@
 # Cycle Pair Firebase 경계
 
-이 디렉터리는 raw 건강 기록과 파트너 공유 projection을 문서 단위로 분리한다. 개발 프로젝트는 `seorilabs-cyclepair-dev`, Firestore·Functions 리전은 `asia-northeast3`다. App Check 운영 provider는 Android Play Integrity, iOS App Attest(DeviceCheck fallback)로 코드에 고정했지만 운영 project 등록·강제 evidence는 아직 없다.
+이 디렉터리는 raw 건강 기록과 파트너 공유 projection을 문서 단위로 분리한다. Firebase 프로젝트는 `seorilabs-cyclepair-prod` 하나만 사용하고 Firestore·Functions 리전은 `asia-northeast3`다. App Check release provider는 Android Play Integrity, iOS App Attest(DeviceCheck fallback)로 코드에 고정했지만 provider 등록·강제 evidence는 아직 없다.
 
 ```mermaid
 flowchart LR
@@ -105,7 +105,7 @@ OFF/누락/유효하지 않은 값은 `null`로 남기지 않고 문서에서 �
 - Expired Pair invite: `expiresAt` 후 7일 보존
 - Acknowledged cache tombstone: `acknowledgedAt` 후 30일 보존
 - Functions region: `asia-northeast3`
-- Firebase 프로젝트 전략: 민감 건강정보·Auth·Rules·운영 격리를 위한 앱별 개발 프로젝트 `seorilabs-cyclepair-dev`
+- Firebase 프로젝트 전략: 앱 전용 단일 프로젝트 `seorilabs-cyclepair-prod`; 로컬 테스트는 Emulator 전용 project ID 사용
 
 보존 cleanup은 매일 실행되며 종류별 최대 200개 후보만 조회하고 20개 이하 transaction을 동시에 처리한다. query snapshot은 삭제 근거로 사용하지 않고 각 문서의 현재 `expiresAt` 또는 `status == acknowledged`와 `acknowledgedAt`을 transaction에서 다시 확인한다. 따라서 만료되지 않은 invite와 pending/unacknowledged tombstone은 삭제하지 않는다. 이 cleanup은 즉시성 보안 경계가 아니다. 초대 accept는 항상 `expiresAt`을 transaction 안에서 검사하고, revoke 접근 차단은 `/pairs/{pairId}.status`를 같은 transaction에서 `revoked`로 변경하는 Rules가 담당한다.
 
@@ -195,7 +195,7 @@ Google adapter는 service-account JSON을 앱이나 repo에 두지 않고 Cloud 
 
 ## App Check
 
-계정 삭제 완료 조회를 제외한 사용자 callable은 Firebase Auth를 필수로 한다. 현재 Android/iOS 개발 앱은 실제 2인 흐름 검증용 익명 인증을 사용할 수 있다. 익명 계정은 내보내기를 사용할 수 없지만 본인 계정과 데이터를 영구 삭제할 수 있다. 모바일 entry point는 Firebase 사용 전에 App Check를 초기화하고, Debug는 tracked dev project에서만 debug provider, Release는 production project에서만 Play Integrity/App Attest(DeviceCheck fallback)를 사용한다. Callable은 `ENFORCE_APP_CHECK=true`로 배포될 때만 App Check를 강제한다. Firestore enforcement와 production provider 등록도 콘솔 설정이므로, 클라이언트 dependency가 있다는 이유만으로 운영 보호가 완료됐다고 보지 않는다.
+계정 삭제 완료 조회를 제외한 사용자 callable은 Firebase Auth를 필수로 한다. 게스트는 Seorilabs Platform이 생성한 `pb_` UID의 Custom Token으로 로그인한다. 이 게스트는 내보내기를 사용할 수 없지만 본인 계정과 데이터를 영구 삭제할 수 있다. 이메일/password provider가 연결되면 같은 UID의 복구 가능한 계정으로 처리한다. 모바일 entry point는 Firebase 사용 전에 App Check를 초기화하고, 같은 프로젝트에서 Debug는 debug provider, Release는 Play Integrity/App Attest(DeviceCheck fallback)를 사용한다. Callable은 `ENFORCE_APP_CHECK=true`로 배포될 때만 App Check를 강제한다. Firestore enforcement와 release provider 등록도 콘솔 설정이므로, 클라이언트 dependency가 있다는 이유만으로 보호가 완료됐다고 보지 않는다.
 
 Firestore native persistence는 민감한 partner projection이 일반 OS 캐시에 남지 않도록 모바일 어댑터에서 비활성화한다. 오프라인 데이터는 UID별 Keychain cache/queue에만 저장한다. Pair tombstone을 받으면 해당 Pair cache와 queued mutation을 먼저 지우고 ack한 뒤 남은 UID queue를 즉시 flush한다. 로그아웃·계정 삭제는 UID writer fence를 동기적으로 닫고 진행 중인 Keychain write와 backend mutation을 drain한 뒤 purge하므로 늦은 snapshot이나 flush가 삭제 데이터를 다시 만들 수 없다.
 
@@ -210,11 +210,11 @@ pnpm --dir firebase install --frozen-lockfile
 pnpm --dir firebase check
 ```
 
-`test:rules`는 실제 프로젝트 대신 Firebase Emulator 전용 `demo-cyclepair` project ID를 사용한다. `.firebaserc`는 개발 프로젝트를 가리키며 운영 프로젝트 alias는 출시 준비 때 별도 추가한다.
+`test:rules`는 실제 프로젝트 대신 Firebase Emulator 전용 `demo-cyclepair` project ID를 사용한다. `.firebaserc`의 유일한 실제 project는 `seorilabs-cyclepair-prod`다.
 
-## 개발 프로젝트 배포·실검증
+## 단일 프로젝트 배포·실검증
 
-`seorilabs-cyclepair-dev`의 2026-07-13 live audit에서는 결제 연결, Node.js 22 2nd Gen Functions 7개, Firestore trigger 3개가 `asia-northeast3`에 배포돼 있고 실제 2계정 smoke를 통과했다. 이후 추가된 공동 일정·계정 수명주기 callable은 개발 프로젝트 재배포와 live smoke가 별도로 필요하다. 신규 프로젝트의 기본 compute 서비스 계정은 다음 최소 역할을 사용한다.
+`seorilabs-cyclepair-dev`의 2026-07-13 audit은 과거 참고 기록일 뿐 현재 배포 근거로 사용하지 않는다. 현재 source는 `seorilabs-cyclepair-prod`에 배포하고 같은 프로젝트에서 live smoke를 수행한다. 기존 dev 프로젝트는 prod 전환 검증과 데이터·리소스 inventory를 끝낸 뒤 종료한다. 기본 compute 서비스 계정은 다음 최소 역할을 사용한다.
 
 - `roles/cloudbuild.builds.builder`: Functions build
 - `roles/datastore.user`: Functions runtime의 Firestore read/write
@@ -229,29 +229,29 @@ Functions 재배포 후 다음 상태를 반드시 재확인한다.
 ```bash
 for service in createpairinvite acceptpairinvite revokepair acknowledgecachetombstone upsertpairevent deletepairevent requestaccountdataexport downloadaccountdataexport beginaccountdeletion getaccountdeletionstatus deletemyaccount registernotificationdevice unregisternotificationdevice getpurchaseaccounttoken verifysubscriptionpurchase handleappstoreservernotificationv2; do
   gcloud run services update "$service" \
-    --project=seorilabs-cyclepair-dev \
+    --project=seorilabs-cyclepair-prod \
     --region=asia-northeast3 \
     --no-invoker-iam-check
 done
 
 gcloud functions list --v2 \
-  --project=seorilabs-cyclepair-dev \
+  --project=seorilabs-cyclepair-prod \
   --regions=asia-northeast3
 ```
 
-내보내기와 retention 변경은 아직 배포하지 않았다. 별도 deployment approval 후 새 callable·HTTPS endpoint, 15분 export cleanup, daily Pair retention schedule과 `cacheTombstones` collection-group index를 개발 프로젝트에 배포한다. Domain Restricted Sharing 환경에서는 `requestaccountdataexport`와 `downloadaccountdataexport`의 Cloud Run invoker check 비활성화, Scheduler service agent 호출, fragment bootstrap/단회 replay/계정 삭제 cleanup/retention 경계 live smoke를 확인해야 한다. 모바일 전환 확인 뒤 legacy `exportMyData` Function도 명시적으로 삭제해 raw JSON callable 경로가 남지 않게 한다.
+현재 source 변경은 아직 새 배포 evidence로 검증하지 않았다. 배포 후 새 callable·HTTPS endpoint, 15분 export cleanup, daily Pair retention schedule과 `cacheTombstones` collection-group index를 단일 프로젝트에서 확인한다. Domain Restricted Sharing 환경에서는 `requestaccountdataexport`와 `downloadaccountdataexport`의 Cloud Run invoker check 비활성화, Scheduler service agent 호출, fragment bootstrap/단회 replay/계정 삭제 cleanup/retention 경계 live smoke를 확인해야 한다. 모바일 전환 확인 뒤 legacy `exportMyData` Function도 명시적으로 삭제해 raw JSON callable 경로가 남지 않게 한다.
 
-실제 개발 프로젝트 smoke는 dev project ID를 강제하며 UID, ID token, 초대 token을 출력하지 않는다. 성공과 실패 모두 생성한 문서·익명 계정을 정리한다.
+실제 smoke는 prod project ID와 명시적 opt-in을 강제하며 UID, ID token, Custom Token, 초대 token을 출력하지 않는다. 플랫폼 Custom Token 발급과 Firebase 교환을 포함하고 성공과 실패 모두 생성한 플랫폼 사용자·Firebase 사용자·문서를 정리한다.
 
 ```bash
-CYCLEPAIR_FIREBASE_PROJECT=seorilabs-cyclepair-dev \
+CYCLEPAIR_ALLOW_PRODUCTION_SMOKE=true \
 CYCLEPAIR_FIREBASE_WEB_API_KEY="$(jq -r '.client[0].api_key[0].current_key' \
-  apps/mobile/android/app/src/debug/google-services.json)" \
+  apps/mobile/android/app/src/main/google-services.json)" \
 CYCLEPAIR_ADMIN_ACCESS_TOKEN="$(gcloud auth print-access-token)" \
 pnpm test:firebase:live
 ```
 
-`release-readiness.json` schema v3는 실제 클라우드 gate의 repo-local evidence inventory다. 2026-07-13의 기존 일부 개발 배포는 이후 배포 입력이 변경됐으므로 `stale`로 기록하며 현재 배포로 간주하지 않는다. `check:release`의 `sha256-deployment-source-v3`는 다음 실제 배포 입력을 결정적으로 fingerprint하고 개발·운영 deployment evidence에 각각 바인딩한다.
+`release-readiness.json` schema v4는 실제 클라우드 gate의 repo-local evidence inventory다. 과거 배포는 이후 배포 입력이 변경됐으므로 `stale`로 기록하며 현재 배포로 간주하지 않는다. `check:release`의 `sha256-deployment-source-v3`는 다음 실제 배포 입력을 결정적으로 fingerprint하고 단일 deployment evidence에 바인딩한다.
 
 - root `firebase.json` 중 canonical `firestore`·`functions` 설정. Emulator port/UI와 RN client default는 배포 입력에서 제외
 - `firebase/firestore.rules`
@@ -259,6 +259,6 @@ pnpm test:firebase:live
 - `firebase/functions/src` 전체와 Functions `package.json`, `tsconfig.json`, 존재하는 package-manager config
 - 실제 `pnpm --dir firebase` workspace source of truth인 `firebase/package.json`, `firebase/pnpm-lock.yaml`, `firebase/pnpm-workspace.yaml`
 
-위 배포 source가 한 바이트라도 달라지면 이전 `verified` evidence도 blocker가 된다. root mobile importer만 포함하는 lock/workspace 변경과 emulator-only 설정 변경은 Functions 배포를 stale 처리하지 않는다. deployment `gitSha`는 현재 repo에 실제 존재하는 HEAD ancestor commit이어야 하고, 해당 commit의 deploy source 및 canonical Firebase config가 현재 source와 같아야 한다. 운영 release ready가 되려면 운영 Firebase project ID를 개발과 다른 값으로 manifest와 `.firebaserc`에 고정하고, Android Release `google-services.json`과 iOS Release `GoogleService-Info.plist`가 그 운영 project 및 영구 앱 ID를 가리켜야 한다. 운영 native 앱 등록 evidence와 현재 fingerprint에 대응하는 운영 deployment evidence도 모두 필요하다.
+위 배포 source가 한 바이트라도 달라지면 이전 `verified` evidence도 blocker가 된다. root mobile importer만 포함하는 lock/workspace 변경과 emulator-only 설정 변경은 Functions 배포를 stale 처리하지 않는다. deployment `gitSha`는 현재 repo에 실제 존재하는 HEAD ancestor commit이어야 하고, 해당 commit의 deploy source 및 canonical Firebase config가 현재 source와 같아야 한다. release ready가 되려면 manifest와 `.firebaserc`, Android/iOS 단일 native config, 앱 등록 evidence와 현재 fingerprint에 대응하는 deployment evidence가 모두 `seorilabs-cyclepair-prod`에 결합돼야 한다.
 
-배포 승인 후 각 프로젝트의 실제 배포와 필요한 live smoke를 끝낸 경우에만 해당 deployment의 `status`, `verifiedAt`, `evidence`, project ID, region, 40자리 Git SHA, RFC 3339 `deployedAt`, source hash를 함께 갱신한다. 환경·IAM·운영 Auth·App Check 항목도 콘솔 또는 CLI 확인 근거와 시각 없이 `verified`로 바꾸지 않는다. 운영 billing/runtime IAM/callable invoker/Pair smoke, Android FCM·iOS APNs 실제 수신, Google Play Developer API·RTDN, Apple secrets·Notifications V2, export HTTPS invoker·cleanup scheduler·legacy `exportMyData` 제거 evidence는 각각 production project ID에 결합해야 하며 개발 evidence로 대체할 수 없다. App Check evidence는 문자열 메모만으로 통과하지 않으며 production project ID, Android/iOS provider, Firestore·Callable Functions 각각의 enforcement boolean을 함께 기록해야 한다. checker는 RNFirebase dependency, startup gate, 환경별 provider source, iOS native factory/capability와 Functions enforcement source도 별도로 검사한다. 현재 fingerprint는 `pnpm check:release` 출력의 `sourceFingerprints.firebase`에서 확인할 수 있지만, checker는 배포 evidence를 자동 승인하거나 파일에 기록하지 않는다.
+실제 배포와 필요한 live smoke를 끝낸 경우에만 deployment의 `status`, `verifiedAt`, `evidence`, project ID, region, 40자리 Git SHA, RFC 3339 `deployedAt`, source hash를 함께 갱신한다. IAM·Auth·App Check 항목도 콘솔 또는 CLI 확인 근거와 시각 없이 `verified`로 바꾸지 않는다. billing/runtime IAM/callable invoker/Pair smoke, Android FCM·iOS APNs 실제 수신, Google Play Developer API·RTDN, Apple secrets·Notifications V2, export HTTPS invoker·cleanup scheduler·legacy `exportMyData` 제거 evidence는 단일 project ID에 결합해야 한다. App Check evidence는 문자열 메모만으로 통과하지 않으며 project ID, Android/iOS provider, Firestore·Callable Functions 각각의 enforcement boolean을 함께 기록해야 한다. checker는 RNFirebase dependency, startup gate, 빌드별 provider source, iOS native factory/capability와 Functions enforcement source도 별도로 검사한다. 현재 fingerprint는 `pnpm check:release` 출력의 `sourceFingerprints.firebase`에서 확인할 수 있지만, checker는 배포 evidence를 자동 승인하거나 파일에 기록하지 않는다.

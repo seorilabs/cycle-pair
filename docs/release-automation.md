@@ -16,7 +16,7 @@ Actions는 macOS runner를 사용하지 않고 App Store Connect API로
 - signing: Team `HCDUXX4Z3X`, automatic
 
 `apps/mobile/ios/ci_scripts/ci_post_clone.sh`가 Node, pnpm, Firebase 설정,
-CocoaPods를 준비한다. production `GoogleService-Info.plist`는 저장소에
+CocoaPods를 준비한다. 단일 prod `GoogleService-Info.plist`는 저장소에
 커밋하지 않고 Xcode Cloud secret에서 복원한다.
 
 `apps/mobile/ios/ci_scripts/ci_pre_xcodebuild.sh`는 `CI_TAG`와

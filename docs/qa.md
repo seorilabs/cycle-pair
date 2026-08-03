@@ -9,7 +9,7 @@
 | mobile | pnpm check:mobile | RN lint, typecheck, unit test, iOS/Android production JS bundle |
 | AppsInToss | pnpm check:ait && pnpm build:ait | SDK 2.x RN lint, typecheck, unit test, iOS/Android `.ait` bundle |
 | Firebase 전체 | pnpm test:firebase 또는 pnpm check:firebase | Functions build·unit test, Rules emulator, Auth/Firestore/Functions E2E |
-| Firebase 실제 개발 | pnpm test:firebase:live | dev 프로젝트의 실제 Auth·callable·3종 projection trigger·revoke·cleanup |
+| Firebase 실제 prod | `CYCLEPAIR_ALLOW_PRODUCTION_SMOKE=true pnpm test:firebase:live` | 플랫폼 Custom Token·Auth·callable·3종 projection trigger·revoke·cleanup |
 | 전체 | pnpm lint && pnpm typecheck && pnpm test | repo 정적·자동 테스트 |
 | release inventory | pnpm check:release | 마켓·Firebase·privacy blocker 목록 |
 
@@ -33,7 +33,7 @@ check:release는 현재 의도적으로 실패해야 한다. 정책 답변, 서�
 | Firebase 전체·통합 | PASS | Node.js 22 `pnpm --dir firebase check`: Functions build, 61 unit tests, Rules 19 tests, Auth+Firestore+Functions Emulator E2E 5 tests. 외부 credential을 차단하고 repo 전용 port 9399/8380/5301 사용 |
 | release inventory | EXPECTED FAIL | production Firebase/config/deployment, 서명, 마켓 콘솔·정책, privacy, deployment approval blocker를 정상 탐지 |
 
-따라서 현재 판정은 `production-ready`가 아니라 `내부 alpha/closed beta 후보`다. 개발 Firebase의 2026-07-13 live 배포는 이후 Functions·Rules source 변경을 포함하지 않으므로 현재 source의 배포 검증으로 간주하지 않는다.
+따라서 현재 판정은 `production-ready`가 아니라 `내부 alpha/closed beta 후보`다. `seorilabs-cyclepair-dev`의 2026-07-13 live 배포는 과거 기록이며 현재 source나 단일 prod 프로젝트의 배포 검증으로 간주하지 않는다.
 
 ## 2026-07-13 Cycle Pair 전환 검증 현황
 
@@ -44,7 +44,7 @@ check:release는 현재 의도적으로 실패해야 한다. 정책 답변, 서�
 | Firebase Functions | PASS | TypeScript build, 정책/projection 9 tests |
 | Firestore Rules | PASS | Emulator 8 tests |
 | Firebase 통합 | PASS | Auth+Firestore+Functions Emulator 1 E2E, 7 functions load |
-| 실제 Firebase Auth·Rules | PASS | `seorilabs-cyclepair-dev`, anonymous auth 활성화, 서울 Firestore, owner write/read 200·other read 403 후 테스트 계정/데이터 삭제 |
+| 실제 Firebase Auth·Rules | 과거 PASS | `seorilabs-cyclepair-dev`의 Firebase Anonymous Auth 기반 과거 검증. 현재 플랫폼 Custom Token 경로의 근거로 재사용하지 않음 |
 | Firebase 개발 결제 | PASS | 기존 Seorilabs 앱과 동일한 결제 계정 연결, `billingEnabled: true` 재조회 |
 | 실제 Firebase Functions | PASS | Node.js 22 2nd Gen 7개, `asia-northeast3`, 전부 ACTIVE |
 | 실제 Firebase 2계정 | PASS | 익명 계정 2개 초대·수락, 기본 비공개, cycle·daily·shareSettings trigger, 공유 회수, revoke·양쪽 tombstone ack, 테스트 계정·문서 cleanup |
@@ -52,7 +52,7 @@ check:release는 현재 의도적으로 실패해야 한다. 정책 답변, 서�
 | Android native | PASS | JDK 17 daemon 선택, `com.seorilabs.cyclepair` `assembleDebug`, Seeker Android 16 실기기 설치·세로 기동·온보딩 hardware back·solo 홈·선택형 Pair 진입/복귀 |
 | release inventory | EXPECTED FAIL | 운영 Firebase·App Check·정책·서명·마켓 콘솔·deployment approval 미확정 |
 
-현재 자동 QA는 로컬 product-core, UI 세로 슬라이스, Firebase emulator 보안 경계와 실제 개발 프로젝트의 Auth·owner-private Rules·Functions·2계정 backend lifecycle을 증명한다. Android/iOS 실제 기기 2대 UI 흐름, 제품 계정 삭제·내보내기, FCM, 구독 결제, 스토어 산출물은 아직 증명하지 않는다.
+현재 자동 QA는 로컬 product-core, UI 세로 슬라이스, Firebase emulator 보안 경계와 Functions 계정 lifecycle을 증명한다. 플랫폼 Custom Token을 포함한 prod live smoke, Android/iOS 실제 기기 2대 UI 흐름, 제품 계정 삭제·내보내기, FCM, 구독 결제, 스토어 산출물은 별도 실검증이 필요하다.
 
 ## core 필수 테스트
 

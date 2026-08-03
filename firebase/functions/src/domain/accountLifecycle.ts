@@ -62,6 +62,7 @@ export class AccountPolicyError extends Error {
 export interface AccountDeletionAuthFacts {
   readonly uid: string;
   readonly signInProvider: string | undefined;
+  readonly seoriGuest: boolean;
   readonly authTimeSeconds: number | undefined;
 }
 
@@ -119,7 +120,11 @@ export function authorizeRecentDurableAccount(
   auth: AccountDeletionAuthFacts,
   nowSeconds: number,
 ): string {
-  if (auth.signInProvider === undefined || auth.signInProvider === "anonymous") {
+  if (
+    auth.signInProvider === undefined ||
+    auth.signInProvider === "anonymous" ||
+    (auth.signInProvider === "custom" && auth.seoriGuest)
+  ) {
     throw new AccountPolicyError(
       "failed-precondition",
       "민감한 계정 작업 전에 복구 가능한 계정으로 로그인해야 합니다.",
@@ -155,7 +160,10 @@ export function authorizeAccountDeletion(
   // and separately enforces that the requested UID is the authenticated UID,
   // so an anonymous user can safely exercise the right to erase their own
   // account and data.
-  if (auth.signInProvider === "anonymous") {
+  if (
+    auth.signInProvider === "anonymous" ||
+    (auth.signInProvider === "custom" && auth.seoriGuest)
+  ) {
     return auth.uid;
   }
   return authorizeRecentDurableAccount(auth, nowSeconds);

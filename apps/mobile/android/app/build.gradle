@@ -143,32 +143,30 @@ def permanentApplicationId = firebaseEnvironments.permanentAppId
 if (permanentApplicationId != "com.seorilabs.cyclepair") {
     throw new GradleException("Cycle Pair permanent Android application ID changed unexpectedly.")
 }
-def developmentFirebaseProjectId = firebaseEnvironments.development.projectId
 def mobileProjectDir = rootProject.projectDir.parentFile
 def legacyFirebaseConfigFiles = [
-    file("google-services.json"),
     file("src/main/google-services.json"),
+    file("src/debug/google-services.json"),
+    file("src/release/google-services.json"),
 ]
 
-def firebaseConfigProblems = { String buildType, String environmentName ->
-    def environment = firebaseEnvironments[environmentName]
-    def configFile = new File(mobileProjectDir, environment.androidConfig)
+def firebaseConfigProblems = { String buildType ->
+    def configFile = new File(mobileProjectDir, firebaseEnvironments.androidConfig)
     def taskSuffix = buildType.substring(0, 1).toUpperCase() + buildType.substring(1)
     def problems = []
 
     def legacyConfig = legacyFirebaseConfigFiles.find { it.isFile() }
     if (legacyConfig != null) {
         problems.add(
-            "Legacy app-level google-services.json is not allowed; " +
-                "move it to the explicit debug or release source set.",
+            "Legacy variant google-services.json is not allowed; " +
+                "remove variant copies and use app/google-services.json.",
         )
         return problems
     }
     if (!configFile.isFile()) {
         problems.add(
             "Cycle Pair ${taskSuffix} Firebase config is missing at " +
-                "${environment.androidConfig}. Debug requires development; " +
-                "Release requires a separately provisioned production config.",
+                "${firebaseEnvironments.androidConfig}. All builds use the single tracked project.",
         )
         return problems
     }
@@ -196,7 +194,7 @@ def firebaseConfigProblems = { String buildType, String environmentName ->
         return problems
     }
 
-    def expectedProjectId = environment.projectId
+    def expectedProjectId = firebaseEnvironments.projectId
     if (!(expectedProjectId instanceof String) || expectedProjectId.trim().isEmpty()) {
         problems.add(
             "${taskSuffix} Firebase project ID is not configured in " +
@@ -205,24 +203,21 @@ def firebaseConfigProblems = { String buildType, String environmentName ->
     } else if (projectId != expectedProjectId) {
         problems.add(
             "Selected ${taskSuffix} Firebase config does not match the tracked " +
-                "${environmentName} project.",
+                "Firebase project.",
         )
-    }
-    if (environmentName == "production" && projectId == developmentFirebaseProjectId) {
-        problems.add("Release cannot use the development Firebase project.")
     }
     return problems
 }
 
-def registerFirebaseConfigVerificationTask = { String buildType, String environmentName ->
+def registerFirebaseConfigVerificationTask = { String buildType ->
     def taskSuffix = buildType.substring(0, 1).toUpperCase() + buildType.substring(1)
 
     return tasks.register("verify${taskSuffix}FirebaseConfig") {
         group = "verification"
-        description = "Validates the ${environmentName} Firebase config selected for ${buildType}."
+        description = "Validates the single Firebase config selected for ${buildType}."
 
         doLast {
-            def problems = firebaseConfigProblems(buildType, environmentName)
+            def problems = firebaseConfigProblems(buildType)
             if (!problems.isEmpty()) {
                 throw new GradleException(
                     "Cycle Pair ${taskSuffix} Firebase config is not ready:\n- " +
@@ -233,14 +228,8 @@ def registerFirebaseConfigVerificationTask = { String buildType, String environm
     }
 }
 
-def verifyDebugFirebaseConfig = registerFirebaseConfigVerificationTask(
-    "debug",
-    "development",
-)
-def verifyReleaseFirebaseConfig = registerFirebaseConfigVerificationTask(
-    "release",
-    "production",
-)
+def verifyDebugFirebaseConfig = registerFirebaseConfigVerificationTask("debug")
+def verifyReleaseFirebaseConfig = registerFirebaseConfigVerificationTask("release")
 
 def releaseSigningPropertiesFile = rootProject.file("keystore.properties")
 def releaseSigningProperties = new Properties()
@@ -318,7 +307,7 @@ def verifyReleasePrerequisites = tasks.register("verifyReleasePrerequisites") {
 
     doLast {
         def problems = []
-        firebaseConfigProblems("release", "production").each { problem ->
+        firebaseConfigProblems("release").each { problem ->
             problems.add("Firebase: ${problem}")
         }
         releaseSigningProblems.each { problem ->

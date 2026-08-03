@@ -1,6 +1,6 @@
 # Cycle Pair Mobile
 
-Google Play과 App Store용 React Native 0.86 앱이다. 제품 세로 슬라이스는 개발 Firebase 프로젝트에 연결돼 있으며, 한국어 출시 이름은 `사이클 페어 : 친구/연인과 함께 컨디션을 공유해요.`, 영어 출시 이름은 `Cycle Pair`, 영구 package/bundle ID는 `com.seorilabs.cyclepair`다.
+Google Play과 App Store용 React Native 0.86 앱이다. 모든 빌드는 단일 Firebase 프로젝트 `seorilabs-cyclepair-prod`를 사용하며, 한국어 출시 이름은 `사이클 페어 : 친구/연인과 함께 컨디션을 공유해요.`, 영어 출시 이름은 `Cycle Pair`, 영구 package/bundle ID는 `com.seorilabs.cyclepair`다.
 
 ## 구현 흐름
 
@@ -10,7 +10,7 @@ Google Play과 App Store용 React Native 0.86 앱이다. 제품 세로 슬라이
 - 주기 캘린더 → 공유/중립 알림/연결 해제 설정
 - iOS·Android 제품 브랜딩 시작 화면
 
-debug와 release 모두 `com.seorilabs.cyclepair`를 사용한다. 개발·운영 데이터 경계는 Firebase 프로젝트와 빌드 설정으로 분리한다.
+debug와 release 모두 `com.seorilabs.cyclepair`와 같은 Firebase 프로젝트를 사용한다. 빌드 유형은 서명과 App Check provider만 구분하며 별도 dev 데이터 환경을 만들지 않는다.
 
 민감한 역할·동의·주기·공유 설정은 AsyncStorage에 저장하지 않는다. Firebase Auth 세션을 기준으로 owner-private `privateCycles/current`와 Pair별 `shareSettings`에서 복원하며, 로컬에는 온보딩 완료 여부와 중립 알림 선호만 남긴다. Firestore native persistence도 암호화 캐시 설계 전까지 비활성화한다.
 
@@ -23,22 +23,26 @@ debug와 release 모두 `com.seorilabs.cyclepair`를 사용한다. 개발·운�
 
 RNFirebase의 privacy-first native 기본값은 루트 `firebase.json`과 `apps/mobile/firebase.json`의 `react-native` 항목에 동일하게 유지한다. iOS RNFirebase build phase는 monorepo 루트까지 탐색하지 않으므로 mobile-local 파일이 실제 빌드 입력이며, Android도 같은 파일을 사용한다. 전역 자동 데이터 수집, Analytics·Crashlytics 수집과 Messaging 자동 초기화는 사용자의 동의·앱 초기화 코드가 명시적으로 켜기 전까지 모두 꺼져 있다. App Check token refresh만 backend 보호를 위해 별도로 켜며 Analytics 동의 상태와 결합하지 않는다.
 
-## Firebase 환경 선택
+## Firebase 프로젝트
 
-영구 앱 ID는 환경에 따라 바꾸지 않는다. `firebase-environments.json`이 native config 경로와 public project ID의 source of truth이며, 실제 Firebase client config는 git에 넣지 않는다.
+`firebase-environments.json`이 단일 project ID와 native config 경로의 source of truth다. 실제 Firebase client config는 git에 넣지 않는다.
 
-| 빌드 | Firebase 환경 | Android config | iOS config |
+| 빌드 | Firebase project | Android config | iOS config |
 | --- | --- | --- | --- |
-| Debug | development (`seorilabs-cyclepair-dev`) | `android/app/src/debug/google-services.json` | `ios/Firebase/Debug/GoogleService-Info.plist` |
-| Release | production (`확정 필요`) | `android/app/src/release/google-services.json` | `ios/Firebase/Release/GoogleService-Info.plist` |
+| Debug | `seorilabs-cyclepair-prod` | `android/app/google-services.json` | `ios/Firebase/GoogleService-Info.plist` |
+| Release | `seorilabs-cyclepair-prod` | `android/app/google-services.json` | `ios/Firebase/GoogleService-Info.plist` |
 
-각 경로의 `.example` 파일에서 확장자만 제거한 위치에 Firebase Console에서 받은 원본을 둔다. Android app root의 `google-services.json`, `src/main/google-services.json`, iOS target root의 `CyclePair/GoogleService-Info.plist`는 fallback 오연결을 막기 위해 허용하지 않는다.
+각 경로의 `.example` 파일에서 확장자만 제거한 위치에 Firebase Console에서 받은 원본을 둔다. Android main/debug/release source set, iOS target root와 Debug/Release 하위 경로는 fallback 또는 환경 분리를 다시 만들 수 있어 허용하지 않는다.
 
-현재 production project/config는 생성하지 않았다. Release는 production project ID를 `firebase-environments.json`에 명시하고 두 플랫폼 config를 공급하기 전까지 의도적으로 실패한다. Debug config를 Release에 복사해 우회할 수 없다.
+두 빌드가 다른 Firebase project를 가리키거나 legacy dev/release config가 남아 있으면 native config gate가 실패한다.
+
+## 게스트 인증
+
+`새 게스트로 시작`은 Firebase 네이티브 익명 provider를 직접 호출하지 않는다. 앱이 Seorilabs Platform의 `POST /v1/auth/firebase-custom-token`에서 Firebase Custom Token을 받은 뒤 RNFirebase `signInWithCustomToken`으로 교환한다. 플랫폼이 발급한 `pb_` UID와 이메일이 없는 계정은 게스트로 취급하며, 이메일 연결 뒤에는 같은 UID의 복구 가능한 계정으로 전환한다.
 
 ## App Check
 
-앱 entry point는 Firebase 기반 화면을 렌더링하기 전에 App Check를 초기화하고 실패 시 backend 접근을 열지 않는다. Debug bundle은 tracked development project에서만 Android/iOS debug provider를 사용한다. Release bundle은 production project ID가 일치할 때만 Android Play Integrity와 iOS App Attest(DeviceCheck fallback)를 사용한다. debug token은 코드·설정 파일에 넣지 않고 개발 Firebase Console에만 등록한다.
+앱 entry point는 Firebase 기반 화면을 렌더링하기 전에 App Check를 초기화하고 실패 시 backend 접근을 열지 않는다. 두 빌드 모두 단일 project ID를 검증한다. Debug bundle은 debug provider, Release bundle은 Android Play Integrity와 iOS App Attest(DeviceCheck fallback)를 사용한다. debug token은 코드·설정 파일에 넣지 않고 Firebase Console에만 등록한다.
 
 iOS는 App Check provider factory를 `FirebaseApp.configure()`보다 먼저 설치하며, App Attest entitlement는 Debug `development`, Release `production`으로 분리한다. 이 클라이언트 구현은 운영 콘솔 등록이나 강제를 증명하지 않는다. 출시 전 production project에서 Play Integrity/App Attest provider 등록, Firestore enforcement, `ENFORCE_APP_CHECK=true`로 배포된 Callable Functions를 각각 live 확인해야 한다.
 
@@ -58,17 +62,16 @@ RNFirebase 설정 drift는 다음 명령으로 확인한다.
 
 ```bash
 pnpm check:native-firebase-config
-node scripts/check-native-firebase-config.mjs --require-environment development
+node scripts/check-native-firebase-config.mjs --require-config
 ```
 
-첫 명령은 tracked 선택 구조와 현재 존재하는 local config를 검증하고, 두 번째 명령은 Android/iOS 개발 config가 모두 준비됐는지 강제한다. 운영 준비 시 `development`를 `production`으로 바꿔 실행한다.
+첫 명령은 tracked 선택 구조와 현재 존재하는 local config를 검증하고, 두 번째 명령은 Android/iOS 단일 config가 모두 준비됐는지 강제한다.
 
 iOS를 빌드한 뒤에는 build product의 `Info.plist`까지 검증할 수 있다.
 
 ```bash
 node scripts/check-native-firebase-config.mjs \
-  --built-plist /absolute/path/to/CyclePair.app/Info.plist \
-  --built-environment development
+  --built-plist /absolute/path/to/CyclePair.app/Info.plist
 ```
 
 iOS 최초 준비:

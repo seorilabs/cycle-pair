@@ -538,17 +538,20 @@ function accountDeletionAuthFacts(
 ): {
   readonly uid: string;
   readonly signInProvider: string | undefined;
+  readonly seoriGuest: boolean;
   readonly authTimeSeconds: number | undefined;
 } {
   const token = optionalRecord(request.auth?.token);
   const firebase = optionalRecord(token?.firebase);
   const signInProvider = firebase?.sign_in_provider;
+  const seoriGuest = token?.seori_guest;
   const authTimeSeconds = token?.auth_time;
 
   return {
     uid,
     signInProvider:
       typeof signInProvider === "string" ? signInProvider : undefined,
+    seoriGuest: seoriGuest === true,
     authTimeSeconds:
       typeof authTimeSeconds === "number" ? authTimeSeconds : undefined,
   };
