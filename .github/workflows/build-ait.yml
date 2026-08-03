@@ -1,0 +1,32 @@
+name: Build Mini-app Candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "빌드할 SemVer 태그. 비우면 호출 ref"
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cycle-pair-mini-app-build-${{ inputs.release_tag || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  candidate:
+    uses: seorilabs/.github/.github/workflows/rn-build-ait.yml@73972d2b34e92145e61e3409c91085c40da10c54
+    with:
+      release_tag: ${{ inputs.release_tag }}
+      ait_dir: apps/ait
+      package_manager: pnpm
+      pnpm_version: 11.3.0
+      node_version: 24.16.0
+      install_command: "pnpm install --frozen-lockfile"
+      build_command: "pnpm build:ait"
+      artifact_path: "apps/ait/cycle-pair.ait"
+      # AppsInToss SDK의 Linux Hermes compiler가 x86-64 바이너리다.
+      runs_on: ubuntu-latest

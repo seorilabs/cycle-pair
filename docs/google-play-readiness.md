@@ -22,6 +22,11 @@ pnpm build:google-play
 
 `pnpm build:google-play`은 root와 mobile package version이 같은지 먼저 확인하고, 해당 버전을 기존 `resolve-release-version.mjs`에 전달해 `versionName`과 단조 증가 `versionCode`를 함께 주입한다. 예를 들어 `0.1.0`은 versionCode `1000`, `0.1.1`은 `1001`이다. 다음 업로드 전에는 두 `package.json`의 version을 함께 올려야 하며, 필요하면 같은 버전의 `--tag vX.Y.Z`를 명시할 수 있다. 태그와 package version이 다르면 빌드는 중단한다.
 
+Backoffice의 앱별 `릴리스 > 빌드 산출물`에서는 `vX.Y.Z` 태그를 선택해
+동일한 release signing·production Firebase gate를 통과한 signed AAB를 생성한다.
+workflow 입력은 `upload: false`로 고정되어 Google Play track에는 업로드하지 않고,
+산출물만 3일 보관한다. internal 업로드·테스터 QA·production 승격은 별도 단계다.
+
 CI는 파일 대신 아래 환경변수를 사용할 수 있다. 값이나 keystore를 로그·artifact·저장소에 남기지 않는다.
 
 - `CYCLEPAIR_ANDROID_UPLOAD_STORE_FILE`
