@@ -24,8 +24,8 @@ pnpm build:google-play
 
 Backoffice의 앱별 `릴리스 > 빌드 산출물`에서는 `vX.Y.Z` 태그를 선택해
 동일한 release signing·production Firebase gate를 통과한 signed AAB를 생성한다.
-workflow 입력은 `upload: false`로 고정되어 Google Play track에는 업로드하지 않고,
-산출물만 3일 보관한다. internal 업로드·테스터 QA·production 승격은 별도 단계다.
+전용 build-only workflow라 Google Play environment·WIF·API를 사용하지 않고 산출물만
+3일 보관한다. internal 업로드·테스터 QA·production 승격은 별도 단계다.
 
 CI는 파일 대신 아래 환경변수를 사용할 수 있다. 값이나 keystore를 로그·artifact·저장소에 남기지 않는다.
 
