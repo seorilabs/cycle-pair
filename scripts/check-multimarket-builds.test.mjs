@@ -138,10 +138,11 @@ test('Android candidate workflow creates a signed AAB without Play upload', asyn
   assert.match(workflow, /workflow_dispatch:[\s\S]*?inputs:[\s\S]*?release_tag:/);
   assert.match(
     workflow,
-    /rn-build-android\.yml@9f1cd7dfa00dd09f380d28a9b87d515ded0005a8/,
+    /rn-build-android\.yml@bf14204ee13dba657e31dcf1a71a64c0dc526ae3/,
   );
   assert.match(workflow, /release_tag: \$\{\{ inputs\.release_tag \}\}/);
   assert.match(workflow, /android_dir: apps\/mobile\/android/);
+  assert.match(workflow, /signing_properties_file: keystore\.properties/);
   assert.match(workflow, /java_version: "21"/);
   assert.doesNotMatch(
     workflow,
