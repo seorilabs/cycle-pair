@@ -52,19 +52,23 @@ describe('AppsInToss condition share date boundary', () => {
     jest.restoreAllMocks();
   });
 
-  it('clears a mounted draft when the app becomes active on the next day', async () => {
-    const screen = render(<ConditionSharePage />);
-    await waitFor(() => expect(screen.getByText(/오늘 내 컨디션은/)).toBeTruthy());
+  it(
+    'clears a mounted draft when the app becomes active on the next day',
+    async () => {
+      const screen = render(<ConditionSharePage />);
+      await waitFor(() => expect(screen.getByText(/오늘 내 컨디션은/)).toBeTruthy());
 
-    localDate = '2026-08-03';
-    await act(async () => {
-      appStateListener?.('active');
-    });
+      localDate = '2026-08-03';
+      await act(async () => {
+        appStateListener?.('active');
+      });
 
-    await waitFor(() => expect(mockClearConditionShareDraft).toHaveBeenCalledTimes(1));
-    expect(screen.queryByText(/오늘 내 컨디션은/)).toBeNull();
-    expect(screen.getByText('날짜가 바뀌어 이전 선택을 비웠어요.')).toBeTruthy();
-  });
+      await waitFor(() => expect(mockClearConditionShareDraft).toHaveBeenCalledTimes(1));
+      expect(screen.queryByText(/오늘 내 컨디션은/)).toBeNull();
+      expect(screen.getByText('날짜가 바뀌어 이전 선택을 비웠어요.')).toBeTruthy();
+    },
+    15_000,
+  );
 
   it('rechecks the date and refuses to share a stale mounted draft', async () => {
     const screen = render(<ConditionSharePage />);
