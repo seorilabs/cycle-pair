@@ -18,11 +18,10 @@ concurrency:
 
 jobs:
   candidate:
-    uses: seorilabs/.github/.github/workflows/rn-deploy-google-play.yml@73972d2b34e92145e61e3409c91085c40da10c54
+    uses: seorilabs/.github/.github/workflows/rn-build-android.yml@9f1cd7dfa00dd09f380d28a9b87d515ded0005a8
     secrets: inherit
     with:
       release_tag: ${{ inputs.release_tag }}
-      upload: false
       package_manager: pnpm
       pnpm_version: 11.3.0
       node_version: 24.16.0

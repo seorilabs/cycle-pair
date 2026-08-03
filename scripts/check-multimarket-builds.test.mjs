@@ -138,13 +138,15 @@ test('Android candidate workflow creates a signed AAB without Play upload', asyn
   assert.match(workflow, /workflow_dispatch:[\s\S]*?inputs:[\s\S]*?release_tag:/);
   assert.match(
     workflow,
-    /rn-deploy-google-play\.yml@73972d2b34e92145e61e3409c91085c40da10c54/,
+    /rn-build-android\.yml@9f1cd7dfa00dd09f380d28a9b87d515ded0005a8/,
   );
   assert.match(workflow, /release_tag: \$\{\{ inputs\.release_tag \}\}/);
-  assert.match(workflow, /upload: false/);
   assert.match(workflow, /android_dir: apps\/mobile\/android/);
   assert.match(workflow, /java_version: "21"/);
-  assert.doesNotMatch(workflow, /track:|release_status:/);
+  assert.doesNotMatch(
+    workflow,
+    /rn-deploy-google-play|upload:|track:|release_status:|id-token:|environment:/,
+  );
 });
 
 test('candidate workflow names are not classified as market deployment workflows', async () => {
