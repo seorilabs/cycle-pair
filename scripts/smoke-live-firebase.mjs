@@ -43,6 +43,12 @@ function sleep(milliseconds) {
   return new Promise(resolve => setTimeout(resolve, milliseconds));
 }
 
+function decodeJwtPayload(token) {
+  const payload = token.split('.')[1];
+  if (!payload) throw new Error('Firebase ID token payload가 없습니다.');
+  return JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+}
+
 function documentUrl(path) {
   return `${firestoreBase}/${path
     .split('/')
@@ -150,7 +156,10 @@ async function createPlatformGuestAccount(label) {
       }),
     }
   );
-  if (body?.localId !== issued.appUserId || !body?.idToken) {
+  const firebaseClaims = body?.idToken
+    ? decodeJwtPayload(body.idToken)
+    : null;
+  if (firebaseClaims?.user_id !== issued.appUserId || !body?.idToken) {
     throw new Error(`${label} Firebase Custom Token 교환: UID 또는 token 누락`);
   }
 
@@ -178,7 +187,7 @@ async function createPlatformGuestAccount(label) {
     throw new Error(`${label} 플랫폼 세션 교환: 사용자 binding 불일치`);
   }
   return {
-    uid: body.localId,
+    uid: firebaseClaims.user_id,
     idToken: body.idToken,
     platformToken: session.platformToken,
   };
