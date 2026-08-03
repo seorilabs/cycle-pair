@@ -1,0 +1,30 @@
+name: Build Android Candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "빌드할 SemVer 태그. 비우면 최신 vX.Y.Z"
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cycle-pair-android-build-${{ inputs.release_tag || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  candidate:
+    uses: seorilabs/.github/.github/workflows/rn-deploy-google-play.yml@73972d2b34e92145e61e3409c91085c40da10c54
+    secrets: inherit
+    with:
+      release_tag: ${{ inputs.release_tag }}
+      upload: false
+      package_manager: pnpm
+      pnpm_version: 11.3.0
+      node_version: 24.16.0
+      java_version: "21"
+      android_dir: apps/mobile/android
