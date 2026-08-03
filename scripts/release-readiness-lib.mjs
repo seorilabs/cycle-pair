@@ -277,7 +277,7 @@ async function nativeConfigBlockers(
 ) {
   const blockers = [];
   const permanentAppId = firebaseEnvironments?.permanentAppId;
-  const expectedAndroidPath = "android/app/src/main/google-services.json";
+  const expectedAndroidPath = "android/app/google-services.json";
   const expectedIosPath = "ios/Firebase/GoogleService-Info.plist";
   const configuredAndroidPath = firebaseEnvironments?.androidConfig;
   const configuredIosPath = firebaseEnvironments?.iosConfig;

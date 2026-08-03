@@ -2,7 +2,7 @@ import { access, readFile } from "node:fs/promises";
 import path from "node:path";
 
 const LEGACY_CONFIG_PATHS = Object.freeze([
-  "apps/mobile/android/app/google-services.json",
+  "apps/mobile/android/app/src/main/google-services.json",
   "apps/mobile/android/app/src/debug/google-services.json",
   "apps/mobile/android/app/src/release/google-services.json",
   "apps/mobile/ios/CyclePair/GoogleService-Info.plist",

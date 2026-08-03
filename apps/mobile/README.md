@@ -29,10 +29,10 @@ RNFirebase의 privacy-first native 기본값은 루트 `firebase.json`과 `apps/
 
 | 빌드 | Firebase project | Android config | iOS config |
 | --- | --- | --- | --- |
-| Debug | `seorilabs-cyclepair-prod` | `android/app/src/main/google-services.json` | `ios/Firebase/GoogleService-Info.plist` |
-| Release | `seorilabs-cyclepair-prod` | `android/app/src/main/google-services.json` | `ios/Firebase/GoogleService-Info.plist` |
+| Debug | `seorilabs-cyclepair-prod` | `android/app/google-services.json` | `ios/Firebase/GoogleService-Info.plist` |
+| Release | `seorilabs-cyclepair-prod` | `android/app/google-services.json` | `ios/Firebase/GoogleService-Info.plist` |
 
-각 경로의 `.example` 파일에서 확장자만 제거한 위치에 Firebase Console에서 받은 원본을 둔다. Android app root와 debug/release source set, iOS target root와 Debug/Release 하위 경로는 fallback 또는 환경 분리를 다시 만들 수 있어 허용하지 않는다.
+각 경로의 `.example` 파일에서 확장자만 제거한 위치에 Firebase Console에서 받은 원본을 둔다. Android main/debug/release source set, iOS target root와 Debug/Release 하위 경로는 fallback 또는 환경 분리를 다시 만들 수 있어 허용하지 않는다.
 
 두 빌드가 다른 Firebase project를 가리키거나 legacy dev/release config가 남아 있으면 native config gate가 실패한다.
 

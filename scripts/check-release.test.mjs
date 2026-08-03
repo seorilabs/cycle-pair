@@ -401,7 +401,7 @@ async function createReadyFixture(root) {
   await write(
     root,
     "apps/mobile/android/app/build.gradle",
-    `def firebaseEnvironments = [androidConfig: "android/app/src/main/google-services.json"]
+    `def firebaseEnvironments = [androidConfig: "android/app/google-services.json"]
 def selectedFirebaseConfig = firebaseEnvironments.androidConfig
 def verifyDebugFirebaseConfig = tasks.register("verifyDebugFirebaseConfig")
 def verifyReleaseFirebaseConfig = tasks.register("verifyReleaseFirebaseConfig")
@@ -431,16 +431,16 @@ tasks.configureEach { task ->
     schemaVersion: 2,
     permanentAppId: "com.seorilabs.cyclepair",
     projectId: "cyclepair-fixture-prod",
-    androidConfig: "android/app/src/main/google-services.json",
+    androidConfig: "android/app/google-services.json",
     iosConfig: "ios/Firebase/GoogleService-Info.plist",
   });
   for (const relativePath of [
-    "android/app/src/main/google-services.json.example",
+    "android/app/google-services.json.example",
     "ios/Firebase/GoogleService-Info.plist.example",
   ]) {
     await write(root, `apps/mobile/${relativePath}`, "fixture marker\n");
   }
-  await write(root, "apps/mobile/android/app/src/main/google-services.json", {
+  await write(root, "apps/mobile/android/app/google-services.json", {
     project_info: { project_id: "cyclepair-fixture-prod" },
     client: [
       {
@@ -929,7 +929,7 @@ test("운영 native Firebase config가 없으면 ready가 될 수 없다", async
   t.after(() => rm(root, { recursive: true, force: true }));
   await createReadyFixture(root);
   await rm(
-    path.join(root, "apps/mobile/android/app/src/main/google-services.json"),
+    path.join(root, "apps/mobile/android/app/google-services.json"),
     { force: true }
   );
   await rm(

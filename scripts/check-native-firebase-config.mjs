@@ -10,7 +10,7 @@ const ROOT_CONFIG_PATH = 'firebase.json';
 const MOBILE_CONFIG_PATH = 'apps/mobile/firebase.json';
 const ENVIRONMENT_MANIFEST_PATH = 'apps/mobile/firebase-environments.json';
 const EXPECTED_CONFIG_PATHS = Object.freeze({
-  androidConfig: 'android/app/src/main/google-services.json',
+  androidConfig: 'android/app/google-services.json',
   iosConfig: 'ios/Firebase/GoogleService-Info.plist',
 });
 const REQUIRED_DISABLED_DEFAULTS = Object.freeze({

@@ -56,7 +56,7 @@ describe('RNFirebase native config', () => {
       schemaVersion: 2,
       permanentAppId: 'com.seorilabs.cyclepair',
       projectId: 'seorilabs-cyclepair-prod',
-      androidConfig: 'android/app/src/main/google-services.json',
+      androidConfig: 'android/app/google-services.json',
       iosConfig: 'ios/Firebase/GoogleService-Info.plist',
     });
   });

@@ -145,7 +145,7 @@ if (permanentApplicationId != "com.seorilabs.cyclepair") {
 }
 def mobileProjectDir = rootProject.projectDir.parentFile
 def legacyFirebaseConfigFiles = [
-    file("google-services.json"),
+    file("src/main/google-services.json"),
     file("src/debug/google-services.json"),
     file("src/release/google-services.json"),
 ]
@@ -158,8 +158,8 @@ def firebaseConfigProblems = { String buildType ->
     def legacyConfig = legacyFirebaseConfigFiles.find { it.isFile() }
     if (legacyConfig != null) {
         problems.add(
-            "Legacy app-level google-services.json is not allowed; " +
-                "remove variant copies and use src/main/google-services.json.",
+            "Legacy variant google-services.json is not allowed; " +
+                "remove variant copies and use app/google-services.json.",
         )
         return problems
     }
