@@ -1,3 +1,5 @@
+import {readFileSync} from "node:fs";
+
 import {describe, expect, test} from "vitest";
 
 import * as deployedFunctions from "../src/index.js";
@@ -21,6 +23,16 @@ function endpoint(value: unknown): EndpointDefinition | undefined {
 }
 
 describe("Functions deployment manifest", () => {
+  test("pins the Cloud Build Firebase database compatibility runtime", () => {
+    const packageManifest = JSON.parse(
+      readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+    ) as {readonly overrides?: Record<string, string>};
+
+    expect(packageManifest.overrides?.["@firebase/database-compat"]).toBe(
+      "2.1.4",
+    );
+  });
+
   test("contains the bounded daily Pair retention schedule", () => {
     const endpoints = Object.entries(deployedFunctions)
       .filter(([, value]) => endpoint(value) !== undefined);
