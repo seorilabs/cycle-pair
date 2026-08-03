@@ -167,6 +167,18 @@ describe('FirebaseAccountAdapter', () => {
     });
   });
 
+  it('signs out and fails closed when Firebase returns a different uid', async () => {
+    mockAuthState.currentUser = null;
+    mockSignInWithCustomToken.mockResolvedValueOnce({
+      user: user({ uid: 'unexpected-uid', isAnonymous: false }),
+    });
+
+    await expect(firebaseAccountAdapter.initialize()).rejects.toMatchObject({
+      code: 'account/uid-changed',
+    });
+    expect(mockSignOut).toHaveBeenCalledWith(mockAuthState);
+  });
+
   it('links email credentials to the anonymous user while preserving its uid', async () => {
     const linked = user({
       email: 'user@example.com',
