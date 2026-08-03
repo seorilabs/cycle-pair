@@ -20,6 +20,9 @@
     "firebase-functions": "7.2.5",
     "googleapis": "173.0.0"
   },
+  "overrides": {
+    "@firebase/database-compat": "2.1.4"
+  },
   "devDependencies": {
     "typescript": "7.0.2",
     "vitest": "4.1.10"
