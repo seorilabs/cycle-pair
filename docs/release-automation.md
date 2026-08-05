@@ -1,5 +1,15 @@
 # 마켓 릴리스 자동화
 
+## Android와 AppsInToss
+
+- `Deploy Google Play`: 선택한 stable SemVer 태그로 서명 AAB를 x64 Linux에서
+  빌드하고, 명시적 `upload=true`일 때만 Google Play `internal` 트랙에 업로드한다.
+- `Deploy AppsInToss`: AppsInToss SDK의 x86-64 Hermes compiler에 맞춰
+  `ubuntu-latest`에서 `.ait`를 빌드하고 비공개 업로드한다.
+- 두 workflow 모두 `workflow_dispatch`와 `workflow_call`을 제공하며 Backoffice의
+  앱별 릴리스 배포 버튼에서 호출할 수 있다.
+- production 승격, 심사 제출, 공개 출시는 이 자동화에 포함하지 않는다.
+
 ## App Store
 
 App Store Archive와 TestFlight 배포는 Xcode Cloud에서 수행한다. GitHub

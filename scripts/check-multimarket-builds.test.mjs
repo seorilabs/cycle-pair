@@ -161,3 +161,47 @@ test('candidate workflow names are not classified as market deployment workflows
     assert.doesNotMatch(workflow, marketWorkflowName);
   }
 });
+
+test('AppsInToss deployment workflow performs an x64 private upload only', async () => {
+  const workflow = await readFile(
+    '.github/workflows/deploy-apps-in-toss.yml',
+    'utf8'
+  );
+
+  assert.match(workflow, /^name: Deploy AppsInToss$/m);
+  assert.match(workflow, /workflow_dispatch:[\s\S]*?release_tag:/);
+  assert.match(workflow, /workflow_call:[\s\S]*?release_tag:/);
+  assert.match(workflow, /runs-on: ubuntu-latest/);
+  assert.doesNotMatch(workflow, /seorilabs-rpi-arm64/);
+  assert.match(workflow, /actions\/checkout@v7/);
+  assert.match(workflow, /actions\/setup-node@v7/);
+  assert.match(workflow, /actions\/upload-artifact@v7/);
+  assert.match(workflow, /pnpm build:ait/);
+  assert.match(workflow, /pnpm --dir apps\/ait run deploy/);
+  assert.match(workflow, /APPS_IN_TOSS_API_KEY/);
+  assert.match(workflow, /public release: false/);
+});
+
+test('Google Play deployment workflow uploads only to the internal track', async () => {
+  const workflow = await readFile(
+    '.github/workflows/deploy-google-play.yml',
+    'utf8'
+  );
+
+  assert.match(workflow, /^name: Deploy Google Play$/m);
+  assert.match(workflow, /workflow_dispatch:[\s\S]*?upload:/);
+  assert.match(workflow, /workflow_call:[\s\S]*?upload:/);
+  assert.match(
+    workflow,
+    /rn-build-android\.yml@bf14204ee13dba657e31dcf1a71a64c0dc526ae3/
+  );
+  assert.match(workflow, /java_version: "21"/);
+  assert.match(workflow, /signing_properties_file: keystore\.properties/);
+  assert.match(workflow, /google-github-actions\/auth@v3/);
+  assert.match(workflow, /actions\/download-artifact@v8/);
+  assert.match(workflow, /actions\/setup-python@v7/);
+  assert.match(workflow, /--track internal/);
+  assert.match(workflow, /scripts\/upload-google-play-internal\.py/);
+  assert.doesNotMatch(workflow, /--track production|to_track:\s*production/);
+  assert.match(workflow, /production promotion: false/);
+});

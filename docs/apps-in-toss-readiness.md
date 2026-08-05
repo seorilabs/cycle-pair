@@ -1,6 +1,6 @@
 # AppsInToss readiness
 
-현재 상태는 build target implemented, release policy review required다. 기계 판독 source of truth는 [apps-in-toss.config.json](../apps-in-toss/apps-in-toss.config.json)이다.
+현재 상태는 build target implemented, private upload enabled, release policy review required다. 기계 판독 source of truth는 [apps-in-toss.config.json](../apps-in-toss/apps-in-toss.config.json)이다.
 
 ## 결정
 
@@ -36,7 +36,8 @@
 - [ ] 실제 vertical screenshots 636x1048 최소 3장
 - [ ] sandbox 2인 QA
 - [ ] console 수동 입력·정책 선언
-- [ ] deployment 승인
+- [x] 비공개 후보 업로드 승인
+- [ ] sandbox QA와 공개 deployment 승인
 
 ## 빌드
 
@@ -45,9 +46,10 @@ pnpm check:ait
 pnpm build:ait
 ```
 
-Backoffice의 앱별 `릴리스 > 빌드 산출물`에서도 기존 `vX.Y.Z` 태그를 선택해
-같은 `.ait` 후보를 만들 수 있다. 이 경로는 AppsInToss API key와 콘솔 배포를
-사용하지 않으며 artifact만 3일 보관한다. 콘솔 appName 확정, 정책 검토,
-sandbox QA, deployment 승인은 여전히 별도 blocker다.
+Backoffice의 앱별 `릴리스 > 빌드 산출물`에서는 기존 `vX.Y.Z` 태그로 `.ait`
+후보만 만들 수 있다. `배포 > AppsInToss`는 같은 태그를 x64 Linux에서 다시
+검증·빌드해 artifact를 3일 보관하고 `ait deploy`로 비공개 업로드한다. 콘솔
+appName 확정, 정책 검토, sandbox QA와 공개 deployment 승인은 여전히 별도
+blocker다.
 
 성공 시 `apps/ait/cycle-pair.ait`가 생성된다. 릴리스 판정기는 `.ait` 헤더·metadata `appName`·SDK 2.x·RN 0.84·TDS·iOS/Android bundle·payload hash를 확인하고, Console 대조 전 provisional `appName`과 placeholder icon을 차단한다. Console 등록·정식 아이콘·등록 이미지·실결제·알림·sandbox QA는 각각 별도 게이트다. 현재 AIT slice는 주기 날짜·자유 텍스트·계정 식별자를 저장하거나 공유하지 않는다.

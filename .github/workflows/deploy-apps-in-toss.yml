@@ -1,0 +1,114 @@
+name: Deploy AppsInToss
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "업로드할 stable SemVer 태그"
+        type: string
+        required: true
+      memo:
+        description: "AppsInToss 비공개 배포 메모"
+        type: string
+        required: false
+        default: "Cycle Pair private upload"
+  workflow_call:
+    inputs:
+      release_tag:
+        type: string
+        required: true
+      memo:
+        type: string
+        required: false
+        default: "Cycle Pair private upload"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cycle-pair-apps-in-toss-${{ inputs.release_tag }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and upload private mini-app
+    # AppsInToss SDK 2.x가 포함한 Linux Hermes compiler는 x86-64 바이너리다.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: apps-in-toss
+
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.release_tag }}
+
+      - name: Validate release tag
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] \
+            || { echo "release_tag는 stable SemVer vX.Y.Z여야 함: $RELEASE_TAG" >&2; exit 1; }
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.16.0
+          check-latest: false
+
+      - name: Enable pnpm
+        shell: bash
+        run: |
+          set -euo pipefail
+          corepack enable
+          corepack prepare pnpm@11.3.0 --activate
+
+      - name: Validate AppsInToss credential
+        shell: bash
+        env:
+          APPS_IN_TOSS_API_KEY: ${{ secrets.APPS_IN_TOSS_API_KEY }}
+        run: |
+          set -euo pipefail
+          [ -n "$APPS_IN_TOSS_API_KEY" ] \
+            || { echo "APPS_IN_TOSS_API_KEY secret이 필요합니다." >&2; exit 1; }
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build AIT artifact
+        run: pnpm build:ait
+
+      - name: Verify AIT artifact
+        shell: bash
+        run: test -s apps/ait/cycle-pair.ait
+
+      - name: Upload AIT artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: apps-in-toss-${{ inputs.release_tag }}
+          path: apps/ait/cycle-pair.ait
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Upload private AppsInToss deployment
+        shell: bash
+        env:
+          APPS_IN_TOSS_API_KEY: ${{ secrets.APPS_IN_TOSS_API_KEY }}
+          DEPLOY_MEMO: ${{ inputs.memo }}
+        run: |
+          set -euo pipefail
+          pnpm --dir apps/ait run deploy --api-key "$APPS_IN_TOSS_API_KEY" --memo "$DEPLOY_MEMO"
+
+      - name: Summary
+        shell: bash
+        run: |
+          {
+            echo "### AppsInToss private upload"
+            echo ""
+            echo "- tag: ${{ inputs.release_tag }}"
+            echo "- artifact: apps/ait/cycle-pair.ait"
+            echo "- private upload: true"
+            echo "- public release: false"
+          } >> "$GITHUB_STEP_SUMMARY"
