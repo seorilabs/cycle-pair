@@ -63,6 +63,7 @@ jobs:
       java_version: "21"
       android_dir: apps/mobile/android
       signing_properties_file: keystore.properties
+      timeout_minutes: 50
 
   upload:
     name: Upload to Google Play internal

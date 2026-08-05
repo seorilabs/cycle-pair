@@ -197,6 +197,7 @@ test('Google Play deployment workflow uploads only to the internal track', async
   );
   assert.match(workflow, /java_version: "21"/);
   assert.match(workflow, /signing_properties_file: keystore\.properties/);
+  assert.match(workflow, /timeout_minutes: 50/);
   assert.match(workflow, /google-github-actions\/auth@v3/);
   assert.match(workflow, /actions\/download-artifact@v8/);
   assert.match(workflow, /actions\/setup-python@v7/);
@@ -204,4 +205,29 @@ test('Google Play deployment workflow uploads only to the internal track', async
   assert.match(workflow, /scripts\/upload-google-play-internal\.py/);
   assert.doesNotMatch(workflow, /--track production|to_track:\s*production/);
   assert.match(workflow, /production promotion: false/);
+});
+
+test('Google Play uploader converges when the requested version is already internal', async () => {
+  const uploader = await readFile(
+    'scripts/upload-google-play-internal.py',
+    'utf8'
+  );
+  assert.match(uploader, /def expected_version_code/);
+  assert.match(uploader, /find_release_by_version_code/);
+  assert.match(uploader, /"alreadyPresent": True/);
+  assert.match(uploader, /Existing Google Play release conflicts/);
+
+  const {stdout} = await execFileAsync('python3', [
+    '-c',
+    [
+      'import importlib.util',
+      'import sys',
+      'sys.dont_write_bytecode=True',
+      'spec=importlib.util.spec_from_file_location("uploader", "scripts/upload-google-play-internal.py")',
+      'module=importlib.util.module_from_spec(spec)',
+      'spec.loader.exec_module(module)',
+      'print(module.expected_version_code("v0.1.8"))',
+    ].join(';'),
+  ]);
+  assert.equal(stdout.trim(), '1008');
 });
