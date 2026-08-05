@@ -1,0 +1,149 @@
+name: Deploy Google Play
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "빌드하고 업로드할 stable SemVer 태그"
+        type: string
+        required: true
+      upload:
+        description: "signed AAB를 Google Play internal 트랙에 업로드"
+        type: boolean
+        required: false
+        default: false
+      release_status:
+        description: "internal 트랙 release 상태"
+        type: choice
+        options:
+          - draft
+          - completed
+        default: draft
+      changes_not_sent_for_review:
+        description: "가능한 경우 검토 제출 없이 edit commit"
+        type: boolean
+        required: false
+        default: false
+  workflow_call:
+    inputs:
+      release_tag:
+        type: string
+        required: true
+      upload:
+        type: boolean
+        required: false
+        default: false
+      release_status:
+        type: string
+        required: false
+        default: draft
+      changes_not_sent_for_review:
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: cycle-pair-google-play-${{ inputs.release_tag }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build signed Android App Bundle
+    uses: seorilabs/.github/.github/workflows/rn-build-android.yml@bf14204ee13dba657e31dcf1a71a64c0dc526ae3
+    secrets: inherit
+    with:
+      release_tag: ${{ inputs.release_tag }}
+      package_manager: pnpm
+      pnpm_version: 11.3.0
+      node_version: 24.16.0
+      java_version: "21"
+      android_dir: apps/mobile/android
+      signing_properties_file: keystore.properties
+
+  upload:
+    name: Upload to Google Play internal
+    if: inputs.upload
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: google-play
+
+    steps:
+      - name: Checkout release tooling
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.release_tag }}
+
+      - name: Validate release inputs
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          RELEASE_STATUS: ${{ inputs.release_status }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] \
+            || { echo "release_tag는 stable SemVer vX.Y.Z여야 함: $RELEASE_TAG" >&2; exit 1; }
+          [[ "$RELEASE_STATUS" == "draft" || "$RELEASE_STATUS" == "completed" ]] \
+            || { echo "release_status는 draft 또는 completed여야 함." >&2; exit 1; }
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL }}
+          create_credentials_file: true
+
+      - name: Download signed AAB
+        uses: actions/download-artifact@v8
+        with:
+          name: android-aab-${{ inputs.release_tag }}
+          path: artifacts/android
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Install Android Publisher client
+        run: >-
+          python3 -m pip install --disable-pip-version-check
+          google-api-python-client google-auth google-auth-httplib2 httplib2
+
+      - name: Upload internal release
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          RELEASE_STATUS: ${{ inputs.release_status }}
+          CHANGES_NOT_SENT_FOR_REVIEW: ${{ inputs.changes_not_sent_for_review }}
+          GOOGLE_PLAY_API_TIMEOUT_SECONDS: "900"
+        run: |
+          set -euo pipefail
+          mapfile -t aabs < <(find artifacts/android -type f -name '*.aab' -print)
+          [ "${#aabs[@]}" -eq 1 ] \
+            || { echo "정확히 하나의 AAB가 필요합니다: ${#aabs[@]}" >&2; exit 1; }
+          args=(
+            --aab-path "${aabs[0]}"
+            --track internal
+            --release-status "$RELEASE_STATUS"
+            --release-name "$RELEASE_TAG"
+          )
+          if [ "$CHANGES_NOT_SENT_FOR_REVIEW" = "true" ]; then
+            args+=(--changes-not-sent-for-review)
+          fi
+          python3 scripts/upload-google-play-internal.py "${args[@]}"
+
+      - name: Summary
+        shell: bash
+        run: |
+          {
+            echo "### Google Play internal upload"
+            echo ""
+            echo "- tag: ${{ inputs.release_tag }}"
+            echo "- track: internal"
+            echo "- release status: ${{ inputs.release_status }}"
+            echo "- production promotion: false"
+          } >> "$GITHUB_STEP_SUMMARY"

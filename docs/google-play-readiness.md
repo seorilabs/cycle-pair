@@ -1,6 +1,6 @@
 # Google Play readiness
 
-현재 상태는 release candidate 준비 중이며 등록·배포 불가다. 마켓 메타데이터 source of truth는 [google-play.config.json](../play-store/google-play.config.json), artifact·Console·수동 검증 evidence는 [readiness.json](../release/readiness.json)이다.
+현재 상태는 release candidate와 internal 업로드 경로가 준비됐으며 production 배포는 불가하다. 마켓 메타데이터 source of truth는 [google-play.config.json](../play-store/google-play.config.json), artifact·Console·수동 검증 evidence는 [readiness.json](../release/readiness.json)이다.
 
 한국어 출시 이름은 `사이클 페어 : 친구/연인과 함께 컨디션을 공유해요.`, 영어 출시 이름은 `Cycle Pair`, 영구 Android package name은 `com.seorilabs.cyclepair`로 확정했다. Play Console 앱 shell과 release signing은 아직 만들지 않았다.
 
@@ -25,7 +25,8 @@ pnpm build:google-play
 Backoffice의 앱별 `릴리스 > 빌드 산출물`에서는 `vX.Y.Z` 태그를 선택해
 동일한 release signing·production Firebase gate를 통과한 signed AAB를 생성한다.
 전용 build-only workflow라 Google Play environment·WIF·API를 사용하지 않고 산출물만
-3일 보관한다. internal 업로드·테스터 QA·production 승격은 별도 단계다.
+3일 보관한다. `배포 > Google Play`는 사용자가 승인한 태그를 다시 빌드해 WIF로
+`internal` 트랙에만 업로드한다. 테스터 QA와 production 승격은 별도 단계다.
 
 CI는 파일 대신 아래 환경변수를 사용할 수 있다. 값이나 keystore를 로그·artifact·저장소에 남기지 않는다.
 
