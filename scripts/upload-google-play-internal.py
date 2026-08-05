@@ -2,6 +2,7 @@
 import argparse
 import json
 import os
+import re
 import sys
 import warnings
 from pathlib import Path
@@ -18,6 +19,10 @@ CONFIG_PATH = ROOT / "play-store" / "google-play.config.json"
 ANDROID_PUBLISHER_SCOPE = "https://www.googleapis.com/auth/androidpublisher"
 DEFAULT_API_TIMEOUT_SECONDS = 300
 DEFAULT_API_RETRIES = 5
+RELEASE_TAG_PATTERN = re.compile(
+    r"^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$"
+)
+VERSION_SEGMENT_BASE = 1000
 
 
 def load_config():
@@ -93,6 +98,51 @@ def default_release_notes(release_config, language):
     return next((value for value in notes.values() if value), "")
 
 
+def expected_version_code(release_name):
+    match = RELEASE_TAG_PATTERN.fullmatch(release_name)
+    if match is None:
+        raise RuntimeError(
+            f"Release name must use stable SemVer vX.Y.Z: {release_name}"
+        )
+    major, minor, patch = (int(segment) for segment in match.groups())
+    if minor >= VERSION_SEGMENT_BASE or patch >= VERSION_SEGMENT_BASE:
+        raise RuntimeError("Release minor and patch must be 999 or lower.")
+    version_code = (
+        major * VERSION_SEGMENT_BASE * VERSION_SEGMENT_BASE
+        + minor * VERSION_SEGMENT_BASE
+        + patch
+    )
+    if version_code <= 0:
+        raise RuntimeError("Google Play versionCode must be positive.")
+    return version_code
+
+
+def find_release_by_version_code(track_response, version_code):
+    expected = str(version_code)
+    return next(
+        (
+            release
+            for release in track_response.get("releases", [])
+            if expected in release.get("versionCodes", [])
+        ),
+        None,
+    )
+
+
+def release_convergence(existing_release, release_name, release_status, version_code):
+    if existing_release is None:
+        return "upload"
+    existing_name = existing_release.get("name")
+    existing_status = existing_release.get("status")
+    if existing_name != release_name or existing_status != release_status:
+        raise RuntimeError(
+            "Existing Google Play release conflicts with requested state: "
+            f"versionCode={version_code}, "
+            f"name={existing_name}, status={existing_status}"
+        )
+    return "already_present"
+
+
 def resolve_track(publisher, package_name, edit_id, requested_track, retries):
     response = execute_request(
         publisher.edits()
@@ -117,6 +167,7 @@ def upload_internal_release(args):
         raise RuntimeError("Release notes are required.")
     if len(args.release_notes) > 500:
         raise RuntimeError("Google Play release notes must be 500 characters or fewer.")
+    requested_version_code = expected_version_code(args.release_name)
 
     publisher = make_android_publisher(args.api_timeout_seconds)
     edit = execute_request(
@@ -134,6 +185,44 @@ def upload_internal_release(args):
             args.track,
             args.api_retries,
         )
+        current_track = execute_request(
+            publisher.edits()
+            .tracks()
+            .get(
+                packageName=args.package_name,
+                editId=edit_id,
+                track=track,
+            ),
+            args.api_retries,
+        )
+        existing_release = find_release_by_version_code(
+            current_track,
+            requested_version_code,
+        )
+        convergence = release_convergence(
+            existing_release,
+            args.release_name,
+            args.release_status,
+            requested_version_code,
+        )
+        if convergence == "already_present":
+            execute_request(
+                publisher.edits().delete(
+                    packageName=args.package_name,
+                    editId=edit_id,
+                ),
+                args.api_retries,
+            )
+            return {
+                "packageName": args.package_name,
+                "requestedTrack": args.track,
+                "track": track,
+                "releaseStatus": args.release_status,
+                "versionCode": requested_version_code,
+                "editId": None,
+                "alreadyPresent": True,
+            }
+
         bundle = execute_request(
             publisher.edits()
             .bundles()
@@ -203,6 +292,7 @@ def upload_internal_release(args):
             "releaseStatus": args.release_status,
             "versionCode": version_code,
             "editId": committed["id"],
+            "alreadyPresent": False,
         }
     except Exception:
         try:

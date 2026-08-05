@@ -4,6 +4,8 @@
 
 - `Deploy Google Play`: 선택한 stable SemVer 태그로 서명 AAB를 x64 Linux에서
   빌드하고, 명시적 `upload=true`일 때만 Google Play `internal` 트랙에 업로드한다.
+  같은 tag/versionCode가 이미 동일 상태로 존재하면 재업로드하지 않고 성공으로
+  수렴하며, 다른 이름이나 상태로 존재하면 drift로 중단한다.
 - `Deploy AppsInToss`: AppsInToss SDK의 x86-64 Hermes compiler에 맞춰
   `ubuntu-latest`에서 `.ait`를 빌드하고 비공개 업로드한다.
 - 두 workflow 모두 `workflow_dispatch`와 `workflow_call`을 제공하며 Backoffice의

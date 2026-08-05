@@ -197,6 +197,7 @@ test('Google Play deployment workflow uploads only to the internal track', async
   );
   assert.match(workflow, /java_version: "21"/);
   assert.match(workflow, /signing_properties_file: keystore\.properties/);
+  assert.match(workflow, /timeout_minutes: 50/);
   assert.match(workflow, /google-github-actions\/auth@v3/);
   assert.match(workflow, /actions\/download-artifact@v8/);
   assert.match(workflow, /actions\/setup-python@v7/);
@@ -204,4 +205,38 @@ test('Google Play deployment workflow uploads only to the internal track', async
   assert.match(workflow, /scripts\/upload-google-play-internal\.py/);
   assert.doesNotMatch(workflow, /--track production|to_track:\s*production/);
   assert.match(workflow, /production promotion: false/);
+});
+
+test('Google Play uploader converges when the requested version is already internal', async () => {
+  const uploader = await readFile(
+    'scripts/upload-google-play-internal.py',
+    'utf8'
+  );
+  assert.match(uploader, /def expected_version_code/);
+  assert.match(uploader, /find_release_by_version_code/);
+  assert.match(uploader, /def release_convergence/);
+  assert.match(uploader, /"alreadyPresent": True/);
+  assert.match(uploader, /Existing Google Play release conflicts/);
+
+  const {stdout} = await execFileAsync('python3', [
+    '-c',
+    [
+      'import importlib.util',
+      'import sys',
+      'sys.dont_write_bytecode=True',
+      'spec=importlib.util.spec_from_file_location("uploader", "scripts/upload-google-play-internal.py")',
+      'module=importlib.util.module_from_spec(spec)',
+      'spec.loader.exec_module(module)',
+      'version_code=module.expected_version_code("v0.1.8")',
+      'result={"versionCode":version_code,"missing":module.release_convergence(None,"v0.1.8","completed",version_code),"matching":module.release_convergence({"name":"v0.1.8","status":"completed"},"v0.1.8","completed",version_code)}',
+      'exec(\'try:\\n module.release_convergence({"name":"other","status":"completed"},"v0.1.8","completed",version_code)\\nexcept RuntimeError:\\n result["drift"]="error"\')',
+      'print(module.json.dumps(result))',
+    ].join(';'),
+  ]);
+  assert.deepEqual(JSON.parse(stdout), {
+    versionCode: 1008,
+    missing: 'upload',
+    matching: 'already_present',
+    drift: 'error',
+  });
 });
