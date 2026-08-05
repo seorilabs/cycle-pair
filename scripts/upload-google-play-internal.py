@@ -129,6 +129,20 @@ def find_release_by_version_code(track_response, version_code):
     )
 
 
+def release_convergence(existing_release, release_name, release_status, version_code):
+    if existing_release is None:
+        return "upload"
+    existing_name = existing_release.get("name")
+    existing_status = existing_release.get("status")
+    if existing_name != release_name or existing_status != release_status:
+        raise RuntimeError(
+            "Existing Google Play release conflicts with requested state: "
+            f"versionCode={version_code}, "
+            f"name={existing_name}, status={existing_status}"
+        )
+    return "already_present"
+
+
 def resolve_track(publisher, package_name, edit_id, requested_track, retries):
     response = execute_request(
         publisher.edits()
@@ -185,18 +199,13 @@ def upload_internal_release(args):
             current_track,
             requested_version_code,
         )
-        if existing_release is not None:
-            existing_name = existing_release.get("name")
-            existing_status = existing_release.get("status")
-            if (
-                existing_name != args.release_name
-                or existing_status != args.release_status
-            ):
-                raise RuntimeError(
-                    "Existing Google Play release conflicts with requested state: "
-                    f"versionCode={requested_version_code}, "
-                    f"name={existing_name}, status={existing_status}"
-                )
+        convergence = release_convergence(
+            existing_release,
+            args.release_name,
+            args.release_status,
+            requested_version_code,
+        )
+        if convergence == "already_present":
             execute_request(
                 publisher.edits().delete(
                     packageName=args.package_name,
@@ -208,7 +217,7 @@ def upload_internal_release(args):
                 "packageName": args.package_name,
                 "requestedTrack": args.track,
                 "track": track,
-                "releaseStatus": existing_status,
+                "releaseStatus": args.release_status,
                 "versionCode": requested_version_code,
                 "editId": None,
                 "alreadyPresent": True,
