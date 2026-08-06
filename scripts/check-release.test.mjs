@@ -1073,6 +1073,30 @@ test("App Check production provider source drift를 차단한다", async (t) => 
   );
 });
 
+test("App Check provider 객체의 formatter 공백은 evidence를 깨뜨리지 않는다", async (t) => {
+  const root = await mkdtemp(
+    path.join(tmpdir(), "cyclepair-app-check-provider-spacing-")
+  );
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await createReadyFixture(root);
+  const sourcePath =
+    "apps/mobile/src/platform/firebase/FirebaseAppCheckBootstrap.ts";
+  const source = await readFile(path.join(root, sourcePath), "utf8");
+  await write(root, sourcePath, source.replaceAll("{provider:", "{ provider:"));
+
+  const result = await evaluateReleaseReadiness(root);
+  const firebase = result.sections.find(
+    (section) => section.market === "Firebase"
+  );
+
+  assert.equal(result.ready, true);
+  assert.ok(
+    !firebase.blockers.includes(
+      "App Check 환경별 client initialization source 미검증"
+    )
+  );
+});
+
 test("App Check 운영 강제 evidence는 project/provider/service에 결합한다", async (t) => {
   const root = await mkdtemp(
     path.join(tmpdir(), "cyclepair-app-check-enforcement-")
@@ -1799,4 +1823,27 @@ test("artifact hash 불일치는 release ready로 오인하지 않는다", async
 
   assert.equal(result.ready, false);
   assert.ok(googlePlay.blockers.includes("서명된 Android AAB SHA-256 불일치"));
+});
+
+test("운영 Firebase smoke는 현재 Rules 문서 계약을 사용한다", async () => {
+  const source = await readFile(
+    new URL("./smoke-live-firebase.mjs", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(
+    source,
+    /CYCLEPAIR_FIREBASE_PROJECT \?\? 'seorilabs-cyclepair-prod'/
+  );
+  assert.match(source, /setToServerValue:\s*'REQUEST_TIME'/);
+  assert.match(source, /schemaVersion:\s*1/);
+  assert.match(source, /recordsCycle:\s*true/);
+  assert.match(source, /consentAcceptedAt:/);
+  assert.match(source, /averageCycleLength:\s*28/);
+  assert.match(source, /averagePeriodLength:\s*5/);
+  assert.match(source, /schemaVersion:\s*2/);
+  assert.match(source, /lastMutationId:\s*'live-smoke-daily'/);
+  assert.match(source, /nextPeriodWindow:\s*enabled/);
+  assert.match(source, /carePreferences:\s*enabled/);
+  assert.doesNotMatch(source, /privateDailyLogs\/live-smoke/);
 });

@@ -1,6 +1,6 @@
 # Cycle Pair Firebase 경계
 
-이 디렉터리는 raw 건강 기록과 파트너 공유 projection을 문서 단위로 분리한다. Firebase 프로젝트는 `seorilabs-cyclepair-prod` 하나만 사용하고 Firestore·Functions 리전은 `asia-northeast3`다. App Check release provider는 Android Play Integrity, iOS App Attest(DeviceCheck fallback)로 코드에 고정했지만 provider 등록·강제 evidence는 아직 없다.
+이 디렉터리는 raw 건강 기록과 파트너 공유 projection을 문서 단위로 분리한다. Firebase 프로젝트는 `seorilabs-cyclepair-prod` 하나만 사용한다. Cloud Functions는 `asia-northeast3`, 기존 Firestore `(default)` 데이터베이스는 변경할 수 없는 `nam5` 멀티 리전에 있다. App Check release provider는 Android Play Integrity, iOS App Attest(DeviceCheck fallback)로 고정되어 있고 운영 provider 설정도 존재하지만, Android Play app-signing SHA-256과 실기기 token을 검증하기 전까지 backend는 monitoring-only로 둔다.
 
 ```mermaid
 flowchart LR
@@ -195,7 +195,7 @@ Google adapter는 service-account JSON을 앱이나 repo에 두지 않고 Cloud 
 
 ## App Check
 
-계정 삭제 완료 조회를 제외한 사용자 callable은 Firebase Auth를 필수로 한다. 게스트는 Seorilabs Platform이 생성한 `pb_` UID의 Custom Token으로 로그인한다. 이 게스트는 내보내기를 사용할 수 없지만 본인 계정과 데이터를 영구 삭제할 수 있다. 이메일/password provider가 연결되면 같은 UID의 복구 가능한 계정으로 처리한다. 모바일 entry point는 Firebase 사용 전에 App Check를 초기화하고, 같은 프로젝트에서 Debug는 debug provider, Release는 Play Integrity/App Attest(DeviceCheck fallback)를 사용한다. Callable은 `ENFORCE_APP_CHECK=true`로 배포될 때만 App Check를 강제한다. Firestore enforcement와 release provider 등록도 콘솔 설정이므로, 클라이언트 dependency가 있다는 이유만으로 보호가 완료됐다고 보지 않는다.
+계정 삭제 완료 조회를 제외한 사용자 callable은 Firebase Auth를 필수로 한다. 게스트는 Seorilabs Platform이 생성한 `pb_` UID의 Custom Token으로 로그인한다. 이 게스트는 내보내기를 사용할 수 없지만 본인 계정과 데이터를 영구 삭제할 수 있다. 이메일/password provider가 연결되면 같은 UID의 복구 가능한 계정으로 처리한다. 모바일 entry point는 Firebase 사용 전에 App Check를 초기화하고, 같은 프로젝트에서 Debug는 debug provider, Release는 Play Integrity/App Attest(DeviceCheck fallback)를 사용한다. Callable은 `ENFORCE_APP_CHECK=true`로 배포될 때만 App Check를 강제한다. 2026-08-06 API 재조회 기준 Play Integrity와 App Attest 설정은 존재하고 Firestore·Auth·Storage는 `UNENFORCED` monitoring-only다. Android Firebase app에는 SHA-256 인증서가 아직 없으므로 Play app-signing 인증서와 실제 release token을 확인하기 전에는 강제를 켜지 않는다.
 
 Firestore native persistence는 민감한 partner projection이 일반 OS 캐시에 남지 않도록 모바일 어댑터에서 비활성화한다. 오프라인 데이터는 UID별 Keychain cache/queue에만 저장한다. Pair tombstone을 받으면 해당 Pair cache와 queued mutation을 먼저 지우고 ack한 뒤 남은 UID queue를 즉시 flush한다. 로그아웃·계정 삭제는 UID writer fence를 동기적으로 닫고 진행 중인 Keychain write와 backend mutation을 drain한 뒤 purge하므로 늦은 snapshot이나 flush가 삭제 데이터를 다시 만들 수 없다.
 
@@ -214,7 +214,7 @@ pnpm --dir firebase check
 
 ## 단일 프로젝트 배포·실검증
 
-`seorilabs-cyclepair-dev`의 2026-07-13 audit은 과거 참고 기록일 뿐 현재 배포 근거로 사용하지 않는다. 현재 source는 `seorilabs-cyclepair-prod`에 배포하고 같은 프로젝트에서 live smoke를 수행한다. 기존 dev 프로젝트는 prod 전환 검증과 데이터·리소스 inventory를 끝낸 뒤 종료한다. 기본 compute 서비스 계정은 다음 최소 역할을 사용한다.
+`seorilabs-cyclepair-dev`의 2026-07-13 audit은 과거 참고 기록일 뿐 현재 배포 근거로 사용하지 않는다. 현재 source는 `seorilabs-cyclepair-prod`에 배포하고 같은 프로젝트에서 live smoke를 수행한다. `seorilabs-cyclepair-dev`와 `seorilabs-moonmate-dev`는 데이터 이전 없이 2026-08-06 프로젝트 삭제를 요청했고 둘 다 `DELETE_REQUESTED`로 확인했다. 복구하지 않으며 기본 compute 서비스 계정은 다음 최소 역할을 사용한다.
 
 - `roles/cloudbuild.builds.builder`: Functions build
 - `roles/datastore.user`: Functions runtime의 Firestore read/write
@@ -239,7 +239,7 @@ gcloud functions list --v2 \
   --regions=asia-northeast3
 ```
 
-현재 source 변경은 아직 새 배포 evidence로 검증하지 않았다. 배포 후 새 callable·HTTPS endpoint, 15분 export cleanup, daily Pair retention schedule과 `cacheTombstones` collection-group index를 단일 프로젝트에서 확인한다. Domain Restricted Sharing 환경에서는 `requestaccountdataexport`와 `downloadaccountdataexport`의 Cloud Run invoker check 비활성화, Scheduler service agent 호출, fragment bootstrap/단회 replay/계정 삭제 cleanup/retention 경계 live smoke를 확인해야 한다. 모바일 전환 확인 뒤 legacy `exportMyData` Function도 명시적으로 삭제해 raw JSON callable 경로가 남지 않게 한다.
+현재 source 전체와 배포 fingerprint가 같은지는 아직 새 배포 evidence로 검증하지 않았다. 다만 2026-08-06 운영 live smoke에서 현재 Rules 문서 계약으로 Platform Custom Token, callable, 3종 projection trigger, owner-private deny, revoke·tombstone ack와 cleanup을 통과했고, 누락된 runtime `roles/datastore.user` 보정 뒤 예약 함수 3종도 모두 HTTP 200으로 확인했다. 배포 승인 전에는 나머지 HTTPS export 경계, legacy `exportMyData` 제거, FCM/APNs, 구독과 정확한 deployment source fingerprint를 계속 별도 gate로 둔다.
 
 실제 smoke는 prod project ID와 명시적 opt-in을 강제하며 UID, ID token, Custom Token, 초대 token을 출력하지 않는다. 플랫폼 Custom Token 발급과 Firebase 교환을 포함하고 성공과 실패 모두 생성한 플랫폼 사용자·Firebase 사용자·문서를 정리한다.
 

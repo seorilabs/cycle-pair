@@ -1,7 +1,8 @@
 import {createHash} from 'node:crypto';
 import process from 'node:process';
 
-const projectId = process.env.CYCLEPAIR_FIREBASE_PROJECT;
+const projectId =
+  process.env.CYCLEPAIR_FIREBASE_PROJECT ?? 'seorilabs-cyclepair-prod';
 const region = process.env.CYCLEPAIR_FIREBASE_REGION ?? 'asia-northeast3';
 const apiKey = process.env.CYCLEPAIR_FIREBASE_WEB_API_KEY;
 const adminAccessToken = process.env.CYCLEPAIR_ADMIN_ACCESS_TOKEN;
@@ -36,6 +37,7 @@ const created = {
   bob: null,
   inviteToken: null,
   pairId: null,
+  dailyLocalDate: null,
   revoked: false,
 };
 
@@ -76,6 +78,27 @@ function encodeFields(record) {
   return Object.fromEntries(
     Object.entries(record).map(([key, value]) => [key, encodeValue(value)])
   );
+}
+
+function seoulLocalDate(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const value = Object.fromEntries(
+    parts
+      .filter(part => part.type !== 'literal')
+      .map(part => [part.type, part.value])
+  );
+  return `${value.year}-${value.month}-${value.day}`;
+}
+
+function addLocalDays(localDate, days) {
+  const [year, month, day] = localDate.split('-').map(Number);
+  const shifted = new Date(Date.UTC(year, month - 1, day + days));
+  return shifted.toISOString().slice(0, 10);
 }
 
 function decodeValue(value) {
@@ -233,13 +256,31 @@ async function callFunction(name, account, data) {
 }
 
 async function writeDocument(path, account, fields) {
-  await requestJson(`${path} 쓰기`, documentUrl(path), {
-    method: 'PATCH',
+  const {updatedAt, ...persistedFields} = fields;
+  assert(
+    updatedAt instanceof Date,
+    `${path} 쓰기에 server timestamp marker가 없습니다.`
+  );
+  const documentName =
+    `projects/${projectId}/databases/(default)/documents/${path}`;
+  await requestJson(`${path} 쓰기`, `${firestoreBase}:commit`, {
+    method: 'POST',
     headers: {
       authorization: `Bearer ${account.idToken}`,
       'content-type': 'application/json',
     },
-    body: JSON.stringify({fields: encodeFields(fields)}),
+    body: JSON.stringify({
+      writes: [{
+        update: {
+          name: documentName,
+          fields: encodeFields(persistedFields),
+        },
+        updateTransforms: [{
+          fieldPath: 'updatedAt',
+          setToServerValue: 'REQUEST_TIME',
+        }],
+      }],
+    }),
   });
 }
 
@@ -364,10 +405,12 @@ async function cleanup() {
   const parentPaths = [];
   if (created.alice) {
     securityPaths.push(`pairBindings/${created.alice.uid}`);
-    childPaths.push(
-      `users/${created.alice.uid}/privateCycles/current`,
-      `users/${created.alice.uid}/privateDailyLogs/live-smoke`
-    );
+    childPaths.push(`users/${created.alice.uid}/privateCycles/current`);
+    if (created.dailyLocalDate) {
+      childPaths.push(
+        `users/${created.alice.uid}/privateDailyLogs/${created.dailyLocalDate}`
+      );
+    }
     parentPaths.push(`connectionStates/${created.alice.uid}`);
   }
   if (created.bob) {
@@ -452,7 +495,41 @@ try {
   const projectionPath = `${pairPath}/projections/${created.alice.uid}`;
   const settingsPath = `users/${created.alice.uid}/shareSettings/${created.pairId}`;
   const cyclePath = `users/${created.alice.uid}/privateCycles/current`;
-  const dailyPath = `users/${created.alice.uid}/privateDailyLogs/live-smoke`;
+  const asOfDate = seoulLocalDate();
+  const periodStartDate = addLocalDays(asOfDate, -14);
+  const nextPeriodStartDate = addLocalDays(periodStartDate, 21);
+  const nextPeriodEndDate = addLocalDays(nextPeriodStartDate, 14);
+  created.dailyLocalDate = asOfDate;
+  const dailyPath =
+    `users/${created.alice.uid}/privateDailyLogs/${created.dailyLocalDate}`;
+  const cycleFields = cyclePhase => ({
+    schemaVersion: 1,
+    recordsCycle: true,
+    consentAcceptedAt: new Date().toISOString(),
+    asOfDate,
+    averageCycleLength: 28,
+    averagePeriodLength: 5,
+    periodDates: {startDate: periodStartDate},
+    cyclePhase,
+    nextPeriodWindow: {
+      startDate: nextPeriodStartDate,
+      endDate: nextPeriodEndDate,
+    },
+    updatedAt: new Date(),
+  });
+  const shareFields = enabled => ({
+    schemaVersion: 1,
+    cyclePhase: enabled,
+    nextPeriodWindow: enabled,
+    periodDates: enabled,
+    moodTag: enabled,
+    symptomTags: enabled,
+    energyLevel: enabled,
+    conditionCode: enabled,
+    carePreferences: enabled,
+    note: enabled,
+    updatedAt: new Date(),
+  });
 
   const pair = await readDocument(pairPath, created.bob);
   assert(pair.data?.status === 'active', '수락 후 Pair가 active가 아닙니다.');
@@ -465,11 +542,7 @@ try {
     '기본 projection에 비공개 주기 정보가 포함됐습니다.'
   );
 
-  await writeDocument(cyclePath, created.alice, {
-    periodDates: {startDate: '2026-07-10'},
-    cyclePhase: 'luteal',
-    updatedAt: new Date(),
-  });
+  await writeDocument(cyclePath, created.alice, cycleFields('luteal'));
   const deniedPrivateRead = await readDocument(cyclePath, created.bob, [403]);
   assert(
     deniedPrivateRead.status === 403,
@@ -489,26 +562,17 @@ try {
     '기본 projection을 읽을 수 없습니다.'
   );
 
-  await writeDocument(settingsPath, created.alice, {
-    periodDates: true,
-    cyclePhase: true,
-    moodTag: true,
-    updatedAt: new Date(),
-  });
+  await writeDocument(settingsPath, created.alice, shareFields(true));
   const sharedProjection = await waitFor(
     '선택 공유 projection',
     () => readDocument(projectionPath, created.bob),
     projection =>
       projection.data?.generatedAt !== privateProjection.data?.generatedAt &&
       projection.data?.cyclePhase === 'luteal' &&
-      projection.data?.periodDates?.startDate === '2026-07-10'
+      projection.data?.periodDates?.startDate === periodStartDate
   );
 
-  await writeDocument(cyclePath, created.alice, {
-    periodDates: {startDate: '2026-07-10'},
-    cyclePhase: 'follicular',
-    updatedAt: new Date(),
-  });
+  await writeDocument(cyclePath, created.alice, cycleFields('follicular'));
   const cycleProjection = await waitFor(
     'cycle trigger projection',
     () => readDocument(projectionPath, created.bob),
@@ -518,7 +582,10 @@ try {
   );
 
   await writeDocument(dailyPath, created.alice, {
-    moodTag: 'steady',
+    schemaVersion: 2,
+    localDate: created.dailyLocalDate,
+    lastMutationId: 'live-smoke-daily',
+    moodTag: 'neutral',
     updatedAt: new Date(),
   });
   const deniedDailyRead = await readDocument(dailyPath, created.bob, [403]);
@@ -531,15 +598,10 @@ try {
     () => readDocument(projectionPath, created.bob),
     projection =>
       projection.data?.generatedAt !== cycleProjection.data?.generatedAt &&
-      projection.data?.moodTag === 'steady'
+      projection.data?.moodTag === 'neutral'
   );
 
-  await writeDocument(settingsPath, created.alice, {
-    periodDates: false,
-    cyclePhase: false,
-    moodTag: false,
-    updatedAt: new Date(),
-  });
+  await writeDocument(settingsPath, created.alice, shareFields(false));
   await waitFor(
     '공유 회수 projection',
     () => readDocument(projectionPath, created.bob),

@@ -35,6 +35,19 @@ check:release는 현재 의도적으로 실패해야 한다. 정책 답변, 서�
 
 따라서 현재 판정은 `production-ready`가 아니라 `내부 alpha/closed beta 후보`다. `seorilabs-cyclepair-dev`의 2026-07-13 live 배포는 과거 기록이며 현재 source나 단일 prod 프로젝트의 배포 검증으로 간주하지 않는다.
 
+## 2026-08-06 단일 prod 전환 검증
+
+| 항목 | 결과 | 증거·한계 |
+| --- | --- | --- |
+| Firebase 프로젝트 | PASS | `seorilabs-cyclepair-prod` ACTIVE. legacy `seorilabs-cyclepair-dev`, `seorilabs-moonmate-dev`는 데이터 이전 없이 삭제 요청 후 모두 `DELETE_REQUESTED` |
+| 운영 Auth·Pair | PASS | 소스 기본 Platform URL로 `pb_` Custom Token 2개를 Firebase ID token으로 교환하고 초대·수락·해제 전 구간 통과 |
+| Rules·trigger | PASS | 현재 cycle schema v1, daily schema v2, server timestamp 계약으로 3종 projection, owner-private deny, 공유 회수, tombstone ack와 테스트 데이터 cleanup 통과 |
+| Functions runtime IAM | PASS | prod compute SA에 누락된 `roles/datastore.user` 보정 후 예약 함수 3종을 즉시 실행해 Cloud Run HTTP 200 확인 |
+| Android native | PASS | prod `google-services.json`, `com.seorilabs.cyclepair` 검증과 `assembleDebug` 성공 |
+| iOS native | PASS | prod `GoogleService-Info.plist`, `com.seorilabs.cyclepair` 검증, Pods 설치와 서명된 iPhone 16 Pro iOS 18.1 시뮬레이터 빌드·설치·온보딩 기동 성공. Keychain read/write 정상 |
+| App Check | MONITORING | Play Integrity·App Attest config 존재, Firestore·Auth·Storage `UNENFORCED`, Callable 강제 false. Android Play app-signing SHA-256과 release 실기기 token 검증 전에는 강제 금지 |
+| 배포 provenance | 미완료 | live 동작은 확인했지만 현재 source fingerprint와 배포 revision의 동일성은 별도 deployment gate로 유지 |
+
 ## 2026-07-13 Cycle Pair 전환 검증 현황
 
 | 항목 | 결과 | 증거 |
@@ -52,7 +65,7 @@ check:release는 현재 의도적으로 실패해야 한다. 정책 답변, 서�
 | Android native | PASS | JDK 17 daemon 선택, `com.seorilabs.cyclepair` `assembleDebug`, Seeker Android 16 실기기 설치·세로 기동·온보딩 hardware back·solo 홈·선택형 Pair 진입/복귀 |
 | release inventory | EXPECTED FAIL | 운영 Firebase·App Check·정책·서명·마켓 콘솔·deployment approval 미확정 |
 
-현재 자동 QA는 로컬 product-core, UI 세로 슬라이스, Firebase emulator 보안 경계와 Functions 계정 lifecycle을 증명한다. 플랫폼 Custom Token을 포함한 prod live smoke, Android/iOS 실제 기기 2대 UI 흐름, 제품 계정 삭제·내보내기, FCM, 구독 결제, 스토어 산출물은 별도 실검증이 필요하다.
+현재 자동 QA는 로컬 product-core, UI 세로 슬라이스, Firebase emulator 보안 경계와 Functions 계정 lifecycle을 증명한다. 플랫폼 Custom Token을 포함한 prod live smoke는 2026-08-06 완료했다. Android/iOS 실제 기기 2대 UI 흐름, 제품 계정 삭제·내보내기, FCM, 구독 결제, 스토어 산출물은 별도 실검증이 필요하다.
 
 ## core 필수 테스트
 
