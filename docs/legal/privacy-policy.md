@@ -34,7 +34,7 @@
 - Google Play / Apple App Store: 구독 결제 및 영수증 검증
 - `[확정 필요: 그 외 위탁 대상 및 국외 이전 여부·소재 국가]`
 
-데이터 처리 리전은 `asia-northeast3`이다. 제3자에게 마케팅·광고 목적으로 판매하거나 공유하지 않는다.
+Cloud Functions는 서울 `asia-northeast3`, Firestore `(default)` 데이터베이스는 미국 `nam5` 멀티 리전에서 처리된다. Firebase Auth 등 전역 서비스의 처리 위치는 Google Firebase 약관과 데이터 위치 정책을 따른다. 제3자에게 마케팅·광고 목적으로 판매하거나 공유하지 않는다.
 
 ## 4. 파트너 공유의 성격
 
@@ -59,7 +59,7 @@
 
 - 원본 민감 기록과 오프라인 변경분은 평문 저장하지 않고, 로컬 캐시는 OS 보안 저장소(Keychain 등)로 보호한다.
 - 서버는 Firebase Admin 경로마다 인증·대상 UID·필요 시 최근 재인증/공유설정/파트너 서명·1회성 티켓을 검증한다.
-- 비정상 클라이언트 남용 방지를 위해 App Check(Play Integrity / App Attest)를 운영에서 강제한다.
+- 비정상 클라이언트 남용 방지를 위해 App Check(Play Integrity / App Attest)를 적용한다. provider와 실기기 token 검증 전에는 monitoring-only이며, 검증이 끝난 뒤 서비스별 강제를 켠다.
 - 참고: 본 MVP는 종단간(E2E) 암호화를 제공하지 않는다. 데이터는 전송·저장 구간에서 Firebase 기본 암호화와 접근통제(Security Rules·서버 검증)로 보호된다.
 
 ## 8. 아동 개인정보

@@ -1124,15 +1124,18 @@ async function appCheckClientSourceBlockers(root, mobilePackage) {
     "app.options.projectId",
     "firebaseEnvironments.projectId",
     "developmentBundle: __DEV__",
-    "android: {provider: 'debug'}",
-    "apple: {provider: 'debug'}",
-    "android: {provider: 'playIntegrity'}",
-    "apple: {provider: 'appAttestWithDeviceCheckFallback'}",
     "isTokenAutoRefreshEnabled: true",
+  ];
+  const requiredProviderEvidence = [
+    /android:\s*\{\s*provider:\s*['"]debug['"]\s*\}/,
+    /apple:\s*\{\s*provider:\s*['"]debug['"]\s*\}/,
+    /android:\s*\{\s*provider:\s*['"]playIntegrity['"]\s*\}/,
+    /apple:\s*\{\s*provider:\s*['"]appAttestWithDeviceCheckFallback['"]\s*\}/,
   ];
   if (
     bootstrap === null ||
-    requiredBootstrapEvidence.some((value) => !bootstrap.includes(value))
+    requiredBootstrapEvidence.some((value) => !bootstrap.includes(value)) ||
+    requiredProviderEvidence.some((pattern) => !pattern.test(bootstrap))
   ) {
     blockers.push("App Check 환경별 client initialization source 미검증");
   }
