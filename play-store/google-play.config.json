@@ -97,8 +97,14 @@
       "play-store/assets/phone-2-sharing-1080x1920.png",
       "play-store/assets/phone-3-partner-1080x1920.png"
     ],
-    "sevenInchTabletScreenshots": [],
-    "tenInchTabletScreenshots": []
+    "sevenInchTabletScreenshots": [
+      "play-store/assets/tablet7-1-home-1080x1920.png",
+      "play-store/assets/tablet7-2-partner-1080x1920.png"
+    ],
+    "tenInchTabletScreenshots": [
+      "play-store/assets/tablet10-1-home-1440x2560.png",
+      "play-store/assets/tablet10-2-partner-1440x2560.png"
+    ]
   },
   "manualEvidence": {
     "playConsoleApp": "확정 필요",

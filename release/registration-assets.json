@@ -1,0 +1,68 @@
+{
+  "out_dir": ".",
+  "items": [
+    {
+      "id": "google-play-tablet7-home",
+      "kind": "seven-inch-tablet",
+      "path": "play-store/assets/tablet7-1-home-1080x1920.png",
+      "width": 1080,
+      "height": 1920
+    },
+    {
+      "id": "google-play-tablet7-partner",
+      "kind": "seven-inch-tablet",
+      "path": "play-store/assets/tablet7-2-partner-1080x1920.png",
+      "width": 1080,
+      "height": 1920
+    },
+    {
+      "id": "google-play-tablet10-home",
+      "kind": "ten-inch-tablet",
+      "path": "play-store/assets/tablet10-1-home-1440x2560.png",
+      "width": 1440,
+      "height": 2560
+    },
+    {
+      "id": "google-play-tablet10-partner",
+      "kind": "ten-inch-tablet",
+      "path": "play-store/assets/tablet10-2-partner-1440x2560.png",
+      "width": 1440,
+      "height": 2560
+    },
+    {
+      "id": "app-store-ipad13-onboarding",
+      "kind": "ipad-13",
+      "path": "app-store/assets/ipad13-1-onboarding-2064x2752.png",
+      "width": 2064,
+      "height": 2752
+    },
+    {
+      "id": "app-store-ipad13-home",
+      "kind": "ipad-13",
+      "path": "app-store/assets/ipad13-2-home-2064x2752.png",
+      "width": 2064,
+      "height": 2752
+    },
+    {
+      "id": "app-store-ipad13-partner",
+      "kind": "ipad-13",
+      "path": "app-store/assets/ipad13-3-partner-2064x2752.png",
+      "width": 2064,
+      "height": 2752
+    }
+  ],
+  "rules": [
+    {
+      "kind": "seven-inch-tablet",
+      "min": 2
+    },
+    {
+      "kind": "ten-inch-tablet",
+      "min": 2
+    },
+    {
+      "kind": "ipad-13",
+      "min": 3
+    }
+  ]
+}

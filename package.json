@@ -26,6 +26,7 @@
     "check:ait": "pnpm --filter @cyclepair/ait check",
     "check:firebase": "pnpm --dir firebase check",
     "check:release": "node scripts/check-release.mjs",
+    "check:release-automation": "node scripts/check-release-automation.mjs",
     "build:android": "pnpm build:google-play",
     "build:google-play": "node scripts/build-google-play.mjs",
     "build:ait": "pnpm --filter @cyclepair/ait build",

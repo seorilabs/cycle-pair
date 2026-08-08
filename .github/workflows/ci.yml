@@ -75,6 +75,9 @@ jobs:
       - name: 릴리스 판정기 회귀 테스트
         run: pnpm test:release
 
+      - name: 마켓 빌드·업로드 계약 검사
+        run: pnpm check:release-automation
+
       - name: iOS 및 Android 프로덕션 JS 번들 생성
         run: |
           mkdir -p apps/mobile/build/bundles

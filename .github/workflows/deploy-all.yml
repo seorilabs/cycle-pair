@@ -1,0 +1,116 @@
+name: Deploy All Markets
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "빌드할 SemVer 태그. 비우면 최신 vX.Y.Z"
+        type: string
+        required: false
+        default: ""
+      google_play:
+        description: "Google Play 빌드 실행"
+        type: boolean
+        default: true
+      google_play_upload:
+        description: "Google Play internal track 업로드"
+        type: boolean
+        default: false
+      google_play_release_status:
+        description: "Google Play internal release 상태"
+        type: choice
+        options:
+          - draft
+          - completed
+        default: draft
+      deploy_app_store:
+        description: "App Store Xcode Cloud 실행 포함"
+        type: boolean
+        default: true
+      app_store_upload:
+        description: "Xcode Cloud archive와 TestFlight 업로드 시작"
+        type: boolean
+        default: false
+      apps_in_toss:
+        description: "AppsInToss 비공개 업로드 실행"
+        type: boolean
+        default: false
+      apps_in_toss_memo:
+        description: "AppsInToss 비공개 배포 메모"
+        type: string
+        required: false
+        default: "Cycle Pair private upload"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: cycle-pair-deploy-all-${{ inputs.release_tag || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    name: Resolve release tag
+    runs-on: ${{ github.event.repository.private && 'seorilabs-rpi-arm64' || 'ubuntu-latest' }}
+    timeout-minutes: 10
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+
+      - name: Resolve and verify tag
+        id: release
+        shell: bash
+        env:
+          RELEASE_TAG_INPUT: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          tag="$RELEASE_TAG_INPUT"
+          if [ -z "$tag" ]; then
+            tag="$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n 1)"
+          fi
+          [[ "$tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || {
+            echo "vX.Y.Z 태그가 필요합니다. 받은 값: ${tag:-empty}" >&2
+            exit 1
+          }
+          git rev-parse --verify "refs/tags/$tag^{commit}" >/dev/null
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+  google-play:
+    name: Google Play
+    needs: resolve
+    if: ${{ inputs.google_play }}
+    uses: ./.github/workflows/deploy-google-play.yml
+    secrets: inherit
+    with:
+      release_tag: ${{ needs.resolve.outputs.tag }}
+      upload: ${{ inputs.google_play_upload }}
+      release_status: ${{ inputs.google_play_release_status }}
+      changes_not_sent_for_review: false
+
+  app-store:
+    name: App Store via Xcode Cloud
+    needs: resolve
+    if: ${{ inputs.deploy_app_store }}
+    uses: ./.github/workflows/deploy-app-store.yml
+    secrets: inherit
+    with:
+      release_tag: ${{ needs.resolve.outputs.tag }}
+      upload_to_testflight: ${{ inputs.app_store_upload }}
+
+  apps-in-toss:
+    name: AppsInToss
+    needs: resolve
+    if: ${{ inputs.apps_in_toss }}
+    uses: ./.github/workflows/deploy-apps-in-toss.yml
+    secrets: inherit
+    with:
+      release_tag: ${{ needs.resolve.outputs.tag }}
+      memo: ${{ inputs.apps_in_toss_memo }}
