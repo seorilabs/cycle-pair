@@ -8,13 +8,13 @@
 | 승인 근거 | 2026-07-12 사용자 요청: 구현 시작 |
 | 앱 분류 | non-game |
 | 기본 스택 | React Native + Firebase |
-| 한국어 출시 이름 | 사이클 페어 : 친구/연인과 함께 컨디션을 공유해요. |
+| 한국어 출시 이름 | 사이클 페어 : 내 기분, 주기, 컨디션을 알려요 |
 | 영어 출시 이름 | Cycle Pair |
 | Android/iOS 식별자 | com.seorilabs.cyclepair |
 | 배포 승인 | 미승인, release-candidate 이후 별도 승인 필요 |
 | 원 기획 | Obsidian Vault: 프로젝트/개인/앱 제작 공장/기획 인박스/moonmate 최초 기획서 (초기 코드명) |
 
-이 문서는 planning 승인 이후 제품 실행 source of truth다. 한국어 출시 이름은 `사이클 페어 : 친구/연인과 함께 컨디션을 공유해요.`, 영어 출시 이름은 `Cycle Pair`다. 한국어 앱 내부 UI와 알림에는 짧은 브랜드 `사이클 페어`를 사용한다. Android package name과 iOS bundle ID는 `com.seorilabs.cyclepair`, 단일 Firebase project ID는 `seorilabs-cyclepair-prod`다. AppsInToss 영구 appName은 콘솔 가용성과 정책 적합성 확인 전까지 확정하지 않는다.
+이 문서는 planning 승인 이후 제품 실행 source of truth다. 한국어 출시 이름은 `사이클 페어 : 내 기분, 주기, 컨디션을 알려요`, 영어 출시 이름은 `Cycle Pair`다. 한국어 앱 내부 UI와 알림에는 짧은 브랜드 `사이클 페어`를 사용한다. Android package name과 iOS bundle ID는 `com.seorilabs.cyclepair`, 단일 Firebase project ID는 `seorilabs-cyclepair-prod`다. AppsInToss 영구 appName은 콘솔 가용성과 정책 적합성 확인 전까지 확정하지 않는다.
 
 ## 제품 약속
 

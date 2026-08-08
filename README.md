@@ -10,7 +10,7 @@
 - `firebase`: owner-private 데이터와 파트너 공유 projection을 분리한 Rules·Functions 백엔드
 - `apps/ait`: AppsInToss SDK 2.x 기반의 로컬 컨디션 선택·명시적 공유 타깃. 전체 계정·Firebase·구독 연동은 정책 검토 후 확장
 
-한국어 출시 표시 이름은 `사이클 페어 : 친구/연인과 함께 컨디션을 공유해요.`, 영어 출시 표시 이름은 `Cycle Pair`입니다. 앱 내부와 알림에서는 짧은 한국어 브랜드 `사이클 페어`를 사용합니다. Android application ID와 iOS bundle ID는 모두 `com.seorilabs.cyclepair`입니다. AppsInToss 빌드는 임시 `appName` 후보 `cycle-pair`를 사용하며, 콘솔 가용성 확인 후 같은 값으로 영구 등록해야 합니다.
+한국어 출시 표시 이름은 `사이클 페어 : 내 기분, 주기, 컨디션을 알려요`, 영어 출시 표시 이름은 `Cycle Pair`입니다. 앱 내부와 알림에서는 짧은 한국어 브랜드 `사이클 페어`를 사용합니다. Android application ID와 iOS bundle ID는 모두 `com.seorilabs.cyclepair`입니다. AppsInToss 빌드는 임시 `appName` 후보 `cycle-pair`를 사용하며, 콘솔 가용성 확인 후 같은 값으로 영구 등록해야 합니다.
 
 Debug와 Release는 모두 단일 Firebase 프로젝트 `seorilabs-cyclepair-prod`를 사용합니다. Cloud Functions는 `asia-northeast3`, 기존 Firestore `(default)` 데이터베이스는 변경할 수 없는 `nam5` 멀티 리전에 있습니다. 게스트 인증은 앱이 Firebase Anonymous Auth를 직접 호출하지 않고 Seorilabs Platform이 발급한 `pb_` UID의 Firebase Custom Token을 교환합니다.
 

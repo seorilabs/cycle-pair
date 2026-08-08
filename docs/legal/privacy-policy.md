@@ -1,13 +1,14 @@
-# 사이클 페어 개인정보처리방침 (초안)
+# 사이클 페어 개인정보처리방침 (내부 근거 문서)
 
-> 상태: **초안 — 법률 검토·게시 전**. 스토어 제출용으로 외부 URL에 게시하려면 아래 `[확정 필요]` 항목을 채우고 법률 검토를 받아야 한다.
-> 이 문서는 저장소에 문서화된 실제 데이터 처리 실태(`docs/security-threat-model.md`, `docs/google-play-readiness.md`, `docs/app-store-readiness.md`, Firebase Rules·Functions source)에서 파생했다. 실제 구현과 불일치가 생기면 이 문서가 아니라 구현을 기준으로 갱신한다.
+> 상태: **게시본 작성 완료 — 배포 대기**. 게시본은 `seorilabs/seorilabs-official`의 `src/lib/cyclePairPrivacyContent.ts`이며 이 저장소 문서는 그 근거를 남기는 내부 문서다.
+> 게시본과 이 문서가 어긋나면 게시본을 기준으로 이 문서를 갱신한다. 실제 구현과 어긋나면 둘 다 구현 기준으로 갱신한다.
+> 이 문서는 저장소에 문서화된 실제 데이터 처리 실태(`docs/security-threat-model.md`, `docs/google-play-readiness.md`, `docs/app-store-readiness.md`, Firebase Rules·Functions source)에서 파생했다.
 
 - 서비스명: 사이클 페어
-- 운영 주체: `[확정 필요: 법인/사업자 정식 명칭]`
+- 운영 주체: Seori Labs
 - 대표 연락처: cs@seorilabs.com
-- 게시 URL: `[확정 필요: privacyPolicyUrl]`
-- 시행일: `[확정 필요: YYYY-MM-DD]`
+- 게시 URL: https://www.seorilabs.com/apps/cycle-pair/privacy/ (en: `/en/apps/cycle-pair/privacy/`)
+- 시행일: 2026-08-09
 
 ## 1. 개요
 
@@ -32,7 +33,7 @@
 
 - Google Firebase (Auth, Firestore, Cloud Functions, Cloud Messaging, Analytics, Crashlytics, Performance, App Check): 인증·저장·서버 처리·알림·진단
 - Google Play / Apple App Store: 구독 결제 및 영수증 검증
-- `[확정 필요: 그 외 위탁 대상 및 국외 이전 여부·소재 국가]`
+- 국외 이전: Firestore `(default)`가 미국 `nam5` 멀티 리전에서 처리되므로 저장 기록은 미국으로 이전된다. 위 목록 외 추가 수탁자는 없다.
 
 Cloud Functions는 서울 `asia-northeast3`, Firestore `(default)` 데이터베이스는 미국 `nam5` 멀티 리전에서 처리된다. Firebase Auth 등 전역 서비스의 처리 위치는 Google Firebase 약관과 데이터 위치 정책을 따른다. 제3자에게 마케팅·광고 목적으로 판매하거나 공유하지 않는다.
 
@@ -45,8 +46,9 @@ Cloud Functions는 서울 `asia-northeast3`, Firestore `(default)` 데이터베�
 ## 5. 보관 기간과 파기
 
 - 계정 삭제 시 서버는 사용자 데이터를 재귀적으로 삭제하고 완료 상태를 관리한다(자세한 절차: `docs/legal/account-deletion.md`).
-- 초대코드: 만료 후 7일, acknowledged 캐시 tombstone: 30일, `pairTombstones` 감사로그: `[확정 필요: 보존기간]`.
-- 백업에 잔존하는 데이터의 삭제 SLA: `[확정 필요: 백업 삭제 SLA 및 사용자 안내]`.
+- 초대코드: 만료 후 7일, acknowledged 캐시 tombstone: 30일.
+- `pairTombstones`: Pair 식별자 재사용 방지 목적으로 보존하며 별도 만료가 없다. `pairId`, `memberUids`, `revokedAt`, `revokedBy`를 담아 **비식별이 아니다**. 계정 삭제 시 `accessBarrierPaths`에 포함되어 함께 삭제된다(`firebase/functions/src/index.ts`).
+- 백업에 잔존하는 데이터의 삭제 SLA: 삭제 요청일로부터 30일. 게시본 「보관과 삭제」에 명시한다.
 
 ## 6. 이용자 권리와 행사 방법
 
@@ -64,7 +66,7 @@ Cloud Functions는 서울 `asia-northeast3`, Firestore `(default)` 데이터베�
 
 ## 8. 아동 개인정보
 
-`[확정 필요: 대상 연령·아동 정책. 관계/건강 컨디션 도구 특성상 성인 대상 여부와 최소 연령을 확정한다]`
+최소 연령은 만 17세다. 만 17세 미만 이용자를 대상으로 하지 않으며 아동임을 알고 개인정보를 수집하지 않는다. 미성년자의 인앱 구독은 보호자 동의와 기기·스토어 결제 보호 설정을 전제로 한다.
 
 ## 9. 고지 및 변경
 
@@ -72,12 +74,19 @@ Cloud Functions는 서울 `asia-northeast3`, Firestore `(default)` 데이터베�
 
 ---
 
-### 게시 전 확정 필요 목록
+### 확정 이력
 
-- 법인/사업자 정식 명칭, 주소, 대표자, 개인정보 보호책임자
-- 게시 URL(privacyPolicyUrl)과 시행일
-- 국외 이전 대상·국가, 추가 위탁 대상
-- 감사로그 보존기간, 백업 삭제 SLA
-- 대상 연령·아동 정책
+| 항목 | 값 | 근거 |
+| --- | --- | --- |
+| 운영 주체 표기 | Seori Labs | 기존 lizard-tycoon 제품별 방침과 동일 표기 |
+| 게시 URL·시행일 | `/apps/cycle-pair/privacy/`, 2026-08-09 | seorilabs-official PR #5 |
+| 국외 이전 | 미국(Firestore `nam5`) | `firebase.json`, Firestore database 위치 |
+| 감사로그 보존 | `pairTombstones`는 계정 삭제 시 함께 삭제 | 구현 확인 결과 90일 만료가 없어 구현 기준으로 정정 |
+| 백업 삭제 SLA | 30일 | 사업 결정 |
+| 최소 연령 | 만 17세 | 사업 결정 |
+| en-US 번역본 | 완료 | `cyclePairPrivacyContent.en` |
+
+### 남은 확정 필요 목록
+
 - 민감 건강정보 별도 동의문 consent version 및 법률 검토(threat model 참조)
-- en-US 번역본
+- Pair를 해제만 하고 계정은 유지하는 경우 `pairTombstones`가 무기한 남는다. 계정 삭제로는 정리되지만, 별도 만료 정책을 둘지 검토가 필요하다.

@@ -7,7 +7,7 @@ import {promisify} from 'node:util';
 const execFileAsync = promisify(execFile);
 
 const OFFICIAL_KOREAN_NAME =
-  '사이클 페어 : 친구/연인과 함께 컨디션을 공유해요.';
+  '사이클 페어 : 내 기분, 주기, 컨디션을 알려요';
 
 async function json(path) {
   return JSON.parse(await readFile(path, 'utf8'));
