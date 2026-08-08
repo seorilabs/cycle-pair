@@ -6,7 +6,7 @@
 
 ## Google Play
 
-**앱 이름**: 사이클 페어 : 친구/연인과 함께 컨디션을 공유해요.
+**앱 이름**: 사이클 페어 : 내 기분, 주기, 컨디션을 알려요
 **짧은 설명(≤80자, ko)**: 생리주기와 오늘의 컨디션을 두 사람이 원하는 만큼만 나누는 커플 케어 앱
 **짧은 설명(en)**: Share your cycle and daily condition with one partner—only what you choose.
 
@@ -63,7 +63,7 @@ Cycle Pair helps someone who tracks their cycle and one close partner prepare to
 
 ## Apple App Store
 
-**앱 이름**: 사이클 페어 : 친구/연인과 함께 컨디션을 공유해요.
+**앱 이름**: 사이클 페어 : 내 기분, 주기, 컨디션을 알려요
 **부제(≤30자, ko)**: 함께 준비하는 우리의 주기  ／ (en) Prepare for the cycle together  *(config 기존값 유지)*
 
 **프로모션 텍스트(≤170자, ko)**:

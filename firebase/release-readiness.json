@@ -118,19 +118,19 @@
     }
   },
   "deployment": {
-    "status": "stale",
+    "status": "verified",
     "projectId": "seorilabs-cyclepair-prod",
     "region": "asia-northeast3",
-    "deployedAt": "2026-07-19T09:35:00Z",
-    "verifiedAt": "2026-07-19T09:35:00Z",
-    "evidence": "2026-07-19 단일 프로젝트 배포 이후 Functions 인증 정책 source가 변경되어 재배포 검증 필요",
-    "gitSha": "4aef38e2bd06095fbb43fd26523be0f24c224ed6",
+    "deployedAt": "2026-08-03T12:07:35Z",
+    "verifiedAt": "2026-08-09T13:55:00Z",
+    "evidence": "배포본과 현재 source 동일성 재검증. Firebase Rules API에서 cloud.firestore release가 ruleset 411004d9-0d7a-4f14-a1fe-53cfa59d82ea(createTime 2026-08-03T11:36:36Z)를 가리키고, 해당 ruleset source를 내려받아 firebase/firestore.rules와 byte 단위로 diff한 결과 차이 없음. Cloud Functions는 asia-northeast3에 24종이 배포돼 있고 index.ts export 24종과 이름이 정확히 일치하며 updateTime 최신값이 2026-08-03T12:07:35Z로 fingerprint 입력 파일의 마지막 변경 커밋 57c2a23(2026-08-03T12:00Z) 이후다. 57c2a23..HEAD 사이에 firebase.json, firestore.rules, firestore.indexes.json, functions source·manifest 변경이 없음을 git diff로 확인해 배포 소스와 현재 HEAD 소스가 동일함을 확정",
+    "gitSha": "57c2a23b65893b379e38c9e8651d3910232ea4b8",
     "source": {
       "algorithm": "sha256-deployment-source-v3",
       "firebaseConfigSha256": "dc73b8a1e9dc424b171a0bba194b755b5e4b4f9d019b07199f19a24fa4fa47b9",
-      "firestoreRulesSha256": "98d34d67fda559b7f62d93d1c85c8adf289155b26d572bd61f112c1d7b155924",
+      "firestoreRulesSha256": "c2500a020fe39804f7d588ea20b4fef1514d391247d6d6e75c4f5236215974da",
       "firestoreIndexesSha256": "235c6455eb6893ebc58e2ee9ffc17fed5f158d3e2553c01f643ec5f31217a875",
-      "functionsSha256": "f59ae529a42beec4ac993a0e926c6f09d339d44c3b68422b6fae5de364a6d234"
+      "functionsSha256": "55c09783717067148300330f054231f6d1be6c6abb1b3a8d1b4ec7650a5c7ecf"
     }
   }
 }

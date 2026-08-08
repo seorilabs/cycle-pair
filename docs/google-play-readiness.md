@@ -2,7 +2,7 @@
 
 현재 상태는 release candidate와 internal 업로드 경로가 준비됐으며 production 배포는 불가하다. 마켓 메타데이터 source of truth는 [google-play.config.json](../play-store/google-play.config.json), artifact·Console·수동 검증 evidence는 [readiness.json](../release/readiness.json)이다.
 
-한국어 출시 이름은 `사이클 페어 : 친구/연인과 함께 컨디션을 공유해요.`, 영어 출시 이름은 `Cycle Pair`, 영구 Android package name은 `com.seorilabs.cyclepair`로 확정했다. Play Console 앱 shell과 release signing은 아직 만들지 않았다.
+한국어 출시 이름은 `사이클 페어 : 내 기분, 주기, 컨디션을 알려요`, 영어 출시 이름은 `Cycle Pair`, 영구 Android package name은 `com.seorilabs.cyclepair`로 확정했다. Play Console 앱 shell과 release signing은 아직 만들지 않았다.
 
 Android `targetSdkVersion`은 36이다. 현재 API 35 최소 기준을 충족하며, 2026-08-31부터 적용되는 신규 앱·업데이트 API 36 기준에도 맞춘 값이다. 제출 시점에는 [Google 공식 요구사항](https://developer.android.com/google/play/requirements/target-sdk)을 다시 확인한다.
 
@@ -40,7 +40,7 @@ CI는 파일 대신 아래 환경변수를 사용할 수 있다. 값이나 keyst
 ## 확정된 내용
 
 - 앱 유형: app
-- 한국어 앱 이름: 사이클 페어 : 친구/연인과 함께 컨디션을 공유해요.
+- 한국어 앱 이름: 사이클 페어 : 내 기분, 주기, 컨디션을 알려요
 - 영어 앱 이름: Cycle Pair
 - package name: com.seorilabs.cyclepair
 - 기본 locale: ko-KR

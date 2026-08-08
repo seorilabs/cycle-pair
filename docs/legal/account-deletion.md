@@ -1,12 +1,12 @@
-# 사이클 페어 계정·데이터 삭제 안내 (초안)
+# 사이클 페어 계정·데이터 삭제 안내 (내부 근거 문서)
 
-> 상태: **초안 — 게시 전**. Google Play는 앱 밖에서도 접근 가능한 계정 삭제 안내 URL을 요구한다. 아래 내용을 검토·게시하고 `[확정 필요]` 항목을 채운다.
+> 상태: **게시본 작성 완료 — 배포 대기**. 게시본은 `seorilabs/seorilabs-official`의 `src/lib/cyclePairAccountDeletionContent.ts`이며 이 저장소 문서는 그 근거를 남기는 내부 문서다.
 > 절차 설명은 Cloud Functions 삭제 흐름(`beginAccountDeletion` → `deleteMyAccount` → 15분 scheduled finalizer, device-only receipt) 구현을 기준으로 작성했다.
 
 - 서비스명: 사이클 페어
-- 운영 주체: `[확정 필요: 법인/사업자 정식 명칭]`
+- 운영 주체: Seori Labs
 - 문의: cs@seorilabs.com
-- 게시 URL: `[확정 필요: accountDeletionUrl]`
+- 게시 URL: https://www.seorilabs.com/apps/cycle-pair/account-deletion/ (en: `/en/apps/cycle-pair/account-deletion/`)
 
 ## 앱에서 계정 삭제하기
 
@@ -15,7 +15,7 @@
 3. 보안을 위해 최근 로그인 재인증을 요청할 수 있다. 안내에 따라 재인증한다.
 4. 삭제를 확인하면 서버가 삭제를 시작하고, 완료 상태를 앱에서 확인할 수 있다.
 
-앱에 접근할 수 없는 경우 cs@seorilabs.com 으로 가입에 사용한 계정 식별정보와 함께 삭제를 요청할 수 있다. `[확정 필요: 앱 외 삭제 요청 처리 절차·본인확인 방식]`
+앱에 접근할 수 없는 경우 cs@seorilabs.com 으로 삭제를 요청할 수 있다. 요청 본문에는 가입 이메일 주소, 사용 기기, 대략적인 계정 생성 시점만 받고 건강 기록과 초대코드는 받지 않는다. 본인확인은 가입 이메일로 확인 메일을 보내 회신을 받는 방식으로 하며, 확인 후 삭제를 처리하고 결과를 회신한다.
 
 ## 삭제되는 데이터
 
@@ -28,20 +28,23 @@
 
 ## 유지될 수 있는 데이터와 기간
 
-- 법령상 보존이 필요한 최소 정보: `[확정 필요: 결제·전자상거래 관련 법정 보존 항목·기간]`
-- 백업에 잔존하는 데이터의 파기 SLA: `[확정 필요: 백업 삭제 SLA]`
-- 감사 목적의 비식별 tombstone 로그: `[확정 필요: 보존기간]`
+- 법령상 보존이 필요한 최소 정보: 구독 결제 기록은 전자상거래 등에서의 소비자보호에 관한 법률 등 관계 법령이 정한 기간 동안 보존한 뒤 삭제하거나 비식별화한다.
+- 백업에 잔존하는 데이터의 파기 SLA: 삭제 요청일로부터 30일.
+- `pairTombstones`: 계정 삭제 시 `accessBarrierPaths`에 포함되어 함께 삭제되므로 삭제 후 잔존하지 않는다.
 
 ## 처리 기간
 
-삭제 요청 후 통상 `[확정 필요: 처리 기간, 예: 즉시~30일]` 이내에 파기가 완료된다.
+앱 안에서 확인한 삭제는 온라인 상태에서 즉시 처리된다. 응답이 유실되어도 15분 주기 finalizer가 완료를 보장한다. 이메일 요청은 본인확인 완료 후 처리하며, 백업 잔존분까지 포함한 전체 파기는 요청일로부터 30일 이내에 완료된다.
 
 ---
 
-### 게시 전 확정 필요 목록
+### 확정 이력
 
-- 법인/사업자 정식 명칭, 게시 URL(accountDeletionUrl)
-- 앱 외 삭제 요청 채널의 본인확인·처리 절차
-- 법정 보존 항목·기간, 백업 삭제 SLA, tombstone 보존기간
-- 전체 처리 기간 문구
-- en-US 번역본
+| 항목 | 값 | 근거 |
+| --- | --- | --- |
+| 운영 주체 표기 | Seori Labs | 기존 babycare 계정 삭제 안내와 동일 표기 |
+| 게시 URL | `/apps/cycle-pair/account-deletion/` | seorilabs-official PR #5 |
+| 앱 외 요청 본인확인 | 가입 이메일 확인 메일 회신 | 사업 결정 |
+| 백업 삭제 SLA | 30일 | 사업 결정 |
+| tombstone | 계정 삭제 시 함께 삭제 | `index.ts` accessBarrierPaths |
+| en-US 번역본 | 완료 | `cyclePairAccountDeletionContent.en` |

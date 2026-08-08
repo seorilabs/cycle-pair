@@ -1,0 +1,44 @@
+name: Release Tag
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "tag 미지정 시 증가 단위"
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
+      tag:
+        description: "직접 지정할 SemVer 태그. 예: v1.2.3"
+        type: string
+        required: false
+        default: ""
+      target_ref:
+        description: "태그를 붙일 ref. 비우면 dispatch한 ref"
+        type: string
+        required: false
+        default: ""
+      dry_run:
+        description: "태그를 push하지 않고 계산만 확인"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-tag-${{ inputs.target_ref || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    uses: seorilabs/.github/.github/workflows/release-tag.yml@143458719a525a0a5da34cded4c1d7b8445b9f8b
+    secrets: inherit
+    with:
+      target_ref: ${{ inputs.target_ref || github.ref_name }}
+      tag: ${{ inputs.tag }}
+      bump: ${{ inputs.bump }}
+      dry_run: ${{ inputs.dry_run }}

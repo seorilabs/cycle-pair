@@ -7,15 +7,15 @@
   "appType": "app",
   "freeOrPaid": "free",
   "contactEmail": "cs@seorilabs.com",
-  "contactWebsite": "확정 필요 (seorilabs-official 공통)",
-  "privacyPolicyUrl": "확정 필요 (seorilabs-official 공통)",
+  "contactWebsite": "https://www.seorilabs.com/support/",
+  "privacyPolicyUrl": "https://www.seorilabs.com/apps/cycle-pair/privacy/",
   "workingName": {
-    "ko-KR": "사이클 페어 : 친구/연인과 함께 컨디션을 공유해요.",
+    "ko-KR": "사이클 페어 : 내 기분, 주기, 컨디션을 알려요",
     "en-US": "Cycle Pair"
   },
   "storeListing": {
     "appName": {
-      "ko-KR": "사이클 페어 : 친구/연인과 함께 컨디션을 공유해요.",
+      "ko-KR": "사이클 페어 : 내 기분, 주기, 컨디션을 알려요",
       "en-US": "Cycle Pair"
     },
     "shortDescription": {
@@ -47,12 +47,12 @@
     "ads": "no",
     "healthContent": "yes-cycle-and-condition-records",
     "fertilityOrContraception": "no",
-    "userGeneratedContent": "확정 필요-private-pair-notes-and-events",
+    "userGeneratedContent": "yes-private-pair-notes-and-events",
     "realtimeChat": "no",
     "dataSafety": "확정 필요",
     "dataSafetyCsv": "확정 필요",
     "contentRating": "확정 필요",
-    "targetAudience": "확정 필요",
+    "targetAudience": "age-17-plus-adults-only",
     "koreaDistribution": "확정 필요",
     "koreaGameRating": "not-applicable-app"
   },
@@ -61,7 +61,7 @@
     "sensitiveValuesInAnalytics": "no",
     "cyclePhaseInAnalytics": "no",
     "partnerSharing": "explicit-user-selected-projection-only",
-    "accountDeletionUrl": "확정 필요 (seorilabs-official 공통)"
+    "accountDeletionUrl": "https://www.seorilabs.com/apps/cycle-pair/account-deletion/"
   },
   "monetization": {
     "model": "premium-subscription",
@@ -97,11 +97,17 @@
       "play-store/assets/phone-2-sharing-1080x1920.png",
       "play-store/assets/phone-3-partner-1080x1920.png"
     ],
-    "sevenInchTabletScreenshots": [],
-    "tenInchTabletScreenshots": []
+    "sevenInchTabletScreenshots": [
+      "play-store/assets/tablet7-1-home-1080x1920.png",
+      "play-store/assets/tablet7-2-partner-1080x1920.png"
+    ],
+    "tenInchTabletScreenshots": [
+      "play-store/assets/tablet10-1-home-1440x2560.png",
+      "play-store/assets/tablet10-2-partner-1440x2560.png"
+    ]
   },
   "manualEvidence": {
-    "playConsoleApp": "확정 필요",
+    "playConsoleApp": "Android Publisher API v3 재조회(2026-08-09): edits.insert 성공으로 com.seorilabs.cyclepair 앱 존재 확인. tracks=production/beta/alpha/internal, details.defaultLanguage=ko-KR, contactEmail=cs@seorilabs.com, contactWebsite=https://www.seorilabs.com/support/. listings=ko-KR·en-US, ko-KR 자산 icon 1 / featureGraphic 1 / phone 3 / 7-inch 2 / 10-inch 2 반영. bundles=versionCode 1008(sha256 9363e064ee5b18583214feca239e82ae614b48541b74782b039871ea91661a5a)",
     "dataSafetyReview": "확정 필요",
     "contentRating": "확정 필요",
     "internalTwoPersonTest": "확정 필요",
