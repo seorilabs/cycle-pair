@@ -5,18 +5,21 @@
       "included": true,
       "status": "verified",
       "verifiedAt": "2026-07-14",
+      "reference": "repo:apps/mobile/android",
       "evidence": "Cycle Pair MVP Android native target"
     },
     "appStore": {
       "included": true,
       "status": "verified",
       "verifiedAt": "2026-07-14",
+      "reference": "repo:apps/mobile/ios",
       "evidence": "Cycle Pair MVP iOS native target"
     },
     "appsInToss": {
       "included": true,
       "status": "verified",
       "verifiedAt": "2026-08-02",
+      "reference": "repo:apps/ait",
       "evidence": "사용자 요청으로 AppsInToss build target을 포함. 로컬 컨디션 선택과 명시적 공유 slice부터 채택하며 전체 계정·Firebase·구독 parity는 정책 검토 후 별도 gate"
     }
   },
@@ -61,16 +64,19 @@
     "googlePlayApp": {
       "status": "verified",
       "verifiedAt": "2026-08-09T13:58:00Z",
+      "reference": "play:com.seorilabs.cyclepair",
       "evidence": "Android Publisher API v3 재조회(2026-08-09): edits.insert 성공으로 com.seorilabs.cyclepair 앱 존재 확인. tracks=production/beta/alpha/internal, details.defaultLanguage=ko-KR, contactEmail=cs@seorilabs.com, contactWebsite=https://www.seorilabs.com/support/. listings=ko-KR·en-US, ko-KR 자산 icon 1 / featureGraphic 1 / phone 3 / 7-inch 2 / 10-inch 2 반영. bundles=versionCode 1008(sha256 9363e064ee5b18583214feca239e82ae614b48541b74782b039871ea91661a5a)"
     },
     "appStoreConnectApp": {
       "status": "verified",
       "verifiedAt": "2026-07-29",
+      "reference": "asc:app/6792393652",
       "evidence": "App Store Connect API 재조회: app 6792393652, bundleId com.seorilabs.cyclepair"
     },
     "xcodeCloudProduct": {
       "status": "verified",
       "verifiedAt": "2026-07-29",
+      "reference": "asc:xcode-cloud-product/D071BF40-979E-4D7D-A7C5-2202072488D5",
       "evidence": "app 6792393652, product D071BF40-979E-4D7D-A7C5-2202072488D5, primary repo seorilabs/cycle-pair, workflow 6310D1DD-4A04-4E5C-8B17-B86D7A744D09 Cycle Pair Release, manual v* tag, APP_STORE_ELIGIBLE. Firebase secret은 등록됐고 build 1은 Firebase 복원 후 Bundler 4.0.6 미설치로 실패하여 hook 수정과 첫 정상 Archive 재검증 필요"
     },
     "appsInTossApp": {

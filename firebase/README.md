@@ -199,7 +199,7 @@ Google adapter는 service-account JSON을 앱이나 repo에 두지 않고 Cloud 
 
 Firestore native persistence는 민감한 partner projection이 일반 OS 캐시에 남지 않도록 모바일 어댑터에서 비활성화한다. 오프라인 데이터는 UID별 Keychain cache/queue에만 저장한다. Pair tombstone을 받으면 해당 Pair cache와 queued mutation을 먼저 지우고 ack한 뒤 남은 UID queue를 즉시 flush한다. 로그아웃·계정 삭제는 UID writer fence를 동기적으로 닫고 진행 중인 Keychain write와 backend mutation을 drain한 뒤 purge하므로 늦은 snapshot이나 flush가 삭제 데이터를 다시 만들 수 없다.
 
-`users/{uid}/privateCycles/current`는 앱 재실행 시 역할·동의·주기 입력을 복원하는 owner-only source of truth다. 주기를 기록하지 않는 역할도 같은 문서에 역할·동의만 저장하며 건강 날짜를 만들지 않는다. Pair별 공유 설정은 `shareSettings/{pairId}` 문서 존재 여부까지 포함해 서버에서 복원하며, 새 Pair에는 이전 Pair 설정을 승계하지 않는다.
+`users/{uid}/privateCycles/current`는 앱 재실행 시 역할·동의·주기 입력을 복원하는 owner-only source of truth다. 정식 동의 계약은 schema v2의 `consentVersion=2026-08-09-v1`이며, 기존 schema v1 자료는 읽기·내보내기를 위해 보존하지만 재동의 전 신규 건강정보 쓰기와 partner projection에는 사용하지 않는다. 주기를 기록하지 않는 역할도 같은 문서에 역할·동의만 저장하며 건강 날짜를 만들지 않는다. Pair별 공유 설정은 `shareSettings/{pairId}` 문서 존재 여부까지 포함해 서버에서 복원하며, 새 Pair에는 이전 Pair 설정을 승계하지 않는다.
 
 ## 로컬 검증
 

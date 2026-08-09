@@ -8,7 +8,7 @@ export default defineConfig({
   plugins: [
     appsInToss({
       brand: {
-        displayName: '사이클 페어 : 내 기분, 주기, 컨디션을 알려요',
+        displayName: '사이클 페어',
         primaryColor: '#76558F',
         // Console 앱 생성 후 업로드한 600x600 로고의 HTTPS URL로 교체한다.
         icon: 'https://placehold.co/600x600/76558F/FFFFFF.png?text=CP',

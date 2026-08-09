@@ -44,6 +44,7 @@ import { ActivePairSnapshotCoordinator } from './ActivePairSnapshotCoordinator';
 import { replayOfflineMutations } from './replayOfflineMutations';
 import { SerializedWriteQueue } from './SerializedWriteQueue';
 import { isFirebaseGuestUser } from '../account/FirebaseGuestIdentity';
+import { SENSITIVE_HEALTH_CONSENT_VERSION } from '../../domain/privacy/SensitiveHealthConsent';
 
 const FUNCTIONS_REGION = 'asia-northeast3';
 const CONDITION_CODES = new Set<BackendConditionCode>([
@@ -366,14 +367,19 @@ async function writePrivateSetup(
   uid: string,
   recordsCycle: boolean,
   consentAcceptedAt: string,
+  consentVersion: string,
   cycle?: PrivateCycleRecord,
 ): Promise<void> {
+  if (consentVersion !== SENSITIVE_HEALTH_CONSENT_VERSION) {
+    throw new Error('Current sensitive health consent is required.');
+  }
   await setDoc(doc(getFirestore(), 'users', uid, 'privateCycles', 'current'), {
     recordsCycle,
     consentAcceptedAt,
+    consentVersion,
     ...(recordsCycle && cycle ? cycle : {}),
     updatedAt: serverTimestamp(),
-    schemaVersion: 1,
+    schemaVersion: 2,
   });
 }
 
@@ -543,6 +549,7 @@ async function executeQueuedMutation(mutation: OfflineMutation): Promise<void> {
       mutation.uid,
       mutation.setup.recordsCycle,
       mutation.setup.consentAcceptedAt,
+      mutation.setup.consentVersion ?? '',
       mutation.setup.cycle,
     );
   } else if (mutation.type === 'share-settings') {
@@ -645,11 +652,13 @@ export const firebaseCyclePairBackend: CyclePairBackend = {
       const cycleData = asRecord(cycle.data());
       const consentAcceptedAt = asString(cycleData?.consentAcceptedAt);
       if (!consentAcceptedAt) return null;
+      const consentVersion = asString(cycleData?.consentVersion);
       const recordsCycle = cycleData?.recordsCycle === true;
       const parsedCycle = recordsCycle ? parseCycle(cycle.data()) : undefined;
       const setup = {
         recordsCycle,
         consentAcceptedAt,
+        ...(consentVersion ? { consentVersion } : {}),
         ...(parsedCycle ? { cycle: parsedCycle } : {}),
       };
       await secureCyclePairCache.saveSetup(uid, setup);
@@ -660,12 +669,22 @@ export const firebaseCyclePairBackend: CyclePairBackend = {
     }
   },
 
-  async savePrivateSetup(uid, recordsCycle, consentAcceptedAt, cycle) {
+  async savePrivateSetup(
+    uid,
+    recordsCycle,
+    consentAcceptedAt,
+    consentVersion,
+    cycle,
+  ) {
     return serializeMutationWrite(uid, async () => {
+      if (consentVersion !== SENSITIVE_HEALTH_CONSENT_VERSION) {
+        throw new Error('Current sensitive health consent is required.');
+      }
       const mutationId = 'private-setup-current';
       const setup = {
         recordsCycle,
         consentAcceptedAt,
+        consentVersion,
         ...(recordsCycle && cycle ? { cycle } : {}),
       };
       const mutation = {
@@ -692,7 +711,13 @@ export const firebaseCyclePairBackend: CyclePairBackend = {
             mutationId,
           };
         }
-        await writePrivateSetup(uid, recordsCycle, consentAcceptedAt, cycle);
+        await writePrivateSetup(
+          uid,
+          recordsCycle,
+          consentAcceptedAt,
+          consentVersion,
+          cycle,
+        );
         return { status: 'synced' as const, mutationId };
       } catch {
         await secureOfflineMutationQueue.enqueue(mutation);

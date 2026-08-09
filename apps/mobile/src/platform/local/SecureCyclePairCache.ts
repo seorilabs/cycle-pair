@@ -134,6 +134,12 @@ function isOptionalString(value: unknown, maxLength: number): boolean {
 function isPrivateSetup(value: unknown): value is PrivateSetupSnapshot {
   if (!isRecord(value) || typeof value.recordsCycle !== 'boolean') return false;
   if (!isIsoTimestamp(value.consentAcceptedAt)) return false;
+  if (
+    value.consentVersion !== undefined &&
+    !isString(value.consentVersion)
+  ) {
+    return false;
+  }
   if (value.cycle === undefined) return true;
   if (!value.recordsCycle || !isRecord(value.cycle)) return false;
   const periodDates = value.cycle.periodDates;

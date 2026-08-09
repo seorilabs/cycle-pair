@@ -27,9 +27,10 @@
       "en-US": "Cycle Pair helps someone who tracks their cycle and one close partner prepare together — sharing menstrual cycle and daily condition only as much as you allow. It is not a medical, diagnostic, or contraception tool.\n\nBuilt for two\n- A symmetric Pair of exactly two people who both accept the connection\n- Keep private records even before connecting\n\nYou control sharing\n- Log period start/end, symptoms, mood, condition, and help preferences\n- Turn sharing on or off per field; everything is private by default\n- Your partner sees only what you enable — originals stay yours\n\nPrepare together\n- See your next expected period as reference only (individual variation applies; not for medical or contraceptive decisions)\n- Shared calendar, anniversaries, and care tips centered on the help you ask for\n\nPrivacy first\n- Neutral lock-screen notifications that never reveal health details\n- No ads, no third-party tracking, no data sales\n- Export data, delete your account, or disconnect anytime"
     },
     "video": {
-      "ko-KR": "확정 필요",
-      "en-US": "확정 필요"
-    }
+      "ko-KR": null,
+      "en-US": null
+    },
+    "videoUsage": "not-used"
   },
   "category": {
     "primary": "Health & Fitness",
@@ -49,11 +50,13 @@
     "fertilityOrContraception": "no",
     "userGeneratedContent": "yes-private-pair-notes-and-events",
     "realtimeChat": "no",
-    "dataSafety": "확정 필요",
-    "dataSafetyCsv": "확정 필요",
-    "contentRating": "확정 필요",
+    "dataSafety": "prepared-pending-user-review-and-console-save",
+    "dataSafetyCsv": "play-store/policy/data-safety.csv",
+    "dataSafetyDeclaration": "play-store/policy/data-safety-declaration.json",
+    "contentRating": "non-game-health-wellness-questionnaire-pending-console-save",
     "targetAudience": "age-17-plus-adults-only",
-    "koreaDistribution": "확정 필요",
+    "distribution": "all-google-play-storefronts-including-korea-and-eu",
+    "koreaDistribution": "yes",
     "koreaGameRating": "not-applicable-app"
   },
   "privacy": {
@@ -61,7 +64,24 @@
     "sensitiveValuesInAnalytics": "no",
     "cyclePhaseInAnalytics": "no",
     "partnerSharing": "explicit-user-selected-projection-only",
-    "accountDeletionUrl": "https://www.seorilabs.com/apps/cycle-pair/account-deletion/"
+    "accountDeletionUrl": "https://www.seorilabs.com/apps/cycle-pair/account-deletion/",
+    "thirdPartySharing": "none",
+    "sharingBasis": {
+      "firebase": "service-provider",
+      "partnerProjection": "user-initiated-action-with-explicit-field-selection",
+      "systemShare": "user-initiated-operating-system-share-sheet"
+    },
+    "collectedDataTypes": [
+      "email-address",
+      "user-id",
+      "health-information",
+      "other-user-generated-content",
+      "purchase-history",
+      "app-interactions",
+      "crash-logs",
+      "diagnostics",
+      "device-or-other-ids"
+    ]
   },
   "monetization": {
     "model": "premium-subscription",
@@ -108,9 +128,9 @@
   },
   "manualEvidence": {
     "playConsoleApp": "Android Publisher API v3 재조회(2026-08-09): edits.insert 성공으로 com.seorilabs.cyclepair 앱 존재 확인. tracks=production/beta/alpha/internal, details.defaultLanguage=ko-KR, contactEmail=cs@seorilabs.com, contactWebsite=https://www.seorilabs.com/support/. listings=ko-KR·en-US, ko-KR 자산 icon 1 / featureGraphic 1 / phone 3 / 7-inch 2 / 10-inch 2 반영. bundles=versionCode 1008(sha256 9363e064ee5b18583214feca239e82ae614b48541b74782b039871ea91661a5a)",
-    "dataSafetyReview": "확정 필요",
-    "contentRating": "확정 필요",
-    "internalTwoPersonTest": "확정 필요",
-    "deploymentApproval": "확정 필요"
+    "dataSafetyReview": "missing: user review and Play Console save/readback required",
+    "contentRating": "missing: Play Console questionnaire save/readback required",
+    "internalTwoPersonTest": "missing: v0.1.9 build 1009 two-person device QA required",
+    "deploymentApproval": "missing: release deployment approval required"
   }
 }

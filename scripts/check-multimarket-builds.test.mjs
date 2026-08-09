@@ -13,7 +13,7 @@ async function json(path) {
   return JSON.parse(await readFile(path, 'utf8'));
 }
 
-test('Korean market title stays within Google Play limit and matches every display target', async () => {
+test('Korean market title and AppsInToss short brand stay within each market contract', async () => {
   const [
     rootPackage,
     mobileApp,
@@ -41,10 +41,10 @@ test('Korean market title stays within Google Play limit and matches every displ
     OFFICIAL_KOREAN_NAME
   );
   assert.equal(mobileApp.displayName, OFFICIAL_KOREAN_NAME);
-  assert.equal(aitConfig.workingName['ko-KR'], OFFICIAL_KOREAN_NAME);
+  assert.equal(aitConfig.workingName['ko-KR'], '사이클 페어');
   assert.match(
     graniteConfig,
-    new RegExp(OFFICIAL_KOREAN_NAME.replace('.', '\\.'))
+    /displayName:\s*'사이클 페어'/
   );
   assert.ok(
     androidStrings.includes(
@@ -105,6 +105,16 @@ test('Google Play build stays API 36, versioned, signed, and pnpm-safe for Herme
   const resolvedVersion = JSON.parse(stdout);
   assert.equal(resolvedVersion.version_name, '0.1.0');
   assert.equal(resolvedVersion.android_version_code, '1000');
+
+  const { stdout: currentStdout } = await execFileAsync(process.execPath, [
+    'scripts/resolve-release-version.mjs',
+    '--tag',
+    `v${mobilePackage.version}`,
+  ]);
+  const currentVersion = JSON.parse(currentStdout);
+  assert.equal(currentVersion.version_name, '0.1.9');
+  assert.equal(currentVersion.android_version_code, '1009');
+  assert.equal(currentVersion.apple_build_number, '1009');
 });
 
 test('AppsInToss target uses supported SDK and a build-only candidate workflow', async () => {

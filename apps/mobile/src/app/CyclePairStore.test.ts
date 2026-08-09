@@ -1,4 +1,5 @@
 import { createInitialState, reduceCyclePairState } from './CyclePairStore';
+import { SENSITIVE_HEALTH_CONSENT_VERSION } from '../domain/privacy/SensitiveHealthConsent';
 
 function localDateDaysAgo(count: number): string {
   const date = new Date();
@@ -192,6 +193,7 @@ describe('CyclePair pair privacy state', () => {
       payload: {
         isLogger: true,
         consentAcceptedAt: '2026-07-12T00:00:00.000Z',
+        consentVersion: SENSITIVE_HEALTH_CONSENT_VERSION,
       },
     });
     const afterPeriodStart = reduceCyclePairState(completed, {
@@ -220,11 +222,33 @@ describe('CyclePair pair privacy state', () => {
         isLogger: true,
         seed,
         consentAcceptedAt: '2026-07-12T00:00:00.000Z',
+        consentVersion: SENSITIVE_HEALTH_CONSENT_VERSION,
       },
     });
 
     expect(restored.hasCycleSeed).toBe(true);
     expect(restored.seed).toEqual(seed);
+  });
+
+  it('무버전 setup 데이터는 보존하되 재동의 전 setup 단계에 머문다', () => {
+    const seed = {
+      lastPeriodStart: '2026-07-01',
+      averageCycleLength: 31,
+      averagePeriodLength: 6,
+    };
+    const legacy = reduceCyclePairState(createInitialState(), {
+      type: 'RESTORE_PRIVATE_SETUP',
+      payload: {
+        isLogger: true,
+        seed,
+        consentAcceptedAt: '2026-07-12T00:00:00.000Z',
+      },
+    });
+
+    expect(legacy.stage).toBe('setup');
+    expect(legacy.seed).toEqual(seed);
+    expect(legacy.sensitiveDataConsentAcceptedAt).toBeUndefined();
+    expect(legacy.sensitiveDataConsentVersion).toBeUndefined();
   });
 
   it('keeps energy, condition, and note sharing disabled by default', () => {
@@ -267,6 +291,7 @@ describe('CyclePair pair privacy state', () => {
         isLogger: false,
         seed,
         consentAcceptedAt: '2026-07-12T00:00:00.000Z',
+        consentVersion: SENSITIVE_HEALTH_CONSENT_VERSION,
       },
     });
 
@@ -293,6 +318,7 @@ describe('CyclePair pair privacy state', () => {
       payload: {
         isLogger: true,
         consentAcceptedAt: '2026-07-12T00:00:00.000Z',
+        consentVersion: SENSITIVE_HEALTH_CONSENT_VERSION,
       },
     });
 
@@ -310,6 +336,7 @@ describe('CyclePair pair privacy state', () => {
         isLogger: true,
         seed: state.seed,
         consentAcceptedAt: '2026-07-12T00:00:00.000Z',
+        consentVersion: SENSITIVE_HEALTH_CONSENT_VERSION,
       },
     });
     state = reduceCyclePairState(state, {
@@ -334,6 +361,7 @@ describe('CyclePair pair privacy state', () => {
         isLogger: true,
         seed: state.seed,
         consentAcceptedAt: '2026-07-12T00:00:00.000Z',
+        consentVersion: SENSITIVE_HEALTH_CONSENT_VERSION,
       },
     });
 
@@ -358,6 +386,7 @@ describe('CyclePair pair privacy state', () => {
         isLogger: true,
         seed: state.seed,
         consentAcceptedAt: '2026-07-12T00:00:00.000Z',
+        consentVersion: SENSITIVE_HEALTH_CONSENT_VERSION,
       },
     });
     state = reduceCyclePairState(state, {
@@ -395,6 +424,7 @@ describe('CyclePair pair privacy state', () => {
         isLogger: true,
         seed: state.seed,
         consentAcceptedAt: '2026-07-12T00:00:00.000Z',
+        consentVersion: SENSITIVE_HEALTH_CONSENT_VERSION,
       },
     });
     state = reduceCyclePairState(state, {
@@ -425,6 +455,7 @@ describe('CyclePair pair privacy state', () => {
       payload: {
         isLogger: true,
         consentAcceptedAt: '2026-07-12T00:00:00.000Z',
+        consentVersion: SENSITIVE_HEALTH_CONSENT_VERSION,
       },
     });
     state = reduceCyclePairState(state, {
@@ -477,6 +508,7 @@ describe('CyclePair pair privacy state', () => {
         isLogger: true,
         seed: state.seed,
         consentAcceptedAt: '2026-07-12T00:00:00.000Z',
+        consentVersion: SENSITIVE_HEALTH_CONSENT_VERSION,
       },
     });
     state = reduceCyclePairState(state, {
@@ -508,6 +540,7 @@ describe('CyclePair pair privacy state', () => {
         isLogger: true,
         seed: state.seed,
         consentAcceptedAt: '2026-07-12T00:00:00.000Z',
+        consentVersion: SENSITIVE_HEALTH_CONSENT_VERSION,
       },
     });
     state = reduceCyclePairState(state, {
@@ -531,6 +564,7 @@ describe('CyclePair pair privacy state', () => {
         isLogger: true,
         seed: state.seed,
         consentAcceptedAt: '2026-07-12T00:00:00.000Z',
+        consentVersion: SENSITIVE_HEALTH_CONSENT_VERSION,
       },
     });
 
@@ -548,6 +582,7 @@ describe('CyclePair pair privacy state', () => {
         isLogger: true,
         seed: state.seed,
         consentAcceptedAt: '2026-07-12T00:00:00.000Z',
+        consentVersion: SENSITIVE_HEALTH_CONSENT_VERSION,
       },
     });
     state = reduceCyclePairState(state, {

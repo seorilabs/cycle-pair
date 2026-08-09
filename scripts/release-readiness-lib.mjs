@@ -51,6 +51,21 @@ function containsUnknown(value) {
   return value !== null && JSON.stringify(value).includes(UNKNOWN_MARKER);
 }
 
+function hasRequeryReference(entry) {
+  return (
+    (typeof entry?.reference === "string" &&
+      entry.reference.trim().length > 0) ||
+    (typeof entry?.url === "string" && entry.url.trim().length > 0) ||
+    (typeof entry?.projectId === "string" &&
+      entry.projectId.trim().length > 0) ||
+    (typeof entry?.gitSha === "string" && entry.gitSha.trim().length > 0) ||
+    (typeof entry?.path === "string" &&
+      entry.path.trim().length > 0 &&
+      typeof entry?.sha256 === "string" &&
+      /^[a-f0-9]{64}$/i.test(entry.sha256))
+  );
+}
+
 function hasAuditEvidence(entry, { allowNotApplicable = true } = {}) {
   const acceptedStatuses = allowNotApplicable
     ? VERIFIED_EVIDENCE_STATUSES
@@ -61,8 +76,35 @@ function hasAuditEvidence(entry, { allowNotApplicable = true } = {}) {
     typeof entry?.evidence === "string" &&
     entry.evidence.trim().length > 0 &&
     typeof entry?.verifiedAt === "string" &&
-    Number.isFinite(Date.parse(entry.verifiedAt))
+    Number.isFinite(Date.parse(entry.verifiedAt)) &&
+    (entry.status === "not-applicable" || hasRequeryReference(entry))
   );
+}
+
+function hasPlaintextReviewCredential(value) {
+  if (!value || typeof value !== "object") return false;
+  if (Array.isArray(value)) return value.some(hasPlaintextReviewCredential);
+  return Object.entries(value).some(
+    ([key, nested]) =>
+      ["username", "password"].includes(key.toLowerCase()) ||
+      hasPlaintextReviewCredential(nested)
+  );
+}
+
+function appReviewCredentialBlockers(review) {
+  const blockers = [];
+  if (hasPlaintextReviewCredential(review)) {
+    blockers.push("App Review 평문 계정 필드 사용 금지");
+  }
+  if (
+    !hasAuditEvidence(review?.credentials, { allowNotApplicable: false }) ||
+    !hasAuditEvidence(review?.credentials?.loginSmoke, {
+      allowNotApplicable: false,
+    })
+  ) {
+    blockers.push("App Review credential reference와 로그인 smoke evidence 없음");
+  }
+  return blockers;
 }
 
 async function sha256File(root, relativePath) {
@@ -1618,6 +1660,9 @@ export async function evaluateReleaseReadiness(root) {
         "App Store bundleId와 Xcode PRODUCT_BUNDLE_IDENTIFIER 불일치"
       );
     }
+    appStoreBlockers.push(
+      ...appReviewCredentialBlockers(appStoreConfig?.review)
+    );
     appStoreBlockers.push(
       ...(await appStoreArtifactBlockers(
         root,

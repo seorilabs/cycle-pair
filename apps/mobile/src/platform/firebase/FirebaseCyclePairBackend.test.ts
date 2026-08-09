@@ -40,6 +40,7 @@ import {
 
 import { secureOfflineMutationQueue } from '../local/SecureOfflineMutationQueue';
 import { firebaseCyclePairBackend } from './FirebaseCyclePairBackend';
+import { SENSITIVE_HEALTH_CONSENT_VERSION } from '../../domain/privacy/SensitiveHealthConsent';
 
 const onSnapshotMock = onSnapshot as jest.MockedFunction<typeof onSnapshot>;
 const deleteDocMock = deleteDoc as jest.MockedFunction<typeof deleteDoc>;
@@ -106,6 +107,41 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
 
   afterEach(async () => {
     await secureOfflineMutationQueue.clearUser(uid);
+  });
+
+  it('현재 동의 버전만 schema v2 setup으로 저장한다', async () => {
+    await expect(
+      firebaseCyclePairBackend.savePrivateSetup(
+        uid,
+        false,
+        '2026-08-09T00:00:00.000Z',
+        SENSITIVE_HEALTH_CONSENT_VERSION,
+      ),
+    ).resolves.toEqual({
+      status: 'synced',
+      mutationId: 'private-setup-current',
+    });
+
+    expect(setDocMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        schemaVersion: 2,
+        consentVersion: SENSITIVE_HEALTH_CONSENT_VERSION,
+      }),
+    );
+  });
+
+  it('무버전 동의를 신규 setup 저장 권한으로 승계하지 않는다', async () => {
+    await expect(
+      firebaseCyclePairBackend.savePrivateSetup(
+        uid,
+        false,
+        '2026-07-14T00:00:00.000Z',
+        '',
+      ),
+    ).rejects.toThrow('Current sensitive health consent is required.');
+    expect(setDocMock).not.toHaveBeenCalled();
+    await expect(secureOfflineMutationQueue.list(uid)).resolves.toEqual([]);
   });
 
   it('권한 오류가 발생해도 유효한 민감 기록을 암호화 큐에 보존한다', async () => {

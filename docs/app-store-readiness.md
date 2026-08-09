@@ -20,12 +20,15 @@ GitHub macOS runner는 사용하지 않는다. App Store Connect API가 `v*` tag
 - 영어 앱 이름: Cycle Pair
 - bundle ID: com.seorilabs.cyclepair
 - 기본 locale: ko-KR
-- primary category 후보: Health & Fitness
+- primary category: Health & Fitness
 - 광고·tracking: 없음
 - 로그인: 필요
 - 건강 기록과 사용자 선택형 partner projection: 있음
 - 가임기·피임 표시, 채팅, 공개 커뮤니티: 없음
-- 파트너에게 선택적으로 공유할 수 있는 메모·공동 일정의 UGC 설문 분류는 확정 필요
+- 비공개 메모·공동 일정은 실제 기능 설문에 반영
+- App Privacy: 이메일·User ID·Health & Fitness·Purchases는 linked, 동의형 Usage Data·Diagnostics는 not linked, tracking no
+- export compliance: 표준 TLS/Firebase 전송만 사용하므로 non-exempt encryption false
+- EU 포함 구독 사업이므로 DSA trader로 준비하며 공개 전화번호·증빙은 저장소에 두지 않음
 - TestFlight는 서로 다른 계정·기기 두 명으로 검증
 - Xcode Cloud: `Cycle Pair Release`
   (`6310D1DD-4A04-4E5C-8B17-B86D7A744D09`), 수동 `v*` tag,
@@ -41,13 +44,13 @@ GitHub macOS runner는 사용하지 않는다. App Store Connect API가 `v*` tag
   바뀌지 않아 실패해 `CONFIGURE_ARGS --with-arch_flag`로 compile·link 고정
 - 새 hook으로 `pod install` 및 코드 서명 없는 Release iphoneos 로컬 빌드 성공
 
-## App Privacy 초안
+## App Privacy 답변안
 
-실제 Firebase SDK, 로그인 방식, 구독 구현을 기준으로 App Store Connect에서 다시 검토한다.
+실제 Firebase SDK, 로그인 방식, 구독 구현 기준 선언은 `app-store/app-store.config.json`을 source of truth로 한다. 사용자 검토 뒤 Console에 저장하고 readback evidence를 남긴다.
 
 | 데이터 유형 후보 | 목적 | tracking |
 | --- | --- | --- |
-| User ID | 인증·Pair 연결 | no |
+| Email Address, User ID | 인증·Pair 연결 | no |
 | Health | 주기·컨디션 기록과 명시적 공유 | no |
 | Purchases | entitlement | no |
 | Product Interaction | 비민감 퍼널 분석 | no |
@@ -63,11 +66,11 @@ Health 데이터 공유는 사용자 제어 기능의 본질이므로 review not
 - [x] App Store Connect 앱 shell
 - [x] Xcode Cloud workflow 생성 및 API trigger 계약 구성
 - [x] Xcode Cloud secret `FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64`
-- [ ] support URL, privacy policy URL
+- [x] support URL, privacy policy URL 게시
 - [ ] 앱 개인정보 답변
 - [ ] 연령등급
 - [ ] DSA trader 상태와 공개 연락처
-- [ ] export compliance 최종 답변
+- [x] export compliance 답변안: non-exempt encryption false
 - [ ] 심사 연락처 전화번호와 로그인 review 계정
 - [ ] 구독 product ID, 가격, 혜택
 - [ ] 실제 iPhone screenshots

@@ -583,9 +583,10 @@ try {
   const dailyPath =
     `users/${created.alice.uid}/privateDailyLogs/${created.dailyLocalDate}`;
   const cycleFields = cyclePhase => ({
-    schemaVersion: 1,
+    schemaVersion: 2,
     recordsCycle: true,
     consentAcceptedAt: new Date().toISOString(),
+    consentVersion: '2026-08-09-v1',
     asOfDate,
     averageCycleLength: 28,
     averagePeriodLength: 5,

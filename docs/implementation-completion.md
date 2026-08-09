@@ -2,7 +2,7 @@
 
 ## 상태
 
-- 기준일: 2026-07-14
+- 기준일: 2026-08-09
 - 목표: 부분 구현 또는 정적 UI로 남은 MVP 기능을 실제 모바일·Firebase 동작으로 완성
 - 범위: Google Play·App Store용 `apps/mobile`, 공통 Firebase backend, AppsInToss 최소 로컬 공유 slice와 독립 빌드 타깃
 - 제외 유지: 다중 파트너, 실시간 채팅, 광고, 가임기·배란·피임 기능, E2E 암호화, AppsInToss의 계정·Firebase·알림·구독 parity와 콘솔 배포. AppsInToss 최소 로컬 공유 slice와 빌드 타깃은 별도 구현
@@ -23,8 +23,8 @@
 | Analytics·Crashlytics | 구현됨 | allowlist schema·scrubber unit tests | DebugView·non-fatal 실기기 smoke와 최종 privacy 공개 |
 | App Check | 클라이언트 구현됨 | dependency·환경 fail-closed·provider 선택 unit/static tests | production provider 등록, Firestore/Callable 강제 live evidence, 양 OS 실기기 token smoke |
 | 구독 | 구현됨, 판매 flag `false` | Play/Apple adapter, server-only entitlement, RTDN/Notifications V2 Functions tests | 양대 콘솔 상품·secret·webhook, sandbox 구매/복원 |
-| AppsInToss | 최소 slice 구현됨 | SDK 2.x RN 0.84 + TDS, 로컬 컨디션·도움 선호 선택, 공식 공유 화면, lint·typecheck·unit·`.ait` build | 영구 `appName`, 정책 검토, 정식 자산, 콘솔 등록, sandbox QA. Firebase·Pair·알림·구독 parity는 별도 범위 |
-| CI·release checker | 작성됨 | 로컬 action 버전·구조 검사, production evidence·실제 artifact verifier·git provenance 회귀 포함 release checker 31 tests | workflow commit/push 후 HEAD check run·required check 설정 |
+| AppsInToss | 최소 slice 구현됨 | SDK 2.x RN 0.84 + TDS, 영구 `cycle-pair` config, 로컬 컨디션·도움 선호 선택, 공식 공유 화면, lint·typecheck·unit·`.ait` build smoke | 정책 검토, 정식 icon URL, 실화면 썸네일·스크린샷, Console 등록, sandbox QA. Firebase·Pair·알림·구독 parity는 별도 범위 |
+| CI·release checker | 작성됨 | 로컬 action 버전·구조 검사, production evidence·실제 artifact verifier·git provenance·App Review credential 회귀 포함 release checker 56 tests | workflow commit/push 후 HEAD check run·required check 설정 |
 
 ## 구현 불변식
 

@@ -16,6 +16,7 @@ jest.mock('react-native-keychain', () => ({
 import * as Keychain from 'react-native-keychain';
 
 import { secureCyclePairCache } from './SecureCyclePairCache';
+import { SENSITIVE_HEALTH_CONSENT_VERSION } from '../../domain/privacy/SensitiveHealthConsent';
 
 interface MockCredential {
   readonly username: string;
@@ -64,6 +65,7 @@ describe('secureCyclePairCache', () => {
     const setup = {
       recordsCycle: true,
       consentAcceptedAt: '2026-07-14T00:00:00.000Z',
+      consentVersion: SENSITIVE_HEALTH_CONSENT_VERSION,
       cycle: {
         asOfDate: '2026-07-14',
         averageCycleLength: 28,
@@ -158,6 +160,7 @@ describe('secureCyclePairCache', () => {
     const setup = {
       recordsCycle: true,
       consentAcceptedAt: '2026-07-14T00:00:00.000Z',
+      consentVersion: SENSITIVE_HEALTH_CONSENT_VERSION,
     };
 
     await secureCyclePairCache.saveSetup('user-a', setup);
@@ -181,6 +184,7 @@ describe('secureCyclePairCache', () => {
     await secureCyclePairCache.saveSetup('user-a', {
       recordsCycle: false,
       consentAcceptedAt: '2026-07-14T00:00:00.000Z',
+      consentVersion: SENSITIVE_HEALTH_CONSENT_VERSION,
     });
     await secureCyclePairCache.saveMembership('user-a', membership);
     await secureCyclePairCache.savePairEvents('user-a', 'pair-a', [event]);

@@ -13,6 +13,10 @@ import {
   ToggleRow,
 } from '../components/Ui';
 import { colors, radius, spacing } from '../theme';
+import {
+  hasCurrentSensitiveHealthConsent,
+  SENSITIVE_HEALTH_CONSENT_VERSION,
+} from '../domain/privacy/SensitiveHealthConsent';
 
 function shiftDate(value: string, days: number): string {
   const [year, month, day] = value.split('-').map(Number);
@@ -45,11 +49,17 @@ export function SetupScreen() {
   const [hasCycleSeed, setHasCycleSeed] = useState(state.hasCycleSeed);
   const [seed, setSeed] = useState<CycleSeed>(state.seed);
   const [consentAccepted, setConsentAccepted] = useState(
-    Boolean(state.sensitiveDataConsentAcceptedAt),
+    hasCurrentSensitiveHealthConsent(
+      state.sensitiveDataConsentAcceptedAt,
+      state.sensitiveDataConsentVersion,
+    ),
   );
   const [saveAttempted, setSaveAttempted] = useState(false);
   const submittingRef = useRef(false);
-  const roleLocked = Boolean(state.sensitiveDataConsentAcceptedAt);
+  const roleLocked = hasCurrentSensitiveHealthConsent(
+    state.sensitiveDataConsentAcceptedAt,
+    state.sensitiveDataConsentVersion,
+  );
   const today = localToday();
   const hasFutureStartDate =
     isLogger && hasCycleSeed && seed.lastPeriodStart > today;
@@ -70,6 +80,7 @@ export function SetupScreen() {
         isLogger,
         ...(isLogger && hasCycleSeed ? { seed } : {}),
         consentAcceptedAt: new Date().toISOString(),
+        consentVersion: SENSITIVE_HEALTH_CONSENT_VERSION,
       });
     } finally {
       submittingRef.current = false;
@@ -262,9 +273,9 @@ export function SetupScreen() {
             민감정보 처리 원칙을 확인했어요
           </Text>
           <Text style={styles.consentBody}>
-            주기·컨디션은 본인 기록과 예측, 직접 선택한 공유에만 사용하며 언제든
-            공유 철회·삭제할 수 있어요. 정식 동의문은 출시 전 법률 검토가
-            필요해요.
+            동의 버전 {SENSITIVE_HEALTH_CONSENT_VERSION}. 주기·컨디션은 본인
+            기록과 예측, 직접 선택한 공유에만 사용하며 언제든 공유 철회·삭제할 수
+            있어요. 민감 건강정보는 이 동의가 유효한 동안에만 새로 저장합니다.
           </Text>
         </View>
       </Pressable>

@@ -26,6 +26,7 @@ import {
   type UpsertPairEventOfflineMutation,
   secureOfflineMutationQueue,
 } from './SecureOfflineMutationQueue';
+import { SENSITIVE_HEALTH_CONSENT_VERSION } from '../../domain/privacy/SensitiveHealthConsent';
 
 interface MockCredential {
   readonly username: string;
@@ -98,6 +99,7 @@ function setupMutation(
     setup: {
       recordsCycle: true,
       consentAcceptedAt: '2026-07-14T00:00:00.000Z',
+      consentVersion: SENSITIVE_HEALTH_CONSENT_VERSION,
       cycle: {
         asOfDate: '2026-07-14',
         averageCycleLength: 28,
@@ -209,6 +211,33 @@ beforeEach(() => {
 });
 
 describe('secureOfflineMutationQueue', () => {
+  it('무버전 setup은 보존하고 같은 ID의 재동의 setup으로 교체한다', async () => {
+    const legacy = setupMutation({
+      setup: {
+        recordsCycle: false,
+        consentAcceptedAt: '2026-07-14T00:00:00.000Z',
+      },
+    });
+    await secureOfflineMutationQueue.enqueue(legacy);
+
+    await expect(secureOfflineMutationQueue.list(legacy.uid)).resolves.toEqual([
+      legacy,
+    ]);
+
+    const current = setupMutation({
+      setup: {
+        recordsCycle: false,
+        consentAcceptedAt: '2026-08-09T00:00:00.000Z',
+        consentVersion: SENSITIVE_HEALTH_CONSENT_VERSION,
+      },
+    });
+    await secureOfflineMutationQueue.enqueue(current);
+
+    await expect(secureOfflineMutationQueue.list(current.uid)).resolves.toEqual([
+      current,
+    ]);
+  });
+
   it('민감 mutation을 기기 한정 Keychain/Keystore 옵션으로 저장한다', async () => {
     const mutation = dailyMutation();
 

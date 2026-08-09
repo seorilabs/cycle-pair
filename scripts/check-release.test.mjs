@@ -369,6 +369,7 @@ async function readJsonFixture(root, relativePath) {
 function verified(evidence = "deterministic fixture") {
   return {
     status: "verified",
+    reference: "fixture:deterministic-evidence",
     verifiedAt: "2026-07-14T00:00:00Z",
     evidence,
   };
@@ -547,6 +548,12 @@ echo "GoogleService-Info.plist"
   await write(root, "app-store/app-store.config.json", {
     bundleId: "com.seorilabs.cyclepair",
     appleTeamId: "FIXTURETEAM",
+    review: {
+      credentials: {
+        ...verified("fixture credential reference"),
+        loginSmoke: verified("fixture login smoke"),
+      },
+    },
   });
   await write(root, "apps-in-toss/apps-in-toss.config.json", {
     appName: "cycle-pair",
@@ -729,6 +736,83 @@ export const value = 1;
   });
 }
 
+test("App Review 평문 비밀번호 필드를 거부한다", async (t) => {
+  const root = await mkdtemp(
+    path.join(tmpdir(), "cyclepair-release-review-plaintext-")
+  );
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await createReadyFixture(root);
+  const readiness = await readJsonFixture(root, "release/readiness.json");
+  readiness.targetMarkets.appStore = { included: true, ...verified() };
+  await write(root, "release/readiness.json", readiness);
+  const config = await readJsonFixture(
+    root,
+    "app-store/app-store.config.json"
+  );
+  config.review.password = "repository-plaintext-must-fail";
+  await write(root, "app-store/app-store.config.json", config);
+
+  const result = await evaluateReleaseReadiness(root);
+  const appStore = result.sections.find(
+    (section) => section.market === "App Store"
+  );
+  assert.ok(
+    appStore.blockers.includes("App Review 평문 계정 필드 사용 금지")
+  );
+});
+
+test("App Review credential 하위의 평문 username도 거부한다", async (t) => {
+  const root = await mkdtemp(
+    path.join(tmpdir(), "cyclepair-release-review-nested-plaintext-")
+  );
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await createReadyFixture(root);
+  const readiness = await readJsonFixture(root, "release/readiness.json");
+  readiness.targetMarkets.appStore = { included: true, ...verified() };
+  await write(root, "release/readiness.json", readiness);
+  const config = await readJsonFixture(
+    root,
+    "app-store/app-store.config.json"
+  );
+  config.review.credentials.username = "repository-plaintext-must-fail";
+  await write(root, "app-store/app-store.config.json", config);
+
+  const result = await evaluateReleaseReadiness(root);
+  const appStore = result.sections.find(
+    (section) => section.market === "App Store"
+  );
+  assert.ok(
+    appStore.blockers.includes("App Review 평문 계정 필드 사용 금지")
+  );
+});
+
+test("App Review credential reference만 있고 로그인 smoke가 없으면 차단한다", async (t) => {
+  const root = await mkdtemp(
+    path.join(tmpdir(), "cyclepair-release-review-smoke-")
+  );
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await createReadyFixture(root);
+  const readiness = await readJsonFixture(root, "release/readiness.json");
+  readiness.targetMarkets.appStore = { included: true, ...verified() };
+  await write(root, "release/readiness.json", readiness);
+  const config = await readJsonFixture(
+    root,
+    "app-store/app-store.config.json"
+  );
+  config.review.credentials.loginSmoke = missing();
+  await write(root, "app-store/app-store.config.json", config);
+
+  const result = await evaluateReleaseReadiness(root);
+  const appStore = result.sections.find(
+    (section) => section.market === "App Store"
+  );
+  assert.ok(
+    appStore.blockers.includes(
+      "App Review credential reference와 로그인 smoke evidence 없음"
+    )
+  );
+});
+
 test("모든 실제 evidence가 일치하면 ready를 계산한다", async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), "cyclepair-release-ready-"));
   t.after(() => rm(root, { recursive: true, force: true }));
@@ -749,6 +833,26 @@ test("모든 실제 evidence가 일치하면 ready를 계산한다", async (t) =
   assert.ok(result.sourceFingerprints.firebase.firestoreRules);
   assert.ok(result.sourceFingerprints.firebase.firestoreIndexes);
   assert.ok(result.sourceFingerprints.firebase.functions);
+});
+
+test("verified 문구만 있고 재조회 reference가 없으면 evidence로 인정하지 않는다", async (t) => {
+  const root = await mkdtemp(
+    path.join(tmpdir(), "cyclepair-release-evidence-reference-")
+  );
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await createReadyFixture(root);
+  const readiness = await readJsonFixture(root, "release/readiness.json");
+  delete readiness.targetMarkets.googlePlay.reference;
+  readiness.targetMarkets.googlePlay.evidence = "준비할 계획만 기록";
+  await write(root, "release/readiness.json", readiness);
+
+  const result = await evaluateReleaseReadiness(root);
+  const googlePlay = result.sections.find(
+    (section) => section.market === "Google Play"
+  );
+  assert.ok(
+    googlePlay.blockers.includes("Google Play target market 결정 evidence 없음")
+  );
 });
 
 test("Android 동적 versionName의 기본값을 package version과 대조한다", async (t) => {
