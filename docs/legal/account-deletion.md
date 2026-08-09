@@ -1,6 +1,6 @@
 # 사이클 페어 계정·데이터 삭제 안내 (내부 근거 문서)
 
-> 상태: **게시본 작성 완료 — 배포 대기**. 게시본은 `seorilabs/seorilabs-official`의 `src/lib/cyclePairAccountDeletionContent.ts`이며 이 저장소 문서는 그 근거를 남기는 내부 문서다.
+> 상태: **게시 확인**. 게시본은 `seorilabs/seorilabs-official`의 `src/lib/cyclePairAccountDeletionContent.ts`이며 이 저장소 문서는 그 근거를 남기는 내부 문서다. 배포 commit `48882bcf1ef054212f64157e92be2fc6db984436`, ko/en URL의 HTTP 200을 2026-08-09T08:29:02Z에 재확인했다.
 > 절차 설명은 Cloud Functions 삭제 흐름(`beginAccountDeletion` → `deleteMyAccount` → 15분 scheduled finalizer, device-only receipt) 구현을 기준으로 작성했다.
 
 - 서비스명: 사이클 페어

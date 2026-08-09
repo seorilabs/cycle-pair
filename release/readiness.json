@@ -104,14 +104,32 @@
   },
   "privacy": {
     "privacyPolicy": {
-      "status": "missing",
-      "verifiedAt": null,
-      "evidence": null
+      "status": "verified",
+      "verifiedAt": "2026-08-09T08:29:02Z",
+      "reference": "github:seorilabs/seorilabs-official@48882bcf1ef054212f64157e92be2fc6db984436",
+      "url": "https://www.seorilabs.com/apps/cycle-pair/privacy/",
+      "urls": [
+        "https://www.seorilabs.com/apps/cycle-pair/privacy/",
+        "https://www.seorilabs.com/en/apps/cycle-pair/privacy/"
+      ],
+      "gitSha": "48882bcf1ef054212f64157e92be2fc6db984436",
+      "sourcePath": "src/lib/cyclePairPrivacyContent.ts",
+      "sourceBlobSha": "076f05472f9a90178cd93254b0f21522bb3a507c",
+      "evidence": "seorilabs-official 배포 source와 내부 문서를 대조하고 ko/en 개인정보처리방침 URL의 HTTP 200, 시행일 2026-08-09, owner-private 원본과 선택형 projection, 백업 삭제 30일 내용을 재확인"
     },
     "accountDeletionPage": {
-      "status": "missing",
-      "verifiedAt": null,
-      "evidence": null
+      "status": "verified",
+      "verifiedAt": "2026-08-09T08:29:02Z",
+      "reference": "github:seorilabs/seorilabs-official@48882bcf1ef054212f64157e92be2fc6db984436",
+      "url": "https://www.seorilabs.com/apps/cycle-pair/account-deletion/",
+      "urls": [
+        "https://www.seorilabs.com/apps/cycle-pair/account-deletion/",
+        "https://www.seorilabs.com/en/apps/cycle-pair/account-deletion/"
+      ],
+      "gitSha": "48882bcf1ef054212f64157e92be2fc6db984436",
+      "sourcePath": "src/lib/cyclePairAccountDeletionContent.ts",
+      "sourceBlobSha": "2f03fcbed5d5b7208a806c6f56c044b33f945caa",
+      "evidence": "seorilabs-official 배포 source와 내부 문서를 대조하고 ko/en 계정삭제 URL의 HTTP 200, 앱과 이메일 삭제 경로, 15분 finalizer, 백업 삭제 30일 내용을 재확인"
     },
     "sensitiveHealthConsent": {
       "status": "missing",

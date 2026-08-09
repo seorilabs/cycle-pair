@@ -1,6 +1,6 @@
 # 사이클 페어 개인정보처리방침 (내부 근거 문서)
 
-> 상태: **게시본 작성 완료 — 배포 대기**. 게시본은 `seorilabs/seorilabs-official`의 `src/lib/cyclePairPrivacyContent.ts`이며 이 저장소 문서는 그 근거를 남기는 내부 문서다.
+> 상태: **게시 확인**. 게시본은 `seorilabs/seorilabs-official`의 `src/lib/cyclePairPrivacyContent.ts`이며 이 저장소 문서는 그 근거를 남기는 내부 문서다. 배포 commit `48882bcf1ef054212f64157e92be2fc6db984436`, ko/en URL의 HTTP 200을 2026-08-09T08:29:02Z에 재확인했다.
 > 게시본과 이 문서가 어긋나면 게시본을 기준으로 이 문서를 갱신한다. 실제 구현과 어긋나면 둘 다 구현 기준으로 갱신한다.
 > 이 문서는 저장소에 문서화된 실제 데이터 처리 실태(`docs/security-threat-model.md`, `docs/google-play-readiness.md`, `docs/app-store-readiness.md`, Firebase Rules·Functions source)에서 파생했다.
 
