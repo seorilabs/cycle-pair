@@ -5,15 +5,42 @@
   "scaffoldStatus": "implemented",
   "adoptionDecision": "approved-for-build-release-pending-policy-review",
   "appName": "cycle-pair",
-  "appNameStatus": "provisional-console-match-required",
+  "appNameStatus": "approved-awaiting-console-registration",
   "workingName": {
-    "ko-KR": "사이클 페어 : 내 기분, 주기, 컨디션을 알려요",
+    "ko-KR": "사이클 페어",
     "en-US": "Cycle Pair"
   },
+  "appType": "NON_GAME",
   "subtitle": "함께 준비하는 우리의 주기",
-  "category": "확정 필요",
+  "detailDescription": "오늘의 컨디션과 원하는 도움을 미리 정해진 항목에서 직접 고르고 공유 화면에서 받을 사람과 내용을 확인해 전달해요. 선택 내용은 이 기기에 당일만 보관하며 주기 날짜와 자유 텍스트는 다루지 않아요.",
+  "searchKeywords": [
+    "컨디션",
+    "기분",
+    "공유",
+    "배려",
+    "건강",
+    "웰니스"
+  ],
+  "category": {
+    "group": {
+      "id": 7,
+      "name": "생활"
+    },
+    "category": {
+      "id": 3804,
+      "name": "건강"
+    },
+    "subCategory": {
+      "id": 2,
+      "name": "건강 관리"
+    },
+    "status": "prepared-pending-console-save"
+  },
   "featureUrls": [
-    "확정 필요"
+    {
+      "name": "컨디션 공유",
+      "url": "intoss://cycle-pair"
+    }
   ],
   "customerSupportEmail": "cs@seorilabs.com",
   "tdsRequired": true,
@@ -26,50 +53,60 @@
   },
   "productBehavior": {
     "sensitiveHealthData": true,
-    "firebaseAuthentication": true,
-    "externalFirebaseStorage": true,
-    "twoPersonPartnerSharing": true,
-    "singleSharingCounterpart": true,
-    "pushNotifications": true,
-    "premiumSubscription": true,
+    "localConditionSelection": true,
+    "localCarePreferenceSelection": true,
+    "appsInTossStorageSameDayOnly": true,
+    "userInitiatedSystemShare": true,
+    "firebaseAuthentication": false,
+    "externalFirebaseStorage": false,
+    "twoPersonPartnerSharing": false,
+    "singleSharingCounterpart": false,
+    "pushNotifications": false,
+    "premiumSubscription": false,
     "ads": false,
     "fertilityOrContraception": false,
     "realtimeChat": false,
     "publicUserGeneratedContent": false,
-    "privatePairNotesAndEvents": true
+    "privatePairNotesAndEvents": false
   },
   "compatibilityReview": {
-    "healthDataPolicy": "확정 필요",
-    "partnerSharingPolicy": "확정 필요",
-    "privatePairContentPolicy": "확정 필요",
-    "authenticationBridge": "확정 필요",
-    "firebaseAndAppCheck": "확정 필요",
-    "notificationChannel": "확정 필요",
-    "purchaseSupport": "확정 필요",
-    "accountDeletionAndExport": "확정 필요",
-    "reviewedAt": "확정 필요",
+    "healthDataPolicy": "prepared-local-condition-and-care-selection-only",
+    "partnerSharingPolicy": "not-applicable-user-initiated-system-share-only",
+    "privatePairContentPolicy": "not-applicable-no-pair-notes-or-events",
+    "authenticationBridge": "not-applicable-no-authentication",
+    "firebaseAndAppCheck": "not-applicable-no-firebase-runtime",
+    "notificationChannel": "not-applicable-no-push-notifications",
+    "purchaseSupport": "not-applicable-no-purchases-or-subscriptions",
+    "accountDeletionAndExport": "not-applicable-no-account-or-external-storage",
+    "preparedAt": "2026-08-09",
     "evidenceUrls": [
-      "확정 필요"
+      "https://developers-apps-in-toss.toss.im/prepare/console-workspace.html",
+      "https://developers-apps-in-toss.toss.im/intro/guide.html"
     ]
   },
   "privacy": {
-    "ownerPrivateData": true,
-    "partnerProjectionOnly": true,
+    "ownerPrivateData": false,
+    "partnerProjectionOnly": false,
+    "externalDataCollection": false,
+    "sameDayLocalDraftOnly": true,
+    "systemShareRequiresUserAction": true,
     "sensitiveValuesInAnalytics": false,
     "cyclePhaseInAnalytics": false,
-    "neutralLockScreenNotification": true
+    "neutralLockScreenNotification": false
   },
   "releaseAssets": {
-    "logo600": "확정 필요",
-    "thumbnail1932x828": "확정 필요",
+    "logo600": "apps-in-toss/assets/logo-600.png",
+    "thumbnail1932x828": "apps-in-toss/assets/thumbnail-1932x828.png",
     "screenshots636x1048": [
-      "확정 필요"
+      "apps-in-toss/assets/screenshot-1-initial-636x1048.png",
+      "apps-in-toss/assets/screenshot-2-selection-636x1048.png",
+      "apps-in-toss/assets/screenshot-3-preview-636x1048.png"
     ]
   },
   "manualEvidence": {
-    "policyCompatibilityApproval": "확정 필요",
-    "consoleApp": "확정 필요",
-    "sandboxTwoPersonTest": "확정 필요",
-    "deploymentApproval": "확정 필요"
+    "policyCompatibilityApproval": "missing: AppsInToss Console policy review/readback required",
+    "consoleApp": "missing: cycle-pair availability and permanent app creation required",
+    "sandboxTwoPersonTest": "missing: final package sandbox QA required",
+    "deploymentApproval": "missing: release deployment approval required"
   }
 }

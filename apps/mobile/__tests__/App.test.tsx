@@ -4,6 +4,7 @@ import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import React from 'react';
 import { Alert, BackHandler } from 'react-native';
 import App from '../App';
+import { SENSITIVE_HEALTH_CONSENT_VERSION } from '../src/domain/privacy/SensitiveHealthConsent';
 import type { CyclePairBackend } from '../src/platform/backend/CyclePairBackend';
 import { previewCyclePairBackend } from '../src/platform/backend/PreviewCyclePairBackend';
 
@@ -179,6 +180,7 @@ describe('CyclePair mobile app', () => {
         return {
           recordsCycle: true,
           consentAcceptedAt: '2026-07-13T00:00:00.000Z',
+          consentVersion: SENSITIVE_HEALTH_CONSENT_VERSION,
           cycle: {
             asOfDate: '2026-07-14',
             averageCycleLength: 28,
@@ -199,6 +201,7 @@ describe('CyclePair mobile app', () => {
       'preview-self',
       true,
       '2026-07-13T00:00:00.000Z',
+      SENSITIVE_HEALTH_CONSENT_VERSION,
       expect.objectContaining({
         asOfDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
       }),
@@ -235,6 +238,7 @@ describe('CyclePair mobile app', () => {
         return {
           recordsCycle: false,
           consentAcceptedAt: '2026-07-13T00:00:00.000Z',
+          consentVersion: SENSITIVE_HEALTH_CONSENT_VERSION,
         };
       },
       loadCachedActivePair,
@@ -279,6 +283,7 @@ describe('CyclePair mobile app', () => {
         return {
           recordsCycle: false,
           consentAcceptedAt: '2026-07-13T00:00:00.000Z',
+          consentVersion: SENSITIVE_HEALTH_CONSENT_VERSION,
         };
       },
       clearPendingPairMutations,
@@ -329,6 +334,7 @@ describe('CyclePair mobile app', () => {
         return {
           recordsCycle: false,
           consentAcceptedAt: '2026-07-13T00:00:00.000Z',
+          consentVersion: SENSITIVE_HEALTH_CONSENT_VERSION,
         };
       },
       clearPendingPairMutations,
@@ -456,6 +462,7 @@ describe('CyclePair mobile app', () => {
       'preview-self',
       true,
       expect.any(String),
+      SENSITIVE_HEALTH_CONSENT_VERSION,
       undefined,
     );
     await fireEvent.press(view.getByText('기록하기'));
@@ -505,6 +512,7 @@ describe('CyclePair mobile app', () => {
         return {
           recordsCycle: false,
           consentAcceptedAt: '2026-07-13T00:00:00.000Z',
+          consentVersion: SENSITIVE_HEALTH_CONSENT_VERSION,
         };
       },
       async listDailyLogs() {

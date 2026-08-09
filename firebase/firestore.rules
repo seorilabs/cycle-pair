@@ -10,6 +10,15 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == uid;
     }
 
+    function hasCurrentSensitiveHealthConsent(uid) {
+      let consentPath =
+        /databases/$(database)/documents/users/$(uid)/privateCycles/current;
+      return exists(consentPath)
+        && get(consentPath).data.schemaVersion == 2
+        && get(consentPath).data.consentVersion == '2026-08-09-v1'
+        && get(consentPath).data.consentAcceptedAt is string;
+    }
+
     function accountMutationAllowed(uid) {
       return isOwner(uid)
         && !exists(
@@ -88,15 +97,18 @@ service cloud.firestore {
       let data = request.resource.data;
       return cycleId == 'current'
         && data.keys().hasOnly([
-          'schemaVersion', 'recordsCycle', 'consentAcceptedAt', 'asOfDate',
+          'schemaVersion', 'recordsCycle', 'consentAcceptedAt',
+          'consentVersion', 'asOfDate',
           'averageCycleLength', 'averagePeriodLength', 'periodDates',
           'cyclePhase', 'nextPeriodWindow', 'updatedAt'
         ])
         && data.keys().hasAll([
-          'schemaVersion', 'recordsCycle', 'consentAcceptedAt', 'updatedAt'
+          'schemaVersion', 'recordsCycle', 'consentAcceptedAt',
+          'consentVersion', 'updatedAt'
         ])
-        && data.schemaVersion == 1
+        && data.schemaVersion == 2
         && data.recordsCycle is bool
+        && data.consentVersion == '2026-08-09-v1'
         && data.consentAcceptedAt is string
         && data.consentAcceptedAt.matches(
           '^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}[.]\\d{3}Z$'
@@ -104,7 +116,8 @@ service cloud.firestore {
         && data.updatedAt is timestamp
         && data.updatedAt == request.time
         && ((data.keys().hasOnly([
-              'schemaVersion', 'recordsCycle', 'consentAcceptedAt', 'updatedAt'
+              'schemaVersion', 'recordsCycle', 'consentAcceptedAt',
+              'consentVersion', 'updatedAt'
             ]))
           || (data.recordsCycle
             && data.keys().hasAll([
@@ -229,6 +242,7 @@ service cloud.firestore {
     match /users/{uid}/privateDailyLogs/{logId} {
       allow read: if isOwner(uid);
       allow create, update: if accountMutationAllowed(uid)
+        && hasCurrentSensitiveHealthConsent(uid)
         && isValidPrivateDailyLog(logId);
       allow delete: if accountMutationAllowed(uid);
     }
@@ -292,9 +306,11 @@ service cloud.firestore {
       allow write: if false;
 
       // Projection writes are server-only. Reads re-check current pair status,
-      // so a revoke blocks access as soon as its transaction commits.
+      // current owner consent, and revoke state. Legacy consent never keeps an
+      // already-materialized projection readable.
       match /projections/{ownerUid} {
-        allow read: if isActivePairMember(pairId);
+        allow read: if isActivePairMember(pairId)
+          && hasCurrentSensitiveHealthConsent(ownerUid);
         allow write: if false;
       }
 

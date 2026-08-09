@@ -40,6 +40,8 @@ export interface PrivateCycleRecord {
 export interface PrivateSetupSnapshot {
   readonly recordsCycle: boolean;
   readonly consentAcceptedAt: string;
+  /** Missing only while reading pre-v2 data that must require re-consent. */
+  readonly consentVersion?: string;
   readonly cycle?: PrivateCycleRecord;
 }
 
@@ -158,6 +160,7 @@ export interface CyclePairBackend {
     uid: string,
     recordsCycle: boolean,
     consentAcceptedAt: string,
+    consentVersion: string,
     cycle?: PrivateCycleRecord,
   ): Promise<BackendWriteResult>;
   createPairInvite(recordsCycle: boolean): Promise<PairInvite>;

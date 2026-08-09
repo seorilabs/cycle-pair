@@ -140,7 +140,7 @@ Emulator에서 최소 다음을 자동 검증한다.
 
 - Google Play: signed AAB, internal track 2인 테스트, Data safety와 실제 SDK 일치
 - App Store: archive, TestFlight 2인 테스트, App Privacy와 실제 SDK 일치
-- AppsInToss: 로컬 최소 slice의 lint·typecheck·unit test·`.ait` build를 수행. 정책 적합성, 영구 `appName`, 정식 자산, 콘솔 등록, sandbox QA는 별도 미완료 gate
+- AppsInToss: 로컬 최소 slice의 lint·typecheck·unit test·`.ait` build를 수행. 영구 `appName`은 `cycle-pair`로 고정했으며 정책 적합성, 정식 icon URL, 실화면 자산, Console 등록, sandbox QA는 별도 미완료 gate
 
 ## 사람 승인
 

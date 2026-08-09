@@ -314,6 +314,9 @@ async function projectionForMember(
       transaction.get(shareSettingsRef),
     ]);
   const privateCycle = privateCycleSnapshot.data();
+  const hasCurrentSensitiveHealthConsent =
+    privateCycle?.schemaVersion === 2 &&
+    privateCycle?.consentVersion === "2026-08-09-v1";
   const recordsCycle = privateCycleSnapshot.exists
     ? privateCycle?.recordsCycle === true
     : member.recordsCycle;
@@ -323,8 +326,13 @@ async function projectionForMember(
     generatedAt: now.toDate().toISOString(),
     // The owner-private setup is authoritative once it exists. This prevents
     // stale invite/Pair metadata from keeping cycle-derived fields shared.
-    privateCycle: recordsCycle ? privateCycle : undefined,
-    privateDailyLog,
+    privateCycle:
+      hasCurrentSensitiveHealthConsent && recordsCycle
+        ? privateCycle
+        : undefined,
+    privateDailyLog: hasCurrentSensitiveHealthConsent
+      ? privateDailyLog
+      : undefined,
     shareSettings: shareSettingsSnapshot.data(),
   });
 

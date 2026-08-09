@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "templateSource": "https://support.google.com/googleplay/android-developer/answer/10787469?hl=en",
+  "reviewedAt": "2026-08-09",
+  "collectsOrSharesData": true,
+  "encryptedInTransit": true,
+  "supportsDeletionRequest": true,
+  "sharingDeclaration": "none-service-provider-and-user-initiated-exceptions",
+  "dataTypes": {
+    "PSL_EMAIL": {
+      "required": false,
+      "purposes": ["PSL_APP_FUNCTIONALITY", "PSL_ACCOUNT_MANAGEMENT"]
+    },
+    "PSL_USER_ACCOUNT": {
+      "required": true,
+      "purposes": [
+        "PSL_APP_FUNCTIONALITY",
+        "PSL_ACCOUNT_MANAGEMENT",
+        "PSL_FRAUD_PREVENTION_SECURITY"
+      ]
+    },
+    "PSL_PURCHASE_HISTORY": {
+      "required": false,
+      "purposes": ["PSL_APP_FUNCTIONALITY"]
+    },
+    "PSL_HEALTH": {
+      "required": false,
+      "purposes": ["PSL_APP_FUNCTIONALITY"]
+    },
+    "PSL_CRASH_LOGS": {
+      "required": false,
+      "purposes": ["PSL_ANALYTICS"]
+    },
+    "PSL_PERFORMANCE_DIAGNOSTICS": {
+      "required": false,
+      "purposes": ["PSL_ANALYTICS"]
+    },
+    "PSL_USER_INTERACTION": {
+      "required": false,
+      "purposes": ["PSL_ANALYTICS"]
+    },
+    "PSL_USER_GENERATED_CONTENT": {
+      "required": false,
+      "purposes": ["PSL_APP_FUNCTIONALITY"]
+    },
+    "PSL_DEVICE_ID": {
+      "required": true,
+      "purposes": [
+        "PSL_APP_FUNCTIONALITY",
+        "PSL_FRAUD_PREVENTION_SECURITY"
+      ]
+    }
+  },
+  "basis": {
+    "firebase": "Google/Firebase processes data as a service provider on Seorilabs instructions.",
+    "partnerProjection": "A user explicitly selects fields and initiates Pair sharing.",
+    "systemShare": "A user explicitly opens the operating-system share sheet.",
+    "tracking": false,
+    "ads": false
+  }
+}

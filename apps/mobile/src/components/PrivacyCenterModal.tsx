@@ -3,6 +3,7 @@ import { Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useCyclePair } from '../app/CyclePairStore';
 import { colors, spacing } from '../theme';
 import { Card, PrimaryButton } from './Ui';
+import { SENSITIVE_HEALTH_CONSENT_VERSION } from '../domain/privacy/SensitiveHealthConsent';
 
 function PolicySection({ title, body }: { title: string; body: string }) {
   return (
@@ -35,7 +36,7 @@ export function PrivacyCenterModal({
         <ScrollView contentContainerStyle={styles.content}>
           <Text style={styles.eyebrow}>사이클 페어 데이터 안내</Text>
           <Text style={styles.title}>내 기록과 공유를 직접 통제해요</Text>
-          <Text style={styles.meta}>제품 내 안내 버전 2026-07-14 · 민감정보 동의일 {consentDate}</Text>
+          <Text style={styles.meta}>민감정보 동의 {SENSITIVE_HEALTH_CONSENT_VERSION} · 동의일 {consentDate}</Text>
 
           <PolicySection
             title="무엇을 저장하나요?"
@@ -58,7 +59,7 @@ export function PrivacyCenterModal({
             body="설정의 계정 카드에서 최근 비밀번호 확인 후 내 데이터를 JSON으로 내보내거나 계정과 서버 데이터를 영구 삭제할 수 있습니다. 구독 여부와 관계없이 사용할 수 있습니다."
           />
           <Text style={styles.disclaimer}>
-            이 화면은 현재 구현의 데이터 동작을 설명합니다. 출시 전 법률 검토를 거친 외부 개인정보 처리방침과 마켓 고지는 별도로 확정됩니다.
+            이 화면은 현재 구현의 데이터 동작을 설명합니다. 게시된 개인정보 처리방침과 계정 삭제 안내는 설정의 링크에서 확인할 수 있습니다.
           </Text>
         </ScrollView>
         <View style={styles.footer}>

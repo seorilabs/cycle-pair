@@ -206,6 +206,12 @@ function isPrivateSetupSnapshot(value: unknown): value is PrivateSetupSnapshot {
   ) {
     return false;
   }
+  if (
+    value.consentVersion !== undefined &&
+    !isNonEmptyString(value.consentVersion)
+  ) {
+    return false;
+  }
   if (value.cycle === undefined) return true;
   if (!value.recordsCycle || !isRecord(value.cycle)) return false;
 

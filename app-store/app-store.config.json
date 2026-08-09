@@ -55,28 +55,39 @@
     "userGeneratedContent": "yes-private-pair-notes-and-events",
     "realtimeChat": "no",
     "madeForKids": "no",
-    "ageRating": "확정 필요",
+    "ageRating": "questionnaire-pending-console-save-with-18-plus-override",
     "contentRights": "first-party-content-only"
   },
   "exportCompliance": {
     "usesEncryption": true,
     "usesNonExemptEncryption": false,
     "basis": "standard Apple OS, HTTPS/TLS and Firebase SDK transport only",
-    "consoleAnswer": "확정 필요"
+    "consoleAnswer": false
   },
   "digitalServicesAct": {
-    "euDistributionPlanned": "확정 필요",
-    "status": "확정 필요",
+    "euDistributionPlanned": true,
+    "status": "trader-pending-account-holder-verification",
+    "trader": true,
+    "addressSource": "D-U-N-S-and-App-Store-Connect-only",
     "displayContactEmail": "cs@seorilabs.com",
-    "displayContactPhone": "확정 필요"
+    "displayContactPhone": "stored-in-app-store-connect-only"
   },
   "appPrivacy": {
-    "status": "확정 필요",
+    "status": "prepared-pending-console-save-and-readback",
     "tracking": "no",
     "privacyPolicyUrl": "https://www.seorilabs.com/apps/cycle-pair/privacy/",
     "dataTypes": {
+      "emailAddress": {
+        "collected": true,
+        "linkedToUser": true,
+        "purposes": [
+          "appFunctionality"
+        ],
+        "usedForTracking": false
+      },
       "userId": {
         "collected": true,
+        "linkedToUser": true,
         "purposes": [
           "appFunctionality"
         ],
@@ -84,6 +95,7 @@
       },
       "health": {
         "collected": true,
+        "linkedToUser": true,
         "purposes": [
           "appFunctionality"
         ],
@@ -92,6 +104,7 @@
       },
       "purchases": {
         "collected": true,
+        "linkedToUser": true,
         "purposes": [
           "appFunctionality"
         ],
@@ -99,6 +112,8 @@
       },
       "productInteraction": {
         "collected": true,
+        "linkedToUser": false,
+        "optionalConsent": true,
         "purposes": [
           "analytics"
         ],
@@ -107,6 +122,8 @@
       },
       "crashAndPerformance": {
         "collected": true,
+        "linkedToUser": false,
+        "optionalConsent": true,
         "purposes": [
           "analytics"
         ],
@@ -117,18 +134,28 @@
   },
   "review": {
     "signInRequired": true,
-    "username": "확정 필요",
-    "password": "확정 필요",
+    "credentials": {
+      "status": "missing",
+      "reference": null,
+      "verifiedAt": null,
+      "evidence": null,
+      "loginSmoke": {
+        "status": "missing",
+        "reference": null,
+        "verifiedAt": null,
+        "evidence": null
+      }
+    },
     "notes": "Pair 두 명의 명시적 연결, owner-private 원본과 선택형 partner projection, 비의료·비피임 목적, 중립 알림을 설명해야 함",
     "contactFirstName": "Seorilabs",
     "contactLastName": "Support",
     "contactEmail": "cs@seorilabs.com",
-    "contactPhone": "확정 필요"
+    "contactPhone": "stored-in-app-store-connect-only"
   },
   "testFlight": {
     "betaAppDescription": "두 명이 서로 다른 계정과 기기로 초대, 공유, 회수, 연결 해제를 검증하는 사이클 페어 내부 테스트",
     "feedbackEmail": "cs@seorilabs.com",
-    "twoPersonTestStatus": "확정 필요"
+    "twoPersonTestStatus": "missing-v0.1.9-build-1009-two-person-test"
   },
   "monetization": {
     "model": "premium-subscription",
@@ -192,9 +219,9 @@
   },
   "manualEvidence": {
     "appStoreConnectApp": "verified 2026-07-29: app 6792393652, Xcode Cloud product D071BF40-979E-4D7D-A7C5-2202072488D5, workflow 6310D1DD-4A04-4E5C-8B17-B86D7A744D09",
-    "appPrivacyReview": "확정 필요",
-    "ageRating": "확정 필요",
-    "testFlightTwoPersonTest": "확정 필요",
-    "deploymentApproval": "확정 필요"
+    "appPrivacyReview": "missing: App Store Connect save/readback required",
+    "ageRating": "missing: questionnaire and 18+ override save/readback required",
+    "testFlightTwoPersonTest": "missing: v0.1.9 build 1009 two-person device QA required",
+    "deploymentApproval": "missing: release deployment approval required"
   }
 }

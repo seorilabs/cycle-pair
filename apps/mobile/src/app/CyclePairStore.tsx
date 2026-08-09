@@ -45,6 +45,10 @@ import type {
   SafeCrashReporter,
   SafeFailureCode,
 } from '../platform/observability/SafeCrashReporter';
+import {
+  hasCurrentSensitiveHealthConsent,
+  SENSITIVE_HEALTH_CONSENT_VERSION,
+} from '../domain/privacy/SensitiveHealthConsent';
 
 export type AppStage = 'onboarding' | 'setup' | 'invite' | 'sharing' | 'main';
 export type MainTab = 'home' | 'calendar' | 'partner' | 'settings';
@@ -122,6 +126,7 @@ export interface CyclePairState {
   notificationQuietHours: NotificationQuietHours;
   diagnosticsEnabled: boolean;
   sensitiveDataConsentAcceptedAt?: string;
+  sensitiveDataConsentVersion?: string;
   lastSavedAt?: string;
 }
 
@@ -141,6 +146,7 @@ export type CyclePairAction =
         isLogger: boolean;
         seed?: CycleSeed;
         consentAcceptedAt: string;
+        consentVersion?: string;
       };
     }
   | { type: 'COMPLETE_ONBOARDING' }
@@ -150,6 +156,7 @@ export type CyclePairAction =
         isLogger: boolean;
         seed?: CycleSeed;
         consentAcceptedAt: string;
+        consentVersion: string;
       };
     }
   | {
@@ -362,7 +369,10 @@ export function reduceCyclePairState(
       const restored = action.payload;
       return {
         ...state,
-        stage: state.sensitiveDataConsentAcceptedAt
+        stage: hasCurrentSensitiveHealthConsent(
+          state.sensitiveDataConsentAcceptedAt!,
+          state.sensitiveDataConsentVersion,
+        )
           ? state.stage
           : restored.onboardingComplete
           ? 'setup'
@@ -372,21 +382,33 @@ export function reduceCyclePairState(
         diagnosticsEnabled: restored.diagnosticsEnabled,
       };
     }
-    case 'RESTORE_PRIVATE_SETUP':
+    case 'RESTORE_PRIVATE_SETUP': {
+      const hasCurrentConsent = hasCurrentSensitiveHealthConsent(
+        action.payload.consentAcceptedAt,
+        action.payload.consentVersion,
+      );
       return {
         ...state,
         isLogger: action.payload.isLogger,
         hasCycleSeed:
           action.payload.isLogger && action.payload.seed !== undefined,
         ...(action.payload.seed ? { seed: action.payload.seed } : {}),
-        sensitiveDataConsentAcceptedAt: action.payload.consentAcceptedAt,
-        stage: state.paired
-          ? state.sharingCompleted
-            ? 'main'
-            : 'sharing'
-          : 'main',
+        sensitiveDataConsentAcceptedAt: hasCurrentConsent
+          ? action.payload.consentAcceptedAt
+          : undefined,
+        sensitiveDataConsentVersion: hasCurrentConsent
+          ? action.payload.consentVersion
+          : undefined,
+        stage: hasCurrentConsent
+          ? state.paired
+            ? state.sharingCompleted
+              ? 'main'
+              : 'sharing'
+            : 'main'
+          : 'setup',
         activeTab: state.paired ? state.activeTab : 'home',
       };
+    }
     case 'COMPLETE_ONBOARDING':
       return { ...state, stage: 'setup' };
     case 'COMPLETE_SETUP':
@@ -397,6 +419,7 @@ export function reduceCyclePairState(
           action.payload.isLogger && action.payload.seed !== undefined,
         ...(action.payload.seed ? { seed: action.payload.seed } : {}),
         sensitiveDataConsentAcceptedAt: action.payload.consentAcceptedAt,
+        sensitiveDataConsentVersion: action.payload.consentVersion,
         stage: state.paired
           ? state.sharingCompleted
             ? 'main'
@@ -623,8 +646,16 @@ export function reduceCyclePairState(
         paired: false,
         sharingPairId: undefined,
         sharingCompleted: false,
-        stage: state.sensitiveDataConsentAcceptedAt ? 'main' : 'setup',
-        activeTab: state.sensitiveDataConsentAcceptedAt
+        stage: hasCurrentSensitiveHealthConsent(
+          state.sensitiveDataConsentAcceptedAt,
+          state.sensitiveDataConsentVersion,
+        )
+          ? 'main'
+          : 'setup',
+        activeTab: hasCurrentSensitiveHealthConsent(
+          state.sensitiveDataConsentAcceptedAt,
+          state.sensitiveDataConsentVersion,
+        )
           ? 'partner'
           : state.activeTab,
         partnerProjection: undefined,
@@ -731,6 +762,7 @@ interface CyclePairContextValue {
     isLogger: boolean;
     seed?: CycleSeed;
     consentAcceptedAt: string;
+    consentVersion: string;
   }): Promise<void>;
   updatePrivateSetup(payload: {
     isLogger: boolean;
@@ -852,7 +884,10 @@ export function CyclePairProvider({
       !backendSession ||
       !state.isLogger ||
       !state.hasCycleSeed ||
-      !state.sensitiveDataConsentAcceptedAt
+      !hasCurrentSensitiveHealthConsent(
+        state.sensitiveDataConsentAcceptedAt,
+        state.sensitiveDataConsentVersion,
+      )
     ) {
       return;
     }
@@ -860,7 +895,7 @@ export function CyclePairProvider({
     const persistenceKey = cyclePersistenceKey(
       backendSession.uid,
       state.currentLocalDate,
-      state.sensitiveDataConsentAcceptedAt,
+      state.sensitiveDataConsentAcceptedAt!,
       state.seed,
     );
     if (lastCyclePersistenceKey.current === persistenceKey) {
@@ -871,7 +906,8 @@ export function CyclePairProvider({
       .savePrivateSetup(
         backendSession.uid,
         true,
-        state.sensitiveDataConsentAcceptedAt,
+        state.sensitiveDataConsentAcceptedAt!,
+        state.sensitiveDataConsentVersion!,
         toPrivateCycleRecord(state.seed),
       )
       .then(write => {
@@ -899,6 +935,7 @@ export function CyclePairProvider({
     state.isLogger,
     state.seed,
     state.sensitiveDataConsentAcceptedAt,
+    state.sensitiveDataConsentVersion,
   ]);
 
   useEffect(() => {
@@ -988,6 +1025,7 @@ export function CyclePairProvider({
             payload: {
               isLogger: setup.recordsCycle,
               consentAcceptedAt: setup.consentAcceptedAt,
+              consentVersion: setup.consentVersion,
               ...(setup.cycle
                 ? {
                     seed: {
@@ -1264,6 +1302,7 @@ export function CyclePairProvider({
       isLogger: boolean;
       seed?: CycleSeed;
       consentAcceptedAt: string;
+      consentVersion: string;
     }) => {
       if (!backendSession) {
         reportBackendError(new Error('backend session unavailable'));
@@ -1273,10 +1312,14 @@ export function CyclePairProvider({
       setBackendError(null);
       dispatch({ type: 'SET_SYNC_STATUS', payload: 'syncing' });
       try {
+        if (payload.consentVersion !== SENSITIVE_HEALTH_CONSENT_VERSION) {
+          throw new Error('current sensitive health consent unavailable');
+        }
         const write = await backend.savePrivateSetup(
           backendSession.uid,
           payload.isLogger,
           payload.consentAcceptedAt,
+          payload.consentVersion,
           payload.isLogger && payload.seed
             ? toPrivateCycleRecord(payload.seed)
             : undefined,
@@ -1308,7 +1351,13 @@ export function CyclePairProvider({
   );
   const updatePrivateSetup = useCallback(
     async (payload: { isLogger: boolean; seed?: CycleSeed }) => {
-      if (!backendSession || !state.sensitiveDataConsentAcceptedAt) {
+      if (
+        !backendSession ||
+        !hasCurrentSensitiveHealthConsent(
+          state.sensitiveDataConsentAcceptedAt!,
+          state.sensitiveDataConsentVersion,
+        )
+      ) {
         reportBackendError(new Error('backend session unavailable'));
         return false;
       }
@@ -1319,7 +1368,8 @@ export function CyclePairProvider({
         const write = await backend.savePrivateSetup(
           backendSession.uid,
           payload.isLogger,
-          state.sensitiveDataConsentAcceptedAt,
+          state.sensitiveDataConsentAcceptedAt!,
+          state.sensitiveDataConsentVersion!,
           payload.isLogger && payload.seed
             ? toPrivateCycleRecord(payload.seed)
             : undefined,
@@ -1328,7 +1378,7 @@ export function CyclePairProvider({
           lastCyclePersistenceKey.current = cyclePersistenceKey(
             backendSession.uid,
             state.currentLocalDate,
-            state.sensitiveDataConsentAcceptedAt,
+            state.sensitiveDataConsentAcceptedAt!,
             payload.seed,
           );
         }
@@ -1350,6 +1400,7 @@ export function CyclePairProvider({
       reportFailure,
       state.currentLocalDate,
       state.sensitiveDataConsentAcceptedAt,
+      state.sensitiveDataConsentVersion,
     ],
   );
   const createInvite = useCallback(async () => {
@@ -1545,8 +1596,16 @@ export function CyclePairProvider({
   );
   const saveCheckIn = useCallback(
     async (payload: DailyCheckIn) => {
-      if (!backendSession) {
-        reportBackendError(new Error('backend session unavailable'));
+      if (
+        !backendSession ||
+        !hasCurrentSensitiveHealthConsent(
+          state.sensitiveDataConsentAcceptedAt,
+          state.sensitiveDataConsentVersion,
+        )
+      ) {
+        reportBackendError(
+          new Error('current sensitive health consent unavailable'),
+        );
         return false;
       }
       const checkIn = state.isLogger
@@ -1593,19 +1652,25 @@ export function CyclePairProvider({
           })
           .catch(() => undefined);
         if (write.status === 'synced' && state.isLogger && state.hasCycleSeed) {
-          if (!state.sensitiveDataConsentAcceptedAt) {
+          if (
+            !hasCurrentSensitiveHealthConsent(
+              state.sensitiveDataConsentAcceptedAt,
+              state.sensitiveDataConsentVersion,
+            )
+          ) {
             throw new Error('sensitive data consent unavailable');
           }
           await backend.savePrivateSetup(
             backendSession.uid,
             true,
-            state.sensitiveDataConsentAcceptedAt,
+            state.sensitiveDataConsentAcceptedAt!,
+            state.sensitiveDataConsentVersion!,
             toPrivateCycleRecord(nextSeed),
           );
           lastCyclePersistenceKey.current = cyclePersistenceKey(
             backendSession.uid,
             localDate,
-            state.sensitiveDataConsentAcceptedAt,
+            state.sensitiveDataConsentAcceptedAt!,
             nextSeed,
           );
         }
@@ -1628,10 +1693,13 @@ export function CyclePairProvider({
       state.isLogger,
       state.seed,
       state.sensitiveDataConsentAcceptedAt,
+      state.sensitiveDataConsentVersion,
     ],
   );
   const deleteDailyLog = useCallback(
     async (localDate: string) => {
+      // Deletion is always available to the authenticated owner. The current
+      // consent gate applies to creating or updating health data, not erasure.
       if (!backendSession) {
         reportBackendError(new Error('backend session unavailable'));
         return false;
@@ -1799,18 +1867,22 @@ export function CyclePairProvider({
           report.remaining === 0 &&
           currentState.isLogger &&
           currentState.hasCycleSeed &&
-          currentState.sensitiveDataConsentAcceptedAt
+          hasCurrentSensitiveHealthConsent(
+            currentState.sensitiveDataConsentAcceptedAt!,
+            currentState.sensitiveDataConsentVersion,
+          )
         ) {
           await backend.savePrivateSetup(
             backendSession.uid,
             true,
-            currentState.sensitiveDataConsentAcceptedAt,
+            currentState.sensitiveDataConsentAcceptedAt!,
+            currentState.sensitiveDataConsentVersion!,
             toPrivateCycleRecord(restoredSeed),
           );
           lastCyclePersistenceKey.current = cyclePersistenceKey(
             backendSession.uid,
             currentState.currentLocalDate,
-            currentState.sensitiveDataConsentAcceptedAt,
+            currentState.sensitiveDataConsentAcceptedAt!,
             restoredSeed,
           );
         }

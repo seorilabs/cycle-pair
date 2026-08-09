@@ -422,6 +422,18 @@ describe("pair lifecycle callables", () => {
     const alice = await createClient("alice");
     const bob = await createClient("bob");
     const charlie = await createClient("charlie");
+    const aliceUid = alice.auth.currentUser!.uid;
+    const bobUid = bob.auth.currentUser!.uid;
+    await setDoc(
+      doc(alice.firestore, `users/${aliceUid}/privateCycles/current`),
+      {
+        schemaVersion: 2,
+        recordsCycle: true,
+        consentAcceptedAt: "2026-07-14T00:00:00.000Z",
+        consentVersion: "2026-08-09-v1",
+        updatedAt: serverTimestamp(),
+      },
+    );
     const createInvite = httpsCallable(alice.functions, "createPairInvite");
     const created = await createInvite({recordsCycle: true});
     const inviteToken = (created.data as {inviteToken: string}).inviteToken;
@@ -458,8 +470,6 @@ describe("pair lifecycle callables", () => {
       updateDoc(doc(bob.firestore, projectionPath), {moodTag: "forged"}),
     ).rejects.toMatchObject({code: "permission-denied"});
 
-    const aliceUid = alice.auth.currentUser!.uid;
-    const bobUid = bob.auth.currentUser!.uid;
     const upsertEvent = httpsCallable(alice.functions, "upsertPairEvent");
     const invalidEvent = {
       id: "event_1",
@@ -586,9 +596,10 @@ describe("pair lifecycle callables", () => {
     await setDoc(
       doc(alice.firestore, `users/${aliceUid}/privateCycles/current`),
       {
-        schemaVersion: 1,
+        schemaVersion: 2,
         recordsCycle: true,
         consentAcceptedAt: "2026-07-14T00:00:00.000Z",
+        consentVersion: "2026-08-09-v1",
         asOfDate: "2026-07-14",
         averageCycleLength: 28,
         averagePeriodLength: 5,
@@ -711,9 +722,10 @@ describe("pair lifecycle callables", () => {
     await setDoc(
       doc(alice.firestore, `users/${aliceUid}/privateCycles/current`),
       {
-        schemaVersion: 1,
+        schemaVersion: 2,
         recordsCycle: false,
         consentAcceptedAt: "2026-07-14T00:00:00.000Z",
+        consentVersion: "2026-08-09-v1",
         updatedAt: serverTimestamp(),
       },
     );
@@ -922,9 +934,10 @@ describe("pair lifecycle callables", () => {
     await setDoc(
       doc(owner.firestore, `users/${ownerUid}/privateCycles/current`),
       {
-        schemaVersion: 1,
+        schemaVersion: 2,
         recordsCycle: true,
         consentAcceptedAt: "2026-07-14T00:00:00.000Z",
+        consentVersion: "2026-08-09-v1",
         updatedAt: serverTimestamp(),
       },
     );
@@ -1050,7 +1063,15 @@ describe("pair lifecycle callables", () => {
       schemaVersion: 1,
       exportSubjectUid: ownerUid,
       data: {
-        privateCycles: {documents: [{id: "current"}]},
+        privateCycles: {
+          documents: [{
+            id: "current",
+            data: {
+              schemaVersion: 2,
+              consentVersion: "2026-08-09-v1",
+            },
+          }],
+        },
         privateDailyLogs: {documents: [{id: "2026-07-14"}]},
         activePairs: [{pairId}],
       },

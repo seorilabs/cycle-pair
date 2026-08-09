@@ -72,6 +72,13 @@ async function seedActivePair(): Promise<void> {
       generatedAt: "2026-07-12T00:00:00.000Z",
       cyclePhase: "luteal",
     });
+    await setDoc(doc(db, "users/alice/privateCycles/current"), {
+      schemaVersion: 2,
+      recordsCycle: true,
+      consentAcceptedAt: "2026-08-09T00:00:00.000Z",
+      consentVersion: "2026-08-09-v1",
+      updatedAt: new Date("2026-08-09T00:00:00.000Z"),
+    });
     await setDoc(doc(db, "pairs/pair-1/events/event-1"), {
       title: "산책",
       date: "2026-07-14",
@@ -89,9 +96,10 @@ describe("owner-only raw records", () => {
 
     await assertSucceeds(
       setDoc(cycleRef, {
-        schemaVersion: 1,
+        schemaVersion: 2,
         recordsCycle: true,
         consentAcceptedAt: "2026-07-14T00:00:00.000Z",
+        consentVersion: "2026-08-09-v1",
         asOfDate: "2026-07-14",
         averageCycleLength: 28,
         averagePeriodLength: 5,
@@ -125,9 +133,10 @@ describe("owner-only raw records", () => {
     const ownerDb = testEnv.authenticatedContext("alice").firestore();
     const cycleRef = doc(ownerDb, "users/alice/privateCycles/current");
     const valid = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       recordsCycle: true,
       consentAcceptedAt: "2026-07-14T00:00:00.000Z",
+      consentVersion: "2026-08-09-v1",
       asOfDate: "2026-07-14",
       averageCycleLength: 28,
       averagePeriodLength: 5,
@@ -160,25 +169,75 @@ describe("owner-only raw records", () => {
     );
     await assertFails(
       setDoc(cycleRef, {
-        schemaVersion: 1,
+        schemaVersion: 2,
         recordsCycle: false,
         consentAcceptedAt: "2026-07-14T00:00:00.000Z",
+        consentVersion: "2026-08-09-v1",
         cyclePhase: "luteal",
         updatedAt: serverTimestamp(),
       }),
     );
     await assertSucceeds(
       setDoc(cycleRef, {
-        schemaVersion: 1,
+        schemaVersion: 2,
         recordsCycle: false,
         consentAcceptedAt: "2026-07-14T00:00:00.000Z",
+        consentVersion: "2026-08-09-v1",
         updatedAt: serverTimestamp(),
       }),
     );
   });
 
+  test("legacy consent remains readable but cannot authorize new health writes", async () => {
+    await testEnv.withSecurityRulesDisabled(async context => {
+      await setDoc(
+        doc(context.firestore(), "users/alice/privateCycles/current"),
+        {
+          schemaVersion: 1,
+          recordsCycle: false,
+          consentAcceptedAt: "2026-07-14T00:00:00.000Z",
+          updatedAt: new Date("2026-07-14T00:00:00.000Z"),
+        },
+      );
+    });
+    const ownerDb = testEnv.authenticatedContext("alice").firestore();
+    const cycleRef = doc(ownerDb, "users/alice/privateCycles/current");
+    const dailyRef = doc(
+      ownerDb,
+      "users/alice/privateDailyLogs/2026-07-14",
+    );
+    const dailyLog = {
+      schemaVersion: 2,
+      localDate: "2026-07-14",
+      lastMutationId: "legacy-consent-blocked",
+      updatedAt: serverTimestamp(),
+    };
+
+    await assertSucceeds(getDoc(cycleRef));
+    await assertFails(setDoc(dailyRef, dailyLog));
+    await assertSucceeds(
+      setDoc(cycleRef, {
+        schemaVersion: 2,
+        recordsCycle: false,
+        consentAcceptedAt: "2026-08-09T00:00:00.000Z",
+        consentVersion: "2026-08-09-v1",
+        updatedAt: serverTimestamp(),
+      }),
+    );
+    await assertSucceeds(setDoc(dailyRef, dailyLog));
+  });
+
   test("daily logs reject unknown fields, invalid dates, and oversized notes", async () => {
     const ownerDb = testEnv.authenticatedContext("alice").firestore();
+    await assertSucceeds(
+      setDoc(doc(ownerDb, "users/alice/privateCycles/current"), {
+        schemaVersion: 2,
+        recordsCycle: false,
+        consentAcceptedAt: "2026-08-09T00:00:00.000Z",
+        consentVersion: "2026-08-09-v1",
+        updatedAt: serverTimestamp(),
+      }),
+    );
     const base = {
       schemaVersion: 2,
       localDate: "2026-07-12",
@@ -306,9 +365,10 @@ describe("owner-only raw records", () => {
 
     await assertFails(
       setDoc(doc(ownerDb, "users/alice/privateCycles/current"), {
-        schemaVersion: 1,
+        schemaVersion: 2,
         recordsCycle: false,
         consentAcceptedAt: "2026-07-14T00:00:00.000Z",
+        consentVersion: "2026-08-09-v1",
         updatedAt: serverTimestamp(),
       }),
     );
@@ -516,6 +576,25 @@ describe("pair projection boundary", () => {
     const bobDb = testEnv.authenticatedContext("bob").firestore();
 
     await assertFails(getDoc(doc(bobDb, "pairs/pair-1/projections/alice")));
+  });
+
+  test("legacy consent immediately blocks an existing projection read", async () => {
+    await seedActivePair();
+    await testEnv.withSecurityRulesDisabled(async context => {
+      await updateDoc(
+        doc(context.firestore(), "users/alice/privateCycles/current"),
+        {
+          schemaVersion: 1,
+          consentVersion: null,
+        },
+      );
+    });
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+    const projectionPath = "pairs/pair-1/projections/alice";
+
+    await assertFails(getDoc(doc(aliceDb, projectionPath)));
+    await assertFails(getDoc(doc(bobDb, projectionPath)));
   });
 });
 

@@ -12,7 +12,7 @@ Google Play과 App Store용 React Native 0.86 앱이다. 모든 빌드는 단일
 
 debug와 release 모두 `com.seorilabs.cyclepair`와 같은 Firebase 프로젝트를 사용한다. 빌드 유형은 서명과 App Check provider만 구분하며 별도 dev 데이터 환경을 만들지 않는다.
 
-민감한 역할·동의·주기·공유 설정은 AsyncStorage에 저장하지 않는다. Firebase Auth 세션을 기준으로 owner-private `privateCycles/current`와 Pair별 `shareSettings`에서 복원하며, 로컬에는 온보딩 완료 여부와 중립 알림 선호만 남긴다. Firestore native persistence도 암호화 캐시 설계 전까지 비활성화한다.
+민감한 역할·동의·주기·공유 설정은 AsyncStorage에 저장하지 않는다. Firebase Auth 세션을 기준으로 owner-private `privateCycles/current`와 Pair별 `shareSettings`에서 복원하며, 로컬에는 온보딩 완료 여부와 중립 알림 선호만 남긴다. `consentVersion=2026-08-09-v1`이 없는 기존 자료는 암호화 캐시와 서버에 보존하되 재동의 전에는 신규 건강정보를 저장하지 않는다. Firestore native persistence도 암호화 캐시 설계 전까지 비활성화한다.
 
 ## 환경
 

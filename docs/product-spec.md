@@ -14,7 +14,7 @@
 | 배포 승인 | 미승인, release-candidate 이후 별도 승인 필요 |
 | 원 기획 | Obsidian Vault: 프로젝트/개인/앱 제작 공장/기획 인박스/moonmate 최초 기획서 (초기 코드명) |
 
-이 문서는 planning 승인 이후 제품 실행 source of truth다. 한국어 출시 이름은 `사이클 페어 : 내 기분, 주기, 컨디션을 알려요`, 영어 출시 이름은 `Cycle Pair`다. 한국어 앱 내부 UI와 알림에는 짧은 브랜드 `사이클 페어`를 사용한다. Android package name과 iOS bundle ID는 `com.seorilabs.cyclepair`, 단일 Firebase project ID는 `seorilabs-cyclepair-prod`다. AppsInToss 영구 appName은 콘솔 가용성과 정책 적합성 확인 전까지 확정하지 않는다.
+이 문서는 planning 승인 이후 제품 실행 source of truth다. 한국어 출시 이름은 `사이클 페어 : 내 기분, 주기, 컨디션을 알려요`, 영어 출시 이름은 `Cycle Pair`다. 한국어 앱 내부 UI와 알림에는 짧은 브랜드 `사이클 페어`를 사용한다. Android package name과 iOS bundle ID는 `com.seorilabs.cyclepair`, 단일 Firebase project ID는 `seorilabs-cyclepair-prod`다. AppsInToss 영구 appName은 `cycle-pair`로 승인했으며 Console 등록·readback 전에는 출시 evidence로 인정하지 않는다.
 
 ## 제품 약속
 
@@ -48,7 +48,7 @@
 - 위치 추적
 - 제3자 데이터 판매
 - E2E 암호화 구현
-- AppsInToss의 Firebase 계정·Pair 동기화·알림·구독 parity와 콘솔 등록
+- AppsInToss의 Firebase 계정·Pair 동기화·알림·구독 parity
 
 E2E 암호화는 단순 제외가 아니라 MVP 이후 재검토 대상이다. 위협모델과 결정 기록은 [security-threat-model.md](./security-threat-model.md), [ADR-0001](./adr/0001-mvp-e2e-encryption.md)에 둔다.
 
@@ -137,7 +137,7 @@ flowchart TD
 ## 수익화
 
 - 광고는 사용하지 않는다.
-- 다운로드 가격, 구독 상품, 가격, 체험 기간은 확정 필요다.
+- 다운로드는 무료다. 구독 기준 가격은 월 KRW 3,900, 연 KRW 29,000이며 다른 통화는 스토어 자동 환산을 사용한다. 두 상품 모두 7일 체험을 준비한다.
 - MVP entitlement는 본인 기록, 기본 예측, 단일 상대 공유를 기본 후보로 둔다.
 - 상세 예측, 전체 케어 콘텐츠, 확장 이력은 프리미엄 후보이나 출시 전 확정한다.
 - multiple-connections 기능은 MVP entitlement로 활성화하지 않는다.
@@ -146,17 +146,15 @@ flowchart TD
 
 | 타깃 | 상태 |
 | --- | --- |
-| Google Play | 앱 이름·package name 확정, Console 등록과 배포 값은 확정 필요 |
-| App Store | 앱 이름·bundle ID 확정, Connect 등록과 배포 값은 확정 필요 |
-| AppsInToss | SDK 2.x 빌드 타깃 구현, 임시 `appName` 후보 사용. 정책·콘솔·sandbox 검증 전 배포 불가 |
+| Google Play | 앱 이름·package name·Console shell·전 storefront 준비, v0.1.9/1009 후보와 정책 readback 전 배포 불가 |
+| App Store | 앱 이름·bundle ID·Connect 앱·EU storefront 준비, v0.1.9/1009 후보와 정책 readback 전 배포 불가 |
+| AppsInToss | SDK 2.x 빌드 타깃과 영구 `cycle-pair` 승인, Console workspace·등록·sandbox 검증 전 배포 불가 |
 
 ## 출시 전 남은 제품 결정
 
 - `사이클 페어`와 `Cycle Pair`의 출시 전 최종 선행상표 검토. 초기 코드명 `MoonMate`는 주기·기분 기록과 파트너 공유를 제공하는 동명 앱이 App Store·Google Play에 이미 있어 폐기했다.
 - 로그인 제공자
-- 다운로드 가격과 무료·프리미엄 경계
-- 구독 상품과 가격
-- 개인정보 처리방침·민감정보 별도 동의문
+- 민감 건강정보 동의문 `2026-08-09-v1`의 사업·법률 검토 evidence
 - Pair 감사로그·백업 삭제기간. 만료 invite는 `expiresAt` 후 7일, acknowledged cache tombstone은 `acknowledgedAt` 후 30일 보존으로 확정
 - 앱 연령등급
 - 최종 예측 설명 문구와 케어 콘텐츠 검수

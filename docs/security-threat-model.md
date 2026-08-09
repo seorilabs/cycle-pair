@@ -52,7 +52,7 @@ Admin SDK는 Security Rules를 우회하므로 각 Function은 작업에 맞는 
 ## 남은 보안 결정
 
 - 운영에서 email/password·anonymous Auth를 허용할 범위와 이메일 검증 정책
-- 민감정보 별도 동의문 법률 검토와 게시할 consent version
+- 민감정보 동의 version은 `2026-08-09-v1`로 구현했다. 기존 무버전 동의는 데이터만 보존하고 재동의 전 신규 건강정보 저장을 차단한다. 사업·법률 검토 evidence는 출시 blocker로 유지한다.
 - `pairTombstones` 감사로그 보존기간. 초대 TTL 24시간, 만료 후 7일 보존, acknowledged cache tombstone 30일 보존, 시간당 5회 생성 제한은 MVP 상수로 확정
 - Firebase 백업에 남는 데이터의 삭제 SLA와 사용자 안내
 - 운영 App Check provider 등록, Firestore enforcement와 `ENFORCE_APP_CHECK=true` 배포 검증 시점
