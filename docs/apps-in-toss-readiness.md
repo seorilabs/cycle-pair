@@ -6,6 +6,7 @@
 
 - 2026-08-02 사용자 요청으로 AppsInToss build target을 채택했다.
 - Console 글자 수 규격에 맞춘 정식 AIT 표시명은 짧은 브랜드 `사이클 페어`다.
+- 실제 Console category catalog는 2026-08-09T07:58:49Z에 `생활 7 > 건강 3804 > 건강 관리 2`로 재조회했다. 카테고리 선택 근거일 뿐 앱 생성·metadata 저장 evidence는 아니다.
 - 영구 appName은 `cycle-pair`로 승인됐다. Console 가용성 확인과 영구 등록·readback 전에는 `confirmed-console-match` evidence로 올리지 않는다. 현재 연결된 Console 계정에는 워크스페이스가 없어 등록하지 못했다.
 - 첫 slice는 정해진 컨디션·도움 선호를 `Storage`에 로컬 날짜와 함께 저장하고 사용자가 공식 공유 화면을 여는 흐름만 제공한다. 날짜가 바뀌면 이전 선택은 자동 삭제한다.
 - 이 slice에는 Firebase 로그인, 외부 데이터 동기화, Pair 계정 공유, push, 구독 결제, 자유 텍스트가 없다. 이 항목들은 `not-applicable`로 분리하고 모바일 전체 앱 선언을 재사용하지 않는다.

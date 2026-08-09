@@ -34,7 +34,10 @@
       "id": 2,
       "name": "건강 관리"
     },
-    "status": "prepared-pending-console-save"
+    "status": "verified-console-category-catalog-pending-app-save",
+    "verifiedAt": "2026-08-09T07:58:49Z",
+    "reference": "apps-in-toss-console-category:7/3804/2",
+    "evidence": "인증된 AppsInToss Console category API에서 생활 7, 건강 3804, 건강 관리 2를 재조회. appName 등록과 앱 metadata 저장은 아직 수행하지 않음"
   },
   "featureUrls": [
     {
