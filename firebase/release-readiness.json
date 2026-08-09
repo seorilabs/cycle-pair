@@ -67,19 +67,20 @@
     },
     "productionGooglePlaySubscriptions": {
       "status": "missing",
-      "projectId": null,
-      "developerApiVerified": false,
+      "projectId": "seorilabs-cyclepair-prod",
+      "developerApiVerified": true,
       "rtdnVerified": false,
-      "verifiedAt": null,
-      "evidence": null
+      "verifiedAt": "2026-08-09T14:40:00Z",
+      "evidence": "Android Publisher API v3를 seorilabs-play-publisher SA로 호출해 com.seorilabs.cyclepair edits.insert 성공, tracks production/beta/alpha/internal 및 bundles versionCode 1008 조회로 Developer API 연동 확인. RTDN은 토픽 cyclepair-google-play-rtdn과 Eventarc 구독 eventarc-asia-northeast3-handlegoogleplaysubscriptionrtdn-770878-sub-459가 존재하고 google-play-developer-notifications@system.gserviceaccount.com에 roles/pubsub.publisher를 부여해 전제조건을 갖췄다. 다만 Cloud Monitoring topic/send_message_operation_count를 2026-07-01~2026-08-09 구간으로 조회한 결과 time series가 비어 있어 이 토픽에 publish된 메시지가 한 건도 없다. Play Console Monetization setup의 RTDN 토픽 등록과 실제 테스트 알림 수신이 남아 status missing 유지"
     },
     "productionAppleSubscriptions": {
       "status": "missing",
-      "projectId": null,
-      "secretsVerified": false,
+      "projectId": "seorilabs-cyclepair-prod",
+      "secretsVerified": true,
       "notificationsV2Verified": false,
-      "verifiedAt": null,
-      "evidence": null
+      "verifiedAt": "2026-08-09T14:45:00Z",
+      "evidence": "Secret Manager에서 APPLE_APP_ID, APPLE_IAP_ISSUER_ID, APPLE_IAP_KEY_ID, APPLE_IAP_PRIVATE_KEY_BASE64, APPLE_IAP_ROOT_CERTIFICATES_BASE64_JSON 5종이 모두 존재하고 각각 enabled 버전 1개를 가진 것을 재조회했다. functions source가 defineSecret으로 참조하는 3종이 이 목록에 포함된다. handleAppStoreServerNotificationV2는 asia-northeast3에 ACTIVE이며 https://handleappstoreservernotificationv2-66sv4vtdda-du.a.run.app로 노출된다. App Store Connect에 이 URL을 Production Server URL로 등록하고 App Store Server API의 test notification으로 실제 수신을 확인하는 단계가 남아 status missing 유지",
+      "notificationsV2Endpoint": "https://handleappstoreservernotificationv2-66sv4vtdda-du.a.run.app"
     },
     "productionAccountExport": {
       "status": "missing",
