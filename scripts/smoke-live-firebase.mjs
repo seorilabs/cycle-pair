@@ -1,4 +1,4 @@
-import {createHash} from 'node:crypto';
+import {createHash, randomBytes} from 'node:crypto';
 import process from 'node:process';
 
 const projectId =
@@ -39,6 +39,11 @@ const created = {
   pairId: null,
   dailyLocalDate: null,
   revoked: false,
+  // 계정 데이터 내보내기는 게스트를 거부하고 복구 가능한 계정만 허용하므로
+  // Pair smoke와 분리된 email/password 계정을 따로 만든다.
+  exporter: null,
+  exporterDailyLocalDate: null,
+  exportTokenHash: null,
 };
 
 function sleep(milliseconds) {
@@ -147,6 +152,22 @@ async function requestJson(label, url, options, expectedStatuses = [200]) {
   return {status: response.status, body};
 }
 
+// 내보내기 다운로드는 첨부 파일과 응답 헤더를 검증해야 하므로 JSON 파서를
+// 거치지 않고 원문과 헤더를 그대로 돌려준다.
+async function requestRaw(label, url, options, expectedStatuses = [200]) {
+  let response;
+  try {
+    response = await fetch(url, options);
+  } catch (error) {
+    throw new Error(`${label}: 네트워크 요청 실패 (${error.message})`);
+  }
+  const text = await response.text();
+  if (!expectedStatuses.includes(response.status)) {
+    throw new Error(`${label}: HTTP ${response.status}`);
+  }
+  return {status: response.status, headers: response.headers, text};
+}
+
 async function createPlatformGuestAccount(label) {
   const {body: platformBody} = await requestJson(
     `${label} 플랫폼 게스트 발급`,
@@ -214,6 +235,50 @@ async function createPlatformGuestAccount(label) {
     idToken: body.idToken,
     platformToken: session.platformToken,
   };
+}
+
+async function createDurableAccount(label) {
+  // authorizeRecentDurableAccount는 anonymous와 seoriGuest custom token을
+  // 거부한다. email/password 가입은 signInProvider=password와 방금 찍힌
+  // auth_time을 주므로 내보내기 정책의 두 조건을 모두 만족한다.
+  const suffix = randomBytes(12).toString('hex');
+  const email = `live-smoke-export-${suffix}@cyclepair-smoke.invalid`;
+  const password = `Smoke-${randomBytes(18).toString('base64url')}`;
+  const {body} = await requestJson(
+    `${label} 복구 가능한 계정 생성`,
+    `${identityBase}:signUp?key=${encodeURIComponent(apiKey)}`,
+    {
+      method: 'POST',
+      headers: {'content-type': 'application/json'},
+      body: JSON.stringify({email, password, returnSecureToken: true}),
+    }
+  );
+  if (!body?.idToken || !body?.localId) {
+    throw new Error(`${label} 복구 가능한 계정 생성: token 또는 UID 누락`);
+  }
+  const claims = decodeJwtPayload(body.idToken);
+  assert(
+    claims.firebase?.sign_in_provider === 'password',
+    `${label} 복구 가능한 계정: signInProvider가 password가 아닙니다.`
+  );
+  assert(
+    claims.seoriGuest !== true,
+    `${label} 복구 가능한 계정: seoriGuest claim이 남아 있습니다.`
+  );
+  return {uid: body.localId, idToken: body.idToken, email};
+}
+
+async function deleteDurableAccount(account) {
+  if (!account) return;
+  await requestJson(
+    'Firebase 복구 가능한 계정 정리',
+    `${identityBase}:delete?key=${encodeURIComponent(apiKey)}`,
+    {
+      method: 'POST',
+      headers: {'content-type': 'application/json'},
+      body: JSON.stringify({idToken: account.idToken}),
+    }
+  );
 }
 
 async function deletePlatformGuestAccount(account) {
@@ -423,6 +488,20 @@ async function cleanup() {
       .digest('hex');
     parentPaths.push(`pairInvites/${inviteHash}`);
   }
+  if (created.exporter) {
+    if (created.exporterDailyLocalDate) {
+      childPaths.push(
+        `users/${created.exporter.uid}/privateDailyLogs/` +
+          created.exporterDailyLocalDate
+      );
+    }
+    // 다운로드까지 성공하면 두 문서는 이미 소비돼 없다. 중간 실패로 남은
+    // 경우에만 정리 대상이 된다.
+    parentPaths.push(`accountExportStates/${created.exporter.uid}`);
+    if (created.exportTokenHash) {
+      parentPaths.push(`accountExportTickets/${created.exportTokenHash}`);
+    }
+  }
   if (created.pairId && created.alice && created.bob) {
     securityPaths.push(
       `pairs/${created.pairId}/projections/${created.alice.uid}`,
@@ -456,6 +535,7 @@ async function cleanup() {
   const authResults = await Promise.allSettled([
     deletePlatformGuestAccount(created.alice),
     deletePlatformGuestAccount(created.bob),
+    deleteDurableAccount(created.exporter),
   ]);
   const authFailures = authResults.filter(
     result => result.status === 'rejected'
@@ -697,6 +777,142 @@ try {
   });
   assert(repeatedRevoke.alreadyRevoked === true, 'revoke가 멱등하지 않습니다.');
 
+  // 계정 데이터 내보내기: 발급 → 단회 다운로드 → 재사용 차단 → ticket 소멸
+  created.exporter = await createDurableAccount('E');
+  created.exporterDailyLocalDate = seoulLocalDate();
+  await writeDocument(
+    `users/${created.exporter.uid}/privateDailyLogs/` +
+      created.exporterDailyLocalDate,
+    created.exporter,
+    {
+      schemaVersion: 2,
+      localDate: created.exporterDailyLocalDate,
+      lastMutationId: 'live-smoke-export',
+      moodTag: 'neutral',
+      updatedAt: new Date(),
+    }
+  );
+
+  const guestExportRejected = await requestJson(
+    '게스트 내보내기 요청 차단',
+    `${callableBase}/requestAccountDataExport`,
+    {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${created.alice.idToken}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({data: {}}),
+    },
+    [400, 401, 403, 412, 500]
+  );
+  assert(
+    guestExportRejected.body?.error !== undefined,
+    '플랫폼 게스트가 내보내기를 발급받았습니다.'
+  );
+
+  const exportTicket = await callFunction(
+    'requestAccountDataExport',
+    created.exporter,
+    {}
+  );
+  assert(
+    exportTicket.exportSubjectUid === created.exporter.uid &&
+      exportTicket.singleUse === true &&
+      typeof exportTicket.downloadUrl === 'string',
+    '내보내기 ticket 응답 필드가 계약과 다릅니다.'
+  );
+  const [downloadBase, downloadFragment] = exportTicket.downloadUrl.split('#');
+  const exportToken = new URLSearchParams(downloadFragment ?? '').get('token');
+  assert(
+    typeof exportToken === 'string' && /^[A-Za-z0-9_-]{43}$/.test(exportToken),
+    '내보내기 token이 fragment에 없거나 형식이 다릅니다.'
+  );
+  assert(
+    !downloadBase.includes(exportToken),
+    '내보내기 token이 URL 경로나 query에 노출됩니다.'
+  );
+  created.exportTokenHash = createHash('sha256')
+    .update(exportToken)
+    .digest('hex');
+
+  const ticketDocument = await readDocumentAsAdmin(
+    `accountExportTickets/${created.exportTokenHash}`
+  );
+  assert(
+    ticketDocument.data?.uid === created.exporter.uid,
+    '내보내기 ticket 문서가 저장되지 않았습니다.'
+  );
+
+  const bootstrap = await requestRaw('내보내기 부트스트랩', downloadBase, {
+    method: 'GET',
+  });
+  assert(
+    bootstrap.headers.get('cache-control')?.includes('no-store') === true &&
+      bootstrap.headers.get('referrer-policy') === 'no-referrer' &&
+      bootstrap.text.includes('location.hash'),
+    '내보내기 부트스트랩 응답이 no-store fragment 계약과 다릅니다.'
+  );
+
+  const download = await requestRaw('내보내기 단회 다운로드', downloadBase, {
+    method: 'POST',
+    headers: {authorization: `Bearer ${exportToken}`, accept: 'application/json'},
+  });
+  assert(
+    download.headers.get('content-disposition')?.includes('attachment') === true,
+    '내보내기 다운로드가 첨부 파일로 내려오지 않습니다.'
+  );
+  const exportPayload = JSON.parse(download.text);
+  assert(
+    exportPayload.exportSubjectUid === created.exporter.uid,
+    '내보내기 payload의 대상 UID가 다릅니다.'
+  );
+  assert(
+    exportPayload.data?.privateDailyLogs?.documents?.some(
+      document => document.id === created.exporterDailyLocalDate
+    ) === true,
+    '내보내기 payload에 작성한 일일 기록이 없습니다.'
+  );
+
+  await requestRaw(
+    '내보내기 token 재사용 차단',
+    downloadBase,
+    {
+      method: 'POST',
+      headers: {authorization: `Bearer ${exportToken}`},
+    },
+    [404]
+  );
+  await requestRaw(
+    '내보내기 위조 token 차단',
+    downloadBase,
+    {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${randomBytes(32).toString('base64url')}`,
+      },
+    },
+    [404]
+  );
+
+  const consumedTicket = await readDocumentAsAdmin(
+    `accountExportTickets/${created.exportTokenHash}`,
+    [200, 404]
+  );
+  assert(
+    consumedTicket.status === 404,
+    '사용한 내보내기 ticket이 삭제되지 않았습니다.'
+  );
+  const consumedState = await readDocumentAsAdmin(
+    `accountExportStates/${created.exporter.uid}`,
+    [200, 404]
+  );
+  assert(
+    consumedState.status === 404,
+    '내보내기 state 문서가 삭제되지 않았습니다.'
+  );
+  created.exportTokenHash = null;
+
   smokePassed = true;
   console.log(
     'PASS: 플랫폼 게스트 2개 초대·수락·기본 비공개·선택 공유·회수·해제'
@@ -704,6 +920,10 @@ try {
   console.log('PASS: cycle·daily·shareSettings projection trigger 수렴');
   console.log(
     'PASS: owner-private 접근 차단과 cache tombstone acknowledgement'
+  );
+  console.log(
+    'PASS: 계정 데이터 내보내기 게스트 차단·fragment token 발급·단회 다운로드·' +
+      '재사용 차단·ticket 소멸'
   );
 } catch (error) {
   smokeError = error;

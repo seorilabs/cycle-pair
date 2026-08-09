@@ -83,13 +83,14 @@
       "notificationsV2Endpoint": "https://handleappstoreservernotificationv2-66sv4vtdda-du.a.run.app"
     },
     "productionAccountExport": {
-      "status": "missing",
+      "status": "verified",
       "projectId": "seorilabs-cyclepair-prod",
       "httpsInvokerVerified": true,
       "cleanupSchedulerVerified": true,
       "legacyExportMyDataRemoved": true,
-      "verifiedAt": "2026-08-06T13:48:00Z",
-      "evidence": "requestAccountDataExport/downloadAccountDataExport Cloud Run allUsers invoker 확인, cleanupExpiredAccountExportTickets 즉시 실행 HTTP 200, Functions/Cloud Run 24종 목록에 legacy exportMyData 없음. 실제 export 발급·단회 다운로드 E2E는 미실행이라 status missing 유지"
+      "e2eDownloadVerified": true,
+      "verifiedAt": "2026-08-09T15:20:00Z",
+      "evidence": "smoke-live-firebase의 계정 데이터 내보내기 E2E를 운영 프로젝트에서 실행해 PASS. 플랫폼 게스트 idToken으로 requestAccountDataExport를 호출하면 거부되고, email/password로 만든 복구 가능한 계정에서만 ticket이 발급되는 것을 확인했다. 발급 응답의 downloadUrl은 token을 fragment에만 담고 경로·query에는 노출하지 않으며, accountExportTickets/{sha256} 문서가 해당 uid로 생성됐다. 다운로드 base URL에 GET하면 no-store와 no-referrer 헤더가 붙은 fragment 부트스트랩 HTML이 오고, Bearer token으로 POST하면 attachment로 payload가 내려와 exportSubjectUid가 일치하고 직전에 쓴 privateDailyLogs 문서가 포함됐다. 같은 token 재사용과 위조 token은 둘 다 404였고, accountExportTickets와 accountExportStates 문서가 모두 소멸한 것을 Admin 읽기 404로 확인했다. 테스트 계정과 문서는 정리 단계에서 삭제했다. 기존 확인분인 Cloud Run allUsers invoker, cleanupExpiredAccountExportTickets 즉시 실행 HTTP 200, Functions 24종에 legacy exportMyData 부재도 그대로 유효하다"
     },
     "productionProject": {
       "status": "verified",
