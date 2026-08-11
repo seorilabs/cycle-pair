@@ -29,6 +29,7 @@ GitHub macOS runner는 사용하지 않는다. App Store Connect API가 `v*` tag
 - App Privacy: 이메일·User ID·Health & Fitness·Purchases는 linked, 동의형 Usage Data·Diagnostics는 not linked, tracking no
 - export compliance: 표준 TLS/Firebase 전송만 사용하므로 non-exempt encryption false
 - EU 포함 구독 사업이므로 DSA trader로 준비하며 공개 전화번호·증빙은 저장소에 두지 않음
+- 구독 contract: `com.seorilabs.cyclepair.plus.monthly` / `com.seorilabs.cyclepair.plus.yearly`
 - TestFlight는 서로 다른 계정·기기 두 명으로 검증
 - Xcode Cloud: `Cycle Pair Release`
   (`6310D1DD-4A04-4E5C-8B17-B86D7A744D09`), 수동 `v*` tag,
@@ -72,7 +73,9 @@ Health 데이터 공유는 사용자 제어 기능의 본질이므로 review not
 - [ ] DSA trader 상태와 공개 연락처
 - [x] export compliance 답변안: non-exempt encryption false
 - [ ] 심사 연락처 전화번호와 로그인 review 계정
-- [ ] 구독 product ID, 가격, 혜택
+- [x] 저장소·런타임 구독 product ID, 가격, 혜택 정합성
+- [x] App Store Connect 구독 그룹·상품 생성과 가격·무료 체험 readback: 2026-08-11 API로 `Cycle Pair Plus`, 월간·연간 175개 지역, KRW 3,900·29,000, 1주 무료 체험 확인
+- [ ] 구독 상품 review screenshot과 심사 메타데이터 보완 (`MISSING_METADATA`)
 - [ ] 실제 iPhone screenshots
 - [ ] universal target iPad QA와 13-inch iPad screenshots
 - [ ] archive와 TestFlight 처리 완료

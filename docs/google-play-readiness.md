@@ -2,7 +2,7 @@
 
 현재 상태는 release candidate와 internal 업로드 경로가 준비됐으며 production 배포는 불가하다. 마켓 메타데이터 source of truth는 [google-play.config.json](../play-store/google-play.config.json), artifact·Console·수동 검증 evidence는 [readiness.json](../release/readiness.json)이다.
 
-한국어 출시 이름은 `사이클 페어 : 내 기분, 주기, 컨디션을 알려요`, 영어 출시 이름은 `Cycle Pair`, 영구 Android package name은 `com.seorilabs.cyclepair`로 확정했다. Play Console 앱 shell과 v0.1.8 internal artifact는 존재하지만 v0.1.9/1009 후보와 release evidence는 아직 없다.
+한국어 출시 이름은 `사이클 페어 : 내 기분, 주기, 컨디션을 알려요`, 영어 출시 이름은 `Cycle Pair`, 영구 Android package name은 `com.seorilabs.cyclepair`로 확정했다. Play Console 앱 shell과 v0.1.8 internal artifact는 존재하지만 v1.0.0/1000000 후보와 release evidence는 아직 없다.
 
 Android `targetSdkVersion`은 36이다. 현재 API 35 최소 기준을 충족하며, 2026-08-31부터 적용되는 신규 앱·업데이트 API 36 기준에도 맞춘 값이다. 제출 시점에는 [Google 공식 요구사항](https://developer.android.com/google/play/requirements/target-sdk)을 다시 확인한다.
 
@@ -50,6 +50,7 @@ CI는 파일 대신 아래 환경변수를 사용할 수 있다. 값이나 keyst
 - 비공개 메모·공동 일정은 사용자 생성 콘텐츠로 수집 신고
 - 가임기·피임 표시: 없음
 - 다운로드: 무료, 구독 기준 가격: 월 KRW 3,900 / 연 KRW 29,000, 타 통화는 스토어 자동 환산
+- 구독 contract: product `cyclepair_plus`, base plan `monthly` / `yearly`, 7일 체험 offer `free-trial`
 - 배포: EU·한국을 포함한 전체 storefront, 만 17세 이상, 비게임 앱
 - 고객지원 이메일: cs@seorilabs.com
 - 최초 테스트 트랙: internal
@@ -78,7 +79,8 @@ Firebase 처리는 service provider, partner projection과 시스템 공유는 �
 - [x] privacy policy URL과 계정 삭제 URL 게시
 - [ ] Data safety 검토·입력
 - [ ] target audience와 IARC Console 저장/readback
-- [x] 구독 product ID, 기준 가격, 혜택 준비
+- [x] 저장소·런타임 구독 product ID, 기준 가격, 혜택 정합성
+- [x] Play Console base plan 활성화와 readback: 2026-08-11 Android Publisher API로 월간·연간 173개 지역, KRW 3,900·29,000, `free-trial` P7D ACTIVE 확인
 - [x] 1024x500 feature graphic과 실제 phone screenshots
 - [x] large/xlarge 지원 기준 7-inch·10-inch tablet screenshots 각 2장 이상
 - [ ] signed AAB

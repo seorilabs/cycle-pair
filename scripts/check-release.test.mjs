@@ -12,7 +12,94 @@ import { AITWriter, PlatformType } from "@apps-in-toss/ait-format";
 import {
   computeFirebaseSourceFingerprints,
   evaluateReleaseReadiness,
+  subscriptionContractBlockers,
 } from "./release-readiness-lib.mjs";
+
+test("store subscription products match the mobile and Firebase catalogs", () => {
+  const mobileCatalogSource = `
+    provider: 'google-play', productId: 'cyclepair_plus', basePlanId: 'monthly', billingPeriod: 'P1M',
+    provider: 'google-play', productId: 'cyclepair_plus', basePlanId: 'yearly', billingPeriod: 'P1Y',
+    provider: 'app-store', productId: 'com.seorilabs.cyclepair.plus.monthly', basePlanId: 'monthly', billingPeriod: 'P1M',
+    provider: 'app-store', productId: 'com.seorilabs.cyclepair.plus.yearly', basePlanId: 'yearly', billingPeriod: 'P1Y',
+  `;
+  const firebaseCatalogSource = `
+    provider: "google-play" as const, productId: "cyclepair_plus", basePlanId: "monthly" as const,
+    provider: "google-play" as const, productId: "cyclepair_plus", basePlanId: "yearly" as const,
+    provider: "app-store" as const, productId: "com.seorilabs.cyclepair.plus.monthly", basePlanId: "monthly" as const,
+    provider: "app-store" as const, productId: "com.seorilabs.cyclepair.plus.yearly", basePlanId: "yearly" as const,
+  `;
+  const blockers = subscriptionContractBlockers({
+    playConfig: {
+      monetization: {
+        model: "premium-subscription",
+        subscriptionProducts: [
+          {
+            productId: "cyclepair_plus",
+            basePlanId: "monthly",
+            billingPeriod: "P1M",
+          },
+          {
+            productId: "cyclepair_plus",
+            basePlanId: "yearly",
+            billingPeriod: "P1Y",
+          },
+        ],
+      },
+    },
+    appStoreConfig: {
+      monetization: {
+        model: "premium-subscription",
+        subscriptionProducts: [
+          {
+            productId: "com.seorilabs.cyclepair.plus.monthly",
+            basePlanId: "monthly",
+            billingPeriod: "P1M",
+          },
+          {
+            productId: "com.seorilabs.cyclepair.plus.yearly",
+            basePlanId: "yearly",
+            billingPeriod: "P1Y",
+          },
+        ],
+      },
+    },
+    mobileCatalogSource,
+    firebaseCatalogSource,
+  });
+
+  assert.deepEqual(blockers, { firebase: [], googlePlay: [], appStore: [] });
+
+  const drift = subscriptionContractBlockers({
+    playConfig: {
+      monetization: {
+        model: "premium-subscription",
+        subscriptionProducts: [
+          {
+            productId: "com.seorilabs.cyclepair.premium.monthly",
+            basePlanId: "monthly",
+            billingPeriod: "P1M",
+          },
+        ],
+      },
+    },
+    appStoreConfig: {
+      monetization: {
+        model: "premium-subscription",
+        subscriptionProducts: [],
+      },
+    },
+    mobileCatalogSource,
+    firebaseCatalogSource: firebaseCatalogSource.replace(
+      "cyclepair_plus",
+      "cyclepair_premium"
+    ),
+  });
+  assert.deepEqual(drift, {
+    firebase: ["모바일과 Firebase 구독 product/base plan 계약 불일치"],
+    googlePlay: ["Play 구독 product/base plan과 모바일 catalog 불일치"],
+    appStore: ["App Store 구독 product와 모바일 catalog 불일치"],
+  });
+});
 
 const execFileAsync = promisify(execFile);
 

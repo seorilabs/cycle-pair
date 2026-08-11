@@ -88,7 +88,9 @@
     "downloadPrice": "free",
     "subscriptionProducts": [
       {
-        "productId": "com.seorilabs.cyclepair.premium.monthly",
+        "productId": "cyclepair_plus",
+        "basePlanId": "monthly",
+        "offerId": "free-trial",
         "type": "auto-renewable",
         "billingPeriod": "P1M",
         "price": {
@@ -98,7 +100,9 @@
         "benefit": "상세 예측·전체 케어 콘텐츠·확장 이력"
       },
       {
-        "productId": "com.seorilabs.cyclepair.premium.yearly",
+        "productId": "cyclepair_plus",
+        "basePlanId": "yearly",
+        "offerId": "free-trial",
         "type": "auto-renewable",
         "billingPeriod": "P1Y",
         "price": {
@@ -127,10 +131,10 @@
     ]
   },
   "manualEvidence": {
-    "playConsoleApp": "Android Publisher API v3 재조회(2026-08-09): edits.insert 성공으로 com.seorilabs.cyclepair 앱 존재 확인. tracks=production/beta/alpha/internal, details.defaultLanguage=ko-KR, contactEmail=cs@seorilabs.com, contactWebsite=https://www.seorilabs.com/support/. listings=ko-KR·en-US, ko-KR 자산 icon 1 / featureGraphic 1 / phone 3 / 7-inch 2 / 10-inch 2 반영. bundles=versionCode 1008(sha256 9363e064ee5b18583214feca239e82ae614b48541b74782b039871ea91661a5a)",
+    "playConsoleApp": "Android Publisher API v3 재조회(2026-08-11): com.seorilabs.cyclepair 앱과 tracks=production/beta/alpha/internal, listings=ko-KR·en-US를 확인했다. cyclepair_plus의 monthly(P1M, KRW 3,900)·yearly(P1Y, KRW 29,000) base plan과 각 free-trial(P7D) offer는 173개 지역 ACTIVE다. 업로드된 bundle은 기존 versionCode 1008뿐이며 v1.0.0/1000000 candidate artifact는 아직 없다.",
     "dataSafetyReview": "missing: user review and Play Console save/readback required",
     "contentRating": "missing: Play Console questionnaire save/readback required",
-    "internalTwoPersonTest": "missing: v0.1.9 build 1009 two-person device QA required",
+    "internalTwoPersonTest": "missing: v1.0.0 build 1000000 two-person device QA required",
     "deploymentApproval": "missing: release deployment approval required"
   }
 }

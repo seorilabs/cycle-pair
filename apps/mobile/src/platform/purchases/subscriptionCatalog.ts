@@ -18,8 +18,8 @@ export interface CyclePairSubscriptionCatalog {
 }
 
 /**
- * Single source of truth for store identifiers. Console products are not created
- * yet, so new sales remain disabled while restore/manage paths stay available.
+ * Single source of truth for store identifiers. New sales stay disabled until
+ * server notification and real-device purchase/restore verification pass.
  */
 export const CYCLE_PAIR_SUBSCRIPTION_CATALOG: CyclePairSubscriptionCatalog =
   Object.freeze({
@@ -60,4 +60,3 @@ export function catalogPlansForProvider(
 ): readonly CatalogSubscriptionPlan[] {
   return catalog.plans.filter(plan => plan.provider === provider);
 }
-

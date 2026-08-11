@@ -146,8 +146,8 @@ flowchart TD
 
 | 타깃 | 상태 |
 | --- | --- |
-| Google Play | 앱 이름·package name·Console shell·전 storefront 준비, v0.1.9/1009 후보와 정책 readback 전 배포 불가 |
-| App Store | 앱 이름·bundle ID·Connect 앱·EU storefront 준비, v0.1.9/1009 후보와 정책 readback 전 배포 불가 |
+| Google Play | 앱 이름·package name·Console shell·전 storefront 준비, v1.0.0/1000000 후보와 정책 readback 전 배포 불가 |
+| App Store | 앱 이름·bundle ID·Connect 앱·EU storefront 준비, v1.0.0/1000000 후보와 정책 readback 전 배포 불가 |
 | AppsInToss | SDK 2.x 빌드 타깃과 영구 `cycle-pair` 승인, Console workspace·등록·sandbox 검증 전 배포 불가 |
 
 ## 출시 전 남은 제품 결정

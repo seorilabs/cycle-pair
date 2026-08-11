@@ -107,6 +107,123 @@ function appReviewCredentialBlockers(review) {
   return blockers;
 }
 
+function parseSubscriptionPlanIds(source) {
+  if (typeof source !== "string") return [];
+  const plans = [];
+  const pattern =
+    /provider:\s*["'](google-play|app-store)["'](?:\s+as const)?,\s*productId:\s*["']([^"']+)["'](?:\s+as const)?,\s*basePlanId:\s*["']([^"']+)["'](?:\s+as const)?/g;
+  for (const match of source.matchAll(pattern)) {
+    plans.push({
+      provider: match[1],
+      productId: match[2],
+      basePlanId: match[3],
+    });
+  }
+  return plans;
+}
+
+function parseSubscriptionPlansWithPeriods(source) {
+  if (typeof source !== "string") return [];
+  const plans = [];
+  const pattern =
+    /provider:\s*["'](google-play|app-store)["'](?:\s+as const)?,\s*productId:\s*["']([^"']+)["'](?:\s+as const)?,\s*basePlanId:\s*["']([^"']+)["'](?:\s+as const)?,\s*billingPeriod:\s*["']([^"']+)["']/g;
+  for (const match of source.matchAll(pattern)) {
+    plans.push({
+      provider: match[1],
+      productId: match[2],
+      basePlanId: match[3],
+      billingPeriod: match[4],
+    });
+  }
+  return plans;
+}
+
+function configuredSubscriptionPlans(config, provider) {
+  return (config?.monetization?.subscriptionProducts ?? []).map((plan) => ({
+    provider,
+    productId: plan?.productId,
+    basePlanId: plan?.basePlanId,
+    billingPeriod: plan?.billingPeriod,
+  }));
+}
+
+function planSet(plans, { includeBillingPeriod = false } = {}) {
+  return new Set(
+    plans.map((plan) =>
+      [
+        plan.provider,
+        plan.productId,
+        plan.basePlanId,
+        ...(includeBillingPeriod ? [plan.billingPeriod] : []),
+      ].join("|")
+    )
+  );
+}
+
+function sameSet(left, right) {
+  return (
+    left.size === right.size && [...left].every((value) => right.has(value))
+  );
+}
+
+export function subscriptionContractBlockers({
+  playConfig,
+  appStoreConfig,
+  mobileCatalogSource,
+  firebaseCatalogSource,
+}) {
+  const blockers = { firebase: [], googlePlay: [], appStore: [] };
+  const playUsesSubscriptions =
+    playConfig?.monetization?.model === "premium-subscription";
+  const appStoreUsesSubscriptions =
+    appStoreConfig?.monetization?.model === "premium-subscription";
+  if (!playUsesSubscriptions && !appStoreUsesSubscriptions) return blockers;
+
+  const mobilePlans = parseSubscriptionPlansWithPeriods(mobileCatalogSource);
+  const mobilePlanIds = parseSubscriptionPlanIds(mobileCatalogSource);
+  const firebasePlanIds = parseSubscriptionPlanIds(firebaseCatalogSource);
+
+  if (!sameSet(planSet(mobilePlanIds), planSet(firebasePlanIds))) {
+    blockers.firebase.push(
+      "모바일과 Firebase 구독 product/base plan 계약 불일치"
+    );
+  }
+
+  if (playUsesSubscriptions) {
+    const configured = configuredSubscriptionPlans(playConfig, "google-play");
+    const expected = mobilePlans.filter(
+      (plan) => plan.provider === "google-play"
+    );
+    if (
+      !sameSet(
+        planSet(configured, { includeBillingPeriod: true }),
+        planSet(expected, { includeBillingPeriod: true })
+      )
+    ) {
+      blockers.googlePlay.push(
+        "Play 구독 product/base plan과 모바일 catalog 불일치"
+      );
+    }
+  }
+
+  if (appStoreUsesSubscriptions) {
+    const configured = configuredSubscriptionPlans(appStoreConfig, "app-store");
+    const expected = mobilePlans.filter(
+      (plan) => plan.provider === "app-store"
+    );
+    if (
+      !sameSet(
+        planSet(configured, { includeBillingPeriod: true }),
+        planSet(expected, { includeBillingPeriod: true })
+      )
+    ) {
+      blockers.appStore.push("App Store 구독 product와 모바일 catalog 불일치");
+    }
+  }
+
+  return blockers;
+}
+
 async function sha256File(root, relativePath) {
   if (!(await exists(root, relativePath))) return null;
   return createHash("sha256")
@@ -1396,6 +1513,8 @@ export async function evaluateReleaseReadiness(root) {
     iosProject,
     firebaseProjects,
     firebaseEnvironments,
+    mobileSubscriptionCatalog,
+    firebaseSubscriptionCatalog,
   ] = await Promise.all([
     readJson(root, "package.json"),
     readJson(root, "apps/mobile/package.json"),
@@ -1409,6 +1528,8 @@ export async function evaluateReleaseReadiness(root) {
     readText(root, "apps/mobile/ios/CyclePair.xcodeproj/project.pbxproj"),
     readJson(root, ".firebaserc"),
     readJson(root, "apps/mobile/firebase-environments.json"),
+    readText(root, "apps/mobile/src/platform/purchases/subscriptionCatalog.ts"),
+    readText(root, "firebase/functions/src/domain/subscription.ts"),
   ]);
   const firebaseFingerprints = await computeFirebaseSourceFingerprints(root);
   const googlePlayTarget = targetMarketDecision(
@@ -1426,6 +1547,12 @@ export async function evaluateReleaseReadiness(root) {
     "appsInToss",
     "AppsInToss"
   );
+  const subscriptionBlockers = subscriptionContractBlockers({
+    playConfig,
+    appStoreConfig,
+    mobileCatalogSource: mobileSubscriptionCatalog,
+    firebaseCatalogSource: firebaseSubscriptionCatalog,
+  });
 
   const architectureBlockers = [];
   if (!(await exists(root, "packages/product-core/src"))) {
@@ -1589,7 +1716,8 @@ export async function evaluateReleaseReadiness(root) {
     ...appCheckEnforcementBlockers(
       firebaseReadiness?.environment?.appCheckEnforcement,
       projectId
-    )
+    ),
+    ...subscriptionBlockers.firebase
   );
 
   const googlePlayBlockers = [...googlePlayTarget.blockers];
@@ -1624,6 +1752,7 @@ export async function evaluateReleaseReadiness(root) {
       googlePlayBlockers.push("Android release signing fail-closed gate 없음");
     }
     googlePlayBlockers.push(
+      ...subscriptionBlockers.googlePlay,
       ...(await androidArtifactBlockers(
         root,
         releaseEvidence?.artifacts?.googlePlaySignedAab,
@@ -1661,6 +1790,7 @@ export async function evaluateReleaseReadiness(root) {
       );
     }
     appStoreBlockers.push(
+      ...subscriptionBlockers.appStore,
       ...appReviewCredentialBlockers(appStoreConfig?.review)
     );
     appStoreBlockers.push(
