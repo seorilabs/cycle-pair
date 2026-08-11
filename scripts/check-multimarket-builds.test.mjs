@@ -67,13 +67,24 @@ test('Korean market title and AppsInToss short brand stay within each market con
 });
 
 test('Google Play build stays API 36, versioned, signed, and pnpm-safe for Hermes', async () => {
-  const [androidRoot, androidApp, mobilePackage, buildWrapper] =
-    await Promise.all([
-      readFile('apps/mobile/android/build.gradle', 'utf8'),
-      readFile('apps/mobile/android/app/build.gradle', 'utf8'),
-      json('apps/mobile/package.json'),
-      readFile('scripts/build-google-play.mjs', 'utf8'),
-    ]);
+  const [
+    androidRoot,
+    androidApp,
+    mobilePackage,
+    buildWrapper,
+    platformGuestClient,
+    settingsScreen,
+  ] = await Promise.all([
+    readFile('apps/mobile/android/build.gradle', 'utf8'),
+    readFile('apps/mobile/android/app/build.gradle', 'utf8'),
+    json('apps/mobile/package.json'),
+    readFile('scripts/build-google-play.mjs', 'utf8'),
+    readFile(
+      'apps/mobile/src/platform/account/PlatformFirebaseGuestClient.ts',
+      'utf8'
+    ),
+    readFile('apps/mobile/src/screens/SettingsScreen.tsx', 'utf8'),
+  ]);
 
   assert.match(androidRoot, /targetSdkVersion\s*=\s*36/);
   assert.match(androidApp, /hermes-compiler\/package\.json/);
@@ -112,9 +123,17 @@ test('Google Play build stays API 36, versioned, signed, and pnpm-safe for Herme
     `v${mobilePackage.version}`,
   ]);
   const currentVersion = JSON.parse(currentStdout);
-  assert.equal(currentVersion.version_name, '0.1.9');
-  assert.equal(currentVersion.android_version_code, '1009');
-  assert.equal(currentVersion.apple_build_number, '1009');
+  assert.equal(currentVersion.version_name, '1.0.0');
+  assert.equal(currentVersion.android_version_code, '1000000');
+  assert.equal(currentVersion.apple_build_number, '1000000');
+  assert.match(
+    platformGuestClient,
+    new RegExp(`X-Seori-Sdk': 'cycle-pair/${mobilePackage.version}`)
+  );
+  assert.match(
+    settingsScreen,
+    new RegExp(`>${mobilePackage.version} · 의료 도구 아님<`)
+  );
 });
 
 test('AppsInToss target uses supported SDK and a build-only candidate workflow', async () => {

@@ -155,14 +155,15 @@
   "testFlight": {
     "betaAppDescription": "두 명이 서로 다른 계정과 기기로 초대, 공유, 회수, 연결 해제를 검증하는 사이클 페어 내부 테스트",
     "feedbackEmail": "cs@seorilabs.com",
-    "twoPersonTestStatus": "missing-v0.1.9-build-1009-two-person-test"
+    "twoPersonTestStatus": "missing-v1.0.0-build-1000000-two-person-test"
   },
   "monetization": {
     "model": "premium-subscription",
     "downloadPrice": "free",
     "subscriptionProducts": [
       {
-        "productId": "com.seorilabs.cyclepair.premium.monthly",
+        "productId": "com.seorilabs.cyclepair.plus.monthly",
+        "basePlanId": "monthly",
         "type": "auto-renewable",
         "billingPeriod": "P1M",
         "price": {
@@ -172,7 +173,8 @@
         "benefit": "상세 예측·전체 케어 콘텐츠·확장 이력"
       },
       {
-        "productId": "com.seorilabs.cyclepair.premium.yearly",
+        "productId": "com.seorilabs.cyclepair.plus.yearly",
+        "basePlanId": "yearly",
         "type": "auto-renewable",
         "billingPeriod": "P1Y",
         "price": {
@@ -218,10 +220,10 @@
     "supersededWorkflow": "Workflow 6744C7CB-5243-4AF0-B6B1-1DF791F38A04 was attached to the Lucid Slotmachine product instead of Cycle Pair. Backoffice must resolve the product by bundle ID and match the workflow repository."
   },
   "manualEvidence": {
-    "appStoreConnectApp": "verified 2026-07-29: app 6792393652, Xcode Cloud product D071BF40-979E-4D7D-A7C5-2202072488D5, workflow 6310D1DD-4A04-4E5C-8B17-B86D7A744D09",
+    "appStoreConnectApp": "App Store Connect API 재조회(2026-08-11): app 6792393652와 Xcode Cloud product D071BF40-979E-4D7D-A7C5-2202072488D5, workflow 6310D1DD-4A04-4E5C-8B17-B86D7A744D09를 확인했다. Cycle Pair Plus group 22301912에 monthly 6800260737(ONE_MONTH, KRW 3,900)과 yearly 6800263234(ONE_YEAR, KRW 29,000)을 생성했으며 각 175개 지역 UPFRONT 가격과 1주 FREE_TRIAL을 확인했다. 두 상품은 review screenshot 미등록으로 MISSING_METADATA다.",
     "appPrivacyReview": "missing: App Store Connect save/readback required",
     "ageRating": "missing: questionnaire and 18+ override save/readback required",
-    "testFlightTwoPersonTest": "missing: v0.1.9 build 1009 two-person device QA required",
+    "testFlightTwoPersonTest": "missing: v1.0.0 build 1000000 two-person device QA required",
     "deploymentApproval": "missing: release deployment approval required"
   }
 }
