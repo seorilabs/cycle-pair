@@ -86,6 +86,12 @@ describe('CyclePair mobile app', () => {
 
     await fireEvent.press(view.getByText('건너뛰기'));
     expect(view.getByText('기본 설정')).toBeTruthy();
+    await fireEvent(
+      view.getByLabelText('예측 기준 입력'),
+      'valueChange',
+      true,
+    );
+    expect(view.getByTestId('last-period-start-date-picker')).toBeTruthy();
     await expect(hardwareBack.press()).resolves.toBe(true);
     expect(view.getByText(/말하지 않아도/)).toBeTruthy();
 

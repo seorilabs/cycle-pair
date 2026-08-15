@@ -15,9 +15,13 @@ import {
 } from 'react-native';
 import { buildCycleViewModel, formatKoreanDate } from '../app/cycleViewModel';
 import { buildCalendarCycleRanges } from '../app/calendarCycleRanges';
-import { buildCalendarMonthRows } from '../app/calendarMonth';
+import {
+  buildCalendarMonthRows,
+  shiftCalendarMonth,
+} from '../app/calendarMonth';
 import { useCyclePair } from '../app/CyclePairStore';
 import { getSafePartnerProjectionForToday } from '../app/partnerProjectionPresentation';
+import { LocalDatePickerField } from '../components/LocalDatePickerField';
 import type { PairEventInput } from '../platform/backend/CyclePairBackend';
 import {
   Body,
@@ -125,8 +129,7 @@ export function CalendarScreen() {
   });
 
   function shiftMonth(offset: number) {
-    const shifted = new Date(cursor.year, cursor.month - 1 + offset, 1, 12);
-    setCursor({ year: shifted.getFullYear(), month: shifted.getMonth() + 1 });
+    setCursor(current => shiftCalendarMonth(current, offset));
   }
 
   function beginCreateEvent() {
@@ -631,30 +634,15 @@ export function CalendarScreen() {
             style={styles.input}
           />
           <Text style={styles.inputLabel}>날짜</Text>
-          <TextInput
+          <LocalDatePickerField
             accessibilityLabel="공동 일정 날짜"
-            autoCapitalize="none"
-            editable={!backendBusy}
-            maxLength={10}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor={colors.textSubtle}
-            value={eventDraft.date}
-            onChangeText={date =>
+            disabled={backendBusy}
+            value={parseLocalDate(eventDraft.date)}
+            onChange={date =>
               setEventDraft(current => (current ? { ...current, date } : null))
             }
-            style={[
-              styles.input,
-              eventDraft.date.trim().length > 0 &&
-                !isLocalDate(eventDraft.date.trim()) &&
-                styles.inputInvalid,
-            ]}
+            testID="shared-event-date-picker"
           />
-          {eventDraft.date.trim().length > 0 &&
-          !isLocalDate(eventDraft.date.trim()) ? (
-            <Text style={styles.inputError}>
-              실제 달력 날짜를 YYYY-MM-DD 형식으로 입력해 주세요.
-            </Text>
-          ) : null}
           <View style={styles.timeRow}>
             <View style={styles.timeField}>
               <Text style={styles.inputLabel}>시작 시간</Text>
@@ -801,7 +789,7 @@ const styles = StyleSheet.create({
   monthTitle: { color: colors.text, fontSize: 18, fontWeight: '900' },
   weekRow: { flexDirection: 'row', marginBottom: spacing.sm },
   weekday: {
-    width: `${100 / 7}%`,
+    flex: 1,
     textAlign: 'center',
     color: colors.textSubtle,
     fontSize: 11,
@@ -964,8 +952,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
-  inputInvalid: { borderColor: colors.danger },
-  inputError: { color: colors.danger, fontSize: 10, lineHeight: 15 },
   timeRow: { flexDirection: 'row', gap: spacing.sm },
   timeField: { flex: 1 },
   noteInput: { minHeight: 96 },
