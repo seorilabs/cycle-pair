@@ -1,8 +1,6 @@
 import {
-  addDays,
   daysBetween,
   isLocalDate,
-  localDate,
   parseLocalDate,
   type LocalDate,
 } from '@cyclepair/product-core';
@@ -17,6 +15,7 @@ import {
 } from 'react-native';
 import { buildCycleViewModel, formatKoreanDate } from '../app/cycleViewModel';
 import { buildCalendarCycleRanges } from '../app/calendarCycleRanges';
+import { buildCalendarMonthRows } from '../app/calendarMonth';
 import { useCyclePair } from '../app/CyclePairStore';
 import { getSafePartnerProjectionForToday } from '../app/partnerProjectionPresentation';
 import type { PairEventInput } from '../platform/backend/CyclePairBackend';
@@ -33,13 +32,6 @@ import {
 import { colors, radius, spacing } from '../theme';
 
 const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
-
-function monthGrid(year: number, month: number): LocalDate[] {
-  const first = new Date(year, month - 1, 1, 12);
-  const start = localDate(year, month, 1);
-  const gridStart = addDays(start, -first.getDay());
-  return Array.from({ length: 42 }, (_, index) => addDays(gridStart, index));
-}
 
 function dateParts(value: LocalDate | string) {
   const [year, month, day] = String(value).split('-').map(Number);
@@ -95,7 +87,10 @@ export function CalendarScreen() {
     | null
   >(null);
   const operationRef = useRef(false);
-  const days = useMemo(() => monthGrid(cursor.year, cursor.month), [cursor]);
+  const monthRows = useMemo(
+    () => buildCalendarMonthRows(cursor.year, cursor.month),
+    [cursor],
+  );
   const recordDates = useMemo(
     () => new Set(state.dailyHistory.map(entry => entry.localDate)),
     [state.dailyHistory],
@@ -309,98 +304,110 @@ export function CalendarScreen() {
           ))}
         </View>
         <View style={styles.grid}>
-          {days.map(day => {
-            const parts = dateParts(day);
-            const inMonth = parts.month === cursor.month;
-            const isToday = day === viewModel.today;
-            const isOwnActual = isBetween(
-              day,
-              cycleRanges.ownActual?.start,
-              cycleRanges.ownActual?.end,
-            );
-            const isOwnInferred = isBetween(
-              day,
-              cycleRanges.ownInferred?.start,
-              cycleRanges.ownInferred?.end,
-            );
-            const isOwnPredicted = isBetween(
-              day,
-              viewModel.predictionStart,
-              viewModel.predictionEnd,
-            );
-            const isPartnerActual = isBetween(
-              day,
-              cycleRanges.partnerActual?.start,
-              cycleRanges.partnerActual?.end,
-            );
-            const isPartnerPredicted = isBetween(
-              day,
-              cycleRanges.partnerPrediction?.start,
-              cycleRanges.partnerPrediction?.end,
-            );
-            const isSelected = String(day) === selectedDate;
-            const hasRecord = recordDates.has(String(day));
-            const hasEvent = eventDates.has(String(day));
-            const rangeLabels = [
-              isOwnActual ? '내 실제 기록' : undefined,
-              isOwnInferred ? '내 종료일 추정 구간' : undefined,
-              isOwnPredicted ? '내 다음 예상 범위' : undefined,
-              isPartnerActual ? '파트너 실제 기록' : undefined,
-              isPartnerPredicted ? '파트너 다음 예상 범위' : undefined,
-            ].filter((value): value is string => Boolean(value));
-            return (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`${String(day)}${
-                  rangeLabels.length > 0 ? `, ${rangeLabels.join(', ')}` : ''
-                }${hasRecord ? ', 기록 있음' : ''}${
-                  hasEvent ? ', 공동 일정 있음' : ''
-                }`}
-                accessibilityState={{ selected: isSelected }}
-                key={day}
-                onPress={() => setSelectedDate(String(day))}
-                style={styles.dayCell}
-              >
-                <View
-                  style={[
-                    styles.dayCircle,
-                    isOwnPredicted && styles.predictedDay,
-                    isOwnInferred && styles.inferredDay,
-                    isOwnActual && styles.actualDay,
-                    isToday && styles.today,
-                    isSelected && styles.selectedDay,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.dayText,
-                      !inMonth && styles.dayOutside,
-                      isOwnPredicted && styles.predictedText,
-                      isOwnInferred && styles.inferredText,
-                      isOwnActual && styles.dayActiveText,
-                      isToday && !isOwnActual && styles.todayText,
-                    ]}
+          {monthRows.map((week, weekIndex) => (
+            <View
+              key={String(week[0])}
+              style={styles.calendarRow}
+              testID={`calendar-week-${weekIndex}`}
+            >
+              {week.map((day, weekdayIndex) => {
+                const parts = dateParts(day);
+                const inMonth = parts.month === cursor.month;
+                const isToday = day === viewModel.today;
+                const isOwnActual = isBetween(
+                  day,
+                  cycleRanges.ownActual?.start,
+                  cycleRanges.ownActual?.end,
+                );
+                const isOwnInferred = isBetween(
+                  day,
+                  cycleRanges.ownInferred?.start,
+                  cycleRanges.ownInferred?.end,
+                );
+                const isOwnPredicted = isBetween(
+                  day,
+                  viewModel.predictionStart,
+                  viewModel.predictionEnd,
+                );
+                const isPartnerActual = isBetween(
+                  day,
+                  cycleRanges.partnerActual?.start,
+                  cycleRanges.partnerActual?.end,
+                );
+                const isPartnerPredicted = isBetween(
+                  day,
+                  cycleRanges.partnerPrediction?.start,
+                  cycleRanges.partnerPrediction?.end,
+                );
+                const isSelected = String(day) === selectedDate;
+                const hasRecord = recordDates.has(String(day));
+                const hasEvent = eventDates.has(String(day));
+                const rangeLabels = [
+                  isOwnActual ? '내 실제 기록' : undefined,
+                  isOwnInferred ? '내 종료일 추정 구간' : undefined,
+                  isOwnPredicted ? '내 다음 예상 범위' : undefined,
+                  isPartnerActual ? '파트너 실제 기록' : undefined,
+                  isPartnerPredicted ? '파트너 다음 예상 범위' : undefined,
+                ].filter((value): value is string => Boolean(value));
+                return (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`${String(day)}, ${
+                      weekdays[weekdayIndex]
+                    }요일${
+                      rangeLabels.length > 0
+                        ? `, ${rangeLabels.join(', ')}`
+                        : ''
+                    }${hasRecord ? ', 기록 있음' : ''}${
+                      hasEvent ? ', 공동 일정 있음' : ''
+                    }`}
+                    accessibilityState={{ selected: isSelected }}
+                    key={day}
+                    onPress={() => setSelectedDate(String(day))}
+                    style={styles.dayCell}
                   >
-                    {parts.day}
-                  </Text>
-                </View>
-                <View style={styles.dayMarkers}>
-                  {hasRecord ? (
-                    <View style={[styles.dayMarker, styles.recordMarker]} />
-                  ) : null}
-                  {hasEvent ? (
-                    <View style={[styles.dayMarker, styles.eventMarker]} />
-                  ) : null}
-                  {isPartnerActual ? (
-                    <View style={styles.partnerActualMarker} />
-                  ) : null}
-                  {isPartnerPredicted ? (
-                    <View style={styles.partnerPredictedMarker} />
-                  ) : null}
-                </View>
-              </Pressable>
-            );
-          })}
+                    <View
+                      style={[
+                        styles.dayCircle,
+                        isOwnPredicted && styles.predictedDay,
+                        isOwnInferred && styles.inferredDay,
+                        isOwnActual && styles.actualDay,
+                        isToday && styles.today,
+                        isSelected && styles.selectedDay,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.dayText,
+                          !inMonth && styles.dayOutside,
+                          isOwnPredicted && styles.predictedText,
+                          isOwnInferred && styles.inferredText,
+                          isOwnActual && styles.dayActiveText,
+                          isToday && !isOwnActual && styles.todayText,
+                        ]}
+                      >
+                        {parts.day}
+                      </Text>
+                    </View>
+                    <View style={styles.dayMarkers}>
+                      {hasRecord ? (
+                        <View style={[styles.dayMarker, styles.recordMarker]} />
+                      ) : null}
+                      {hasEvent ? (
+                        <View style={[styles.dayMarker, styles.eventMarker]} />
+                      ) : null}
+                      {isPartnerActual ? (
+                        <View style={styles.partnerActualMarker} />
+                      ) : null}
+                      {isPartnerPredicted ? (
+                        <View style={styles.partnerPredictedMarker} />
+                      ) : null}
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ))}
         </View>
         <View style={styles.legend}>
           {cycleRanges.ownActual ? (
@@ -801,9 +808,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   sunday: { color: colors.accent },
-  grid: { flexDirection: 'row', flexWrap: 'wrap' },
+  grid: { width: '100%' },
+  calendarRow: { flexDirection: 'row', width: '100%' },
   dayCell: {
-    width: `${100 / 7}%`,
+    flex: 1,
     height: 48,
     alignItems: 'center',
     justifyContent: 'center',

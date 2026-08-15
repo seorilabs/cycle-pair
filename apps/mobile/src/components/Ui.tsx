@@ -1,6 +1,7 @@
 import React, { PropsWithChildren, ReactNode } from 'react';
 import {
   Pressable,
+  Platform,
   ScrollView,
   StyleProp,
   StyleSheet,
@@ -24,10 +25,13 @@ export function Screen({
 
   return scroll ? (
     <ScrollView
+      automaticallyAdjustKeyboardInsets
       style={styles.screen}
       contentContainerStyle={style}
+      keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
       keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}>
+      showsVerticalScrollIndicator={false}
+      testID="screen-scroll">
       {children}
     </ScrollView>
   ) : (

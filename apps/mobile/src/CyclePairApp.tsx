@@ -2,6 +2,8 @@ import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useCyclePair } from './app/CyclePairStore';
 import { useHardwareBack } from './app/useHardwareBack';
+import { useKeyboardVisibility } from './app/useKeyboardVisibility';
+import { InAppMessageBox, InAppToast } from './components/InAppNotifications';
 import { BottomTabs } from './components/Ui';
 import { CalendarScreen } from './screens/CalendarScreen';
 import { HomeScreen } from './screens/HomeScreen';
@@ -25,8 +27,19 @@ function LoadingScreen() {
 }
 
 export function CyclePairApp() {
-  const { state, isHydrating, goBack, setTab } = useCyclePair();
+  const {
+    state,
+    isHydrating,
+    goBack,
+    setTab,
+    inAppNotices,
+    toastNotice,
+    dismissToastNotice,
+    openInAppNotice,
+  } = useCyclePair();
   const [recordOpen, setRecordOpen] = useState(false);
+  const keyboardVisible = useKeyboardVisibility();
+  const latestNotice = inAppNotices[0];
   const handleHardwareBack = useCallback(() => {
     if (recordOpen) {
       setRecordOpen(false);
@@ -49,13 +62,27 @@ export function CyclePairApp() {
 
   return (
     <View style={styles.main}>
+      <InAppToast
+        notice={toastNotice}
+        onDismiss={dismissToastNotice}
+        onOpen={openInAppNotice}
+      />
       <View style={styles.screen}>
         {state.activeTab === 'home' ? <HomeScreen onOpenRecord={() => setRecordOpen(true)} /> : null}
         {state.activeTab === 'calendar' ? <CalendarScreen /> : null}
         {state.activeTab === 'partner' ? <PartnerScreen /> : null}
         {state.activeTab === 'settings' ? <SettingsScreen /> : null}
       </View>
-      <BottomTabs value={state.activeTab} onChange={setTab} />
+      {!keyboardVisible && latestNotice ? (
+        <InAppMessageBox
+          count={inAppNotices.length}
+          notice={latestNotice}
+          onOpen={openInAppNotice}
+        />
+      ) : null}
+      {!keyboardVisible ? (
+        <BottomTabs value={state.activeTab} onChange={setTab} />
+      ) : null}
     </View>
   );
 }

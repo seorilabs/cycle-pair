@@ -546,4 +546,92 @@ describe('CyclePair mobile app', () => {
       expect(view.getByText('이 날짜에 저장된 내 기록이 없어요.')).toBeTruthy(),
     );
   });
+
+  it('초기 동기화는 알리지 않고 상대의 새 공유 기록은 메시지 박스와 토스트로 알린다', async () => {
+    await AsyncStorage.setItem(
+      '@cyclepair/app-state/v1',
+      JSON.stringify({
+        schemaVersion: 4,
+        onboardingComplete: true,
+        neutralNotifications: false,
+        diagnosticsEnabled: false,
+      }),
+    );
+    let emitProjection:
+      | Parameters<CyclePairBackend['watchPartnerProjection']>[1]
+      | undefined;
+    const initialProjection = {
+      ownerUid: 'partner-a',
+      pairId: 'pair-a',
+      generatedAt: '2026-08-24T00:00:00.000Z',
+      dailyLogDate: deviceLocalDate(),
+      moodTag: 'neutral',
+    } as const;
+    const backend: CyclePairBackend = {
+      ...previewCyclePairBackend,
+      async loadPrivateSetup() {
+        return {
+          recordsCycle: false,
+          consentAcceptedAt: '2026-08-14T00:00:00.000Z',
+          consentVersion: SENSITIVE_HEALTH_CONSENT_VERSION,
+        };
+      },
+      watchActivePair(_uid, onValue) {
+        onValue({ pairId: 'pair-a', partnerUid: 'partner-a' });
+        return () => undefined;
+      },
+      watchPartnerProjection(_membership, onValue) {
+        emitProjection = onValue;
+        onValue(initialProjection);
+        return () => undefined;
+      },
+      watchShareSettings(_uid, _pairId, onValue) {
+        onValue({
+          cyclePhase: false,
+          nextPeriodWindow: false,
+          periodDates: false,
+          moodTag: true,
+          symptomTags: false,
+          energyLevel: false,
+          conditionCode: false,
+          carePreferences: false,
+          note: false,
+        });
+        return () => undefined;
+      },
+      watchPairEvents(_membership, onValue) {
+        onValue([]);
+        return () => undefined;
+      },
+    };
+    const view = await render(<App backend={backend} />);
+
+    await waitFor(() => expect(view.getByText(/함께, 상대의/)).toBeTruthy());
+    expect(view.queryByText('새 소식 1개')).toBeNull();
+
+    await act(async () => {
+      emitProjection?.({
+        ...initialProjection,
+        generatedAt: '2026-08-24T00:01:00.000Z',
+        moodTag: 'good',
+      });
+    });
+
+    await waitFor(() =>
+      expect(view.getAllByText('파트너가 새 기록을 공유했어요.')).toHaveLength(
+        2,
+      ),
+    );
+    expect(view.getByText('새 소식 1개')).toBeTruthy();
+
+    await fireEvent.press(
+      view.getByLabelText(
+        '새 소식 1개. 파트너가 새 기록을 공유했어요. 확인하기',
+      ),
+    );
+    await waitFor(() =>
+      expect(view.getByText('파트너 님의 오늘')).toBeTruthy(),
+    );
+    expect(view.queryByText('새 소식 1개')).toBeNull();
+  });
 });
