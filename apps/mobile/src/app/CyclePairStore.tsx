@@ -49,6 +49,13 @@ import {
   hasCurrentSensitiveHealthConsent,
   SENSITIVE_HEALTH_CONSENT_VERSION,
 } from '../domain/privacy/SensitiveHealthConsent';
+import {
+  hasMeaningfulPartnerProjectionChange,
+  hasPartnerPairEventUpdate,
+  noticeCopy,
+  type InAppNotice,
+  type InAppNoticeKind,
+} from './inAppNotifications';
 
 export type AppStage = 'onboarding' | 'setup' | 'invite' | 'sharing' | 'main';
 export type MainTab = 'home' | 'calendar' | 'partner' | 'settings';
@@ -753,7 +760,11 @@ interface CyclePairContextValue {
   notificationBusy: boolean;
   diagnosticsBusy: boolean;
   backendError: string | null;
+  inAppNotices: readonly InAppNotice[];
+  toastNotice: InAppNotice | null;
   clearBackendError(): void;
+  dismissToastNotice(): void;
+  openInAppNotice(noticeId: string): void;
   completeOnboarding(): void;
   goBack(): boolean;
   openPairing(): void;
@@ -821,6 +832,10 @@ export function CyclePairProvider({
   const [notificationBusy, setNotificationBusy] = useState(false);
   const [diagnosticsBusy, setDiagnosticsBusy] = useState(false);
   const [backendError, setBackendError] = useState<string | null>(null);
+  const [inAppNotices, setInAppNotices] = useState<readonly InAppNotice[]>([]);
+  const [toastNotice, setToastNotice] = useState<InAppNotice | null>(null);
+  const inAppNoticesRef = useRef<readonly InAppNotice[]>([]);
+  const noticeSequence = useRef(0);
   const shareWriteChain = useRef<Promise<void>>(Promise.resolve());
   const lastCyclePersistenceKey = useRef('');
   const latestState = useRef(state);
@@ -878,6 +893,34 @@ export function CyclePairProvider({
     (error: unknown) => reportFailure(error),
     [reportFailure],
   );
+
+  const enqueueInAppNotice = useCallback((kind: InAppNoticeKind) => {
+    const copy = noticeCopy(kind);
+    const notice: InAppNotice = {
+      id: `notice-${Date.now().toString(36)}-${++noticeSequence.current}`,
+      kind,
+      ...copy,
+    };
+    setInAppNotices(current => {
+      const next = [notice, ...current].slice(0, 5);
+      inAppNoticesRef.current = next;
+      return next;
+    });
+    setToastNotice(notice);
+  }, []);
+
+  const dismissToastNotice = useCallback(() => setToastNotice(null), []);
+  const openInAppNotice = useCallback((noticeId: string) => {
+    const notice = inAppNoticesRef.current.find(item => item.id === noticeId);
+    if (!notice) return;
+    dispatch({ type: 'SET_TAB', payload: notice.destination });
+    setInAppNotices(current => {
+      const next = current.filter(item => item.id !== noticeId);
+      inAppNoticesRef.current = next;
+      return next;
+    });
+    setToastNotice(current => (current?.id === noticeId ? null : current));
+  }, []);
 
   useEffect(() => {
     if (
@@ -1070,7 +1113,12 @@ export function CyclePairProvider({
       backendSession.uid,
       membership => {
         activePairRef.current = membership;
-        setActivePair(membership);
+        setActivePair(current =>
+          current?.pairId === membership?.pairId &&
+          current?.partnerUid === membership?.partnerUid
+            ? current
+            : membership,
+        );
         if (membership) {
           dispatch({
             type: 'LINK_PARTNER',
@@ -1125,13 +1173,28 @@ export function CyclePairProvider({
 
   useEffect(() => {
     if (!activePair || !backendSession) return;
+    let active = true;
+    let projectionInitialized = false;
+    let previousProjection: RemotePartnerProjection | null = null;
+    let eventsInitialized = false;
+    let previousEvents: readonly PairEvent[] = [];
     const stopProjection = backend.watchPartnerProjection(
       activePair,
-      projection =>
+      projection => {
+        if (!active) return;
+        if (
+          projectionInitialized &&
+          hasMeaningfulPartnerProjectionChange(previousProjection, projection)
+        ) {
+          enqueueInAppNotice('partner-record');
+        }
+        projectionInitialized = true;
+        previousProjection = projection;
         dispatch({
           type: 'SET_PARTNER_PROJECTION',
           ...(projection ? { payload: projection } : {}),
-        }),
+        });
+      },
       reportBackendError,
     );
     const stopSettings = backend.watchShareSettings(
@@ -1149,15 +1212,43 @@ export function CyclePairProvider({
     );
     const stopEvents = backend.watchPairEvents(
       activePair,
-      events => dispatch({ type: 'SET_PAIR_EVENTS', payload: events }),
+      events => {
+        if (!active) return;
+        if (
+          eventsInitialized &&
+          hasPartnerPairEventUpdate(
+            previousEvents,
+            events,
+            activePair.partnerUid,
+          )
+        ) {
+          enqueueInAppNotice('shared-event');
+        }
+        eventsInitialized = true;
+        previousEvents = events;
+        dispatch({ type: 'SET_PAIR_EVENTS', payload: events });
+      },
       reportBackendError,
     );
     return () => {
+      active = false;
       stopProjection();
       stopSettings();
       stopEvents();
     };
-  }, [activePair, backend, backendSession, reportBackendError]);
+  }, [
+    activePair,
+    backend,
+    backendSession,
+    enqueueInAppNotice,
+    reportBackendError,
+  ]);
+
+  useEffect(() => {
+    inAppNoticesRef.current = [];
+    setInAppNotices([]);
+    setToastNotice(null);
+  }, [activePair?.pairId]);
 
   useEffect(() => {
     if (localHydrating) return;
@@ -2015,7 +2106,11 @@ export function CyclePairProvider({
       notificationBusy,
       diagnosticsBusy,
       backendError,
+      inAppNotices,
+      toastNotice,
       clearBackendError: () => setBackendError(null),
+      dismissToastNotice,
+      openInAppNotice,
       completeOnboarding,
       goBack,
       openPairing,
@@ -2051,6 +2146,10 @@ export function CyclePairProvider({
       notificationBusy,
       diagnosticsBusy,
       backendError,
+      inAppNotices,
+      toastNotice,
+      dismissToastNotice,
+      openInAppNotice,
       completeOnboarding,
       goBack,
       openPairing,
