@@ -1,6 +1,8 @@
+import { parseLocalDate } from '@cyclepair/product-core';
 import React, { useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CycleSeed, useCyclePair } from '../app/CyclePairStore';
+import { LocalDatePickerField } from '../components/LocalDatePickerField';
 import {
   Body,
   Card,
@@ -17,21 +19,6 @@ import {
   hasCurrentSensitiveHealthConsent,
   SENSITIVE_HEALTH_CONSENT_VERSION,
 } from '../domain/privacy/SensitiveHealthConsent';
-
-function shiftDate(value: string, days: number): string {
-  const [year, month, day] = value.split('-').map(Number);
-  const date = new Date(year, month - 1, day, 12);
-  date.setDate(date.getDate() + days);
-  const shiftedYear = date.getFullYear();
-  const shiftedMonth = String(date.getMonth() + 1).padStart(2, '0');
-  const shiftedDay = String(date.getDate()).padStart(2, '0');
-  return `${shiftedYear}-${shiftedMonth}-${shiftedDay}`;
-}
-
-function formatDate(value: string): string {
-  const [year, month, day] = value.split('-');
-  return `${year}. ${Number(month)}. ${Number(day)}.`;
-}
 
 function localToday(): string {
   const date = new Date();
@@ -159,46 +146,17 @@ export function SetupScreen() {
             {hasCycleSeed ? (
               <>
                 <Text style={styles.cardLabel}>최근 생리 시작일</Text>
-                <View style={styles.dateRow}>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="날짜 하루 전"
-                    accessibilityState={{ disabled: backendBusy }}
+                <View style={styles.datePicker}>
+                  <LocalDatePickerField
+                    accessibilityLabel="최근 생리 시작일"
                     disabled={backendBusy}
-                    onPress={() =>
-                      setSeed(current => ({
-                        ...current,
-                        lastPeriodStart: shiftDate(current.lastPeriodStart, -1),
-                      }))
+                    maximumDate={parseLocalDate(today)}
+                    onChange={lastPeriodStart =>
+                      setSeed(current => ({ ...current, lastPeriodStart }))
                     }
-                    style={styles.dateButton}
-                  >
-                    <Text style={styles.dateButtonText}>‹</Text>
-                  </Pressable>
-                  <Text style={styles.dateValue}>
-                    {formatDate(seed.lastPeriodStart)}
-                  </Text>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="날짜 하루 후"
-                    accessibilityState={{
-                      disabled: backendBusy || seed.lastPeriodStart >= today,
-                    }}
-                    disabled={backendBusy || seed.lastPeriodStart >= today}
-                    onPress={() =>
-                      setSeed(current => ({
-                        ...current,
-                        lastPeriodStart: shiftDate(current.lastPeriodStart, 1),
-                      }))
-                    }
-                    style={[
-                      styles.dateButton,
-                      seed.lastPeriodStart >= today &&
-                        styles.dateButtonDisabled,
-                    ]}
-                  >
-                    <Text style={styles.dateButtonText}>›</Text>
-                  </Pressable>
+                    testID="last-period-start-date-picker"
+                    value={parseLocalDate(seed.lastPeriodStart)}
+                  />
                 </View>
                 {hasFutureStartDate ? (
                   <Text style={styles.errorText}>
@@ -358,23 +316,7 @@ const styles = StyleSheet.create({
   },
   roleBody: { color: colors.textMuted, fontSize: 12, lineHeight: 17 },
   cardLabel: { color: colors.textMuted, fontSize: 13, fontWeight: '700' },
-  dateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginVertical: spacing.md,
-  },
-  dateButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: colors.surfaceMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dateButtonText: { color: colors.primaryDark, fontSize: 30, lineHeight: 34 },
-  dateButtonDisabled: { opacity: 0.4 },
-  dateValue: { color: colors.text, fontSize: 19, fontWeight: '800' },
+  datePicker: { marginVertical: spacing.md },
   notice: {
     flexDirection: 'row',
     gap: spacing.sm,
