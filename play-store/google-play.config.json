@@ -40,8 +40,8 @@
     "initialTrack": "internal",
     "aabPath": "apps/mobile/android/app/build/outputs/bundle/release/app-release.aab",
     "releaseNotes": {
-      "ko-KR": "내부 테스트용 첫 빌드입니다. 기록, Pair 초대·수락·해제, 필드별 공유, 공동 캘린더, 계정 삭제·내보내기를 두 계정·두 기기로 확인해 주세요.",
-      "en-US": "First internal test build. Please verify records, Pair invite/accept/disconnect, per-field sharing, shared calendar, and account deletion/export across two accounts on two devices."
+      "ko-KR": "달력 날짜 계산과 날짜 선택을 보강하고, 동기화 오류 표시 및 앱 시작 속도를 개선했습니다.",
+      "en-US": "Improved calendar date handling, date selection, sync error reporting, and app startup speed."
     }
   },
   "contentDeclarations": {
@@ -134,7 +134,7 @@
     "playConsoleApp": "Android Publisher API v3 재조회(2026-08-11): com.seorilabs.cyclepair 앱과 tracks=production/beta/alpha/internal, listings=ko-KR·en-US를 확인했다. cyclepair_plus의 monthly(P1M, KRW 3,900)·yearly(P1Y, KRW 29,000) base plan과 각 free-trial(P7D) offer는 173개 지역 ACTIVE다. 업로드된 bundle은 기존 versionCode 1008뿐이며 v1.0.0/1000000 candidate artifact는 아직 없다.",
     "dataSafetyReview": "missing: user review and Play Console save/readback required",
     "contentRating": "missing: Play Console questionnaire save/readback required",
-    "internalTwoPersonTest": "missing: v1.0.0 build 1000000 two-person device QA required",
+    "internalTwoPersonTest": "missing: v1.0.1 build 1000001 two-person device QA required",
     "deploymentApproval": "missing: release deployment approval required"
   }
 }

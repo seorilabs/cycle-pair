@@ -93,6 +93,8 @@ export interface OfflineSyncReport {
   readonly remaining: number;
   /** Non-retryable mutations preserved for explicit recovery or Pair cleanup. */
   readonly failed: number;
+  /** First non-retryable failure observed while replaying the queue. */
+  readonly failureCode?: string;
 }
 
 export interface BackendShareSettings {

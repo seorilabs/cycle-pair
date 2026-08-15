@@ -509,7 +509,7 @@ export function SettingsScreen() {
 
       <View style={styles.footer}>
         <Text style={styles.brand}>∞ 사이클 페어</Text>
-        <Text style={styles.version}>1.0.0 · 의료 도구 아님</Text>
+        <Text style={styles.version}>1.0.1 · 의료 도구 아님</Text>
       </View>
       <PrivacyCenterModal
         visible={privacyVisible}

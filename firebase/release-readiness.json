@@ -123,16 +123,16 @@
     "status": "verified",
     "projectId": "seorilabs-cyclepair-prod",
     "region": "asia-northeast3",
-    "deployedAt": "2026-08-03T12:07:35Z",
-    "verifiedAt": "2026-08-09T13:55:00Z",
-    "evidence": "배포본과 현재 source 동일성 재검증. Firebase Rules API에서 cloud.firestore release가 ruleset 411004d9-0d7a-4f14-a1fe-53cfa59d82ea(createTime 2026-08-03T11:36:36Z)를 가리키고, 해당 ruleset source를 내려받아 firebase/firestore.rules와 byte 단위로 diff한 결과 차이 없음. Cloud Functions는 asia-northeast3에 24종이 배포돼 있고 index.ts export 24종과 이름이 정확히 일치하며 updateTime 최신값이 2026-08-03T12:07:35Z로 fingerprint 입력 파일의 마지막 변경 커밋 57c2a23(2026-08-03T12:00Z) 이후다. 57c2a23..HEAD 사이에 firebase.json, firestore.rules, firestore.indexes.json, functions source·manifest 변경이 없음을 git diff로 확인해 배포 소스와 현재 HEAD 소스가 동일함을 확정",
-    "gitSha": "57c2a23b65893b379e38c9e8651d3910232ea4b8",
+    "deployedAt": "2026-08-15T13:32:31Z",
+    "verifiedAt": "2026-08-15T13:39:12Z",
+    "evidence": "origin/main 73aece6의 Firebase source를 운영에 반영했다. 동의 v2 helper를 실제 호출하는 acceptPairInvite, syncCycleProjection, syncDailyLogProjection, syncShareSettingsProjection 4종을 선택 배포해 모두 ACTIVE와 2026-08-15T13:31:41Z 이후 updateTime을 확인했고, acceptPairInvite Cloud Run은 no-invoker-iam-check=true와 최신 revision 100% traffic을 재확인했다. cloud.firestore release는 ruleset b08d9a01-6d87-4386-b4e1-826e1feeda8c로 갱신됐으며 Rules API 원문 SHA-256이 repo의 schema v2 Rules와 50c0f22f996a7eb5129b04a6a7d6e8fa134bff634a7089a9c3ccd2cf7775c02f로 정확히 일치했다. 운영 smoke에서 schema v2 cycle·daily write, 기본 비공개·선택 공유·회수 projection, owner-private deny, revoke·tombstone ack, 계정 내보내기와 테스트 데이터 정리까지 PASS했다.",
+    "gitSha": "73aece66e3f29acc3e436b248ded28c520eaafb0",
     "source": {
       "algorithm": "sha256-deployment-source-v3",
       "firebaseConfigSha256": "dc73b8a1e9dc424b171a0bba194b755b5e4b4f9d019b07199f19a24fa4fa47b9",
-      "firestoreRulesSha256": "c2500a020fe39804f7d588ea20b4fef1514d391247d6d6e75c4f5236215974da",
+      "firestoreRulesSha256": "50c0f22f996a7eb5129b04a6a7d6e8fa134bff634a7089a9c3ccd2cf7775c02f",
       "firestoreIndexesSha256": "235c6455eb6893ebc58e2ee9ffc17fed5f158d3e2553c01f643ec5f31217a875",
-      "functionsSha256": "55c09783717067148300330f054231f6d1be6c6abb1b3a8d1b4ec7650a5c7ecf"
+      "functionsSha256": "5371e370461ec9d3abe4e10036a0db60e542d913e9365dd977bc309545c5ec9a"
     }
   }
 }

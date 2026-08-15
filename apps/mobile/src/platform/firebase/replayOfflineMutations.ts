@@ -34,6 +34,7 @@ export async function replayOfflineMutations({
 }): Promise<OfflineSyncReport> {
   let flushed = 0;
   let currentPrivateFailures = 0;
+  let firstFailureCode: string | undefined;
 
   for (const mutation of mutations) {
     const pairId = pairIdForOfflineMutation(mutation);
@@ -48,8 +49,10 @@ export async function replayOfflineMutations({
       flushed += 1;
     } catch (error) {
       if (isRetryable(error)) break;
+      const currentFailureCode = failureCode(error);
+      firstFailureCode ??= currentFailureCode;
       if (pairId) {
-        await queue.quarantine(uid, mutation.mutationId, failureCode(error));
+        await queue.quarantine(uid, mutation.mutationId, currentFailureCode);
       } else {
         // Private health writes stay active for a future retry. Continue so a
         // single invalid head item cannot starve later personal records.
@@ -62,5 +65,6 @@ export async function replayOfflineMutations({
     flushed,
     remaining: await queue.count(uid),
     failed: (await queue.countFailed(uid)) + currentPrivateFailures,
+    ...(firstFailureCode ? {failureCode: firstFailureCode} : {}),
   };
 }

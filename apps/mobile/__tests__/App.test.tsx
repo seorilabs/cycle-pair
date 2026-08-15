@@ -214,6 +214,56 @@ describe('CyclePair mobile app', () => {
     );
   });
 
+  it('연간 기록 조회가 끝나기 전에 저장된 setup으로 홈을 연다', async () => {
+    await AsyncStorage.setItem(
+      '@cyclepair/app-state/v1',
+      JSON.stringify({
+        schemaVersion: 4,
+        onboardingComplete: true,
+        neutralNotifications: false,
+        diagnosticsEnabled: false,
+      }),
+    );
+    let resolveDailyLogs:
+      | ((value: Awaited<ReturnType<CyclePairBackend['listDailyLogs']>>) => void)
+      | undefined;
+    const listDailyLogs = jest.fn(
+      () =>
+        new Promise<
+          Awaited<ReturnType<CyclePairBackend['listDailyLogs']>>
+        >(resolve => {
+          resolveDailyLogs = resolve;
+        }),
+    );
+    const backend: CyclePairBackend = {
+      ...previewCyclePairBackend,
+      async loadPrivateSetup() {
+        return {
+          recordsCycle: false,
+          consentAcceptedAt: '2026-08-09T00:00:00.000Z',
+          consentVersion: SENSITIVE_HEALTH_CONSENT_VERSION,
+        };
+      },
+      listDailyLogs,
+    };
+
+    const view = await render(<App backend={backend} />);
+
+    await waitFor(() => expect(view.getByText(/오늘 나의/)).toBeTruthy());
+    expect(listDailyLogs).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveDailyLogs?.([
+        {
+          localDate: deviceLocalDate(),
+          record: {moodTag: 'good', note: '백그라운드 복원'},
+        },
+      ]);
+    });
+    await fireEvent.press(view.getByLabelText('달력'));
+    await waitFor(() => expect(view.getByText('백그라운드 복원')).toBeTruthy());
+  });
+
   it('does not hydrate Pair membership or events from device cache on startup', async () => {
     await AsyncStorage.setItem(
       '@cyclepair/app-state/v1',

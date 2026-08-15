@@ -180,6 +180,7 @@ export type CyclePairAction =
     }
   | { type: 'SET_PARTNER_PROJECTION'; payload?: RemotePartnerProjection }
   | { type: 'RESTORE_DAILY_HISTORY'; payload: readonly DailyHistoryEntry[] }
+  | { type: 'MERGE_DAILY_HISTORY'; payload: readonly DailyHistoryEntry[] }
   | { type: 'REFRESH_TODAY'; payload: string }
   | { type: 'SET_PAIR_EVENTS'; payload: readonly PairEvent[] }
   | { type: 'SET_SYNC_STATUS'; payload: SyncStatus }
@@ -549,6 +550,28 @@ export function reduceCyclePairState(
         checkIn: currentCheckInForRole(todayEntry?.checkIn, state.isLogger),
       };
     }
+    case 'MERGE_DAILY_HISTORY': {
+      const byDate = new Map(
+        action.payload.map(entry => [entry.localDate, entry] as const),
+      );
+      for (const entry of state.dailyHistory) {
+        byDate.set(entry.localDate, entry);
+      }
+      const dailyHistory = [...byDate.values()].sort((left, right) =>
+        right.localDate.localeCompare(left.localDate),
+      );
+      const todayEntry = dailyHistory.find(
+        entry => entry.localDate === state.currentLocalDate,
+      );
+      return {
+        ...state,
+        dailyHistory,
+        seed: state.hasCycleSeed
+          ? seedFromDailyHistory(state.seed, dailyHistory)
+          : state.seed,
+        checkIn: currentCheckInForRole(todayEntry?.checkIn, state.isLogger),
+      };
+    }
     case 'REFRESH_TODAY': {
       const todayEntry = state.dailyHistory.find(
         entry => entry.localDate === action.payload,
@@ -838,6 +861,7 @@ export function CyclePairProvider({
   const noticeSequence = useRef(0);
   const shareWriteChain = useRef<Promise<void>>(Promise.resolve());
   const lastCyclePersistenceKey = useRef('');
+  const initialDailyHistoryLoad = useRef<Promise<void> | null>(null);
   const latestState = useRef(state);
   latestState.current = state;
 
@@ -1046,20 +1070,15 @@ export function CyclePairProvider({
       try {
         const session = await backend.initialize();
         if (!active) return;
-        // Authentication and the encrypted mutation queue remain usable even
-        // when uncached Firestore reads fail while the device is offline.
-        setBackendSession(session);
         // Pair membership is an authorization boundary. Device cache may be
         // stale after another device acknowledges a revoke tombstone, so only
         // the live membership watcher is allowed to restore Pair UI/events.
-        const [setupResult, dailyLogsResult] = await Promise.allSettled([
+        const setupResult = await Promise.resolve(
           backend.loadPrivateSetup(session.uid),
-          backend.listDailyLogs(
-            session.uid,
-            daysAgo(365),
-            toDeviceLocalDate(),
-          ),
-        ]);
+        ).then(
+          value => ({status: 'fulfilled' as const, value}),
+          reason => ({status: 'rejected' as const, reason}),
+        );
         if (!active) return;
         if (setupResult.status === 'fulfilled' && setupResult.value) {
           const setup = setupResult.value;
@@ -1084,18 +1103,35 @@ export function CyclePairProvider({
             },
           });
         }
-        if (dailyLogsResult.status === 'fulfilled') {
-          dispatch({
-            type: 'RESTORE_DAILY_HISTORY',
-            payload: dailyLogsResult.value.map(fromPrivateDailyLogSnapshot),
+        if (setupResult.status === 'rejected') {
+          reportBackendError(setupResult.reason);
+        }
+        // Authentication and the encrypted mutation queue remain usable even
+        // when uncached Firestore reads fail while the device is offline.
+        setBackendSession(session);
+        // Historical records are not required to decide the startup route.
+        // Hydrate them after the shell can render so a year-long query cannot
+        // hold the loading indicator. Merge protects a check-in saved while
+        // the background read is still in flight.
+        setBackendHydrating(false);
+        const dailyHistoryLoad = backend
+          .listDailyLogs(session.uid, daysAgo(365), toDeviceLocalDate())
+          .then(dailyLogs => {
+            if (!active) return;
+            dispatch({
+              type: 'MERGE_DAILY_HISTORY',
+              payload: dailyLogs.map(fromPrivateDailyLogSnapshot),
+            });
+          })
+          .catch(error => {
+            if (active) reportBackendError(error);
           });
-        }
-        const readFailure = [setupResult, dailyLogsResult].find(
-          result => result.status === 'rejected',
-        );
-        if (readFailure?.status === 'rejected') {
-          reportBackendError(readFailure.reason);
-        }
+        initialDailyHistoryLoad.current = dailyHistoryLoad;
+        dailyHistoryLoad.then(() => {
+          if (initialDailyHistoryLoad.current === dailyHistoryLoad) {
+            initialDailyHistoryLoad.current = null;
+          }
+        });
       } catch (error) {
         reportBackendError(error);
       } finally {
@@ -1937,22 +1973,30 @@ export function CyclePairProvider({
       (async () => {
         const report = await backend.flushPendingMutations(backendSession.uid);
         if (!active) return;
-        const dailyLogs = await backend.listDailyLogs(
-          backendSession.uid,
-          daysAgo(365),
-          toDeviceLocalDate(),
-        );
-        if (!active) return;
-        const dailyHistory = dailyLogs.map(fromPrivateDailyLogSnapshot);
+        const startupHistoryLoad = initialDailyHistoryLoad.current;
+        let dailyHistory: readonly DailyHistoryEntry[];
+        if (report.flushed === 0 && startupHistoryLoad) {
+          await startupHistoryLoad;
+          if (!active) return;
+          dailyHistory = latestState.current.dailyHistory;
+        } else {
+          const dailyLogs = await backend.listDailyLogs(
+            backendSession.uid,
+            daysAgo(365),
+            toDeviceLocalDate(),
+          );
+          if (!active) return;
+          dailyHistory = dailyLogs.map(fromPrivateDailyLogSnapshot);
+          dispatch({
+            type: 'RESTORE_DAILY_HISTORY',
+            payload: dailyHistory,
+          });
+        }
         const currentState = latestState.current;
         const restoredSeed = seedFromDailyHistory(
           currentState.seed,
           dailyHistory,
         );
-        dispatch({
-          type: 'RESTORE_DAILY_HISTORY',
-          payload: dailyHistory,
-        });
         if (
           report.flushed > 0 &&
           report.remaining === 0 &&

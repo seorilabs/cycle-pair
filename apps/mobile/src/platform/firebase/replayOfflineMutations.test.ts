@@ -68,7 +68,12 @@ describe('replayOfflineMutations', () => {
         isRetryable: () => false,
         failureCode: () => 'invalid-argument',
       }),
-    ).resolves.toEqual({flushed: 1, remaining: 1, failed: 1});
+    ).resolves.toEqual({
+      flushed: 1,
+      remaining: 1,
+      failed: 1,
+      failureCode: 'invalid-argument',
+    });
     expect(execute).toHaveBeenCalledTimes(2);
     expect(input.queue.quarantine).not.toHaveBeenCalled();
     expect(input.remaining).toEqual(new Set([failed.mutationId]));
@@ -94,7 +99,12 @@ describe('replayOfflineMutations', () => {
         isRetryable: () => false,
         failureCode: () => 'not-found',
       }),
-    ).resolves.toEqual({flushed: 1, remaining: 1, failed: 1});
+    ).resolves.toEqual({
+      flushed: 1,
+      remaining: 1,
+      failed: 1,
+      failureCode: 'not-found',
+    });
     expect(input.queue.quarantine).toHaveBeenCalledWith(
       'user-a',
       failed.mutationId,
