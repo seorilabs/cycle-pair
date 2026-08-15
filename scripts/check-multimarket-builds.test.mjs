@@ -123,9 +123,9 @@ test('Google Play build stays API 36, versioned, signed, and pnpm-safe for Herme
     `v${mobilePackage.version}`,
   ]);
   const currentVersion = JSON.parse(currentStdout);
-  assert.equal(currentVersion.version_name, '1.0.0');
-  assert.equal(currentVersion.android_version_code, '1000000');
-  assert.equal(currentVersion.apple_build_number, '1000000');
+  assert.equal(currentVersion.version_name, '1.0.1');
+  assert.equal(currentVersion.android_version_code, '1000001');
+  assert.equal(currentVersion.apple_build_number, '1000001');
   assert.match(
     platformGuestClient,
     new RegExp(`X-Seori-Sdk': 'cycle-pair/${mobilePackage.version}`)

@@ -144,7 +144,28 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
     await expect(secureOfflineMutationQueue.list(uid)).resolves.toEqual([]);
   });
 
-  it('권한 오류가 발생해도 유효한 민감 기록을 암호화 큐에 보존한다', async () => {
+  it('setup 권한 오류를 오프라인 저장으로 숨기지 않고 암호화 큐에 보존한다', async () => {
+    setDocMock.mockRejectedValueOnce({ code: 'firestore/permission-denied' });
+
+    await expect(
+      firebaseCyclePairBackend.savePrivateSetup(
+        uid,
+        false,
+        '2026-08-09T00:00:00.000Z',
+        SENSITIVE_HEALTH_CONSENT_VERSION,
+      ),
+    ).rejects.toMatchObject({code: 'firestore/permission-denied'});
+
+    await expect(secureOfflineMutationQueue.list(uid)).resolves.toEqual([
+      expect.objectContaining({
+        type: 'private-setup',
+        uid,
+        mutationId: 'private-setup-current',
+      }),
+    ]);
+  });
+
+  it('기록 권한 오류를 오프라인 저장으로 숨기지 않고 암호화 큐에 보존한다', async () => {
     setDocMock.mockRejectedValueOnce({ code: 'firestore/permission-denied' });
 
     await expect(
@@ -154,10 +175,7 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
         { moodTag: 'neutral', energyLevel: 3 },
         'daily-direct-write',
       ),
-    ).resolves.toEqual({
-      status: 'queued',
-      mutationId: 'daily-direct-write',
-    });
+    ).rejects.toMatchObject({code: 'firestore/permission-denied'});
 
     await expect(secureOfflineMutationQueue.list(uid)).resolves.toEqual([
       expect.objectContaining({
@@ -168,7 +186,7 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
     ]);
   });
 
-  it('기록 삭제가 즉시 실패해도 암호화 큐에서 재시도한다', async () => {
+  it('삭제 권한 오류도 오프라인 저장으로 숨기지 않고 암호화 큐에서 재시도한다', async () => {
     deleteDocMock.mockRejectedValueOnce({
       code: 'firestore/permission-denied',
     });
@@ -179,10 +197,7 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
         '2026-07-14',
         'daily-delete-direct-write',
       ),
-    ).resolves.toEqual({
-      status: 'queued',
-      mutationId: 'daily-delete-direct-write',
-    });
+    ).rejects.toMatchObject({code: 'firestore/permission-denied'});
 
     await expect(secureOfflineMutationQueue.list(uid)).resolves.toEqual([
       expect.objectContaining({

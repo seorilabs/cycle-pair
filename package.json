@@ -1,6 +1,6 @@
 {
   "name": "cyclepair",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "함께 준비하는 주기·컨디션 커뮤니케이션 앱",
   "packageManager": "pnpm@11.3.0",

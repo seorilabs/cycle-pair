@@ -22,8 +22,10 @@ import type {
   ActivePairMembership,
   BackendConditionCode,
   BackendShareSettings,
+  BackendWriteResult,
   CacheTombstone,
   CyclePairBackend,
+  OfflineSyncReport,
   PairEvent,
   PrivateCycleRecord,
   PrivateDailyLogRecord,
@@ -334,6 +336,34 @@ const PRESERVABLE_FAILURE_CODES = new Set([
 function sanitizedOfflineFailureCode(error: unknown): string {
   const suffix = errorCode(error).split('/').pop() ?? '';
   return PRESERVABLE_FAILURE_CODES.has(suffix) ? suffix : 'non-retryable';
+}
+
+function replayWriteResult(
+  report: OfflineSyncReport,
+  mutationId: string,
+): BackendWriteResult {
+  if (report.failureCode) {
+    const error = new Error('저장 대기 항목을 동기화할 수 없습니다.') as Error & {
+      code: string;
+    };
+    error.code = `sync/${report.failureCode}`;
+    throw error;
+  }
+  return {
+    status: report.remaining > 0 ? 'queued' : 'synced',
+    mutationId,
+  };
+}
+
+async function queueAfterWriteFailure(
+  mutation: OfflineMutation,
+  error: unknown,
+): Promise<BackendWriteResult> {
+  await secureOfflineMutationQueue.enqueue(mutation);
+  if (!isRetryableNetworkError(error) && !(await isDefinitelyOffline())) {
+    throw error;
+  }
+  return {status: 'queued', mutationId: mutation.mutationId};
 }
 
 async function writeDailyLog(
@@ -705,11 +735,7 @@ export const firebaseCyclePairBackend: CyclePairBackend = {
         if (await secureOfflineMutationQueue.count(uid)) {
           await secureOfflineMutationQueue.enqueue(mutation);
           const report = await flushQueuedMutations(uid);
-          return {
-            status:
-              report.remaining > 0 ? ('queued' as const) : ('synced' as const),
-            mutationId,
-          };
+          return replayWriteResult(report, mutationId);
         }
         await writePrivateSetup(
           uid,
@@ -719,9 +745,8 @@ export const firebaseCyclePairBackend: CyclePairBackend = {
           cycle,
         );
         return { status: 'synced' as const, mutationId };
-      } catch {
-        await secureOfflineMutationQueue.enqueue(mutation);
-        return { status: 'queued' as const, mutationId };
+      } catch (error) {
+        return queueAfterWriteFailure(mutation, error);
       }
     });
   },
@@ -831,16 +856,12 @@ export const firebaseCyclePairBackend: CyclePairBackend = {
         if (await secureOfflineMutationQueue.count(uid)) {
           await secureOfflineMutationQueue.enqueue(mutation);
           const report = await flushQueuedMutations(uid);
-          return {
-            status: report.remaining > 0 ? 'queued' : 'synced',
-            mutationId,
-          };
+          return replayWriteResult(report, mutationId);
         }
         await writeDailyLog(uid, localDate, record, mutationId);
         return { status: 'synced', mutationId };
-      } catch {
-        await secureOfflineMutationQueue.enqueue(mutation);
-        return { status: 'queued', mutationId };
+      } catch (error) {
+        return queueAfterWriteFailure(mutation, error);
       }
     });
   },
@@ -865,17 +886,12 @@ export const firebaseCyclePairBackend: CyclePairBackend = {
         if (await secureOfflineMutationQueue.count(uid)) {
           await secureOfflineMutationQueue.enqueue(mutation);
           const report = await flushQueuedMutations(uid);
-          return {
-            status:
-              report.remaining > 0 ? ('queued' as const) : ('synced' as const),
-            mutationId,
-          };
+          return replayWriteResult(report, mutationId);
         }
         await deleteDailyLogDocument(uid, localDate);
         return { status: 'synced' as const, mutationId };
-      } catch {
-        await secureOfflineMutationQueue.enqueue(mutation);
-        return { status: 'queued' as const, mutationId };
+      } catch (error) {
+        return queueAfterWriteFailure(mutation, error);
       }
     });
   },
@@ -902,17 +918,12 @@ export const firebaseCyclePairBackend: CyclePairBackend = {
         if (await secureOfflineMutationQueue.count(uid)) {
           await secureOfflineMutationQueue.enqueue(mutation);
           const report = await flushQueuedMutations(uid);
-          return {
-            status:
-              report.remaining > 0 ? ('queued' as const) : ('synced' as const),
-            mutationId,
-          };
+          return replayWriteResult(report, mutationId);
         }
         await writeShareSettings(uid, pairId, settings);
         return { status: 'synced' as const, mutationId };
-      } catch {
-        await secureOfflineMutationQueue.enqueue(mutation);
-        return { status: 'queued' as const, mutationId };
+      } catch (error) {
+        return queueAfterWriteFailure(mutation, error);
       }
     });
   },
@@ -937,16 +948,12 @@ export const firebaseCyclePairBackend: CyclePairBackend = {
         if (await secureOfflineMutationQueue.count(uid)) {
           await secureOfflineMutationQueue.enqueue(mutation);
           const report = await flushQueuedMutations(uid);
-          return {
-            status: report.remaining > 0 ? 'queued' : 'synced',
-            mutationId,
-          };
+          return replayWriteResult(report, mutationId);
         }
         await call('upsertPairEvent', { pairId, event, mutationId });
         return { status: 'synced', mutationId };
-      } catch {
-        await secureOfflineMutationQueue.enqueue(mutation);
-        return { status: 'queued', mutationId };
+      } catch (error) {
+        return queueAfterWriteFailure(mutation, error);
       }
     });
   },
@@ -971,16 +978,12 @@ export const firebaseCyclePairBackend: CyclePairBackend = {
         if (await secureOfflineMutationQueue.count(uid)) {
           await secureOfflineMutationQueue.enqueue(mutation);
           const report = await flushQueuedMutations(uid);
-          return {
-            status: report.remaining > 0 ? 'queued' : 'synced',
-            mutationId,
-          };
+          return replayWriteResult(report, mutationId);
         }
         await call('deletePairEvent', { pairId, eventId, mutationId });
         return { status: 'synced', mutationId };
-      } catch {
-        await secureOfflineMutationQueue.enqueue(mutation);
-        return { status: 'queued', mutationId };
+      } catch (error) {
+        return queueAfterWriteFailure(mutation, error);
       }
     });
   },

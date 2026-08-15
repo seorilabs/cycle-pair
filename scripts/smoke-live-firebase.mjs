@@ -489,6 +489,7 @@ async function cleanup() {
     parentPaths.push(`pairInvites/${inviteHash}`);
   }
   if (created.exporter) {
+    childPaths.push(`users/${created.exporter.uid}/privateCycles/current`);
     if (created.exporterDailyLocalDate) {
       childPaths.push(
         `users/${created.exporter.uid}/privateDailyLogs/` +
@@ -611,6 +612,11 @@ try {
     note: enabled,
     updatedAt: new Date(),
   });
+
+  // Projection reads require the owner's current consent. The production app
+  // saves setup before pairing, so establish the same boundary before the
+  // first partner read instead of relying on a pre-consent projection.
+  await writeDocument(cyclePath, created.alice, cycleFields('luteal'));
 
   const pair = await readDocument(pairPath, created.bob);
   assert(pair.data?.status === 'active', '수락 후 Pair가 active가 아닙니다.');
@@ -781,6 +787,17 @@ try {
   // 계정 데이터 내보내기: 발급 → 단회 다운로드 → 재사용 차단 → ticket 소멸
   created.exporter = await createDurableAccount('E');
   created.exporterDailyLocalDate = seoulLocalDate();
+  await writeDocument(
+    `users/${created.exporter.uid}/privateCycles/current`,
+    created.exporter,
+    {
+      schemaVersion: 2,
+      recordsCycle: false,
+      consentAcceptedAt: new Date().toISOString(),
+      consentVersion: '2026-08-09-v1',
+      updatedAt: new Date(),
+    }
+  );
   await writeDocument(
     `users/${created.exporter.uid}/privateDailyLogs/` +
       created.exporterDailyLocalDate,
