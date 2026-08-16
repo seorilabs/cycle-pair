@@ -163,8 +163,18 @@ function isPrivateSetup(value: unknown): value is PrivateSetupSnapshot {
     value.cycle.averagePeriodLength <= value.cycle.averageCycleLength &&
     (value.cycle.cyclePhase === 'menstrual' ||
       value.cycle.cyclePhase === 'follicular' ||
+      value.cycle.cyclePhase === 'ovulatory' ||
       value.cycle.cyclePhase === 'luteal' ||
       value.cycle.cyclePhase === 'unknown') &&
+    (value.cycle.cycleStatus === undefined ||
+      value.cycle.cycleStatus === 'period-starting' ||
+      value.cycle.cycleStatus === 'period-in-progress' ||
+      value.cycle.cycleStatus === 'period-ending' ||
+      value.cycle.cycleStatus === 'post-period' ||
+      value.cycle.cycleStatus === 'fertile-window' ||
+      value.cycle.cycleStatus === 'pre-period' ||
+      value.cycle.cycleStatus === 'cycle-in-progress' ||
+      value.cycle.cycleStatus === 'unknown') &&
     isRecord(nextPeriodWindow) &&
     isLocalDate(nextPeriodWindow.startDate) &&
     isLocalDate(nextPeriodWindow.endDate) &&

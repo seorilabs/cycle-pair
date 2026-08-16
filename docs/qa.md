@@ -75,7 +75,7 @@ check:release는 현재 의도적으로 실패해야 한다. 정책 답변, 서�
 - 주기 날짜는 LocalDate로 계산
 - 유효 간격 15~60일만 예측에 사용
 - 표본 수·변동성에 따른 confidence와 window
-- ovulation·ovulatory 결과가 UI/projection/Analytics로 전달되지 않고 비가임 phase만 명시적 공유 시 전달됨
+- 시작·진행·마무리·직후·시작 전 상세값은 `cycleStatus`, ovulatory·fertile-window는 `fertilityStatus`가 각각 true일 때만 UI/projection으로 전달되고 Analytics 값에는 포함되지 않음. 일반 `cyclePhase` 동의만으로는 상세 상태나 가임 가능 상태가 노출되지 않음
 - 공유 기본값 전체 false
 - Pair 교체 시 이전 Pair의 공유 설정을 승계하지 않음
 - 허용된 키만 projection에 존재

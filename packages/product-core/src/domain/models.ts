@@ -90,6 +90,7 @@ export interface CyclePhaseResult {
 export type ShareableField =
   | "periodDates"
   | "cyclePhase"
+  | "fertilityStatus"
   | "prediction"
   | "symptoms"
   | "mood"
@@ -120,8 +121,7 @@ export interface PartnerProjection {
     readonly start: LocalDate;
     readonly end?: LocalDate;
   };
-  /** Fertility-specific `ovulatory` is intentionally not representable here. */
-  readonly cyclePhase?: Exclude<CyclePhase, "ovulatory">;
+  readonly cyclePhase?: CyclePhase;
   readonly prediction?: PartnerPrediction;
   readonly symptoms?: readonly string[];
   readonly mood?: Mood;

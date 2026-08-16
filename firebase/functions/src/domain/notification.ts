@@ -53,6 +53,7 @@ const PROJECTION_CONTENT_FIELDS = [
   "dailyLogDate",
   "periodDates",
   "cyclePhase",
+  "cycleStatus",
   "nextPeriodWindow",
   "symptomTags",
   "moodTag",

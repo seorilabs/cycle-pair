@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { buildCycleViewModel, formatKoreanDate } from '../app/cycleViewModel';
 import {
   buildPartnerSharedFields,
+  buildPartnerTodaySummary,
   getSafePartnerProjectionForToday,
 } from '../app/partnerProjectionPresentation';
 import { useCyclePair } from '../app/CyclePairStore';
@@ -35,19 +36,12 @@ export function HomeScreen({ onOpenRecord }: { onOpenRecord(): void }) {
     synced: '최신 기록 동기화 완료',
     error: '동기화에 실패했어요 · 연결 상태를 확인해 주세요',
   }[state.syncStatus];
-  const partnerMoodCopy: Record<string, string> = {
-    'very-low': '오늘은 많이 힘들어요',
-    low: '오늘은 조금 지쳐 있어요',
-    neutral: '오늘은 괜찮아요',
-    good: '오늘은 기분이 좋아요',
-    'very-good': '오늘은 아주 좋아요',
-  };
   const safePartnerProjection = getSafePartnerProjectionForToday(
     state.partnerProjection,
   );
-  const hasPartnerSharedValues =
-    buildPartnerSharedFields(safePartnerProjection).length > 0;
-  const partnerMood = safePartnerProjection?.moodTag;
+  const partnerSharedFields = buildPartnerSharedFields(safePartnerProjection);
+  const hasPartnerSharedValues = partnerSharedFields.length > 0;
+  const partnerSummary = buildPartnerTodaySummary(safePartnerProjection);
 
   return (
     <Screen contentStyle={styles.content}>
@@ -71,62 +65,6 @@ export function HomeScreen({ onOpenRecord }: { onOpenRecord(): void }) {
         </View>
       </View>
 
-      <Card tone="primary" style={styles.phaseCard}>
-        <View style={styles.phaseTop}>
-          <View style={styles.phaseRing}>
-            <View style={styles.phaseRingInner}>
-              <Text style={styles.phaseMark}>∞</Text>
-            </View>
-          </View>
-          <View style={styles.phaseCopy}>
-            <Text style={styles.phaseEyebrow}>나의 주기 기록</Text>
-            <Text style={styles.phaseTitle}>
-              {state.isLogger
-                ? state.hasCycleSeed
-                  ? viewModel.phaseTitle
-                  : '예측 기준 없음'
-                : '사용하지 않음'}
-            </Text>
-            {state.isLogger && state.hasCycleSeed && viewModel.cycleDay ? (
-              <Text style={styles.phaseDay}>
-                주기 {viewModel.cycleDay}일째 · 참고용
-              </Text>
-            ) : null}
-          </View>
-        </View>
-        <Text style={styles.phaseDescription}>
-          {state.isLogger
-            ? state.hasCycleSeed
-              ? viewModel.phaseDescription
-              : '오늘의 상태는 계속 기록할 수 있어요. 날짜와 평균을 직접 입력하기 전에는 예측하지 않아요.'
-            : state.paired
-            ? '내 주기 날짜나 예측은 만들지 않고, 상대가 직접 공유한 내용만 보여드려요.'
-            : '주기 예측 없이 오늘의 기분·증상·도움 선호를 나만의 기록으로 남길 수 있어요.'}
-        </Text>
-        <View style={styles.predictionRow}>
-          <View>
-            <Text style={styles.predictionLabel}>내 다음 예상 범위</Text>
-            <Text style={styles.predictionValue}>
-              {!state.isLogger
-                ? '기록하지 않아요'
-                : !state.hasCycleSeed
-                ? '예측 기준을 설정해 주세요'
-                : viewModel.predictionStart && viewModel.predictionEnd
-                ? `${formatKoreanDate(
-                    viewModel.predictionStart,
-                  )} – ${formatKoreanDate(viewModel.predictionEnd)}`
-                : '기록이 더 필요해요'}
-            </Text>
-          </View>
-          {state.isLogger &&
-          state.hasCycleSeed &&
-          viewModel.daysUntilPrediction !== undefined &&
-          viewModel.daysUntilPrediction >= 0 ? (
-            <Chip label={`D-${viewModel.daysUntilPrediction}`} selected />
-          ) : null}
-        </View>
-      </Card>
-
       {state.syncStatus !== 'idle' ? (
         <View style={styles.syncRow}>
           <View
@@ -139,35 +77,6 @@ export function HomeScreen({ onOpenRecord }: { onOpenRecord(): void }) {
           <Text style={styles.syncText}>{syncCopy}</Text>
         </View>
       ) : null}
-
-      <SectionHeader
-        title="오늘의 체크인"
-        action={<TextButton label="기록하기" onPress={onOpenRecord} />}
-      />
-      <Pressable accessibilityRole="button" onPress={onOpenRecord}>
-        <Card style={styles.checkInCard}>
-          <View style={styles.checkIcon}>
-            <Text style={styles.checkIconText}>{hasCheckIn ? '✓' : '+'}</Text>
-          </View>
-          <View style={styles.checkCopy}>
-            <Text style={styles.checkTitle}>
-              {hasCheckIn ? '오늘 기록을 남겼어요' : '지금 컨디션은 어떤가요?'}
-            </Text>
-            <Text style={styles.checkBody}>
-              {hasCheckIn
-                ? [
-                    state.checkIn.mood,
-                    ...state.checkIn.symptoms,
-                    state.checkIn.carePreference,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')
-                : '30초면 충분해요. 공유 여부는 따로 결정돼요.'}
-            </Text>
-          </View>
-          <Text style={styles.chevron}>›</Text>
-        </Card>
-      </Pressable>
 
       {state.paired && state.sharingCompleted ? (
         <>
@@ -183,11 +92,7 @@ export function HomeScreen({ onOpenRecord }: { onOpenRecord(): void }) {
                 <Text style={styles.partnerAvatarText}>파</Text>
               </View>
               <View style={styles.partnerCopy}>
-                <Text style={styles.partnerTitle}>
-                  {partnerMood
-                    ? partnerMoodCopy[partnerMood] ?? '공유된 상태가 있어요'
-                    : '아직 공유된 상태가 없어요'}
-                </Text>
+                <Text style={styles.partnerTitle}>오늘 상태 한눈에 보기</Text>
                 <Text style={styles.partnerBody}>
                   {hasPartnerSharedValues
                     ? '상대가 오늘 직접 허용한 정보예요'
@@ -200,6 +105,35 @@ export function HomeScreen({ onOpenRecord }: { onOpenRecord(): void }) {
                 }
                 selected={hasPartnerSharedValues}
               />
+            </View>
+            <View style={styles.partnerStatusGrid}>
+              <View style={styles.partnerStatusBlock}>
+                <Text style={styles.partnerStatusLabel}>생리·주기 상태</Text>
+                <Text style={styles.partnerStatusTitle}>
+                  {partnerSummary.cycleTitle ?? '공유된 주기 상태가 없어요'}
+                </Text>
+                <Text style={styles.partnerStatusBody}>
+                  {partnerSummary.cycleDetail ??
+                    '파트너가 공유를 켜면 오늘의 주기 흐름을 볼 수 있어요.'}
+                </Text>
+              </View>
+              <View style={styles.partnerStatusDivider} />
+              <View style={styles.partnerStatusBlock}>
+                <Text style={styles.partnerStatusLabel}>오늘의 컨디션</Text>
+                <Text style={styles.partnerStatusTitle}>
+                  {partnerSummary.conditionTitle}
+                </Text>
+                <Text style={styles.partnerStatusBody}>
+                  {partnerSummary.conditionDetail}
+                </Text>
+                {partnerSummary.conditionTags.length > 0 ? (
+                  <View style={styles.partnerTags}>
+                    {partnerSummary.conditionTags.map(tag => (
+                      <Chip key={tag} label={tag} />
+                    ))}
+                  </View>
+                ) : null}
+              </View>
             </View>
             <View style={styles.careDivider} />
             <Text style={styles.careEyebrow}>오늘의 케어 힌트</Text>
@@ -232,6 +166,85 @@ export function HomeScreen({ onOpenRecord }: { onOpenRecord(): void }) {
           </Card>
         </>
       )}
+
+      <SectionHeader
+        title="오늘의 체크인"
+        action={<TextButton label="기록하기" onPress={onOpenRecord} />}
+      />
+      <Pressable accessibilityRole="button" onPress={onOpenRecord}>
+        <Card style={styles.checkInCard}>
+          <View style={styles.checkIcon}>
+            <Text style={styles.checkIconText}>{hasCheckIn ? '✓' : '+'}</Text>
+          </View>
+          <View style={styles.checkCopy}>
+            <Text style={styles.checkTitle}>
+              {hasCheckIn ? '오늘 기록을 남겼어요' : '지금 컨디션은 어떤가요?'}
+            </Text>
+            <Text style={styles.checkBody}>
+              {hasCheckIn
+                ? [
+                    state.checkIn.mood,
+                    ...state.checkIn.symptoms,
+                    state.checkIn.carePreference,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')
+                : '30초면 충분해요. 공유 여부는 따로 결정돼요.'}
+            </Text>
+          </View>
+          <Text style={styles.chevron}>›</Text>
+        </Card>
+      </Pressable>
+
+      {state.isLogger ? (
+        <>
+          <SectionHeader title="나의 주기" />
+          <Card tone="primary" style={styles.phaseCard}>
+            <View style={styles.phaseTop}>
+              <View style={styles.phaseRing}>
+                <View style={styles.phaseRingInner}>
+                  <Text style={styles.phaseMark}>∞</Text>
+                </View>
+              </View>
+              <View style={styles.phaseCopy}>
+                <Text style={styles.phaseEyebrow}>나의 주기 기록</Text>
+                <Text style={styles.phaseTitle}>
+                  {state.hasCycleSeed ? viewModel.phaseTitle : '예측 기준 없음'}
+                </Text>
+                {state.hasCycleSeed && viewModel.cycleDay ? (
+                  <Text style={styles.phaseDay}>
+                    주기 {viewModel.cycleDay}일째 · 참고용
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+            <Text style={styles.phaseDescription}>
+              {state.hasCycleSeed
+                ? viewModel.phaseDescription
+                : '날짜와 평균을 직접 입력하기 전에는 주기를 예측하지 않아요.'}
+            </Text>
+            <View style={styles.predictionRow}>
+              <View>
+                <Text style={styles.predictionLabel}>내 다음 예상 범위</Text>
+                <Text style={styles.predictionValue}>
+                  {!state.hasCycleSeed
+                    ? '예측 기준을 설정해 주세요'
+                    : viewModel.predictionStart && viewModel.predictionEnd
+                    ? `${formatKoreanDate(
+                        viewModel.predictionStart,
+                      )} – ${formatKoreanDate(viewModel.predictionEnd)}`
+                    : '기록이 더 필요해요'}
+                </Text>
+              </View>
+              {state.hasCycleSeed &&
+              viewModel.daysUntilPrediction !== undefined &&
+              viewModel.daysUntilPrediction >= 0 ? (
+                <Chip label={`D-${viewModel.daysUntilPrediction}`} selected />
+              ) : null}
+            </View>
+          </Card>
+        </>
+      ) : null}
 
       <Text style={styles.disclaimer}>
         주기 예측과 케어 힌트는 참고 정보이며 의료 진단·치료 또는 피임 도구가
@@ -385,6 +398,37 @@ const styles = StyleSheet.create({
   partnerCopy: { flex: 1, gap: 2 },
   partnerTitle: { color: colors.text, fontSize: 15, fontWeight: '800' },
   partnerBody: { color: colors.textMuted, fontSize: 11 },
+  partnerStatusGrid: {
+    gap: spacing.lg,
+    marginTop: spacing.xl,
+  },
+  partnerStatusBlock: { gap: spacing.xs },
+  partnerStatusLabel: {
+    color: '#A45E46',
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  partnerStatusTitle: {
+    color: colors.text,
+    fontSize: 19,
+    lineHeight: 25,
+    fontWeight: '900',
+  },
+  partnerStatusBody: {
+    color: colors.textMuted,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  partnerStatusDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: '#F0CBBE',
+  },
+  partnerTags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
   careDivider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: '#F0CBBE',

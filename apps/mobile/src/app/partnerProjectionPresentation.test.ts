@@ -2,6 +2,7 @@ import type { RemotePartnerProjection } from '../platform/backend/CyclePairBacke
 import {
   PARTNER_PROJECTION_STALE_AFTER_MS,
   buildPartnerSharedFields,
+  buildPartnerTodaySummary,
   getSafePartnerProjectionForToday,
   getPartnerProjectionFreshness,
 } from './partnerProjectionPresentation';
@@ -164,5 +165,32 @@ describe('partner projection presentation', () => {
         new Date('2026-07-14T12:00:00.000Z'),
       ).stale,
     ).toBe(true);
+  });
+
+  it.each([
+    ['period-starting', '생리가 시작된 날이에요'],
+    ['period-in-progress', '생리 진행 중이에요'],
+    ['period-ending', '생리 마무리 시기에 가까워요'],
+    ['post-period', '생리가 끝난 직후예요'],
+    ['fertile-window', '가임 가능성이 높은 시기예요'],
+    ['pre-period', '생리 시작 전이에요'],
+  ] as const)('파트너의 %s 상태를 홈 요약으로 표현한다', (cycleStatus, title) => {
+    expect(
+      buildPartnerTodaySummary(
+        {
+          ...metadata,
+          cyclePhase:
+            cycleStatus === 'fertile-window' ? 'ovulatory' : 'follicular',
+          cycleStatus,
+          moodTag: 'good',
+          conditionCode: 'comfortable',
+        },
+        metadataDate,
+      ),
+    ).toMatchObject({
+      cycleTitle: title,
+      conditionTitle: '기분이 좋아요',
+      conditionTags: ['편안해요'],
+    });
   });
 });

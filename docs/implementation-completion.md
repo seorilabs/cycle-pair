@@ -5,7 +5,7 @@
 - 기준일: 2026-08-09
 - 목표: 부분 구현 또는 정적 UI로 남은 MVP 기능을 실제 모바일·Firebase 동작으로 완성
 - 범위: Google Play·App Store용 `apps/mobile`, 공통 Firebase backend, AppsInToss 최소 로컬 공유 slice와 독립 빌드 타깃
-- 제외 유지: 다중 파트너, 실시간 채팅, 광고, 가임기·배란·피임 기능, E2E 암호화, AppsInToss의 계정·Firebase·알림·구독 parity와 콘솔 배포. AppsInToss 최소 로컬 공유 slice와 빌드 타깃은 별도 구현
+- 제외 유지: 다중 파트너, 실시간 채팅, 광고, 정확한 배란일·임신 가능성·피임 판단, E2E 암호화, AppsInToss의 계정·Firebase·알림·구독 parity와 콘솔 배포. AppsInToss 최소 로컬 공유 slice와 빌드 타깃은 별도 구현
 - 현재 단계: 실제 adapter를 연결한 MVP 내부 alpha/closed beta 후보. 운영 배포·마켓 제출 준비 완료 상태가 아님
 
 `code 구현`과 `출시 검증`은 다른 상태다. 아래의 `구현됨`은 코드·자동 테스트 범위를 뜻하며, 실기기·sandbox·콘솔·배포 근거까지 완료됐다는 뜻이 아니다.

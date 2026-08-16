@@ -12,6 +12,7 @@ import type {
 const SHAREABLE_FIELDS: readonly ShareableField[] = Object.freeze([
   "periodDates",
   "cyclePhase",
+  "fertilityStatus",
   "prediction",
   "symptoms",
   "mood",
@@ -81,9 +82,9 @@ export function projectForPartner(
           }),
         }
       : {}),
-    ...(settings.fields.cyclePhase &&
-    source.cyclePhase !== undefined &&
-    source.cyclePhase !== "ovulatory"
+    ...(((settings.fields.cyclePhase && source.cyclePhase !== "ovulatory") ||
+      (settings.fields.fertilityStatus && source.cyclePhase === "ovulatory")) &&
+    source.cyclePhase !== undefined
       ? { cyclePhase: source.cyclePhase }
       : {}),
     ...(settings.fields.prediction && source.prediction !== undefined

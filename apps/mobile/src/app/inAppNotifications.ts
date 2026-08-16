@@ -17,6 +17,7 @@ const projectionContentFields = [
   'dailyLogDate',
   'periodDates',
   'cyclePhase',
+  'cycleStatus',
   'nextPeriodWindow',
   'symptomTags',
   'moodTag',

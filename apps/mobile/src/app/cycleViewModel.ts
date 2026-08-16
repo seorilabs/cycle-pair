@@ -208,6 +208,7 @@ export function buildCycleViewModel(state: CyclePairState): CycleViewModel {
 
   const selfSettings = createShareSettings(SELF_MEMBER_ID, today, {
     cyclePhase: state.shareSettings.cyclePhase,
+    fertilityStatus: state.shareSettings.fertilityStatus,
     periodDates: state.shareSettings.periodDates,
     prediction: state.shareSettings.predictedPeriod,
     mood: state.shareSettings.mood,

@@ -33,7 +33,7 @@ Cycle Pair의 플랫폼 독립 TypeScript 코어다. 도메인 모델, 순수 �
 ### 국면 판정과 MVP 비노출 정책
 
 - 기본 월경 길이 5일, 황체기 14일, 내부 배란 추정 창 ±1일을 사용하며 마지막 시작일부터 한 번의 예상 주기 안에서만 판정한다. 범위 밖은 `unknown`이다.
-- `ovulatory`는 내부 계산에만 존재한다. MVP의 `PartnerProjection`에서는 해당 키를 아예 만들지 않는다.
+- `ovulatory`는 `fertilityStatus`를 별도로 켠 Pair에만 전달한다. 일반 `cyclePhase` 동의만으로는 가임 가능 시기를 노출하지 않는다.
 - `CareTip` 반환값에는 매칭 phase 규칙이 포함되지 않고, 알림 payload에도 정확한 배란·가임·주기 신호가 포함되지 않는다.
 
 ### 공유와 보안

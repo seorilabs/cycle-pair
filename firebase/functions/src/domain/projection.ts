@@ -6,7 +6,23 @@ type ConditionCode =
   | "low-energy"
   | "needs-space";
 
-const CYCLE_PHASES = new Set(["menstrual", "follicular", "luteal", "unknown"]);
+const CYCLE_PHASES = new Set([
+  "menstrual",
+  "follicular",
+  "ovulatory",
+  "luteal",
+  "unknown",
+]);
+const CYCLE_STATUSES = new Set([
+  "period-starting",
+  "period-in-progress",
+  "period-ending",
+  "post-period",
+  "fertile-window",
+  "pre-period",
+  "cycle-in-progress",
+  "unknown",
+]);
 const CONDITION_CODES = new Set<ConditionCode>([
   "comfortable",
   "tired",
@@ -39,6 +55,7 @@ export interface PartnerProjection {
   readonly dailyLogDate?: string;
   readonly periodDates?: PeriodDates;
   readonly cyclePhase?: string;
+  readonly cycleStatus?: string;
   readonly nextPeriodWindow?: DateWindow;
   readonly symptomTags?: readonly string[];
   readonly moodTag?: string;
@@ -71,6 +88,12 @@ function isShared(settings: JsonRecord | undefined, field: string): boolean {
 
 function safeCyclePhase(value: unknown): string | undefined {
   return typeof value === "string" && CYCLE_PHASES.has(value)
+    ? value
+    : undefined;
+}
+
+function safeCycleStatus(value: unknown): string | undefined {
+  return typeof value === "string" && CYCLE_STATUSES.has(value)
     ? value
     : undefined;
 }
@@ -181,12 +204,31 @@ export function buildPartnerProjection(
   const periodDates = isShared(shareSettings, "periodDates")
     ? safePeriodDates(cycle?.periodDates)
     : undefined;
-  const cyclePhase = isShared(shareSettings, "cyclePhase")
-    // A phase without its source date can be stale while looking current.
-    ? cycleAsOfDate === undefined
+  const rawCyclePhase = safeCyclePhase(cycle?.cyclePhase);
+  const rawCycleStatus = safeCycleStatus(cycle?.cycleStatus);
+  const sharesGeneralCycle = isShared(shareSettings, "cyclePhase");
+  const sharesDetailedCycle = isShared(shareSettings, "cycleStatus");
+  const sharesFertility = isShared(shareSettings, "fertilityStatus");
+  const cyclePhase =
+    cycleAsOfDate === undefined || rawCyclePhase === undefined
       ? undefined
-      : safeCyclePhase(cycle?.cyclePhase)
-    : undefined;
+      : rawCyclePhase === "ovulatory"
+        ? sharesFertility
+          ? rawCyclePhase
+          : undefined
+        : sharesGeneralCycle
+          ? rawCyclePhase
+          : undefined;
+  const cycleStatus =
+    cycleAsOfDate === undefined || rawCycleStatus === undefined
+      ? undefined
+      : rawCycleStatus === "fertile-window"
+        ? sharesFertility
+          ? rawCycleStatus
+          : undefined
+        : sharesDetailedCycle
+          ? rawCycleStatus
+          : undefined;
   const nextPeriodWindow = isShared(shareSettings, "nextPeriodWindow")
     ? safeDateWindow(cycle?.nextPeriodWindow)
     : undefined;
@@ -224,6 +266,7 @@ export function buildPartnerProjection(
   const hasCycleValue =
     periodDates !== undefined ||
     cyclePhase !== undefined ||
+    cycleStatus !== undefined ||
     nextPeriodWindow !== undefined;
   const hasDailyValue =
     symptomTags !== undefined ||
@@ -239,6 +282,7 @@ export function buildPartnerProjection(
     ...(hasDailyValue && dailyLogDate !== undefined ? {dailyLogDate} : {}),
     ...(periodDates === undefined ? {} : {periodDates}),
     ...(cyclePhase === undefined ? {} : {cyclePhase}),
+    ...(cycleStatus === undefined ? {} : {cycleStatus}),
     ...(nextPeriodWindow === undefined ? {} : {nextPeriodWindow}),
     ...(symptomTags === undefined ? {} : {symptomTags}),
     ...(moodTag === undefined ? {} : {moodTag}),

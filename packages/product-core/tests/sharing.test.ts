@@ -131,7 +131,7 @@ describe("partner projection", () => {
     expect(Object.hasOwn(disabled, "periodDates")).toBe(false);
   });
 
-  it("never exposes the internal ovulatory phase in the MVP projection", () => {
+  it("keeps the ovulatory phase private without separate fertility consent", () => {
     const settings = createShareSettings("member-a", date("2026-06-01"), {
       cyclePhase: true,
     });
@@ -146,6 +146,22 @@ describe("partner projection", () => {
 
     expect(Object.hasOwn(projection, "cyclePhase")).toBe(false);
     expect(JSON.stringify(projection)).not.toMatch(/ovulat|fertil|배란|가임/i);
+  });
+
+  it("shares the ovulatory phase only with separate fertility consent", () => {
+    const settings = createShareSettings("member-a", date("2026-06-01"), {
+      fertilityStatus: true,
+    });
+    const projection = projectForPartner(
+      {
+        subjectMemberId: "member-a",
+        asOf: date("2026-06-01"),
+        cyclePhase: "ovulatory",
+      },
+      settings,
+    );
+
+    expect(projection.cyclePhase).toBe("ovulatory");
   });
 
   it("rejects data that belongs to another member", () => {

@@ -476,6 +476,8 @@ describe('CyclePair pair privacy state', () => {
         pairId: 'pair-one',
         settings: {
           cyclePhase: false,
+          cycleStatus: false,
+          fertilityStatus: false,
           predictedPeriod: false,
           periodDates: false,
           mood: false,
@@ -600,6 +602,8 @@ describe('CyclePair pair privacy state', () => {
     expect(state.sharingPairId).toBe('pair-two');
     expect(state.sharingCompleted).toBe(false);
     expect(Object.values(state.shareSettings)).toEqual([
+      false,
+      false,
       false,
       false,
       false,

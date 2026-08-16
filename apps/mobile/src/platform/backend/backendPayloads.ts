@@ -4,6 +4,7 @@ import type {
   ShareField,
 } from '../../app/CyclePairStore';
 import type {
+  BackendCycleStatus,
   BackendConditionCode,
   BackendShareSettings,
   PrivateCycleRecord,
@@ -80,9 +81,63 @@ function cyclePhaseForDate(
   ) {
     return 'unknown';
   }
-  if (offset < seed.averagePeriodLength) return 'menstrual';
-  if (offset >= seed.averageCycleLength - 14) return 'luteal';
+  const explicitPeriodEnd = seed.lastPeriodEnd
+    ? Date.parse(`${seed.lastPeriodEnd}T12:00:00.000Z`)
+    : Number.NaN;
+  const explicitPeriodLength = Math.round(
+    (explicitPeriodEnd - start) / 86_400_000,
+  ) + 1;
+  const periodLength =
+    Number.isFinite(explicitPeriodLength) && explicitPeriodLength > 0
+      ? explicitPeriodLength
+      : seed.averagePeriodLength;
+  if (offset < periodLength) return 'menstrual';
+  const cycleDay = offset + 1;
+  const ovulationDay = seed.averageCycleLength - 14;
+  if (cycleDay >= ovulationDay - 1 && cycleDay <= ovulationDay + 1) {
+    return 'ovulatory';
+  }
+  if (cycleDay > ovulationDay + 1) return 'luteal';
   return 'follicular';
+}
+
+function cycleStatusForDate(
+  seed: CycleSeed,
+  onDate: string,
+): BackendCycleStatus {
+  const start = Date.parse(`${seed.lastPeriodStart}T12:00:00.000Z`);
+  const current = Date.parse(`${onDate}T12:00:00.000Z`);
+  const offset = Math.round((current - start) / 86_400_000);
+  if (
+    !Number.isFinite(offset) ||
+    offset < 0 ||
+    offset >= seed.averageCycleLength
+  ) {
+    return 'unknown';
+  }
+
+  const cycleDay = offset + 1;
+  if (cycleDay === 1) return 'period-starting';
+  if (seed.lastPeriodEnd) {
+    const periodEnd = Date.parse(`${seed.lastPeriodEnd}T12:00:00.000Z`);
+    const daysAfterEnd = Math.round((current - periodEnd) / 86_400_000);
+    if (Number.isFinite(daysAfterEnd)) {
+      if (daysAfterEnd < 0) return 'period-in-progress';
+      if (daysAfterEnd === 0) return 'period-ending';
+      if (daysAfterEnd <= 2) return 'post-period';
+    }
+  } else {
+    if (cycleDay < seed.averagePeriodLength) return 'period-in-progress';
+    if (cycleDay === seed.averagePeriodLength) return 'period-ending';
+    if (cycleDay <= seed.averagePeriodLength + 2) return 'post-period';
+  }
+
+  const ovulationDay = seed.averageCycleLength - 14;
+  if (cycleDay >= ovulationDay - 1 && cycleDay <= ovulationDay + 1) {
+    return 'fertile-window';
+  }
+  if (cycleDay >= seed.averageCycleLength - 2) return 'pre-period';
+  return 'cycle-in-progress';
 }
 
 export function toPrivateCycleRecord(
@@ -99,6 +154,7 @@ export function toPrivateCycleRecord(
       ...(seed.lastPeriodEnd ? { endDate: seed.lastPeriodEnd } : {}),
     },
     cyclePhase: cyclePhaseForDate(seed, onDate),
+    cycleStatus: cycleStatusForDate(seed, onDate),
     nextPeriodWindow: {
       startDate: addDays(predicted, -7),
       endDate: addDays(predicted, 7),
@@ -111,6 +167,8 @@ export function fromBackendShareSettings(
 ): Record<ShareField, boolean> {
   return {
     cyclePhase: settings.cyclePhase,
+    cycleStatus: settings.cycleStatus === true,
+    fertilityStatus: settings.fertilityStatus === true,
     predictedPeriod: settings.nextPeriodWindow,
     periodDates: settings.periodDates,
     mood: settings.moodTag,
@@ -189,6 +247,8 @@ export function toBackendShareSettings(
 ): BackendShareSettings {
   return {
     cyclePhase: settings.cyclePhase,
+    cycleStatus: settings.cycleStatus,
+    fertilityStatus: settings.fertilityStatus,
     nextPeriodWindow: settings.predictedPeriod,
     periodDates: settings.periodDates,
     moodTag: settings.mood,

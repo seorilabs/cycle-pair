@@ -61,6 +61,8 @@ export type AppStage = 'onboarding' | 'setup' | 'invite' | 'sharing' | 'main';
 export type MainTab = 'home' | 'calendar' | 'partner' | 'settings';
 export type ShareField =
   | 'cyclePhase'
+  | 'cycleStatus'
+  | 'fertilityStatus'
   | 'predictedPeriod'
   | 'periodDates'
   | 'mood'
@@ -308,6 +310,8 @@ const LOCAL_TIME = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
 function privateByDefault(): Record<ShareField, boolean> {
   return {
     cyclePhase: false,
+    cycleStatus: false,
+    fertilityStatus: false,
     predictedPeriod: false,
     periodDates: false,
     mood: false,
@@ -599,6 +603,8 @@ export function reduceCyclePairState(
         ...state,
         shareSettings: {
           cyclePhase: true,
+          cycleStatus: true,
+          fertilityStatus: true,
           predictedPeriod: true,
           periodDates: false,
           mood: true,
@@ -1641,6 +1647,8 @@ export function CyclePairProvider({
     if (!state.paired || !state.sharingPairId) return;
     const recommended: Record<ShareField, boolean> = {
       cyclePhase: true,
+      cycleStatus: true,
+      fertilityStatus: true,
       predictedPeriod: true,
       periodDates: false,
       mood: true,
