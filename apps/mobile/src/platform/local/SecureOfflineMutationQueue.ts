@@ -232,8 +232,18 @@ function isPrivateSetupSnapshot(value: unknown): value is PrivateSetupSnapshot {
     cycle.asOfDate >= periodDates.startDate &&
     (phase === 'menstrual' ||
       phase === 'follicular' ||
+      phase === 'ovulatory' ||
       phase === 'luteal' ||
       phase === 'unknown') &&
+    (cycle.cycleStatus === undefined ||
+      cycle.cycleStatus === 'period-starting' ||
+      cycle.cycleStatus === 'period-in-progress' ||
+      cycle.cycleStatus === 'period-ending' ||
+      cycle.cycleStatus === 'post-period' ||
+      cycle.cycleStatus === 'fertile-window' ||
+      cycle.cycleStatus === 'pre-period' ||
+      cycle.cycleStatus === 'cycle-in-progress' ||
+      cycle.cycleStatus === 'unknown') &&
     isRecord(nextPeriodWindow) &&
     isLocalDate(nextPeriodWindow.startDate) &&
     isLocalDate(nextPeriodWindow.endDate) &&
@@ -307,6 +317,8 @@ function isPairEventInput(value: unknown): value is PairEventInput {
 
 const SHARE_SETTING_KEYS = [
   'cyclePhase',
+  'cycleStatus',
+  'fertilityStatus',
   'nextPeriodWindow',
   'periodDates',
   'moodTag',
@@ -320,8 +332,15 @@ const SHARE_SETTING_KEYS = [
 function isShareSettings(value: unknown): value is BackendShareSettings {
   return (
     isRecord(value) &&
-    Object.keys(value).length === SHARE_SETTING_KEYS.length &&
-    SHARE_SETTING_KEYS.every(key => typeof value[key] === 'boolean')
+    Object.keys(value).every(key =>
+      SHARE_SETTING_KEYS.includes(key as (typeof SHARE_SETTING_KEYS)[number]),
+    ) &&
+    SHARE_SETTING_KEYS.filter(
+      key => key !== 'cycleStatus' && key !== 'fertilityStatus',
+    ).every(key => typeof value[key] === 'boolean') &&
+    (value.cycleStatus === undefined || typeof value.cycleStatus === 'boolean') &&
+    (value.fertilityStatus === undefined ||
+      typeof value.fertilityStatus === 'boolean')
   );
 }
 

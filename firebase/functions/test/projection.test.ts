@@ -140,17 +140,68 @@ describe("buildPartnerProjection", () => {
     expect(projection).not.toHaveProperty("note");
   });
 
-  test("never exposes an ovulatory or fertility phase", () => {
+  test("keeps fertility-derived values private without separate consent", () => {
     const projection = buildPartnerProjection({
       ...base,
       privateCycle: {
         asOfDate: "2026-07-12",
         cyclePhase: "ovulatory",
+        cycleStatus: "fertile-window",
       },
       shareSettings: {cyclePhase: true},
     });
 
     expect(projection).toEqual(baseWithSchema());
+  });
+
+  test("materializes fertility status only with its dedicated opt-in", () => {
+    const projection = buildPartnerProjection({
+      ...base,
+      privateCycle: {
+        asOfDate: "2026-07-12",
+        cyclePhase: "ovulatory",
+        cycleStatus: "fertile-window",
+      },
+      shareSettings: {fertilityStatus: true},
+    });
+
+    expect(projection).toEqual({
+      ...baseWithSchema(),
+      cycleAsOfDate: "2026-07-12",
+      cyclePhase: "ovulatory",
+      cycleStatus: "fertile-window",
+    });
+  });
+
+  test("materializes detailed non-fertility status only with its dedicated opt-in", () => {
+    const privateCycle = {
+      asOfDate: "2026-07-12",
+      cyclePhase: "menstrual",
+      cycleStatus: "period-ending",
+    };
+
+    expect(
+      buildPartnerProjection({
+        ...base,
+        privateCycle,
+        shareSettings: {cyclePhase: true},
+      }),
+    ).toEqual({
+      ...baseWithSchema(),
+      cycleAsOfDate: "2026-07-12",
+      cyclePhase: "menstrual",
+    });
+    expect(
+      buildPartnerProjection({
+        ...base,
+        privateCycle,
+        shareSettings: {cycleStatus: true},
+      }),
+    ).toEqual({
+      ...baseWithSchema(),
+      cycleAsOfDate: "2026-07-12",
+      cycleStatus: "period-ending",
+    });
   });
 
   test("shares an ongoing period with an omitted end date", () => {

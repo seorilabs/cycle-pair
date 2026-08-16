@@ -104,7 +104,8 @@ describe("owner-only raw records", () => {
         averageCycleLength: 28,
         averagePeriodLength: 5,
         periodDates: {startDate: "2026-07-01"},
-        cyclePhase: "follicular",
+        cyclePhase: "ovulatory",
+        cycleStatus: "fertile-window",
         nextPeriodWindow: {
           startDate: "2026-07-22",
           endDate: "2026-08-05",
@@ -334,6 +335,8 @@ describe("owner-only raw records", () => {
         schemaVersion: 1,
         updatedAt: serverTimestamp(),
         cyclePhase: true,
+        cycleStatus: true,
+        fertilityStatus: true,
         nextPeriodWindow: false,
         periodDates: false,
         moodTag: false,

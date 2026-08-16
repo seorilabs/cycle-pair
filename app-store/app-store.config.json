@@ -50,7 +50,7 @@
     "tracking": "no",
     "requiresSignIn": "yes",
     "healthContent": "yes-cycle-and-condition-records",
-    "fertilityOrContraception": "no",
+    "fertilityOrContraception": "yes-cycle-based-fertility-window-reference-not-contraception",
     "medicalDiagnosisOrTreatment": "no",
     "userGeneratedContent": "yes-private-pair-notes-and-events",
     "realtimeChat": "no",

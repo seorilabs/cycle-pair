@@ -20,13 +20,15 @@ import {
   shiftCalendarMonth,
 } from '../app/calendarMonth';
 import { useCyclePair } from '../app/CyclePairStore';
-import { getSafePartnerProjectionForToday } from '../app/partnerProjectionPresentation';
+import {
+  buildPartnerTodaySummary,
+  getSafePartnerProjectionForToday,
+} from '../app/partnerProjectionPresentation';
 import { LocalDatePickerField } from '../components/LocalDatePickerField';
 import type { PairEventInput } from '../platform/backend/CyclePairBackend';
 import {
   Body,
   Card,
-  Chip,
   PrimaryButton,
   Screen,
   SecondaryButton,
@@ -36,6 +38,13 @@ import {
 import { colors, radius, spacing } from '../theme';
 
 const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+
+interface SelectedCycleAgendaItem {
+  readonly id: string;
+  readonly title: string;
+  readonly detail: string;
+  readonly owner: 'mine' | 'partner';
+}
 
 function dateParts(value: LocalDate | string) {
   const [year, month, day] = String(value).split('-').map(Number);
@@ -127,6 +136,94 @@ export function CalendarScreen() {
       ? { partnerNextPeriodWindow: safePartnerProjection.nextPeriodWindow }
       : {}),
   });
+  const selectedLocalDate = parseLocalDate(selectedDate);
+  const partnerTodaySummary = buildPartnerTodaySummary(safePartnerProjection);
+  const selectedCycleAgenda: SelectedCycleAgendaItem[] = [];
+  if (
+    isBetween(
+      selectedLocalDate,
+      cycleRanges.ownActual?.start,
+      cycleRanges.ownActual?.end,
+    )
+  ) {
+    selectedCycleAgenda.push({
+      id: 'own-actual',
+      title: '내 생리 기록',
+      detail: '직접 기록한 생리 기간에 포함돼요.',
+      owner: 'mine',
+    });
+  }
+  if (
+    isBetween(
+      selectedLocalDate,
+      cycleRanges.ownInferred?.start,
+      cycleRanges.ownInferred?.end,
+    )
+  ) {
+    selectedCycleAgenda.push({
+      id: 'own-inferred',
+      title: '내 생리 종료 예상 구간',
+      detail: '평균 생리 기간을 기준으로 계산한 참고 일정이에요.',
+      owner: 'mine',
+    });
+  }
+  if (
+    isBetween(
+      selectedLocalDate,
+      viewModel.predictionStart,
+      viewModel.predictionEnd,
+    )
+  ) {
+    selectedCycleAgenda.push({
+      id: 'own-prediction',
+      title: '내 다음 생리 예상 범위',
+      detail: '기록을 바탕으로 계산한 넓은 참고 범위예요.',
+      owner: 'mine',
+    });
+  }
+  if (
+    isBetween(
+      selectedLocalDate,
+      cycleRanges.partnerActual?.start,
+      cycleRanges.partnerActual?.end,
+    )
+  ) {
+    selectedCycleAgenda.push({
+      id: 'partner-actual',
+      title: `${state.partnerName} 님의 생리 기록`,
+      detail: '파트너가 직접 공유한 생리 기간이에요.',
+      owner: 'partner',
+    });
+  }
+  if (
+    isBetween(
+      selectedLocalDate,
+      cycleRanges.partnerPrediction?.start,
+      cycleRanges.partnerPrediction?.end,
+    )
+  ) {
+    selectedCycleAgenda.push({
+      id: 'partner-prediction',
+      title: `${state.partnerName} 님의 다음 생리 예상 범위`,
+      detail: '파트너가 공유한 참고용 예상 범위예요.',
+      owner: 'partner',
+    });
+  }
+  if (
+    selectedDate === String(viewModel.today) &&
+    safePartnerProjection?.cycleStatus &&
+    !selectedCycleAgenda.some(item => item.id === 'partner-actual')
+  ) {
+    selectedCycleAgenda.push({
+      id: 'partner-today-status',
+      title:
+        partnerTodaySummary.cycleTitle ??
+        `${state.partnerName} 님의 오늘 주기 상태`,
+      detail:
+        partnerTodaySummary.cycleDetail ?? '파트너가 공유한 오늘의 상태예요.',
+      owner: 'partner',
+    });
+  }
 
   function shiftMonth(offset: number) {
     setCursor(current => shiftCalendarMonth(current, offset));
@@ -457,54 +554,96 @@ export function CalendarScreen() {
         </View>
       </Card>
 
-      <SectionHeader title="다가오는 일정" />
-      <Card style={styles.eventCard}>
-        <View style={styles.eventDate}>
-          <Text style={styles.eventMonth}>
-            {viewModel.predictedDate
-              ? dateParts(viewModel.predictedDate).month
-              : '–'}
-            월
-          </Text>
-          <Text style={styles.eventDay}>
-            {viewModel.predictedDate
-              ? dateParts(viewModel.predictedDate).day
-              : '–'}
-          </Text>
-        </View>
-        <View style={styles.eventCopy}>
-          <Text style={styles.eventTitle}>
-            {state.isLogger && state.hasCycleSeed
-              ? '다음 생리 예상 기준일'
-              : state.isLogger
-              ? '내 주기 예측 기준이 없어요'
-              : '내 주기 기록을 사용하지 않아요'}
-          </Text>
-          <Text style={styles.eventBody}>
-            {!state.isLogger
-              ? state.paired
-                ? '상대가 직접 공유한 정보만 확인할 수 있어요.'
-                : '주기 예측 없이 오늘의 컨디션 기록을 사용할 수 있어요.'
-              : !state.hasCycleSeed
-              ? '최근 시작일과 평균을 설정하면 참고용 범위를 계산해요.'
-              : viewModel.predictionStart && viewModel.predictionEnd
-              ? `${formatKoreanDate(
-                  viewModel.predictionStart,
-                )}부터 ${formatKoreanDate(
-                  viewModel.predictionEnd,
-                )} 사이로 넓게 봐주세요.`
-              : '기록이 더 쌓이면 예상 범위를 보여드려요.'}
-          </Text>
-        </View>
-        <Chip label="참고용" />
-      </Card>
-
       <SectionHeader
-        title={`${formatKoreanDate(parseLocalDate(selectedDate))} 기록`}
+        title={`${formatKoreanDate(selectedLocalDate)} 일정`}
+        action={
+          state.paired && !eventDraft ? (
+            <TextButton
+              label="추가"
+              onPress={beginCreateEvent}
+              disabled={backendBusy}
+            />
+          ) : undefined
+        }
       />
+      <View style={styles.selectedAgendaList}>
+        {selectedCycleAgenda.map(item => (
+          <Card
+            key={item.id}
+            tone={item.owner === 'partner' ? 'accent' : 'primary'}
+            style={styles.selectedAgendaCard}
+          >
+            <View
+              style={[
+                styles.agendaMarker,
+                item.owner === 'partner' && styles.partnerAgendaMarker,
+              ]}
+            />
+            <View style={styles.agendaCopy}>
+              <Text style={styles.agendaTitle}>{item.title}</Text>
+              <Text style={styles.agendaBody}>{item.detail}</Text>
+            </View>
+          </Card>
+        ))}
+
+        {selectedEvents.map(event => (
+          <Card key={event.id} tone="mint" style={styles.sharedEventCard}>
+            <View style={styles.sharedEventHeader}>
+              <View style={styles.sharedEventCopy}>
+                <Text style={styles.sharedTitle}>{event.title}</Text>
+                <Text style={styles.sharedBody}>
+                  {[event.startTime, event.endTime]
+                    .filter(Boolean)
+                    .join(' – ') || '종일'}
+                </Text>
+              </View>
+              <TextButton
+                label="수정"
+                disabled={backendBusy}
+                onPress={() =>
+                  setEventDraft({
+                    id: event.id,
+                    title: event.title,
+                    date: event.date,
+                    ...(event.startTime ? { startTime: event.startTime } : {}),
+                    ...(event.endTime ? { endTime: event.endTime } : {}),
+                    ...(event.note ? { note: event.note } : {}),
+                  })
+                }
+              />
+            </View>
+            {event.note ? (
+              <Text style={styles.eventNote}>{event.note}</Text>
+            ) : null}
+            <View style={styles.eventActions}>
+              <SecondaryButton
+                compact
+                danger
+                label="삭제"
+                disabled={backendBusy}
+                onPress={() => confirmDeleteEvent(event.id, event.title)}
+              />
+            </View>
+          </Card>
+        ))}
+
+        {selectedCycleAgenda.length === 0 && selectedEvents.length === 0 ? (
+          <Card tone="mint" style={styles.emptyCard}>
+            <Text style={styles.emptyText}>
+              이 날짜에 등록되거나 공유된 일정이 없어요.
+            </Text>
+          </Card>
+        ) : null}
+      </View>
+
+      {selectedHistory || state.isLogger ? (
+        <SectionHeader title="내 컨디션 기록" />
+      ) : null}
       {selectedHistory ? (
         <Card style={styles.historyCard}>
-          <Text style={styles.historyTitle}>내 컨디션 기록</Text>
+          <Text style={styles.historyTitle}>
+            {formatKoreanDate(selectedLocalDate)}에 남긴 기록
+          </Text>
           <Text style={styles.historyBody}>
             {[
               selectedHistory.checkIn.mood,
@@ -535,83 +674,13 @@ export function CalendarScreen() {
             />
           </View>
         </Card>
-      ) : (
+      ) : state.isLogger ? (
         <Card style={styles.emptyCard}>
           <Text style={styles.emptyText}>
             이 날짜에 저장된 내 기록이 없어요.
           </Text>
         </Card>
-      )}
-
-      <SectionHeader
-        title="기념일·공동 일정"
-        action={
-          state.paired && !eventDraft ? (
-            <TextButton
-              label="추가"
-              onPress={beginCreateEvent}
-              disabled={backendBusy}
-            />
-          ) : undefined
-        }
-      />
-      {!state.paired ? (
-        <Card tone="mint" style={styles.sharedCalendarCard}>
-          <Text style={styles.sharedIcon}>＋</Text>
-          <View style={styles.sharedCopy}>
-            <Text style={styles.sharedTitle}>파트너 연결은 선택 사항</Text>
-            <Text style={styles.sharedBody}>
-              혼자 기록을 계속 사용하다가 필요할 때 공동 일정을 켤 수 있어요.
-            </Text>
-          </View>
-        </Card>
       ) : null}
-
-      {state.paired && selectedEvents.length === 0 && !eventDraft ? (
-        <Card tone="mint" style={styles.emptyCard}>
-          <Text style={styles.emptyText}>이 날짜에 공동 일정이 없어요.</Text>
-        </Card>
-      ) : null}
-
-      {selectedEvents.map(event => (
-        <Card key={event.id} tone="mint" style={styles.sharedEventCard}>
-          <View style={styles.sharedEventHeader}>
-            <View style={styles.sharedEventCopy}>
-              <Text style={styles.sharedTitle}>{event.title}</Text>
-              <Text style={styles.sharedBody}>
-                {[event.startTime, event.endTime].filter(Boolean).join(' – ') ||
-                  '종일'}
-              </Text>
-            </View>
-            <TextButton
-              label="수정"
-              disabled={backendBusy}
-              onPress={() =>
-                setEventDraft({
-                  id: event.id,
-                  title: event.title,
-                  date: event.date,
-                  ...(event.startTime ? { startTime: event.startTime } : {}),
-                  ...(event.endTime ? { endTime: event.endTime } : {}),
-                  ...(event.note ? { note: event.note } : {}),
-                })
-              }
-            />
-          </View>
-          {event.note ? (
-            <Text style={styles.eventNote}>{event.note}</Text>
-          ) : null}
-          <View style={styles.eventActions}>
-            <SecondaryButton
-              compact
-              danger
-              label="삭제"
-              disabled={backendBusy}
-              onPress={() => confirmDeleteEvent(event.id, event.title)}
-            />
-          </View>
-        </Card>
-      ))}
 
       {eventDraft ? (
         <Card style={styles.editorCard}>
@@ -737,8 +806,8 @@ export function CalendarScreen() {
       ) : null}
 
       <Body muted style={styles.disclaimer}>
-        가임기·배란일은 표시하지 않으며, 예상 범위는 의료 또는 피임 판단에
-        사용할 수 없습니다.
+        가임 가능 시기와 생리 예상 범위는 주기 기록을 바탕으로 한 참고
+        정보이며 의료 또는 피임 판단에 사용할 수 없습니다.
       </Body>
     </Screen>
   );
@@ -872,20 +941,23 @@ const styles = StyleSheet.create({
   partnerLegendMark: { width: 10 },
   todayDot: { borderWidth: 1, borderColor: colors.primary },
   legendText: { color: colors.textMuted, fontSize: 10, fontWeight: '600' },
-  eventCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  eventDate: {
-    width: 48,
-    height: 58,
-    borderRadius: radius.md,
-    backgroundColor: colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
+  selectedAgendaList: { gap: spacing.md },
+  selectedAgendaCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
   },
-  eventMonth: { color: colors.primary, fontSize: 10, fontWeight: '900' },
-  eventDay: { color: colors.primaryDark, fontSize: 22, fontWeight: '900' },
-  eventCopy: { flex: 1, gap: spacing.xs },
-  eventTitle: { color: colors.text, fontSize: 14, fontWeight: '800' },
-  eventBody: { color: colors.textMuted, fontSize: 11, lineHeight: 16 },
+  agendaMarker: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.primary,
+    marginTop: 4,
+  },
+  partnerAgendaMarker: { backgroundColor: colors.accent },
+  agendaCopy: { flex: 1, gap: spacing.xs },
+  agendaTitle: { color: colors.text, fontSize: 15, fontWeight: '900' },
+  agendaBody: { color: colors.textMuted, fontSize: 12, lineHeight: 18 },
   historyCard: { gap: spacing.sm },
   historyTitle: { color: colors.text, fontSize: 15, fontWeight: '900' },
   historyBody: { color: colors.textMuted, fontSize: 13, lineHeight: 19 },
@@ -900,23 +972,6 @@ const styles = StyleSheet.create({
   historyActions: { alignItems: 'flex-end', marginTop: spacing.xs },
   emptyCard: { alignItems: 'center', justifyContent: 'center', minHeight: 72 },
   emptyText: { color: colors.textMuted, fontSize: 13, textAlign: 'center' },
-  sharedCalendarCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    marginTop: spacing.md,
-  },
-  sharedIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.surface,
-    color: colors.mint,
-    textAlign: 'center',
-    lineHeight: 38,
-    fontSize: 25,
-  },
-  sharedCopy: { flex: 1, gap: spacing.xs },
   sharedTitle: { color: colors.text, fontSize: 14, fontWeight: '800' },
   sharedBody: { color: colors.textMuted, fontSize: 11, lineHeight: 16 },
   sharedEventCard: { gap: spacing.sm, marginBottom: spacing.sm },

@@ -1,5 +1,22 @@
 export type BackendKind = 'firebase' | 'preview';
 
+export type BackendCyclePhase =
+  | 'menstrual'
+  | 'follicular'
+  | 'ovulatory'
+  | 'luteal'
+  | 'unknown';
+
+export type BackendCycleStatus =
+  | 'period-starting'
+  | 'period-in-progress'
+  | 'period-ending'
+  | 'post-period'
+  | 'fertile-window'
+  | 'pre-period'
+  | 'cycle-in-progress'
+  | 'unknown';
+
 export type BackendConditionCode =
   | 'comfortable'
   | 'tired'
@@ -30,7 +47,8 @@ export interface PrivateCycleRecord {
     readonly startDate: string;
     readonly endDate?: string;
   };
-  readonly cyclePhase?: 'menstrual' | 'follicular' | 'luteal' | 'unknown';
+  readonly cyclePhase?: BackendCyclePhase;
+  readonly cycleStatus?: BackendCycleStatus;
   readonly nextPeriodWindow?: {
     readonly startDate: string;
     readonly endDate: string;
@@ -99,6 +117,10 @@ export interface OfflineSyncReport {
 
 export interface BackendShareSettings {
   readonly cyclePhase: boolean;
+  /** Missing on pre-detailed-status settings and treated as private. */
+  readonly cycleStatus?: boolean;
+  /** Missing on pre-fertility-sharing settings and treated as private. */
+  readonly fertilityStatus?: boolean;
   readonly nextPeriodWindow: boolean;
   readonly periodDates: boolean;
   readonly moodTag: boolean;
@@ -122,7 +144,8 @@ export interface RemotePartnerProjection {
     readonly startDate: string;
     readonly endDate?: string;
   };
-  readonly cyclePhase?: 'menstrual' | 'follicular' | 'luteal' | 'unknown';
+  readonly cyclePhase?: BackendCyclePhase;
+  readonly cycleStatus?: BackendCycleStatus;
   readonly nextPeriodWindow?: {
     readonly startDate: string;
     readonly endDate: string;

@@ -28,6 +28,8 @@ describe('Firebase backend payload mapping', () => {
     expect(
       toBackendShareSettings({
         cyclePhase: false,
+        cycleStatus: false,
+        fertilityStatus: false,
         predictedPeriod: false,
         periodDates: false,
         mood: true,
@@ -39,6 +41,8 @@ describe('Firebase backend payload mapping', () => {
       }),
     ).toEqual({
       cyclePhase: false,
+      cycleStatus: false,
+      fertilityStatus: false,
       nextPeriodWindow: false,
       periodDates: false,
       moodTag: true,
@@ -63,6 +67,7 @@ describe('Firebase backend payload mapping', () => {
       averagePeriodLength: 5,
       periodDates: { startDate: '2026-01-31' },
       cyclePhase: 'follicular',
+      cycleStatus: 'cycle-in-progress',
       nextPeriodWindow: {
         startDate: '2026-02-21',
         endDate: '2026-03-07',
@@ -74,6 +79,7 @@ describe('Firebase backend payload mapping', () => {
     ['2026-01-30', 'unknown'],
     ['2026-02-02', 'menstrual'],
     ['2026-02-10', 'follicular'],
+    ['2026-02-12', 'ovulatory'],
     ['2026-02-15', 'luteal'],
     ['2026-02-28', 'unknown'],
   ] as const)('maps %s to the privacy-safe cycle phase %s', (onDate, phase) => {
@@ -87,6 +93,46 @@ describe('Firebase backend payload mapping', () => {
         onDate,
       ).cyclePhase,
     ).toBe(phase);
+  });
+
+  it.each([
+    ['2026-01-31', 'period-starting'],
+    ['2026-02-02', 'period-in-progress'],
+    ['2026-02-04', 'period-ending'],
+    ['2026-02-05', 'post-period'],
+    ['2026-02-12', 'fertile-window'],
+    ['2026-02-25', 'pre-period'],
+  ] as const)('maps %s to the nuanced cycle status %s', (onDate, status) => {
+    expect(
+      toPrivateCycleRecord(
+        {
+          lastPeriodStart: '2026-01-31',
+          averageCycleLength: 28,
+          averagePeriodLength: 5,
+        },
+        onDate,
+      ).cycleStatus,
+    ).toBe(status);
+  });
+
+  it('prioritizes an explicitly recorded period end over the average duration', () => {
+    const seed = {
+      lastPeriodStart: '2026-01-31',
+      lastPeriodEnd: '2026-02-02',
+      averageCycleLength: 28,
+      averagePeriodLength: 5,
+    };
+
+    expect(toPrivateCycleRecord(seed, '2026-02-02').cycleStatus).toBe(
+      'period-ending',
+    );
+    expect(toPrivateCycleRecord(seed, '2026-02-03').cycleStatus).toBe(
+      'post-period',
+    );
+    expect(toPrivateCycleRecord(seed, '2026-02-05')).toMatchObject({
+      cyclePhase: 'follicular',
+      cycleStatus: 'cycle-in-progress',
+    });
   });
 
   it('maps pair-scoped server consent back to the UI fields', () => {
@@ -104,6 +150,8 @@ describe('Firebase backend payload mapping', () => {
       }),
     ).toEqual({
       cyclePhase: true,
+      cycleStatus: false,
+      fertilityStatus: false,
       predictedPeriod: false,
       periodDates: false,
       mood: true,

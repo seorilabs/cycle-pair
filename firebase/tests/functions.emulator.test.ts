@@ -59,6 +59,8 @@ function shareSettings(
   overrides: Partial<
     Record<
       | "cyclePhase"
+      | "cycleStatus"
+      | "fertilityStatus"
       | "nextPeriodWindow"
       | "periodDates"
       | "moodTag"
@@ -75,6 +77,8 @@ function shareSettings(
     schemaVersion: 1,
     updatedAt: Timestamp.now(),
     cyclePhase: false,
+    cycleStatus: false,
+    fertilityStatus: false,
     nextPeriodWindow: false,
     periodDates: false,
     moodTag: false,

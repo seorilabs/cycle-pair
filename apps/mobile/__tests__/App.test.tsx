@@ -37,12 +37,17 @@ function installHardwareBackMock() {
   };
 }
 
-function deviceLocalDate(): string {
+function deviceLocalDateOffset(offset: number): string {
   const now = new Date();
+  now.setDate(now.getDate() + offset);
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+function deviceLocalDate(): string {
+  return deviceLocalDateOffset(0);
 }
 
 describe('CyclePair mobile app', () => {
@@ -117,6 +122,8 @@ describe('CyclePair mobile app', () => {
     await fireEvent.press(view.getByText('저장하고 시작'));
     await waitFor(() => expect(view.getByText(/오늘 나의/)).toBeTruthy());
     expect(view.getByText('지금은 혼자 기록하고 있어요')).toBeTruthy();
+    expect(view.queryByText('사용하지 않음')).toBeNull();
+    expect(view.queryByText('나의 주기')).toBeNull();
 
     await fireEvent.press(view.getByText('함께'));
     await waitFor(() => expect(view.getByText('파트너 연결하기')).toBeTruthy());
@@ -157,7 +164,7 @@ describe('CyclePair mobile app', () => {
     expect(view.queryByText('현재 주기 국면')).toBeNull();
     await fireEvent.press(view.getByText('공유 설정 계속하기'));
     await waitFor(() => expect(view.getByText('추천 설정 적용')).toBeTruthy());
-    await fireEvent.press(view.getByText('5개 항목 공유하고 시작'));
+    await fireEvent.press(view.getByText('7개 항목 공유하고 시작'));
     await waitFor(() =>
       expect(
         view.getByText('오프라인 저장됨 · 연결되면 자동 동기화'),
@@ -598,9 +605,8 @@ describe('CyclePair mobile app', () => {
         expect.stringMatching(/^daily-delete-/),
       ),
     );
-    await waitFor(() =>
-      expect(view.getByText('이 날짜에 저장된 내 기록이 없어요.')).toBeTruthy(),
-    );
+    await waitFor(() => expect(view.queryByText('삭제할 기록')).toBeNull());
+    expect(view.queryByText('내 컨디션 기록')).toBeNull();
   });
 
   it('초기 동기화는 알리지 않고 상대의 새 공유 기록은 메시지 박스와 토스트로 알린다', async () => {
@@ -620,7 +626,10 @@ describe('CyclePair mobile app', () => {
       ownerUid: 'partner-a',
       pairId: 'pair-a',
       generatedAt: '2026-08-24T00:00:00.000Z',
+      cycleAsOfDate: deviceLocalDate(),
       dailyLogDate: deviceLocalDate(),
+      cyclePhase: 'ovulatory',
+      cycleStatus: 'fertile-window',
       moodTag: 'neutral',
     } as const;
     const backend: CyclePairBackend = {
@@ -644,6 +653,7 @@ describe('CyclePair mobile app', () => {
       watchShareSettings(_uid, _pairId, onValue) {
         onValue({
           cyclePhase: false,
+          fertilityStatus: true,
           nextPeriodWindow: false,
           periodDates: false,
           moodTag: true,
@@ -656,14 +666,49 @@ describe('CyclePair mobile app', () => {
         return () => undefined;
       },
       watchPairEvents(_membership, onValue) {
-        onValue([]);
+        onValue([
+          {
+            id: 'today-event',
+            title: '오늘 함께 산책',
+            date: deviceLocalDate(),
+            pairId: 'pair-a',
+            createdBy: 'preview-self',
+            updatedBy: 'preview-self',
+            mutationId: 'today-event-mutation',
+          },
+          {
+            id: 'tomorrow-event',
+            title: '내일 병원 일정',
+            date: deviceLocalDateOffset(1),
+            pairId: 'pair-a',
+            createdBy: 'partner-a',
+            updatedBy: 'partner-a',
+            mutationId: 'tomorrow-event-mutation',
+          },
+        ]);
         return () => undefined;
       },
     };
     const view = await render(<App backend={backend} />);
 
     await waitFor(() => expect(view.getByText(/함께, 상대의/)).toBeTruthy());
+    expect(view.getByText('가임 가능성이 높은 시기예요')).toBeTruthy();
+    expect(view.getByText('오늘의 컨디션')).toBeTruthy();
+    expect(view.queryByText('사용하지 않음')).toBeNull();
     expect(view.queryByText('새 소식 1개')).toBeNull();
+    const homeTree = JSON.stringify(view.toJSON());
+    expect(homeTree.indexOf('파트너 님의 오늘')).toBeLessThan(
+      homeTree.indexOf('오늘의 체크인'),
+    );
+
+    await fireEvent.press(view.getByLabelText('달력'));
+    await waitFor(() => expect(view.getByText('오늘 함께 산책')).toBeTruthy());
+    await fireEvent.press(
+      view.getByLabelText(new RegExp(`^${deviceLocalDateOffset(1)},`)),
+    );
+    await waitFor(() => expect(view.getByText('내일 병원 일정')).toBeTruthy());
+    expect(view.queryByText('오늘 함께 산책')).toBeNull();
+    await fireEvent.press(view.getByLabelText('오늘'));
 
     await act(async () => {
       emitProjection?.({

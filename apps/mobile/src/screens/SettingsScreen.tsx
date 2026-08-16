@@ -29,6 +29,8 @@ import { colors, spacing } from '../theme';
 
 const shareRows: Array<{ key: ShareField; label: string }> = [
   { key: 'cyclePhase', label: '현재 주기 국면' },
+  { key: 'cycleStatus', label: '세부 생리 상태' },
+  { key: 'fertilityStatus', label: '가임 가능 시기' },
   { key: 'predictedPeriod', label: '다음 생리 예상 범위' },
   { key: 'periodDates', label: '실제 생리 날짜' },
   { key: 'mood', label: '오늘의 기분' },

@@ -47,7 +47,7 @@
   "contentDeclarations": {
     "ads": "no",
     "healthContent": "yes-cycle-and-condition-records",
-    "fertilityOrContraception": "no",
+    "fertilityOrContraception": "yes-cycle-based-fertility-window-reference-not-contraception",
     "userGeneratedContent": "yes-private-pair-notes-and-events",
     "realtimeChat": "no",
     "dataSafety": "prepared-pending-user-review-and-console-save",

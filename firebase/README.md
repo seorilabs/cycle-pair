@@ -69,7 +69,7 @@ OFF/누락/유효하지 않은 값은 `null`로 남기지 않고 문서에서 �
 
 새 Pair ID에는 settings 문서가 없으므로 모든 필드가 자동으로 비공개다. 이전 Pair의 raw record에 남은 설정값은 읽지 않으며, revoke 트랜잭션은 해당 Pair settings 문서도 삭제한다.
 
-가임기·배란·피임 추론은 승인 범위에서 제외됐다. 따라서 product core의 `ovulatory` 및 유사 값은 공유 설정이 켜져 있어도 projection에서 제거한다.
+세부 생리 상태는 `cycleStatus`, 가임 가능 시기는 `fertilityStatus` 설정을 사용해 일반 주기 국면과 분리한다. 키가 없거나 false이면 대응하는 상세 상태를 projection에서 제거하고, true인 현재 Pair에만 전달한다. 정확한 배란일·임신 가능성·피임 판단은 생성하지 않는다.
 
 허용 tag는 소문자 영문/숫자/`_`/`-`로 된 최대 40자 ID이며 한 필드당 최대 12개다. 앱의 정식 tag catalog는 제품 core와 맞춰 **확정 필요**다.
 

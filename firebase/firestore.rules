@@ -100,7 +100,7 @@ service cloud.firestore {
           'schemaVersion', 'recordsCycle', 'consentAcceptedAt',
           'consentVersion', 'asOfDate',
           'averageCycleLength', 'averagePeriodLength', 'periodDates',
-          'cyclePhase', 'nextPeriodWindow', 'updatedAt'
+          'cyclePhase', 'cycleStatus', 'nextPeriodWindow', 'updatedAt'
         ])
         && data.keys().hasAll([
           'schemaVersion', 'recordsCycle', 'consentAcceptedAt',
@@ -135,8 +135,13 @@ service cloud.firestore {
             && isValidPeriodDates(data.periodDates)
             && data.asOfDate >= data.periodDates.startDate
             && data.cyclePhase in [
-              'menstrual', 'follicular', 'luteal', 'unknown'
+              'menstrual', 'follicular', 'ovulatory', 'luteal', 'unknown'
             ]
+            && (!('cycleStatus' in data) || data.cycleStatus in [
+              'period-starting', 'period-in-progress', 'period-ending',
+              'post-period', 'fertile-window', 'pre-period',
+              'cycle-in-progress', 'unknown'
+            ])
             && isValidPredictionWindow(
               data.nextPeriodWindow,
               data.periodDates.startDate
@@ -208,7 +213,9 @@ service cloud.firestore {
     function isValidShareSettings() {
       let data = request.resource.data;
       return data.keys().hasOnly([
-          'schemaVersion', 'updatedAt', 'cyclePhase', 'nextPeriodWindow',
+          'schemaVersion', 'updatedAt', 'cyclePhase', 'cycleStatus',
+          'fertilityStatus',
+          'nextPeriodWindow',
           'periodDates', 'moodTag', 'symptomTags', 'energyLevel',
           'conditionCode', 'carePreferences', 'note'
         ])
@@ -220,6 +227,8 @@ service cloud.firestore {
         && data.schemaVersion == 1
         && data.updatedAt is timestamp
         && data.cyclePhase is bool
+        && isOptionalBoolean(data, 'cycleStatus')
+        && isOptionalBoolean(data, 'fertilityStatus')
         && data.nextPeriodWindow is bool
         && data.periodDates is bool
         && data.moodTag is bool

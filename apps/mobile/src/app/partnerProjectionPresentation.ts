@@ -7,6 +7,7 @@ const MAX_CLOCK_SKEW_MS = 5 * 60 * 1_000;
 
 export type PartnerSharedFieldKey =
   | 'cyclePhase'
+  | 'cycleStatus'
   | 'nextPeriodWindow'
   | 'periodDates'
   | 'moodTag'
@@ -27,6 +28,14 @@ export interface PartnerProjectionFreshness {
   readonly stale: boolean;
 }
 
+export interface PartnerTodaySummary {
+  readonly cycleTitle?: string;
+  readonly cycleDetail?: string;
+  readonly conditionTitle: string;
+  readonly conditionDetail: string;
+  readonly conditionTags: readonly string[];
+}
+
 const hasDailyValues = (projection: RemotePartnerProjection): boolean =>
   projection.moodTag !== undefined ||
   projection.symptomTags !== undefined ||
@@ -39,6 +48,7 @@ const hasCycleDerivedValues = (
   projection: RemotePartnerProjection,
 ): boolean =>
   projection.cyclePhase !== undefined ||
+  projection.cycleStatus !== undefined ||
   projection.nextPeriodWindow !== undefined;
 
 function deviceLocalDate(date: Date): string {
@@ -78,6 +88,9 @@ export function getSafePartnerProjectionForToday(
     ...(hasTodaysCycleComputation && projection.cyclePhase
       ? { cyclePhase: projection.cyclePhase }
       : {}),
+    ...(hasTodaysCycleComputation && projection.cycleStatus
+      ? { cycleStatus: projection.cycleStatus }
+      : {}),
     ...(hasTodaysCycleComputation && projection.nextPeriodWindow
       ? { nextPeriodWindow: projection.nextPeriodWindow }
       : {}),
@@ -108,8 +121,47 @@ const phaseCopy: Record<
 > = {
   menstrual: '월경 중',
   follicular: '회복하는 시기',
+  ovulatory: '가임 가능성이 높은 시기',
   luteal: '변화에 대비하는 시기',
   unknown: '기록이 더 필요함',
+};
+
+const cycleStatusCopy: Record<
+  NonNullable<RemotePartnerProjection['cycleStatus']>,
+  { readonly title: string; readonly detail: string }
+> = {
+  'period-starting': {
+    title: '생리가 시작된 날이에요',
+    detail: '오늘 시작 기록을 기준으로 표시해요.',
+  },
+  'period-in-progress': {
+    title: '생리 진행 중이에요',
+    detail: '평균 생리 기간을 기준으로 한 참고 상태예요.',
+  },
+  'period-ending': {
+    title: '생리 마무리 시기에 가까워요',
+    detail: '평균 생리 기간의 마지막 날로 예상돼요.',
+  },
+  'post-period': {
+    title: '생리가 끝난 직후예요',
+    detail: '평균 생리 기간이 지난 뒤의 회복 시기예요.',
+  },
+  'fertile-window': {
+    title: '가임 가능성이 높은 시기예요',
+    detail: '주기 기반 예측이며 피임 판단에는 사용할 수 없어요.',
+  },
+  'pre-period': {
+    title: '생리 시작 전이에요',
+    detail: '평균 주기를 기준으로 시작이 가까운 시기예요.',
+  },
+  'cycle-in-progress': {
+    title: '주기가 진행 중이에요',
+    detail: '공유된 주기 기준으로 오늘의 흐름을 보여줘요.',
+  },
+  unknown: {
+    title: '주기 상태를 더 지켜보고 있어요',
+    detail: '기록이 더 쌓이면 오늘 상태를 표시할 수 있어요.',
+  },
 };
 
 const moodCopy: Readonly<Record<string, string>> = {
@@ -192,7 +244,13 @@ export function buildPartnerSharedFields(
   projection = safeProjection;
 
   const fields: PartnerSharedField[] = [];
-  if (projection.cyclePhase) {
+  if (projection.cycleStatus) {
+    fields.push({
+      key: 'cycleStatus',
+      label: '오늘의 주기 상태',
+      value: cycleStatusCopy[projection.cycleStatus].title,
+    });
+  } else if (projection.cyclePhase) {
     fields.push({
       key: 'cyclePhase',
       label: '현재 주기 국면',
@@ -276,6 +334,55 @@ export function buildPartnerSharedFields(
   }
 
   return fields;
+}
+
+export function buildPartnerTodaySummary(
+  projection?: RemotePartnerProjection | null,
+  now = new Date(),
+): PartnerTodaySummary {
+  const safeProjection = getSafePartnerProjectionForToday(projection, now);
+  const cycleStatus = safeProjection?.cycleStatus
+    ? cycleStatusCopy[safeProjection.cycleStatus]
+    : undefined;
+  const cycleTitle =
+    cycleStatus?.title ??
+    (safeProjection?.cyclePhase
+      ? phaseCopy[safeProjection.cyclePhase]
+      : undefined);
+  const cycleDetail =
+    cycleStatus?.detail ??
+    (safeProjection?.cyclePhase
+      ? '파트너가 공유한 오늘의 주기 국면이에요.'
+      : undefined);
+  const fields = buildPartnerSharedFields(safeProjection, now);
+  const conditionFields = fields.filter(field =>
+    ['moodTag', 'symptomTags', 'energyLevel', 'conditionCode'].includes(
+      field.key,
+    ),
+  );
+  const mood = conditionFields.find(field => field.key === 'moodTag');
+  const condition = conditionFields.find(
+    field => field.key === 'conditionCode',
+  );
+  const energy = conditionFields.find(field => field.key === 'energyLevel');
+  const symptoms = conditionFields.find(field => field.key === 'symptomTags');
+  const conditionTags = [
+    condition?.value,
+    energy?.value,
+    symptoms?.value,
+  ].filter((value): value is string => Boolean(value));
+
+  return {
+    ...(cycleTitle ? { cycleTitle } : {}),
+    ...(cycleDetail ? { cycleDetail } : {}),
+    conditionTitle:
+      mood?.value ?? condition?.value ?? '오늘 컨디션을 기다리고 있어요',
+    conditionDetail:
+      conditionFields.length > 0
+        ? '파트너가 오늘 직접 공유한 컨디션이에요.'
+        : '오늘 공유된 기분이나 컨디션이 아직 없어요.',
+    conditionTags,
+  };
 }
 
 function formatSyncedAt(date: Date): string {

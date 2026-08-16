@@ -24,7 +24,7 @@ GitHub macOS runner는 사용하지 않는다. App Store Connect API가 `v*` tag
 - 광고·tracking: 없음
 - 로그인: 필요
 - 건강 기록과 사용자 선택형 partner projection: 있음
-- 가임기·피임 표시, 채팅, 공개 커뮤니티: 없음
+- 주기 기반 가임 가능 시기: 별도 Pair 공유 동의로 제공, 피임 판단 아님. 정확한 배란일·임신 가능성·채팅·공개 커뮤니티는 없음
 - 비공개 메모·공동 일정은 실제 기능 설문에 반영
 - App Privacy: 이메일·User ID·Health & Fitness·Purchases는 linked, 동의형 Usage Data·Diagnostics는 not linked, tracking no
 - export compliance: 표준 TLS/Firebase 전송만 사용하므로 non-exempt encryption false

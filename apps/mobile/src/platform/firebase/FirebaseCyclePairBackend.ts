@@ -448,6 +448,27 @@ function parseCycle(value: unknown): PrivateCycleRecord | undefined {
   const asOfDate = asString(data?.asOfDate);
   const averageCycleLength = data?.averageCycleLength;
   const averagePeriodLength = data?.averagePeriodLength;
+  const cyclePhase = data?.cyclePhase;
+  const safePhase =
+    cyclePhase === 'menstrual' ||
+    cyclePhase === 'follicular' ||
+    cyclePhase === 'ovulatory' ||
+    cyclePhase === 'luteal' ||
+    cyclePhase === 'unknown'
+      ? cyclePhase
+      : undefined;
+  const cycleStatus = data?.cycleStatus;
+  const safeStatus =
+    cycleStatus === 'period-starting' ||
+    cycleStatus === 'period-in-progress' ||
+    cycleStatus === 'period-ending' ||
+    cycleStatus === 'post-period' ||
+    cycleStatus === 'fertile-window' ||
+    cycleStatus === 'pre-period' ||
+    cycleStatus === 'cycle-in-progress' ||
+    cycleStatus === 'unknown'
+      ? cycleStatus
+      : undefined;
   if (
     !startDate ||
     !asOfDate ||
@@ -467,6 +488,8 @@ function parseCycle(value: unknown): PrivateCycleRecord | undefined {
         ? { endDate: asString(periodDates?.endDate) }
         : {}),
     },
+    ...(safePhase ? { cyclePhase: safePhase } : {}),
+    ...(safeStatus ? { cycleStatus: safeStatus } : {}),
     ...(asString(nextPeriodWindow?.startDate) &&
     asString(nextPeriodWindow?.endDate)
       ? {
@@ -483,6 +506,8 @@ function parseShareSettings(value: unknown): BackendShareSettings {
   const data = asRecord(value);
   return {
     cyclePhase: data?.cyclePhase === true,
+    cycleStatus: data?.cycleStatus === true,
+    fertilityStatus: data?.fertilityStatus === true,
     nextPeriodWindow: data?.nextPeriodWindow === true,
     periodDates: data?.periodDates === true,
     moodTag: data?.moodTag === true,
@@ -506,9 +531,22 @@ function parseProjection(value: unknown): RemotePartnerProjection | null {
   const safePhase =
     cyclePhase === 'menstrual' ||
     cyclePhase === 'follicular' ||
+    cyclePhase === 'ovulatory' ||
     cyclePhase === 'luteal' ||
     cyclePhase === 'unknown'
       ? cyclePhase
+      : undefined;
+  const cycleStatus = data.cycleStatus;
+  const safeStatus =
+    cycleStatus === 'period-starting' ||
+    cycleStatus === 'period-in-progress' ||
+    cycleStatus === 'period-ending' ||
+    cycleStatus === 'post-period' ||
+    cycleStatus === 'fertile-window' ||
+    cycleStatus === 'pre-period' ||
+    cycleStatus === 'cycle-in-progress' ||
+    cycleStatus === 'unknown'
+      ? cycleStatus
       : undefined;
 
   return {
@@ -534,6 +572,7 @@ function parseProjection(value: unknown): RemotePartnerProjection | null {
         }
       : {}),
     ...(safePhase ? { cyclePhase: safePhase } : {}),
+    ...(safeStatus ? { cycleStatus: safeStatus } : {}),
     ...(asString(nextPeriodWindow?.startDate) &&
     asString(nextPeriodWindow?.endDate)
       ? {

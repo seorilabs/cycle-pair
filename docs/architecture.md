@@ -118,7 +118,7 @@ Firestore Rules는 문서 읽기 중 일부 필드를 가릴 수 없다. 따라�
 - helpPreferences
 - note
 
-ovulation 또는 ovulatory 값은 MVP partner projection에 넣지 않는다. 공유 가능한 비가임 cyclePhase도 명시적 opt-in이 필요하다. 공유가 꺼진 키는 삭제하고 이전 값이 남지 않게 갱신한다.
+`cyclePhase`는 비가임 주기 국면만 허용한다. 시작·진행·마무리·직후·시작 전 같은 `cycleStatus`와 `ovulatory`/`fertile-window`용 `fertilityStatus`는 각각 별도 opt-in이 있을 때만 partner projection에 넣는다. 기존 설정처럼 키가 누락된 경우는 false로 처리한다. 공유가 꺼진 키는 삭제하고 이전 값이 남지 않게 갱신한다.
 
 ## 연결 해제와 캐시 회수
 

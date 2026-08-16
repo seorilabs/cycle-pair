@@ -5,7 +5,9 @@ import { Body, Card, PrimaryButton, Screen, SecondaryButton, TextButton, Title, 
 import { colors, spacing } from '../theme';
 
 const fields: Array<{ key: ShareField; title: string; description: string }> = [
-  { key: 'cyclePhase', title: '현재 주기 국면', description: '가임기·배란 정보는 표시하지 않아요' },
+  { key: 'cyclePhase', title: '현재 주기 국면', description: '월경 중·회복기·변화기처럼 큰 흐름을 공유해요' },
+  { key: 'cycleStatus', title: '세부 생리 상태', description: '시작·진행·마무리·직후처럼 더 자세한 상태를 공유해요' },
+  { key: 'fertilityStatus', title: '가임 가능 시기', description: '예측 기반 참고 정보이며 피임 판단에는 사용할 수 없어요' },
   { key: 'predictedPeriod', title: '다음 생리 예정 범위', description: '참고용 예상 범위만 공유해요' },
   { key: 'periodDates', title: '실제 생리 날짜', description: '시작·종료 기록을 공유해요' },
   { key: 'mood', title: '오늘의 기분', description: '내가 직접 고른 기분만 보여줘요' },
