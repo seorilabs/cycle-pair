@@ -15,11 +15,35 @@ async function json(path) {
 
 function releaseArchitectures(workflow) {
   const match = workflow.match(
-    /^\s+react_native_architectures:\s*([a-z0-9_,-]+)\s*$/m,
+    /^\s+react_native_architectures:\s*([^#\r\n]+?)(?:\s+#.*)?$/m,
   );
   assert.ok(match, 'release workflow에 React Native ABI 목록이 필요합니다.');
-  return match[1].split(',');
+  return normalizedArchitectures(match[1]);
 }
+
+function localArchitectures(gradleProperties) {
+  const match = gradleProperties.match(
+    /^reactNativeArchitectures\s*=\s*([^#\r\n]+?)(?:\s+#.*)?$/m,
+  );
+  assert.ok(match, '로컬 React Native ABI 기본값이 필요합니다.');
+  return normalizedArchitectures(match[1]);
+}
+
+function normalizedArchitectures(value) {
+  return value
+    .split(',')
+    .map(architecture => architecture.trim())
+    .filter(Boolean);
+}
+
+test('release ABI parser tolerates YAML whitespace and inline comments', () => {
+  assert.deepEqual(
+    releaseArchitectures(
+      '    react_native_architectures: armeabi-v7a, arm64-v8a # release only',
+    ),
+    ['armeabi-v7a', 'arm64-v8a'],
+  );
+});
 
 test('Korean market title and AppsInToss short brand stay within each market contract', async () => {
   const [
@@ -105,9 +129,9 @@ test('Google Play build stays API 36, versioned, signed, and pnpm-safe for Herme
   assert.match(androidApp, /firebaseConfigProblems\("release"\)/);
   assert.match(androidApp, /releaseSigningProblems\.each/);
   assert.match(androidApp, /task\.dependsOn\(verifyReleasePrerequisites\)/);
-  assert.match(
-    gradleProperties,
-    /^reactNativeArchitectures=armeabi-v7a,arm64-v8a,x86,x86_64$/m,
+  assert.deepEqual(
+    localArchitectures(gradleProperties),
+    ['armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'],
   );
   assert.equal(
     mobilePackage.scripts['build:android:play'],
