@@ -13,6 +13,38 @@ async function json(path) {
   return JSON.parse(await readFile(path, 'utf8'));
 }
 
+function releaseArchitectures(workflow) {
+  const match = workflow.match(
+    /^\s+react_native_architectures:\s*([^#\r\n]+?)(?:\s+#.*)?$/m,
+  );
+  assert.ok(match, 'release workflow에 React Native ABI 목록이 필요합니다.');
+  return normalizedArchitectures(match[1]);
+}
+
+function localArchitectures(gradleProperties) {
+  const match = gradleProperties.match(
+    /^reactNativeArchitectures\s*=\s*([^#\r\n]+?)(?:\s+#.*)?$/m,
+  );
+  assert.ok(match, '로컬 React Native ABI 기본값이 필요합니다.');
+  return normalizedArchitectures(match[1]);
+}
+
+function normalizedArchitectures(value) {
+  return value
+    .split(',')
+    .map(architecture => architecture.trim())
+    .filter(Boolean);
+}
+
+test('release ABI parser tolerates YAML whitespace and inline comments', () => {
+  assert.deepEqual(
+    releaseArchitectures(
+      '    react_native_architectures: armeabi-v7a, arm64-v8a # release only',
+    ),
+    ['armeabi-v7a', 'arm64-v8a'],
+  );
+});
+
 test('Korean market title and AppsInToss short brand stay within each market contract', async () => {
   const [
     rootPackage,
@@ -74,6 +106,7 @@ test('Google Play build stays API 36, versioned, signed, and pnpm-safe for Herme
     buildWrapper,
     platformGuestClient,
     settingsScreen,
+    gradleProperties,
   ] = await Promise.all([
     readFile('apps/mobile/android/build.gradle', 'utf8'),
     readFile('apps/mobile/android/app/build.gradle', 'utf8'),
@@ -84,6 +117,7 @@ test('Google Play build stays API 36, versioned, signed, and pnpm-safe for Herme
       'utf8'
     ),
     readFile('apps/mobile/src/screens/SettingsScreen.tsx', 'utf8'),
+    readFile('apps/mobile/android/gradle.properties', 'utf8'),
   ]);
 
   assert.match(androidRoot, /targetSdkVersion\s*=\s*36/);
@@ -95,6 +129,10 @@ test('Google Play build stays API 36, versioned, signed, and pnpm-safe for Herme
   assert.match(androidApp, /firebaseConfigProblems\("release"\)/);
   assert.match(androidApp, /releaseSigningProblems\.each/);
   assert.match(androidApp, /task\.dependsOn\(verifyReleasePrerequisites\)/);
+  assert.deepEqual(
+    localArchitectures(gradleProperties),
+    ['armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'],
+  );
   assert.equal(
     mobilePackage.scripts['build:android:play'],
     'node ../../scripts/build-google-play.mjs'
@@ -167,10 +205,14 @@ test('Android candidate workflow creates a signed AAB without Play upload', asyn
   assert.match(workflow, /workflow_dispatch:[\s\S]*?inputs:[\s\S]*?release_tag:/);
   assert.match(
     workflow,
-    /rn-build-android\.yml@bf14204ee13dba657e31dcf1a71a64c0dc526ae3/,
+    /rn-build-android\.yml@c3cd0aef1b68500fcda241ade27759e2a61419a5/,
   );
   assert.match(workflow, /release_tag: \$\{\{ inputs\.release_tag \}\}/);
   assert.match(workflow, /android_dir: apps\/mobile\/android/);
+  assert.deepEqual(releaseArchitectures(workflow), [
+    'armeabi-v7a',
+    'arm64-v8a',
+  ]);
   assert.match(workflow, /signing_properties_file: keystore\.properties/);
   assert.match(workflow, /java_version: "21"/);
   assert.doesNotMatch(
@@ -222,11 +264,15 @@ test('Google Play deployment workflow uploads only to the internal track', async
   assert.match(workflow, /workflow_call:[\s\S]*?upload:/);
   assert.match(
     workflow,
-    /rn-build-android\.yml@bf14204ee13dba657e31dcf1a71a64c0dc526ae3/
+    /rn-build-android\.yml@c3cd0aef1b68500fcda241ade27759e2a61419a5/
   );
   assert.match(workflow, /java_version: "21"/);
   assert.match(workflow, /signing_properties_file: keystore\.properties/);
   assert.match(workflow, /timeout_minutes: 50/);
+  assert.deepEqual(releaseArchitectures(workflow), [
+    'armeabi-v7a',
+    'arm64-v8a',
+  ]);
   assert.match(workflow, /google-github-actions\/auth@v3/);
   assert.match(workflow, /actions\/download-artifact@v8/);
   assert.match(workflow, /actions\/setup-python@v7/);

@@ -20,7 +20,7 @@ const files = {
 
 // 조직 재사용 워크플로우는 workflow별로 개별 pin한다. 값은 저장소의 실제 pin과 일치해야 한다.
 const orgWorkflowPins = {
-  'rn-build-android.yml': 'bf14204ee13dba657e31dcf1a71a64c0dc526ae3',
+  'rn-build-android.yml': 'c3cd0aef1b68500fcda241ade27759e2a61419a5',
   'rn-build-ait.yml': '73972d2b34e92145e61e3409c91085c40da10c54',
   'release-tag.yml': '143458719a525a0a5da34cded4c1d7b8445b9f8b',
   'cleanup-actions-storage.yml': '143458719a525a0a5da34cded4c1d7b8445b9f8b',
@@ -65,6 +65,11 @@ try {
   assertNoPushTrigger(files.google, google);
   assertSafeConcurrency(files.google, google);
   assertOrgPin(files.google, google, 'rn-build-android.yml');
+  assertIncludes(
+    google,
+    'react_native_architectures: armeabi-v7a,arm64-v8a',
+    'Google Play release AAB는 검증된 ARM 32/64비트 ABI 쌍만 빌드해야 합니다.',
+  );
   assertIncludes(
     google,
     '--track internal',
