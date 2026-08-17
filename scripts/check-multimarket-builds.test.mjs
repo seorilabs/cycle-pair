@@ -167,10 +167,15 @@ test('Android candidate workflow creates a signed AAB without Play upload', asyn
   assert.match(workflow, /workflow_dispatch:[\s\S]*?inputs:[\s\S]*?release_tag:/);
   assert.match(
     workflow,
-    /rn-build-android\.yml@bf14204ee13dba657e31dcf1a71a64c0dc526ae3/,
+    /rn-build-android\.yml@c3cd0aef1b68500fcda241ade27759e2a61419a5/,
   );
   assert.match(workflow, /release_tag: \$\{\{ inputs\.release_tag \}\}/);
   assert.match(workflow, /android_dir: apps\/mobile\/android/);
+  assert.match(
+    workflow,
+    /react_native_architectures: armeabi-v7a,arm64-v8a/,
+  );
+  assert.doesNotMatch(workflow, /react_native_architectures:.*x86/);
   assert.match(workflow, /signing_properties_file: keystore\.properties/);
   assert.match(workflow, /java_version: "21"/);
   assert.doesNotMatch(
@@ -222,11 +227,16 @@ test('Google Play deployment workflow uploads only to the internal track', async
   assert.match(workflow, /workflow_call:[\s\S]*?upload:/);
   assert.match(
     workflow,
-    /rn-build-android\.yml@bf14204ee13dba657e31dcf1a71a64c0dc526ae3/
+    /rn-build-android\.yml@c3cd0aef1b68500fcda241ade27759e2a61419a5/
   );
   assert.match(workflow, /java_version: "21"/);
   assert.match(workflow, /signing_properties_file: keystore\.properties/);
   assert.match(workflow, /timeout_minutes: 50/);
+  assert.match(
+    workflow,
+    /react_native_architectures: armeabi-v7a,arm64-v8a/,
+  );
+  assert.doesNotMatch(workflow, /react_native_architectures:.*x86/);
   assert.match(workflow, /google-github-actions\/auth@v3/);
   assert.match(workflow, /actions\/download-artifact@v8/);
   assert.match(workflow, /actions\/setup-python@v7/);

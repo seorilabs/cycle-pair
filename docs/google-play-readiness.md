@@ -28,6 +28,14 @@ Backoffice의 앱별 `릴리스 > 빌드 산출물`에서는 `vX.Y.Z` 태그를 
 3일 보관한다. `배포 > Google Play`는 사용자가 승인한 태그를 다시 빌드해 WIF로
 `internal` 트랙에만 업로드한다. 테스터 QA와 production 승격은 별도 단계다.
 
+로컬·에뮬레이터용 프로젝트 기본값은 네 ABI를 유지하되, GitHub의 signed release AAB는
+`armeabi-v7a,arm64-v8a`만 컴파일한다. 지원하는 ARM 32비트 ABI에 대응하는 64비트 ABI를
+함께 포함해 [Google Play 64비트 요구사항](https://developer.android.com/google/play/requirements/64-bit)을
+지키면서 release에서 사용하지 않는 x86 CMake 반복 컴파일을 제거한다. 조직 재사용
+workflow는 Gradle wrapper와 dependency cache를 함께 복원한다. 최적화 전 `v1.0.2`
+실행의 signed AAB job은 33분 31초였으며, 실제 단축 시간은 최적화 SHA로 만든 다음
+candidate에서 별도로 측정한다.
+
 CI는 파일 대신 아래 환경변수를 사용할 수 있다. 값이나 keystore를 로그·artifact·저장소에 남기지 않는다.
 
 - `CYCLEPAIR_ANDROID_UPLOAD_STORE_FILE`
