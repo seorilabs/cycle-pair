@@ -33,8 +33,12 @@ Backoffice의 앱별 `릴리스 > 빌드 산출물`에서는 `vX.Y.Z` 태그를 
 함께 포함해 [Google Play 64비트 요구사항](https://developer.android.com/google/play/requirements/64-bit)을
 지키면서 release에서 사용하지 않는 x86 CMake 반복 컴파일을 제거한다. 조직 재사용
 workflow는 Gradle wrapper와 dependency cache를 함께 복원한다. 최적화 전 `v1.0.2`
-실행의 signed AAB job은 33분 31초였으며, 실제 단축 시간은 최적화 SHA로 만든 다음
-candidate에서 별도로 측정한다.
+실행의 signed AAB job은 33분 31초였다. 최적화 SHA `6a51fbf`의 build-only candidate는
+[cold cache에서 22분 48초](https://github.com/seorilabs/cycle-pair/actions/runs/31990357687),
+[Gradle cache hit에서 16분 18초](https://github.com/seorilabs/cycle-pair/actions/runs/31991645468)로
+각각 10분 43초(32%), 17분 13초(51%) 짧아졌다. 두 산출물 모두 ARM ABI 두 개와
+유효한 JAR 서명을 재검증했다. cache-hit 실행도 Gradle의 642개 task를 모두 실행했으므로,
+16분 18초를 task output cache 자체의 효과로 단정하지 않고 반복 빌드 실측치로만 사용한다.
 
 CI는 파일 대신 아래 환경변수를 사용할 수 있다. 값이나 keystore를 로그·artifact·저장소에 남기지 않는다.
 
