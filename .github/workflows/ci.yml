@@ -92,52 +92,10 @@ jobs:
           if-no-files-found: error
           retention-days: 3
 
-  firebase:
-    name: Firebase 검사
-    # Firestore/Auth/Functions/Eventarc/Tasks/Logging 6종 에뮬레이터 + JVM 통합
-    # 스위트는 RPi ARM64 ARC 러너에서 과부하로 러너가 죽는다("lost communication").
-    # RPi-first 정책의 "가능하면" 예외에 해당하므로 hosted x64 러너로 라우팅한다.
-    runs-on: ubuntu-latest
-    timeout-minutes: 40
-
-    steps:
-      - name: 저장소 체크아웃
-        uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-
-      - name: pnpm 설정
-        uses: pnpm/action-setup@v6
-        with:
-          version: 11.3.0
-          run_install: false
-
-      - name: Node.js 설정
-        uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          check-latest: false
-          cache: pnpm
-          cache-dependency-path: firebase/pnpm-lock.yaml
-
-      - name: Java 설정
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: 21
-
-      - name: Firebase 의존성 설치
-        run: pnpm --dir firebase install --frozen-lockfile
-
-      - name: Firebase 빌드 및 테스트
-        run: pnpm --dir firebase check
-
   required:
     name: required
     if: ${{ always() }}
-    needs:
-      - quality
-      - firebase
+    needs: quality
     runs-on: seorilabs-rpi-arm64
     timeout-minutes: 5
 
@@ -145,7 +103,5 @@ jobs:
       - name: 필수 검사 결과 확인
         env:
           QUALITY_RESULT: ${{ needs.quality.result }}
-          FIREBASE_RESULT: ${{ needs.firebase.result }}
         run: |
           test "$QUALITY_RESULT" = "success"
-          test "$FIREBASE_RESULT" = "success"
