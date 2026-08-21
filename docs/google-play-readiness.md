@@ -2,7 +2,7 @@
 
 현재 상태는 release candidate와 internal 업로드 경로가 준비됐으며 production 배포는 불가하다. 마켓 메타데이터 source of truth는 [google-play.config.json](../play-store/google-play.config.json), artifact·Console·수동 검증 evidence는 [readiness.json](../release/readiness.json)이다.
 
-한국어 출시 이름은 `사이클 페어 : 내 기분, 주기, 컨디션을 알려요`, 영어 출시 이름은 `Cycle Pair`, 영구 Android package name은 `com.seorilabs.cyclepair`로 확정했다. Play Console 앱 shell과 v0.1.8 internal artifact는 존재하지만 v1.0.0/1000000 후보와 release evidence는 아직 없다.
+한국어 출시 이름은 `사이클 페어 : 내 기분, 주기, 컨디션을 알려요`, 영어 출시 이름은 `Cycle Pair`, 영구 Android package name은 `com.seorilabs.cyclepair`로 확정했다. Play Console 앱 shell과 v0.1.8 internal artifact는 존재한다. 2026-08-21 Cloud Build에서 v1.0.1/1000001 signed AAB 후보를 생성·검증했지만 Play Console에는 업로드하지 않았다.
 
 Android `targetSdkVersion`은 36이다. 현재 API 35 최소 기준을 충족하며, 2026-08-31부터 적용되는 신규 앱·업데이트 API 36 기준에도 맞춘 값이다. 제출 시점에는 [Google 공식 요구사항](https://developer.android.com/google/play/requirements/target-sdk)을 다시 확인한다.
 
@@ -24,21 +24,29 @@ pnpm build:google-play
 
 Backoffice의 앱별 `릴리스 > 빌드 산출물`에서는 `vX.Y.Z` 태그를 선택해
 동일한 release signing·production Firebase gate를 통과한 signed AAB를 생성한다.
-전용 build-only workflow라 Google Play environment·WIF·API를 사용하지 않고 산출물만
-3일 보관한다. `배포 > Google Play`는 사용자가 승인한 태그를 다시 빌드해 WIF로
-`internal` 트랙에만 업로드한다. 테스터 QA와 production 승격은 별도 단계다.
+전용 build-only workflow는 private ARC에서 WIF로 x64 Cloud Build만 제출하고,
+signed AAB를 회수해 3일 보관한다. `배포 > Google Play`는 같은 Cloud Build 경로로
+사용자가 승인한 태그를 다시 빌드하고, `upload=true`일 때만 `internal` 트랙에
+업로드한다. 테스터 QA와 production 승격은 별도 단계다.
 
 로컬·에뮬레이터용 프로젝트 기본값은 네 ABI를 유지하되, GitHub의 signed release AAB는
 `armeabi-v7a,arm64-v8a`만 컴파일한다. 지원하는 ARM 32비트 ABI에 대응하는 64비트 ABI를
 함께 포함해 [Google Play 64비트 요구사항](https://developer.android.com/google/play/requirements/64-bit)을
-지키면서 release에서 사용하지 않는 x86 CMake 반복 컴파일을 제거한다. 조직 재사용
-workflow는 Gradle wrapper와 dependency cache를 함께 복원한다. 최적화 전 `v1.0.2`
+지키면서 release에서 사용하지 않는 x86 CMake 반복 컴파일을 제거한다. 기존 GitHub-hosted
+재사용 workflow는 Gradle wrapper와 dependency cache를 함께 복원했다. 최적화 전 `v1.0.2`
 실행의 signed AAB job은 33분 31초였다. 최적화 SHA `6a51fbf`의 build-only candidate는
 [cold cache에서 22분 48초](https://github.com/seorilabs/cycle-pair/actions/runs/31990357687),
 [Gradle cache hit에서 16분 18초](https://github.com/seorilabs/cycle-pair/actions/runs/31991645468)로
 각각 10분 43초(32%), 17분 13초(51%) 짧아졌다. 두 산출물 모두 ARM ABI 두 개와
 유효한 JAR 서명을 재검증했다. cache-hit 실행도 Gradle의 642개 task를 모두 실행했으므로,
 16분 18초를 task output cache 자체의 효과로 단정하지 않고 반복 빌드 실측치로만 사용한다.
+이 기록은 Cloud Build 전환 전 기준선이다. 2026-08-21 global Cloud Build
+`c6d005cc-430c-4d1c-a8d3-54447d5cf26c`은 12분 35초에 성공했고, 내부 Gradle
+release build는 7분 3초였다. 생성된 v1.0.1/1000001 AAB는 40,205,088바이트,
+SHA-256 `3ff29f686664aed8b6b7979430d92aa0be218b3661e39d6407b82468d950b8b2`다.
+`bundletool validate`, trusted `jarsigner -verify -strict`, package·version·SDK·ARM ABI
+readback을 모두 통과했고 upload certificate SHA-256은 등록값과 일치했다. 이 artifact는
+GCS build evidence이며 Google Play 업로드·테스터 QA·production 배포 증거가 아니다.
 
 CI는 파일 대신 아래 환경변수를 사용할 수 있다. 값이나 keystore를 로그·artifact·저장소에 남기지 않는다.
 
@@ -95,7 +103,8 @@ Firebase 처리는 service provider, partner projection과 시스템 공유는 �
 - [x] Play Console base plan 활성화와 readback: 2026-08-11 Android Publisher API로 월간·연간 173개 지역, KRW 3,900·29,000, `free-trial` P7D ACTIVE 확인
 - [x] 1024x500 feature graphic과 실제 phone screenshots
 - [x] large/xlarge 지원 기준 7-inch·10-inch tablet screenshots 각 2장 이상
-- [ ] signed AAB
+- [x] v1.0.1/1000001 signed AAB Cloud Build와 독립 서명·bundle 검증
+- [ ] repo-local artifact를 사용하는 `release/readiness.json` evidence 등록
 - [ ] production Firebase Play Integrity App Check provider 등록과 Firestore/Callable 강제 live 검증
 - [ ] internal track 2인 테스트
 - [ ] production access와 deployment 승인

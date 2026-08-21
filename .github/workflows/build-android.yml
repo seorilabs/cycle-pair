@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 concurrency:
   group: cycle-pair-android-build-${{ inputs.release_tag || github.ref }}
@@ -18,14 +19,9 @@ concurrency:
 
 jobs:
   candidate:
-    uses: seorilabs/.github/.github/workflows/rn-build-android.yml@c3cd0aef1b68500fcda241ade27759e2a61419a5
-    secrets: inherit
+    uses: ./.github/workflows/deploy-google-play.yml
     with:
       release_tag: ${{ inputs.release_tag }}
-      package_manager: pnpm
-      pnpm_version: 11.3.0
-      node_version: 24.16.0
-      java_version: "21"
-      android_dir: apps/mobile/android
-      react_native_architectures: armeabi-v7a,arm64-v8a
-      signing_properties_file: keystore.properties
+      upload: false
+      release_status: draft
+      changes_not_sent_for_review: false

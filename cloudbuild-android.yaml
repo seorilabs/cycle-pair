@@ -1,0 +1,44 @@
+substitutions:
+  _ANDROID_VERSION_NAME: "1.0.1"
+  _ANDROID_VERSION_CODE: "1000001"
+  _GOOGLE_PLAY_UPLOAD_KEY_ALIAS: "upload"
+  _ARTIFACT_BUCKET: "gs://seorilabs-ci-build-artifacts/seorilabs/cycle-pair/manual"
+
+steps:
+  - id: build-signed-aab
+    name: asia-northeast3-docker.pkg.dev/seorilabs-ci/builders/rn-android-builder:node24-jdk17-android36
+    entrypoint: bash
+    args:
+      - scripts/build-android.sh
+    env:
+      - ANDROID_VERSION_NAME=${_ANDROID_VERSION_NAME}
+      - ANDROID_VERSION_CODE=${_ANDROID_VERSION_CODE}
+      - GOOGLE_PLAY_UPLOAD_KEY_ALIAS=${_GOOGLE_PLAY_UPLOAD_KEY_ALIAS}
+    secretEnv:
+      - FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64
+      - GOOGLE_PLAY_UPLOAD_KEYSTORE_BASE64
+      - GOOGLE_PLAY_UPLOAD_KEYSTORE_PASSWORD
+      - GOOGLE_PLAY_UPLOAD_KEY_PASSWORD
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/seorilabs-ci/secrets/cycle-pair-firebase-google-services/versions/latest
+      env: FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64
+    - versionName: projects/seorilabs-ci/secrets/cycle-pair-play-keystore/versions/latest
+      env: GOOGLE_PLAY_UPLOAD_KEYSTORE_BASE64
+    - versionName: projects/seorilabs-ci/secrets/cycle-pair-play-keystore-password/versions/latest
+      env: GOOGLE_PLAY_UPLOAD_KEYSTORE_PASSWORD
+    - versionName: projects/seorilabs-ci/secrets/cycle-pair-play-key-password/versions/latest
+      env: GOOGLE_PLAY_UPLOAD_KEY_PASSWORD
+
+artifacts:
+  objects:
+    location: ${_ARTIFACT_BUCKET}
+    paths:
+      - dist/android/cycle-pair.aab
+
+options:
+  machineType: N1_HIGHCPU_32
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: 3600s
