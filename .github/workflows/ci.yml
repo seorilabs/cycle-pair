@@ -42,12 +42,6 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
-      - name: Java 설정
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: 21
-
       - name: 의존성 설치
         run: pnpm install --frozen-lockfile
 
@@ -78,11 +72,53 @@ jobs:
       - name: 마켓 빌드·업로드 계약 검사
         run: pnpm check:release-automation
 
+  mobile_bundles:
+    name: iOS 및 Android 프로덕션 JS 번들 검사
+    runs-on: seorilabs-rpi-arm64
+    timeout-minutes: 20
+
+    steps:
+      - name: 저장소 체크아웃
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: pnpm 설정
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11.3.0
+          run_install: false
+
+      - name: Node.js 설정
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.16.0
+          check-latest: false
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: 의존성 설치
+        run: pnpm install --frozen-lockfile
+
       - name: iOS 및 Android 프로덕션 JS 번들 생성
+        shell: bash
         run: |
+          set -euo pipefail
           mkdir -p apps/mobile/build/bundles
-          pnpm --filter @cyclepair/mobile bundle:ios
-          pnpm --filter @cyclepair/mobile bundle:android
+          pnpm --filter @cyclepair/mobile run bundle:ios --max-workers=1 &
+          ios_pid=$!
+          pnpm --filter @cyclepair/mobile run bundle:android --max-workers=1 &
+          android_pid=$!
+
+          ios_status=0
+          android_status=0
+          wait "$ios_pid" || ios_status=$?
+          wait "$android_pid" || android_status=$?
+
+          if (( ios_status != 0 || android_status != 0 )); then
+            echo "JS 번들 생성 실패: ios=$ios_status android=$android_status" >&2
+            exit 1
+          fi
 
       - name: JS 번들 업로드
         uses: actions/upload-artifact@v7
@@ -95,7 +131,9 @@ jobs:
   required:
     name: required
     if: ${{ always() }}
-    needs: quality
+    needs:
+      - quality
+      - mobile_bundles
     runs-on: seorilabs-rpi-arm64
     timeout-minutes: 5
 
@@ -103,5 +141,7 @@ jobs:
       - name: 필수 검사 결과 확인
         env:
           QUALITY_RESULT: ${{ needs.quality.result }}
+          MOBILE_BUNDLES_RESULT: ${{ needs.mobile_bundles.result }}
         run: |
           test "$QUALITY_RESULT" = "success"
+          test "$MOBILE_BUNDLES_RESULT" = "success"

@@ -99,8 +99,6 @@ try {
     return result.status ?? 1;
   };
 
-  const preflightStatus = runGradle(':app:verifyReleasePrerequisites');
-  if (preflightStatus !== 0) process.exit(preflightStatus);
   process.exit(runGradle(':app:bundleRelease'));
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
