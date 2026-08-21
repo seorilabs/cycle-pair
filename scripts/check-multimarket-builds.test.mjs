@@ -13,11 +13,11 @@ async function json(path) {
   return JSON.parse(await readFile(path, 'utf8'));
 }
 
-function releaseArchitectures(workflow) {
-  const match = workflow.match(
-    /^\s+react_native_architectures:\s*([^#\r\n]+?)(?:\s+#.*)?$/m,
+function releaseArchitectures(buildEnvironment) {
+  const match = buildEnvironment.match(
+    /^REACT_NATIVE_ARCHITECTURES\s*=\s*([^#\r\n]+?)(?:\s+#.*)?$/m,
   );
-  assert.ok(match, 'release workflow에 React Native ABI 목록이 필요합니다.');
+  assert.ok(match, 'build.env에 React Native release ABI 목록이 필요합니다.');
   return normalizedArchitectures(match[1]);
 }
 
@@ -36,10 +36,10 @@ function normalizedArchitectures(value) {
     .filter(Boolean);
 }
 
-test('release ABI parser tolerates YAML whitespace and inline comments', () => {
+test('release ABI parser tolerates shell whitespace and inline comments', () => {
   assert.deepEqual(
     releaseArchitectures(
-      '    react_native_architectures: armeabi-v7a, arm64-v8a # release only',
+      'REACT_NATIVE_ARCHITECTURES = armeabi-v7a, arm64-v8a # release only',
     ),
     ['armeabi-v7a', 'arm64-v8a'],
   );
@@ -140,6 +140,7 @@ test('Google Play build stays API 36, versioned, signed, and pnpm-safe for Herme
   assert.match(buildWrapper, /resolve-release-version\.mjs/);
   assert.match(buildWrapper, /GOOGLE_PLAY_VERSION_NAME/);
   assert.match(buildWrapper, /GOOGLE_PLAY_VERSION_CODE/);
+  assert.match(buildWrapper, /--max-workers=\$\{gradleMaxWorkers\}/);
   assert.match(buildWrapper, /:app:verifyReleasePrerequisites/);
   assert.match(
     buildWrapper,
@@ -203,22 +204,12 @@ test('Android candidate workflow creates a signed AAB without Play upload', asyn
 
   assert.match(workflow, /^name: Build Android Candidate$/m);
   assert.match(workflow, /workflow_dispatch:[\s\S]*?inputs:[\s\S]*?release_tag:/);
-  assert.match(
-    workflow,
-    /rn-build-android\.yml@c3cd0aef1b68500fcda241ade27759e2a61419a5/,
-  );
+  assert.match(workflow, /uses: \.\/\.github\/workflows\/deploy-google-play\.yml/);
   assert.match(workflow, /release_tag: \$\{\{ inputs\.release_tag \}\}/);
-  assert.match(workflow, /android_dir: apps\/mobile\/android/);
-  assert.deepEqual(releaseArchitectures(workflow), [
-    'armeabi-v7a',
-    'arm64-v8a',
-  ]);
-  assert.match(workflow, /signing_properties_file: keystore\.properties/);
-  assert.match(workflow, /java_version: "21"/);
-  assert.doesNotMatch(
-    workflow,
-    /rn-deploy-google-play|upload:|track:|release_status:|id-token:|environment:/,
-  );
+  assert.match(workflow, /upload: false/);
+  assert.match(workflow, /id-token: write/);
+  assert.doesNotMatch(workflow, /secrets: inherit/);
+  assert.doesNotMatch(workflow, /upload: true/);
 });
 
 test('candidate workflow names are not classified as market deployment workflows', async () => {
@@ -254,32 +245,60 @@ test('AppsInToss deployment workflow performs an x64 private upload only', async
 });
 
 test('Google Play deployment workflow uploads only to the internal track', async () => {
-  const workflow = await readFile(
-    '.github/workflows/deploy-google-play.yml',
-    'utf8'
-  );
+  const [workflow, cloudbuild, buildScript, buildEnvironment, ignore] = await Promise.all([
+    readFile('.github/workflows/deploy-google-play.yml', 'utf8'),
+    readFile('cloudbuild-android.yaml', 'utf8'),
+    readFile('scripts/build-android.sh', 'utf8'),
+    readFile('build.env', 'utf8'),
+    readFile('.gcloudignore', 'utf8'),
+  ]);
 
   assert.match(workflow, /^name: Deploy Google Play$/m);
   assert.match(workflow, /workflow_dispatch:[\s\S]*?upload:/);
   assert.match(workflow, /workflow_call:[\s\S]*?upload:/);
-  assert.match(
-    workflow,
-    /rn-build-android\.yml@c3cd0aef1b68500fcda241ade27759e2a61419a5/
-  );
-  assert.match(workflow, /java_version: "21"/);
-  assert.match(workflow, /signing_properties_file: keystore\.properties/);
-  assert.match(workflow, /timeout_minutes: 50/);
-  assert.deepEqual(releaseArchitectures(workflow), [
+  assert.match(workflow, /runs-on: seorilabs-rpi-arm64/);
+  assert.match(workflow, /gcloud config set billing\/quota_project seorilabs-ci/);
+  assert.match(workflow, /gcloud builds submit/);
+  assert.match(workflow, /--region=global/);
+  assert.match(workflow, /--config=cloudbuild-android\.yaml/);
+  assert.deepEqual(releaseArchitectures(buildEnvironment), [
     'armeabi-v7a',
     'arm64-v8a',
   ]);
   assert.match(workflow, /google-github-actions\/auth@v3/);
   assert.match(workflow, /actions\/download-artifact@v8/);
+  assert.match(workflow, /actions\/upload-artifact@v7/);
   assert.match(workflow, /actions\/setup-python@v7/);
   assert.match(workflow, /--track internal/);
   assert.match(workflow, /scripts\/upload-google-play-internal\.py/);
   assert.doesNotMatch(workflow, /--track production|to_track:\s*production/);
-  assert.match(workflow, /production promotion: false/);
+  assert.match(workflow, /production promotion:.*false/);
+  assert.match(cloudbuild, /rn-android-builder:node24-jdk17-android36/);
+  assert.match(cloudbuild, /cycle-pair-firebase-google-services/);
+  assert.match(cloudbuild, /cycle-pair-play-keystore-password/);
+  assert.match(cloudbuild, /cycle-pair-play-key-password/);
+  assert.match(cloudbuild, /N1_HIGHCPU_32/);
+  assert.match(buildScript, /pnpm install --frozen-lockfile/);
+  assert.match(
+    buildScript,
+    /unset GOOGLE_PLAY_UPLOAD_KEY_PASSWORD[\s\S]*pnpm install --frozen-lockfile[\s\S]*FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64="\$firebase_config_base64"/,
+  );
+  assert.match(buildScript, /scripts\/build-google-play\.mjs/);
+  assert.match(buildScript, /jarsigner -verify -strict/);
+  assert.match(buildScript, /기존 로컬 자격증명 파일을 덮어쓰지 않습니다/);
+  assert.match(
+    buildScript,
+    /DF0194ACA157C73C66ACBF0954D785B460412B6B632B5270A53BF10BF87CA860/,
+  );
+  assert.match(buildEnvironment, /NODE_VERSION=24\.16\.0/);
+  assert.match(buildEnvironment, /PNPM_VERSION=11\.3\.0/);
+  assert.match(buildEnvironment, /JDK_VERSION=17/);
+  assert.match(buildEnvironment, /GRADLE_MAX_WORKERS=2/);
+  assert.match(buildEnvironment, /CMAKE_BUILD_PARALLEL_LEVEL=2/);
+  assert.match(buildEnvironment, /ANDROID_PLATFORM=36/);
+  assert.match(buildEnvironment, /ANDROID_BUILD_TOOLS=36\.0\.0/);
+  assert.match(ignore, /apps\/mobile\/android\/app\/google-services\.json/);
+  assert.match(ignore, /apps\/mobile\/android\/keystore\.properties/);
 });
 
 test('Google Play uploader converges when the requested version is already internal', async () => {

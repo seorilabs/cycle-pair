@@ -2,8 +2,11 @@
 
 ## Android와 AppsInToss
 
-- `Deploy Google Play`: 선택한 stable SemVer 태그로 서명 AAB를 x64 Linux에서
-  빌드하고, 명시적 `upload=true`일 때만 Google Play `internal` 트랙에 업로드한다.
+- `Deploy Google Play`: private ARM64 ARC runner가 선택한 stable SemVer 태그를
+  `seorilabs-ci` global endpoint의 32-vCPU x64 Cloud Build로 제출한다. Cloud
+  Build는 고정 RN Android builder에서 Gradle worker와 CMake 병렬도를 각각 2로 제한한
+  `scripts/build-android.sh`를 실행해 서명 AAB를 만들고, caller가 GCS에서 회수한다.
+  명시적 `upload=true`일 때만 Google Play `internal` 트랙에 업로드한다.
   같은 tag/versionCode가 이미 동일 상태로 존재하면 재업로드하지 않고 성공으로
   수렴하며, 다른 이름이나 상태로 존재하면 drift로 중단한다.
 - `Deploy AppsInToss`: AppsInToss SDK의 x86-64 Hermes compiler에 맞춰
@@ -11,6 +14,10 @@
 - 두 workflow 모두 `workflow_dispatch`와 `workflow_call`을 제공하며 Backoffice의
   앱별 릴리스 배포 버튼에서 호출할 수 있다.
 - production 승격, 심사 제출, 공개 출시는 이 자동화에 포함하지 않는다.
+
+Android 서명 키와 Firebase 설정은 로컬 자격증명 카탈로그가 source of truth다.
+Cloud Build에는 `seorilabs-ci` Secret Manager의 Cycle Pair 전용 실행 복제본만
+환경변수로 주입하며, 저장소·소스 업로드·GitHub artifact에는 포함하지 않는다.
 
 ## App Store
 
@@ -45,6 +52,12 @@ GitHub environment `app-store`에는 다음 secret이 필요하다.
 
 ## 현재 검증 경계
 
+- Android global Cloud Build `c6d005cc-430c-4d1c-a8d3-54447d5cf26c`: 성공
+  - 전체 12분 35초, Gradle release 7분 3초
+  - v1.0.1/1000001, package `com.seorilabs.cyclepair`, min SDK 24, target/compile SDK 36
+  - `arm64-v8a`, `armeabi-v7a`, upload certificate SHA-256 일치
+  - `bundletool validate`와 trusted `jarsigner -verify -strict` 통과
+  - Google Play 업로드·심사 제출·production 승격: 미수행
 - Xcode Cloud 제품·저장소·workflow API 구성: 완료
 - `main` 자동 build 제거와 수동 `v*` trigger: 완료
 - Cycle Pair product 첫 build 1: post-clone 실패

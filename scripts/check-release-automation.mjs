@@ -5,6 +5,10 @@ const files = {
   ci: '.github/workflows/ci.yml',
   all: '.github/workflows/deploy-all.yml',
   google: '.github/workflows/deploy-google-play.yml',
+  androidCloudBuild: 'cloudbuild-android.yaml',
+  androidBuildScript: 'scripts/build-android.sh',
+  androidBuildEnvironment: 'build.env',
+  gcloudIgnore: '.gcloudignore',
   apple: '.github/workflows/deploy-app-store.yml',
   ait: '.github/workflows/deploy-apps-in-toss.yml',
   xcodePostClone: 'apps/mobile/ios/ci_scripts/ci_post_clone.sh',
@@ -20,7 +24,6 @@ const files = {
 
 // 조직 재사용 워크플로우는 workflow별로 개별 pin한다. 값은 저장소의 실제 pin과 일치해야 한다.
 const orgWorkflowPins = {
-  'rn-build-android.yml': 'c3cd0aef1b68500fcda241ade27759e2a61419a5',
   'rn-build-ait.yml': '73972d2b34e92145e61e3409c91085c40da10c54',
   'release-tag.yml': '143458719a525a0a5da34cded4c1d7b8445b9f8b',
   'cleanup-actions-storage.yml': '143458719a525a0a5da34cded4c1d7b8445b9f8b',
@@ -60,15 +63,58 @@ function assertOrgPin(path, workflow, workflowFile) {
 }
 
 try {
-  // Google Play: 조직 build 재사용 워크플로우 + internal track 업로드 opt-in
+  // Google Play: private ARC가 x64 Cloud Build를 제출하고 internal 업로드는 opt-in
   const google = read(files.google);
+  const androidCloudBuild = read(files.androidCloudBuild);
+  const androidBuildScript = read(files.androidBuildScript);
+  const androidBuildEnvironment = read(files.androidBuildEnvironment);
+  const gcloudIgnore = read(files.gcloudIgnore);
   assertNoPushTrigger(files.google, google);
   assertSafeConcurrency(files.google, google);
-  assertOrgPin(files.google, google, 'rn-build-android.yml');
   assertIncludes(
     google,
-    'react_native_architectures: armeabi-v7a,arm64-v8a',
+    'runs-on: seorilabs-rpi-arm64',
+    'Google Play caller는 private ARC에서 Cloud Build만 제출해야 합니다.',
+  );
+  assertIncludes(
+    google,
+    'gcloud config set billing/quota_project seorilabs-ci',
+    '교차 프로젝트 Cloud Build quota project 지정이 없습니다.',
+  );
+  assertIncludes(
+    google,
+    'gcloud builds submit',
+    'Google Play Android 빌드가 Cloud Build로 제출되지 않습니다.',
+  );
+  assertIncludes(
+    androidBuildEnvironment,
+    'REACT_NATIVE_ARCHITECTURES=armeabi-v7a,arm64-v8a',
     'Google Play release AAB는 검증된 ARM 32/64비트 ABI 쌍만 빌드해야 합니다.',
+  );
+  assertIncludes(
+    androidCloudBuild,
+    'rn-android-builder:node24-jdk17-android36',
+    'Cycle Pair RN Android builder tag가 고정되지 않았습니다.',
+  );
+  assertIncludes(
+    androidCloudBuild,
+    'cycle-pair-firebase-google-services',
+    'Cycle Pair Firebase Android Secret Manager 복제본이 연결되지 않았습니다.',
+  );
+  assertIncludes(
+    androidBuildScript,
+    'node scripts/build-google-play.mjs',
+    'Cloud Build가 저장소의 기존 Google Play 빌드 진입점을 사용하지 않습니다.',
+  );
+  assertIncludes(
+    androidBuildScript,
+    'jarsigner -verify -strict',
+    'Cloud Build signed AAB 서명 검증이 없습니다.',
+  );
+  assertIncludes(
+    gcloudIgnore,
+    'apps/mobile/android/app/google-services.json',
+    'Cloud Build 소스 업로드에서 Firebase Android config가 제외되지 않았습니다.',
   );
   assertIncludes(
     google,
@@ -268,7 +314,7 @@ try {
   }
 
   console.log('Release automation contract: PASS');
-  console.log('- Google Play: 조직 build 재사용 워크플로우, internal track, upload opt-in');
+  console.log('- Google Play: ARC 제출 + x64 Cloud Build, internal track, upload opt-in');
   console.log('- App Store: Xcode Cloud archive/TestFlight, API trigger opt-in');
   console.log('- AppsInToss: ubuntu 빌드, 비공개 업로드 opt-in');
 } catch (error) {

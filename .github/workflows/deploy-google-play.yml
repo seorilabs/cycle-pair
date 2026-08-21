@@ -4,9 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "빌드하고 업로드할 stable SemVer 태그"
+        description: "빌드하고 업로드할 stable SemVer 태그. 비우면 최신 vX.Y.Z"
         type: string
-        required: true
+        required: false
+        default: ""
       upload:
         description: "signed AAB를 Google Play internal 트랙에 업로드"
         type: boolean
@@ -28,7 +29,8 @@ on:
     inputs:
       release_tag:
         type: string
-        required: true
+        required: false
+        default: ""
       upload:
         type: boolean
         required: false
@@ -47,30 +49,156 @@ permissions:
   id-token: write
 
 concurrency:
-  group: cycle-pair-google-play-${{ inputs.release_tag }}
+  group: cycle-pair-google-play-${{ inputs.release_tag || github.ref }}
   cancel-in-progress: false
 
 jobs:
   build:
-    name: Build signed Android App Bundle
-    uses: seorilabs/.github/.github/workflows/rn-build-android.yml@c3cd0aef1b68500fcda241ade27759e2a61419a5
-    secrets: inherit
-    with:
-      release_tag: ${{ inputs.release_tag }}
-      package_manager: pnpm
-      pnpm_version: 11.3.0
-      node_version: 24.16.0
-      java_version: "21"
-      android_dir: apps/mobile/android
-      react_native_architectures: armeabi-v7a,arm64-v8a
-      signing_properties_file: keystore.properties
-      timeout_minutes: 50
+    name: Cloud Build signed Android App Bundle
+    runs-on: seorilabs-rpi-arm64
+    timeout-minutes: 75
+    environment: google-play
+    outputs:
+      artifact_name: ${{ steps.meta.outputs.artifact_name }}
+      release_name: ${{ steps.version.outputs.release_name }}
+      release_tag: ${{ steps.version.outputs.release_tag }}
+      source_sha: ${{ steps.meta.outputs.source_sha }}
+
+    steps:
+      - name: Checkout release source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.release_tag || github.ref }}
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.16.0
+          check-latest: false
+
+      - name: Resolve release version
+        id: version
+        shell: bash
+        env:
+          REQUESTED_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          tag="$REQUESTED_TAG"
+          if [ -z "$tag" ]; then
+            tag="$(git tag --list 'v*' --sort=-v:refname | grep -E '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' | head -n 1 || true)"
+            [ -n "$tag" ] || { echo "release_tag이 비어 있고 vX.Y.Z 태그도 없습니다." >&2; exit 1; }
+          fi
+          [[ "$tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] \
+            || { echo "release_tag는 stable SemVer vX.Y.Z여야 합니다: $tag" >&2; exit 1; }
+          git -c advice.detachedHead=false checkout --detach "$tag"
+          node scripts/resolve-release-version.mjs --tag "$tag" --github-output
+          echo "release_tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve build contract
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          # shellcheck disable=SC1091
+          source build.env
+          source_sha="$(git rev-parse HEAD)"
+          artifact_name="android-aab-${{ steps.version.outputs.release_tag }}"
+          artifact_bucket="gs://seorilabs-ci-build-artifacts/${{ github.repository }}/${{ github.run_id }}-${{ github.run_attempt }}"
+          {
+            echo "source_sha=$source_sha"
+            echo "artifact_name=$artifact_name"
+            echo "artifact_bucket=$artifact_bucket"
+            echo "aab_path=$AAB_PATH"
+            echo "builder=$ANDROID_BUILDER_IMAGE:$ANDROID_BUILDER_TAG"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Validate Workload Identity configuration
+        shell: bash
+        env:
+          WIF_PROVIDER: ${{ vars.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          SERVICE_ACCOUNT: ${{ vars.GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL }}
+          UPLOAD_ALIAS: ${{ vars.GOOGLE_PLAY_UPLOAD_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          [ -n "$WIF_PROVIDER" ] || { echo "GOOGLE_WORKLOAD_IDENTITY_PROVIDER var가 없습니다." >&2; exit 1; }
+          [ -n "$SERVICE_ACCOUNT" ] || { echo "GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL var가 없습니다." >&2; exit 1; }
+          [ -n "$UPLOAD_ALIAS" ] || { echo "GOOGLE_PLAY_UPLOAD_KEY_ALIAS var가 없습니다." >&2; exit 1; }
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL }}
+          token_format: access_token
+          create_credentials_file: true
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v3
+        with:
+          project_id: seorilabs-ci
+
+      - name: Set quota project
+        shell: bash
+        run: gcloud config set billing/quota_project seorilabs-ci
+
+      - name: Build signed AAB on Cloud Build
+        shell: bash
+        env:
+          ARTIFACT_BUCKET: ${{ steps.meta.outputs.artifact_bucket }}
+          UPLOAD_ALIAS: ${{ vars.GOOGLE_PLAY_UPLOAD_KEY_ALIAS }}
+          VERSION_NAME: ${{ steps.version.outputs.version_name }}
+          VERSION_CODE: ${{ steps.version.outputs.android_version_code }}
+        run: |
+          set -euo pipefail
+          gcloud builds submit . \
+            --project=seorilabs-ci \
+            --region=global \
+            --config=cloudbuild-android.yaml \
+            --ignore-file=.gcloudignore \
+            --substitutions="_ANDROID_VERSION_NAME=$VERSION_NAME,_ANDROID_VERSION_CODE=$VERSION_CODE,_GOOGLE_PLAY_UPLOAD_KEY_ALIAS=$UPLOAD_ALIAS,_ARTIFACT_BUCKET=$ARTIFACT_BUCKET"
+
+      - name: Fetch signed AAB
+        shell: bash
+        env:
+          AAB_PATH: ${{ steps.meta.outputs.aab_path }}
+          ARTIFACT_BUCKET: ${{ steps.meta.outputs.artifact_bucket }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$(dirname "$AAB_PATH")"
+          gcloud storage cp "$ARTIFACT_BUCKET/$(basename "$AAB_PATH")" "$AAB_PATH"
+          test -s "$AAB_PATH"
+
+      - name: Upload signed AAB artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.meta.outputs.artifact_name }}
+          path: ${{ steps.meta.outputs.aab_path }}
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Build summary
+        shell: bash
+        env:
+          AAB_PATH: ${{ steps.meta.outputs.aab_path }}
+        run: |
+          {
+            echo "### Cycle Pair Android Cloud Build 후보"
+            echo "- source: \`${{ steps.meta.outputs.source_sha }}\`"
+            echo "- release: \`${{ steps.version.outputs.release_tag }}\`"
+            echo "- builder: \`${{ steps.meta.outputs.builder }}\`"
+            echo "- artifact: \`${{ steps.meta.outputs.artifact_name }}\`"
+            echo "- bytes: \`$(wc -c <"$AAB_PATH" | tr -d ' ')\`"
+            echo "- Google Play upload: \`${{ inputs.upload }}\`"
+            echo "- production promotion: \`false\`"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   upload:
     name: Upload to Google Play internal
     if: inputs.upload
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: seorilabs-rpi-arm64
     timeout-minutes: 20
     environment: google-play
 
@@ -78,19 +206,13 @@ jobs:
       - name: Checkout release tooling
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.release_tag }}
+          ref: ${{ needs.build.outputs.release_tag }}
 
-      - name: Validate release inputs
-        shell: bash
-        env:
-          RELEASE_TAG: ${{ inputs.release_tag }}
-          RELEASE_STATUS: ${{ inputs.release_status }}
-        run: |
-          set -euo pipefail
-          [[ "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] \
-            || { echo "release_tag는 stable SemVer vX.Y.Z여야 함: $RELEASE_TAG" >&2; exit 1; }
-          [[ "$RELEASE_STATUS" == "draft" || "$RELEASE_STATUS" == "completed" ]] \
-            || { echo "release_status는 draft 또는 completed여야 함." >&2; exit 1; }
+      - name: Download signed AAB
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ needs.build.outputs.artifact_name }}
+          path: artifacts/android
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v3
@@ -99,16 +221,11 @@ jobs:
           service_account: ${{ vars.GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL }}
           create_credentials_file: true
 
-      - name: Download signed AAB
-        uses: actions/download-artifact@v8
-        with:
-          name: android-aab-${{ inputs.release_tag }}
-          path: artifacts/android
-
       - name: Setup Python
         uses: actions/setup-python@v7
         with:
           python-version: "3.13"
+          architecture: arm64
 
       - name: Install Android Publisher client
         run: >-
@@ -118,7 +235,7 @@ jobs:
       - name: Upload internal release
         shell: bash
         env:
-          RELEASE_TAG: ${{ inputs.release_tag }}
+          RELEASE_NAME: ${{ needs.build.outputs.release_name }}
           RELEASE_STATUS: ${{ inputs.release_status }}
           CHANGES_NOT_SENT_FOR_REVIEW: ${{ inputs.changes_not_sent_for_review }}
           GOOGLE_PLAY_API_TIMEOUT_SECONDS: "900"
@@ -129,23 +246,23 @@ jobs:
             || { echo "정확히 하나의 AAB가 필요합니다: ${#aabs[@]}" >&2; exit 1; }
           args=(
             --aab-path "${aabs[0]}"
-            --track internal
+            --release-name "$RELEASE_NAME"
             --release-status "$RELEASE_STATUS"
-            --release-name "$RELEASE_TAG"
+            --track internal
           )
           if [ "$CHANGES_NOT_SENT_FOR_REVIEW" = "true" ]; then
             args+=(--changes-not-sent-for-review)
           fi
           python3 scripts/upload-google-play-internal.py "${args[@]}"
 
-      - name: Summary
+      - name: Upload summary
         shell: bash
         run: |
           {
-            echo "### Google Play internal upload"
-            echo ""
-            echo "- tag: ${{ inputs.release_tag }}"
-            echo "- track: internal"
-            echo "- release status: ${{ inputs.release_status }}"
-            echo "- production promotion: false"
+            echo "### Google Play internal 업로드"
+            echo "- source: \`${{ needs.build.outputs.source_sha }}\`"
+            echo "- release: \`${{ needs.build.outputs.release_tag }}\`"
+            echo "- track: \`internal\`"
+            echo "- status: \`${{ inputs.release_status }}\`"
+            echo "- production promotion: \`false\`"
           } >> "$GITHUB_STEP_SUMMARY"

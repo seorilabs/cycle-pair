@@ -76,7 +76,18 @@ try {
     GOOGLE_PLAY_VERSION_CODE: resolvedVersion.android_version_code,
   };
   const runGradle = task => {
-    const result = spawnSync(gradleCommand, [task], {
+    const gradleArguments = [];
+    const gradleMaxWorkers = process.env.CYCLEPAIR_ANDROID_GRADLE_MAX_WORKERS;
+    if (gradleMaxWorkers) {
+      if (!/^[1-9][0-9]*$/.test(gradleMaxWorkers)) {
+        throw new Error(
+          `CYCLEPAIR_ANDROID_GRADLE_MAX_WORKERS가 올바르지 않습니다: ${gradleMaxWorkers}`,
+        );
+      }
+      gradleArguments.push(`--max-workers=${gradleMaxWorkers}`);
+    }
+    gradleArguments.push(task);
+    const result = spawnSync(gradleCommand, gradleArguments, {
       cwd: androidDirectory,
       stdio: 'inherit',
       env: buildEnvironment,
