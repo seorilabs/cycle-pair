@@ -92,6 +92,16 @@ try {
     'Google Play release AAB는 검증된 ARM 32/64비트 ABI 쌍만 빌드해야 합니다.',
   );
   assertIncludes(
+    androidBuildEnvironment,
+    'GRADLE_MAX_WORKERS=4',
+    'Cloud Build Gradle worker 수가 검증된 성능 설정과 다릅니다.',
+  );
+  assertIncludes(
+    androidBuildEnvironment,
+    'CMAKE_BUILD_PARALLEL_LEVEL=4',
+    'Cloud Build CMake 병렬도가 검증된 성능 설정과 다릅니다.',
+  );
+  assertIncludes(
     androidCloudBuild,
     'rn-android-builder:node24-jdk17-android36',
     'Cycle Pair RN Android builder tag가 고정되지 않았습니다.',
@@ -272,6 +282,37 @@ try {
     ci,
     'pnpm check:release-automation',
     'CI에서 release automation contract를 검사하지 않습니다.',
+  );
+  assertIncludes(
+    ci,
+    'mobile_bundles:',
+    'CI에서 프로덕션 JS 번들 검사가 독립 job으로 분리되지 않았습니다.',
+  );
+  assertIncludes(
+    ci,
+    'run bundle:ios --max-workers=1 &',
+    'CI iOS Metro 번들이 제한된 worker로 병렬 실행되지 않습니다.',
+  );
+  assertIncludes(
+    ci,
+    'run bundle:android --max-workers=1 &',
+    'CI Android Metro 번들이 제한된 worker로 병렬 실행되지 않습니다.',
+  );
+  assertIncludes(ci, 'wait "$ios_pid"', 'CI가 iOS Metro 번들 완료를 기다리지 않습니다.');
+  assertIncludes(
+    ci,
+    'wait "$android_pid"',
+    'CI가 Android Metro 번들 완료를 기다리지 않습니다.',
+  );
+  assertIncludes(
+    ci,
+    'MOBILE_BUNDLES_RESULT: ${{ needs.mobile_bundles.result }}',
+    'required job이 프로덕션 JS 번들 검사 결과를 집계하지 않습니다.',
+  );
+  assertIncludes(
+    ci,
+    'uses: actions/setup-java@v5',
+    '릴리스 서명 회귀 테스트에 필요한 keytool을 CI에서 준비하지 않습니다.',
   );
 
   const gradle = read(files.gradle);

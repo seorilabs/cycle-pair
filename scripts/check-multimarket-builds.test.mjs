@@ -141,10 +141,11 @@ test('Google Play build stays API 36, versioned, signed, and pnpm-safe for Herme
   assert.match(buildWrapper, /GOOGLE_PLAY_VERSION_NAME/);
   assert.match(buildWrapper, /GOOGLE_PLAY_VERSION_CODE/);
   assert.match(buildWrapper, /--max-workers=\$\{gradleMaxWorkers\}/);
-  assert.match(buildWrapper, /:app:verifyReleasePrerequisites/);
+  assert.match(gradleProperties, /org\.gradle\.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m/);
+  assert.doesNotMatch(buildWrapper, /runGradle\(':app:verifyReleasePrerequisites'\)/);
   assert.match(
     buildWrapper,
-    /runGradle\(':app:verifyReleasePrerequisites'\)[\s\S]*runGradle\(':app:bundleRelease'\)/
+    /process\.exit\(runGradle\(':app:bundleRelease'\)\)/
   );
 
   const {stdout} = await execFileAsync(process.execPath, [
@@ -293,8 +294,8 @@ test('Google Play deployment workflow uploads only to the internal track', async
   assert.match(buildEnvironment, /NODE_VERSION=24\.16\.0/);
   assert.match(buildEnvironment, /PNPM_VERSION=11\.3\.0/);
   assert.match(buildEnvironment, /JDK_VERSION=17/);
-  assert.match(buildEnvironment, /GRADLE_MAX_WORKERS=2/);
-  assert.match(buildEnvironment, /CMAKE_BUILD_PARALLEL_LEVEL=2/);
+  assert.match(buildEnvironment, /GRADLE_MAX_WORKERS=4/);
+  assert.match(buildEnvironment, /CMAKE_BUILD_PARALLEL_LEVEL=4/);
   assert.match(buildEnvironment, /ANDROID_PLATFORM=36/);
   assert.match(buildEnvironment, /ANDROID_BUILD_TOOLS=36\.0\.0/);
   assert.match(ignore, /apps\/mobile\/android\/app\/google-services\.json/);
