@@ -309,9 +309,11 @@ try {
     'MOBILE_BUNDLES_RESULT: ${{ needs.mobile_bundles.result }}',
     'required job이 프로덕션 JS 번들 검사 결과를 집계하지 않습니다.',
   );
-  if (ci.includes('actions/setup-java')) {
-    throw new Error('JS/TS CI에서 사용하지 않는 Java toolchain을 설치하면 안 됩니다.');
-  }
+  assertIncludes(
+    ci,
+    'uses: actions/setup-java@v5',
+    '릴리스 서명 회귀 테스트에 필요한 keytool을 CI에서 준비하지 않습니다.',
+  );
 
   const gradle = read(files.gradle);
   for (const expected of [
