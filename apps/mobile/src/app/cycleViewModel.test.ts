@@ -3,6 +3,80 @@ import { createInitialState, type DailyHistoryEntry } from './CyclePairStore';
 import { buildCycleViewModel } from './cycleViewModel';
 
 describe('cycle view model roles', () => {
+  it.each([
+    ['힘들어요', 'very-low'],
+    ['지쳐요', 'low'],
+    ['괜찮아요', 'neutral'],
+    ['좋아요', 'good'],
+  ] as const)(
+    'does not infer a condition from the mood %s',
+    (mood, expectedMood) => {
+      const initialState = createInitialState();
+      const state = {
+        ...initialState,
+        shareSettings: {
+          ...initialState.shareSettings,
+          mood: true,
+          condition: true,
+        },
+        checkIn: {
+          mood,
+          symptoms: [],
+          periodStarted: false,
+          periodEnded: false,
+        },
+      };
+
+      const viewModel = buildCycleViewModel(state);
+
+      expect(viewModel.selfProjection.mood).toBe(expectedMood);
+      expect(viewModel.selfProjection.condition).toBeUndefined();
+    },
+  );
+
+  it('keeps explicit symptom-based condition mapping when a condition is not selected', () => {
+    const initialState = createInitialState();
+    const state = {
+      ...initialState,
+      shareSettings: {
+        ...initialState.shareSettings,
+        condition: true,
+      },
+      checkIn: {
+        mood: '힘들어요' as const,
+        symptoms: ['피로'],
+        periodStarted: false,
+        periodEnded: false,
+      },
+    };
+
+    expect(buildCycleViewModel(state).selfProjection.condition).toBe('tired');
+  });
+
+  it('keeps a partner mood-only projection conditionless and uses safe care fallback', () => {
+    const now = new Date();
+    const dailyLogDate = localDate(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      now.getDate(),
+    );
+    const state = {
+      ...createInitialState(),
+      partnerProjection: {
+        ownerUid: 'partner',
+        pairId: 'pair-1',
+        dailyLogDate,
+        moodTag: 'very-low' as const,
+      },
+    };
+
+    const viewModel = buildCycleViewModel(state);
+
+    expect(viewModel.partnerProjection.mood).toBe('very-low');
+    expect(viewModel.partnerProjection.condition).toBeUndefined();
+    expect(viewModel.careTip.id).toBe('general-respect');
+  });
+
   it('does not predict for a logger until a complete seed is explicitly saved', () => {
     const state = createInitialState();
     const viewModel = buildCycleViewModel(state);

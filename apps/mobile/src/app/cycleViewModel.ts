@@ -144,7 +144,7 @@ function mapCondition(checkIn: DailyCheckIn): ConditionCode | undefined {
   if (checkIn.symptoms.includes('예민함')) return 'sensitive';
   if (checkIn.symptoms.includes('복통')) return 'cramps';
   if (checkIn.symptoms.includes('두통')) return 'headache';
-  return checkIn.mood ? 'comfortable' : undefined;
+  return undefined;
 }
 
 function conditionFromSymptoms(
@@ -187,6 +187,7 @@ export function buildCycleViewModel(state: CyclePairState): CycleViewModel {
       })
     : { phase: 'unknown' as const, cycleDay: null };
   const phase: CyclePhase = phaseResult.phase;
+  const mappedCondition = mapCondition(state.checkIn);
 
   const latestLog = createCycleLog({
     id: `check-in-${today}`,
@@ -197,9 +198,7 @@ export function buildCycleViewModel(state: CyclePairState): CycleViewModel {
       ? { symptoms: state.checkIn.symptoms }
       : {}),
     ...(state.checkIn.energy ? { energy: state.checkIn.energy } : {}),
-    ...(mapCondition(state.checkIn)
-      ? { condition: mapCondition(state.checkIn) }
-      : {}),
+    ...(mappedCondition ? { condition: mappedCondition } : {}),
     ...(mapHelpPreferences(state.checkIn)
       ? { helpPreferences: mapHelpPreferences(state.checkIn) }
       : {}),
