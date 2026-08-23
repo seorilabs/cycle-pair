@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { aitAnalytics, type AitAnalytics } from '../analytics';
 import {
   clearConditionShareDraft,
   getLocalDateKey,
@@ -63,7 +64,11 @@ function ChoiceGroup<T extends string>({
   );
 }
 
-export function ConditionSharePage() {
+export function ConditionSharePage({
+  analytics = aitAnalytics,
+}: {
+  readonly analytics?: AitAnalytics;
+} = {}) {
   const [draft, setDraft] = useState<ConditionShareDraft>(EMPTY_SHARE_DRAFT);
   const [hydrating, setHydrating] = useState(true);
   const [sharing, setSharing] = useState(false);
@@ -96,6 +101,9 @@ export function ConditionSharePage() {
           return;
         }
         setDraft(value);
+        if (value.condition !== null || value.helpPreference !== null) {
+          analytics.track({ name: 'cp_ait_draft_restored' });
+        }
       })
       .finally(() => {
         if (active) setHydrating(false);
@@ -103,7 +111,7 @@ export function ConditionSharePage() {
     return () => {
       active = false;
     };
-  }, [ensureCurrentDate]);
+  }, [analytics, ensureCurrentDate]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextState => {
@@ -134,7 +142,9 @@ export function ConditionSharePage() {
   const handleShare = async () => {
     if (sharing || !(await ensureCurrentDate()) || !preview) return;
     setSharing(true);
+    analytics.track({ name: 'cp_ait_share_open' });
     const outcome = await openShareSheet(preview);
+    analytics.track({ name: 'cp_ait_share_result', params: { outcome } });
     setSharing(false);
     setStatus(
       outcome === 'opened'
@@ -146,6 +156,7 @@ export function ConditionSharePage() {
   };
 
   const handleClear = async () => {
+    analytics.track({ name: 'cp_ait_draft_cleared' });
     draftLocalDate.current = getLocalDateKey();
     setDraft(EMPTY_SHARE_DRAFT);
     setStatus('이 기기에 저장된 선택 내용을 지웠어요.');
@@ -175,13 +186,25 @@ export function ConditionSharePage() {
         </View>
 
         <ChoiceGroup
-          onChange={condition => updateDraft({ ...draft, condition })}
+          onChange={condition => {
+            analytics.track({
+              name: 'cp_ait_condition_select',
+              params: { group: 'condition', value: condition },
+            });
+            updateDraft({ ...draft, condition });
+          }}
           options={CONDITION_OPTIONS}
           title="오늘 컨디션은 어때요?"
           value={draft.condition}
         />
         <ChoiceGroup
-          onChange={helpPreference => updateDraft({ ...draft, helpPreference })}
+          onChange={helpPreference => {
+            analytics.track({
+              name: 'cp_ait_condition_select',
+              params: { group: 'help', value: helpPreference },
+            });
+            updateDraft({ ...draft, helpPreference });
+          }}
           options={HELP_OPTIONS}
           title="어떻게 함께해 주면 좋을까요?"
           value={draft.helpPreference}
