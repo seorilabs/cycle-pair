@@ -4,6 +4,7 @@ import type {
   CacheTombstone,
   CyclePairBackend,
   PairEvent,
+  PartnerNudgeType,
   PrivateDailyLogSnapshot,
   RemotePartnerProjection,
 } from './CyclePairBackend';
@@ -97,6 +98,19 @@ export const previewCyclePairBackend: CyclePairBackend = {
     pairEvents.delete(eventKey(pairId, eventId));
     return { status: 'synced', mutationId };
   },
+  async sendPartnerNudge(_uid, _pairId, type: PartnerNudgeType, requestId) {
+    const sentAt = new Date();
+    return {
+      requestId,
+      type,
+      sentAt: sentAt.toISOString(),
+      nextAllowedAt: new Date(sentAt.getTime() + 30 * 60 * 1_000).toISOString(),
+      alreadyApplied: false,
+    };
+  },
+  async acknowledgePartnerNudge() {
+    return true;
+  },
   async flushPendingMutations() {
     return { flushed: 0, remaining: 0, failed: 0 };
   },
@@ -133,6 +147,10 @@ export const previewCyclePairBackend: CyclePairBackend = {
             : left.date.localeCompare(right.date),
         ),
     );
+    return () => undefined;
+  },
+  watchPartnerNudgeState(_uid, _membership, onValue, _onError) {
+    onValue({ received: null, nextAllowedAt: {} });
     return () => undefined;
   },
   watchPendingTombstones(

@@ -7,7 +7,10 @@ export const NOTIFICATION_SCHEMA_VERSION = 1;
 export const NOTIFICATION_DEVICE_LIMIT = 10;
 
 export type NotificationPlatform = "android" | "ios";
-export type NeutralNotificationType = "pair-update" | "shared-event-update";
+export type NeutralNotificationType =
+  | "pair-update"
+  | "shared-event-update"
+  | "partner-nudge";
 export type NeutralNotificationDestination = "home" | "calendar";
 
 export interface QuietHours {
@@ -240,9 +243,9 @@ export function hasMeaningfulProjectionChange(
 export function neutralNotificationData(
   type: NeutralNotificationType,
 ): NeutralNotificationData {
-  return type === "pair-update"
-    ? {schemaVersion: "1", type, destination: "home"}
-    : {schemaVersion: "1", type, destination: "calendar"};
+  return type === "shared-event-update"
+    ? {schemaVersion: "1", type, destination: "calendar"}
+    : {schemaVersion: "1", type, destination: "home"};
 }
 
 export function neutralNotificationContent(

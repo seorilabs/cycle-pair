@@ -37,6 +37,8 @@ import {
   onSnapshot,
   setDoc,
 } from '@react-native-firebase/firestore';
+import { fetch as fetchNetworkState } from '@react-native-community/netinfo';
+import { httpsCallable } from '@react-native-firebase/functions';
 
 import { secureOfflineMutationQueue } from '../local/SecureOfflineMutationQueue';
 import { firebaseCyclePairBackend } from './FirebaseCyclePairBackend';
@@ -46,6 +48,12 @@ const onSnapshotMock = onSnapshot as jest.MockedFunction<typeof onSnapshot>;
 const deleteDocMock = deleteDoc as jest.MockedFunction<typeof deleteDoc>;
 const getDocsMock = getDocs as jest.MockedFunction<typeof getDocs>;
 const setDocMock = setDoc as jest.MockedFunction<typeof setDoc>;
+const fetchNetworkStateMock = fetchNetworkState as jest.MockedFunction<
+  typeof fetchNetworkState
+>;
+const httpsCallableMock = httpsCallable as jest.MockedFunction<
+  typeof httpsCallable
+>;
 
 describe('firebaseCyclePairBackend Pair membership watch', () => {
   beforeEach(() => {
@@ -154,7 +162,7 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
         '2026-08-09T00:00:00.000Z',
         SENSITIVE_HEALTH_CONSENT_VERSION,
       ),
-    ).rejects.toMatchObject({code: 'firestore/permission-denied'});
+    ).rejects.toMatchObject({ code: 'firestore/permission-denied' });
 
     await expect(secureOfflineMutationQueue.list(uid)).resolves.toEqual([
       expect.objectContaining({
@@ -175,7 +183,7 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
         { moodTag: 'neutral', energyLevel: 3 },
         'daily-direct-write',
       ),
-    ).rejects.toMatchObject({code: 'firestore/permission-denied'});
+    ).rejects.toMatchObject({ code: 'firestore/permission-denied' });
 
     await expect(secureOfflineMutationQueue.list(uid)).resolves.toEqual([
       expect.objectContaining({
@@ -197,7 +205,7 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
         '2026-07-14',
         'daily-delete-direct-write',
       ),
-    ).rejects.toMatchObject({code: 'firestore/permission-denied'});
+    ).rejects.toMatchObject({ code: 'firestore/permission-denied' });
 
     await expect(secureOfflineMutationQueue.list(uid)).resolves.toEqual([
       expect.objectContaining({
@@ -233,5 +241,24 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
     await expect(
       firebaseCyclePairBackend.listDailyLogs(uid, '2026-07-01', '2026-07-31'),
     ).resolves.toEqual([]);
+  });
+
+  it('넛지는 오프라인에서 callable이나 재시도 큐에 넣지 않는다', async () => {
+    fetchNetworkStateMock.mockResolvedValueOnce({
+      isConnected: false,
+      isInternetReachable: false,
+    } as Awaited<ReturnType<typeof fetchNetworkState>>);
+
+    await expect(
+      firebaseCyclePairBackend.sendPartnerNudge(
+        uid,
+        'pair-offline',
+        'check-in-request',
+        'nudge-offline-request',
+      ),
+    ).rejects.toMatchObject({ code: 'network/offline' });
+
+    expect(httpsCallableMock).not.toHaveBeenCalled();
+    await expect(secureOfflineMutationQueue.list(uid)).resolves.toEqual([]);
   });
 });

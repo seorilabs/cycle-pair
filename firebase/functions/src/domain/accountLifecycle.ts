@@ -75,7 +75,7 @@ export interface PairCleanupInventory {
   readonly cacheTombstoneDocumentPaths: readonly string[];
   readonly bindingDocumentPaths: readonly string[];
   readonly connectionStateDocumentPaths: readonly string[];
-  readonly eventCollectionPaths: readonly string[];
+  readonly pairDataCollectionPaths: readonly string[];
   readonly pairTombstoneDocumentPath: string;
 }
 
@@ -192,9 +192,11 @@ export function buildPairCleanupInventory(
     connectionStateDocumentPaths: members.map(
       uid => `connectionStates/${uid}`,
     ),
-    eventCollectionPaths: [
+    pairDataCollectionPaths: [
       `pairs/${pairId}/events`,
       `pairs/${pairId}/eventMutations`,
+      `pairs/${pairId}/nudgeInboxes`,
+      `pairs/${pairId}/nudgeSenders`,
     ],
     pairTombstoneDocumentPath: `pairTombstones/${pairId}`,
   };

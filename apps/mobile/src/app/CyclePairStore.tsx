@@ -24,6 +24,8 @@ import type {
   PairEvent,
   PairEventInput,
   PairInvite,
+  PartnerNudgeState,
+  PartnerNudgeType,
   RemotePartnerProjection,
 } from '../platform/backend/CyclePairBackend';
 import {
@@ -722,6 +724,26 @@ function backendErrorMessage(error: unknown): string {
   return '동기화 중 문제가 생겼습니다. 잠시 뒤 다시 시도해 주세요.';
 }
 
+function partnerNudgeRetryAt(error: unknown): string | undefined {
+  if (typeof error !== 'object' || error === null) return undefined;
+  const value = error as {
+    details?: unknown;
+    customData?: { details?: unknown };
+  };
+  const details =
+    typeof value.details === 'object' && value.details !== null
+      ? (value.details as { nextAllowedAt?: unknown })
+      : typeof value.customData?.details === 'object' &&
+        value.customData.details !== null
+      ? (value.customData.details as { nextAllowedAt?: unknown })
+      : undefined;
+  const nextAllowedAt = details?.nextAllowedAt;
+  return typeof nextAllowedAt === 'string' &&
+    Number.isFinite(Date.parse(nextAllowedAt))
+    ? nextAllowedAt
+    : undefined;
+}
+
 function failureCode(error: unknown): SafeFailureCode {
   const code =
     typeof error === 'object' && error !== null && 'code' in error
@@ -791,6 +813,9 @@ interface CyclePairContextValue {
   backendError: string | null;
   inAppNotices: readonly InAppNotice[];
   toastNotice: InAppNotice | null;
+  partnerNudgeState: PartnerNudgeState;
+  nudgeBusy: boolean;
+  nudgeFeedback: string | null;
   clearBackendError(): void;
   dismissToastNotice(): void;
   openInAppNotice(noticeId: string): void;
@@ -819,6 +844,8 @@ interface CyclePairContextValue {
   deleteDailyLog(localDate: string): Promise<boolean>;
   upsertPairEvent(event: PairEventInput): Promise<boolean>;
   deletePairEvent(eventId: string): Promise<boolean>;
+  sendPartnerNudge(type: PartnerNudgeType): Promise<boolean>;
+  acknowledgePartnerNudge(): Promise<boolean>;
   toggleNotifications(): Promise<void>;
   updateNotificationQuietHours(start: string, end: string): Promise<boolean>;
   toggleDiagnostics(): Promise<void>;
@@ -863,6 +890,14 @@ export function CyclePairProvider({
   const [backendError, setBackendError] = useState<string | null>(null);
   const [inAppNotices, setInAppNotices] = useState<readonly InAppNotice[]>([]);
   const [toastNotice, setToastNotice] = useState<InAppNotice | null>(null);
+  const [partnerNudgeState, setPartnerNudgeState] = useState<PartnerNudgeState>(
+    {
+      received: null,
+      nextAllowedAt: {},
+    },
+  );
+  const [nudgeBusy, setNudgeBusy] = useState(false);
+  const [nudgeFeedback, setNudgeFeedback] = useState<string | null>(null);
   const inAppNoticesRef = useRef<readonly InAppNotice[]>([]);
   const noticeSequence = useRef(0);
   const shareWriteChain = useRef<Promise<void>>(Promise.resolve());
@@ -1082,8 +1117,8 @@ export function CyclePairProvider({
         const setupResult = await Promise.resolve(
           backend.loadPrivateSetup(session.uid),
         ).then(
-          value => ({status: 'fulfilled' as const, value}),
-          reason => ({status: 'rejected' as const, reason}),
+          value => ({ status: 'fulfilled' as const, value }),
+          reason => ({ status: 'rejected' as const, reason }),
         );
         if (!active) return;
         if (setupResult.status === 'fulfilled' && setupResult.value) {
@@ -1199,8 +1234,8 @@ export function CyclePairProvider({
                 report.failed > 0
                   ? 'error'
                   : report.remaining > 0
-                    ? 'queued'
-                    : 'synced',
+                  ? 'queued'
+                  : 'synced',
             });
           })().catch(reportBackendError);
         }
@@ -1212,6 +1247,11 @@ export function CyclePairProvider({
       stopTombstones();
     };
   }, [backend, backendSession, reportBackendError]);
+
+  useEffect(() => {
+    setPartnerNudgeState({ received: null, nextAllowedAt: {} });
+    setNudgeFeedback(null);
+  }, [activePair?.pairId]);
 
   useEffect(() => {
     if (!activePair || !backendSession) return;
@@ -1272,11 +1312,20 @@ export function CyclePairProvider({
       },
       reportBackendError,
     );
+    const stopNudges = backend.watchPartnerNudgeState(
+      backendSession.uid,
+      activePair,
+      value => {
+        if (active) setPartnerNudgeState(value);
+      },
+      reportBackendError,
+    );
     return () => {
       active = false;
       stopProjection();
       stopSettings();
       stopEvents();
+      stopNudges();
     };
   }, [
     activePair,
@@ -1967,6 +2016,97 @@ export function CyclePairProvider({
       state.sharingPairId,
     ],
   );
+  const sendPartnerNudge = useCallback(
+    async (type: PartnerNudgeType) => {
+      const pairId = activePair?.pairId ?? state.sharingPairId;
+      if (!backendSession || !pairId || !state.paired || nudgeBusy) {
+        return false;
+      }
+      const requestId = createMutationId('nudge');
+      setNudgeBusy(true);
+      setNudgeFeedback(null);
+      try {
+        const result = await backend.sendPartnerNudge(
+          backendSession.uid,
+          pairId,
+          type,
+          requestId,
+        );
+        setPartnerNudgeState(current => ({
+          ...current,
+          nextAllowedAt: {
+            ...current.nextAllowedAt,
+            [type]: result.nextAllowedAt,
+          },
+        }));
+        setNudgeFeedback('파트너에게 넛지를 남겼어요.');
+        return true;
+      } catch (error) {
+        const code =
+          typeof error === 'object' && error !== null && 'code' in error
+            ? String((error as { code?: unknown }).code)
+            : '';
+        const retryAt = partnerNudgeRetryAt(error);
+        if (retryAt) {
+          setPartnerNudgeState(current => ({
+            ...current,
+            nextAllowedAt: {
+              ...current.nextAllowedAt,
+              [type]: retryAt,
+            },
+          }));
+        }
+        const retryMinutes = retryAt
+          ? Math.max(1, Math.ceil((Date.parse(retryAt) - Date.now()) / 60_000))
+          : 30;
+        setNudgeFeedback(
+          code.includes('resource-exhausted')
+            ? `같은 넛지는 ${retryMinutes}분 뒤에 다시 보낼 수 있어요.`
+            : code.includes('network') || code.includes('unavailable')
+            ? '인터넷에 연결한 뒤 넛지를 다시 보내 주세요.'
+            : '넛지를 남기지 못했어요. 잠시 뒤 다시 시도해 주세요.',
+        );
+        reportFailure(error, 'pair', 'send-nudge', false);
+        return false;
+      } finally {
+        setNudgeBusy(false);
+      }
+    },
+    [
+      activePair?.pairId,
+      backend,
+      backendSession,
+      nudgeBusy,
+      reportFailure,
+      state.paired,
+      state.sharingPairId,
+    ],
+  );
+  const acknowledgePartnerNudge = useCallback(async () => {
+    const pairId = activePair?.pairId ?? state.sharingPairId;
+    const received = partnerNudgeState.received;
+    if (!pairId || !received || nudgeBusy) return false;
+    setNudgeBusy(true);
+    setNudgeFeedback(null);
+    try {
+      await backend.acknowledgePartnerNudge(pairId, received.requestId);
+      setPartnerNudgeState(current => ({ ...current, received: null }));
+      return true;
+    } catch (error) {
+      setNudgeFeedback('인터넷에 연결한 뒤 다시 확인해 주세요.');
+      reportFailure(error, 'pair', 'acknowledge-nudge', false);
+      return false;
+    } finally {
+      setNudgeBusy(false);
+    }
+  }, [
+    activePair?.pairId,
+    backend,
+    nudgeBusy,
+    partnerNudgeState.received,
+    reportFailure,
+    state.sharingPairId,
+  ]);
   useEffect(() => {
     if (!backendSession) return;
     let active = true;
@@ -2046,8 +2186,8 @@ export function CyclePairProvider({
             report.failed > 0
               ? 'error'
               : report.remaining > 0
-                ? 'queued'
-                : 'synced',
+              ? 'queued'
+              : 'synced',
         });
       })().catch(error => {
         if (!active) return;
@@ -2160,6 +2300,9 @@ export function CyclePairProvider({
       backendError,
       inAppNotices,
       toastNotice,
+      partnerNudgeState,
+      nudgeBusy,
+      nudgeFeedback,
       clearBackendError: () => setBackendError(null),
       dismissToastNotice,
       openInAppNotice,
@@ -2180,6 +2323,8 @@ export function CyclePairProvider({
       deleteDailyLog,
       upsertPairEvent,
       deletePairEvent,
+      sendPartnerNudge,
+      acknowledgePartnerNudge,
       toggleNotifications,
       updateNotificationQuietHours,
       toggleDiagnostics,
@@ -2200,6 +2345,9 @@ export function CyclePairProvider({
       backendError,
       inAppNotices,
       toastNotice,
+      partnerNudgeState,
+      nudgeBusy,
+      nudgeFeedback,
       dismissToastNotice,
       openInAppNotice,
       completeOnboarding,
@@ -2219,6 +2367,8 @@ export function CyclePairProvider({
       deleteDailyLog,
       upsertPairEvent,
       deletePairEvent,
+      sendPartnerNudge,
+      acknowledgePartnerNudge,
       toggleNotifications,
       updateNotificationQuietHours,
       toggleDiagnostics,

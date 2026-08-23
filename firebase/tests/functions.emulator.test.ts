@@ -596,6 +596,117 @@ describe("pair lifecycle callables", () => {
       (await getDocFromServer(doc(bob.firestore, cleanupEventPath))).exists(),
     ).toBe(true);
 
+    const unauthenticatedNudge = httpsCallable(
+      unauthenticated.functions,
+      "sendPartnerNudge",
+    );
+    await expect(
+      unauthenticatedNudge({
+        pairId,
+        requestId: "nudge_unauthenticated",
+        type: "check-in-request",
+      }),
+    ).rejects.toMatchObject({code: "functions/unauthenticated"});
+    const sendNudge = httpsCallable(alice.functions, "sendPartnerNudge");
+    const outsiderNudge = httpsCallable(
+      charlie.functions,
+      "sendPartnerNudge",
+    );
+    await expect(
+      sendNudge({
+        pairId,
+        requestId: "nudge_invalid_type",
+        type: "free-text",
+      }),
+    ).rejects.toMatchObject({code: "functions/invalid-argument"});
+    await expect(
+      outsiderNudge({
+        pairId,
+        requestId: "nudge_outsider",
+        type: "check-in-request",
+      }),
+    ).rejects.toMatchObject({code: "functions/permission-denied"});
+
+    const firstNudge = await sendNudge({
+      pairId,
+      requestId: "nudge_checkin_1",
+      type: "check-in-request",
+    });
+    expect(firstNudge.data).toMatchObject({
+      requestId: "nudge_checkin_1",
+      type: "check-in-request",
+      alreadyApplied: false,
+      nextAllowedAt: expect.any(String),
+    });
+    const bobInboxPath = `${pairPath}/nudgeInboxes/${bobUid}`;
+    const aliceCooldownPath = `${pairPath}/nudgeSenders/${aliceUid}`;
+    expect(
+      (await getDocFromServer(doc(bob.firestore, bobInboxPath))).data(),
+    ).toMatchObject({
+      requestId: "nudge_checkin_1",
+      senderUid: aliceUid,
+      recipientUid: bobUid,
+      type: "check-in-request",
+    });
+    await expect(
+      getDocFromServer(doc(alice.firestore, bobInboxPath)),
+    ).rejects.toMatchObject({code: "permission-denied"});
+    expect(
+      (await getDocFromServer(doc(alice.firestore, aliceCooldownPath))).data(),
+    ).toMatchObject({
+      senderUid: aliceUid,
+      checkInRequestId: "nudge_checkin_1",
+    });
+    await expect(
+      sendNudge({
+        pairId,
+        requestId: "nudge_checkin_1",
+        type: "check-in-request",
+      }),
+    ).resolves.toMatchObject({data: {alreadyApplied: true}});
+    await expect(
+      sendNudge({
+        pairId,
+        requestId: "nudge_checkin_2",
+        type: "check-in-request",
+      }),
+    ).rejects.toMatchObject({code: "functions/resource-exhausted"});
+
+    await sendNudge({
+      pairId,
+      requestId: "nudge_care_1",
+      type: "care-acknowledgement",
+    });
+    expect(
+      (await getDocFromServer(doc(bob.firestore, bobInboxPath))).data(),
+    ).toMatchObject({
+      requestId: "nudge_care_1",
+      type: "care-acknowledgement",
+    });
+    const acknowledgeNudge = httpsCallable(
+      bob.functions,
+      "acknowledgePartnerNudge",
+    );
+    await expect(
+      acknowledgeNudge({pairId, requestId: "nudge_checkin_1"}),
+    ).resolves.toMatchObject({data: {acknowledged: false}});
+    expect(await emulatorDocumentExists(bobInboxPath)).toBe(true);
+    await expect(
+      acknowledgeNudge({pairId, requestId: "nudge_care_1"}),
+    ).resolves.toMatchObject({data: {acknowledged: true}});
+    expect(await emulatorDocumentExists(bobInboxPath)).toBe(false);
+
+    const sendBobNudge = httpsCallable(bob.functions, "sendPartnerNudge");
+    await sendBobNudge({
+      pairId,
+      requestId: "nudge_cleanup",
+      type: "check-in-request",
+    });
+    const aliceInboxPath = `${pairPath}/nudgeInboxes/${aliceUid}`;
+    const bobCooldownPath = `${pairPath}/nudgeSenders/${bobUid}`;
+    expect(await emulatorDocumentExists(aliceInboxPath)).toBe(true);
+    expect(await emulatorDocumentExists(bobCooldownPath)).toBe(true);
+
     const settingsPath = `users/${aliceUid}/shareSettings/${pairId}`;
     await setDoc(
       doc(alice.firestore, `users/${aliceUid}/privateCycles/current`),
@@ -780,6 +891,9 @@ describe("pair lifecycle callables", () => {
         `${pairPath}/eventMutations/mutation_cleanup`,
       ),
     ).toBe(false);
+    expect(await emulatorDocumentExists(aliceInboxPath)).toBe(false);
+    expect(await emulatorDocumentExists(aliceCooldownPath)).toBe(false);
+    expect(await emulatorDocumentExists(bobCooldownPath)).toBe(false);
     const tombstonePath = `users/${bob.auth.currentUser?.uid}/cacheTombstones/${pairId}`;
     const tombstone = await getDocFromServer(doc(bob.firestore, tombstonePath));
     expect(tombstone.data()).toMatchObject({
@@ -885,6 +999,15 @@ describe("pair lifecycle callables", () => {
         pairId,
         mutationId: "barrier-delete",
         eventId: "barrier-event",
+      }),
+      () => httpsCallable(owner.functions, "sendPartnerNudge")({
+        pairId,
+        requestId: "barrier-nudge",
+        type: "check-in-request",
+      }),
+      () => httpsCallable(owner.functions, "acknowledgePartnerNudge")({
+        pairId,
+        requestId: "barrier-nudge",
       }),
       () => httpsCallable(owner.functions, "revokePair")({pairId}),
       () => httpsCallable(owner.functions, "acknowledgeCacheTombstone")({

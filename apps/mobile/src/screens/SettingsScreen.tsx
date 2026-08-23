@@ -19,7 +19,6 @@ import {
   Chip,
   PrimaryButton,
   Screen,
-  SectionHeader,
   SecondaryButton,
   Stepper,
   TextButton,
@@ -40,6 +39,49 @@ const shareRows: Array<{ key: ShareField; label: string }> = [
   { key: 'carePreference', label: '원하는 도움' },
   { key: 'note', label: '오늘의 메모' },
 ];
+
+type SettingsSectionKey =
+  | 'account'
+  | 'cycle'
+  | 'sharing'
+  | 'notifications'
+  | 'subscription'
+  | 'connection'
+  | 'about';
+
+function SettingsAccordionSection({
+  title,
+  summary,
+  expanded,
+  onPress,
+  children,
+}: {
+  title: string;
+  summary: string;
+  expanded: boolean;
+  onPress(): void;
+  children: React.ReactNode;
+}) {
+  return (
+    <View style={styles.accordionSection}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        onPress={onPress}
+        style={styles.accordionHeader}
+      >
+        <View style={styles.accordionCopy}>
+          <Text style={styles.accordionTitle}>{title}</Text>
+          <Text numberOfLines={1} style={styles.accordionSummary}>
+            {summary}
+          </Text>
+        </View>
+        <Text style={styles.accordionChevron}>{expanded ? '⌃' : '⌄'}</Text>
+      </Pressable>
+      {expanded ? <View style={styles.accordionBody}>{children}</View> : null}
+    </View>
+  );
+}
 
 function SettingLink({
   title,
@@ -87,6 +129,7 @@ export function SettingsScreen() {
   const {
     state,
     backendKind,
+    backendSession,
     backendBusy,
     notificationBusy,
     diagnosticsBusy,
@@ -106,6 +149,9 @@ export function SettingsScreen() {
   );
   const [quietEnd, setQuietEnd] = useState(state.notificationQuietHours.end);
   const [privacyVisible, setPrivacyVisible] = useState(false);
+  const [openSection, setOpenSection] = useState<SettingsSectionKey | null>(
+    null,
+  );
   const [cycleEditing, setCycleEditing] = useState(false);
   const [cycleRecords, setCycleRecords] = useState(state.isLogger);
   const [hasCycleSeed, setHasCycleSeed] = useState(state.hasCycleSeed);
@@ -121,6 +167,24 @@ export function SettingsScreen() {
     Boolean,
   ).length;
   const showSubscription = shouldShowSubscriptionEntry(subscriptionState);
+
+  function resetCycleDraft() {
+    setCycleRecords(state.isLogger);
+    setHasCycleSeed(state.hasCycleSeed);
+    setCycleSeed(state.seed);
+    setCycleEditing(false);
+  }
+
+  function resetQuietHoursDraft() {
+    setQuietStart(state.notificationQuietHours.start);
+    setQuietEnd(state.notificationQuietHours.end);
+  }
+
+  function toggleSection(nextSection: SettingsSectionKey) {
+    if (openSection === 'cycle') resetCycleDraft();
+    if (openSection === 'notifications') resetQuietHoursDraft();
+    setOpenSection(current => (current === nextSection ? null : nextSection));
+  }
 
   useEffect(() => {
     setQuietStart(state.notificationQuietHours.start);
@@ -195,324 +259,398 @@ export function SettingsScreen() {
         {showSubscription ? (
           <Chip
             label={
-              subscriptionState.entitlement.tier === 'premium'
-                ? 'Plus'
-                : 'Free'
+              subscriptionState.entitlement.tier === 'premium' ? 'Plus' : 'Free'
             }
           />
         ) : null}
       </Card>
 
-      <SectionHeader title="계정과 복구" />
-      <AccountSettingsCard />
+      <View style={styles.accordionList}>
+        <SettingsAccordionSection
+          title="계정과 복구"
+          summary={
+            backendSession ? '로그인됨 · 복구와 내보내기' : '로그인 필요'
+          }
+          expanded={openSection === 'account'}
+          onPress={() => toggleSection('account')}
+        >
+          <AccountSettingsCard />
+        </SettingsAccordionSection>
 
-      <SectionHeader
-        title="내 주기 기록"
-        action={
-          <TextButton
-            label={cycleEditing ? '취소' : '수정'}
-            disabled={backendBusy}
-            onPress={() => {
-              if (cycleEditing) {
-                setCycleRecords(state.isLogger);
-                setHasCycleSeed(state.hasCycleSeed);
-                setCycleSeed(state.seed);
-              }
-              setCycleEditing(value => !value);
-            }}
-          />
-        }
-      />
-      {cycleEditing ? (
-        <Card style={styles.cycleCard}>
-          <ToggleRow
-            title="주기 관련 기록 사용"
-            description="끄면 기존 원본은 삭제하지 않지만 새 생리 시작·종료 기록을 멈춰요."
-            value={cycleRecords}
-            disabled={backendBusy}
-            onValueChange={setCycleRecords}
-          />
-          {cycleRecords ? (
-            <>
+        <SettingsAccordionSection
+          title="내 주기"
+          summary={
+            state.isLogger
+              ? state.hasCycleSeed
+                ? '주기 기록 · 참고용 예측 사용'
+                : '주기 기록 · 예측 기준 없음'
+              : '주기 기록 사용 안 함'
+          }
+          expanded={openSection === 'cycle'}
+          onPress={() => toggleSection('cycle')}
+        >
+          <View style={styles.sectionActionHeader}>
+            <Text style={styles.sectionBodyTitle}>내 주기 기록</Text>
+            <TextButton
+              label={cycleEditing ? '취소' : '수정'}
+              disabled={backendBusy}
+              onPress={() => {
+                if (cycleEditing) resetCycleDraft();
+                else setCycleEditing(true);
+              }}
+            />
+          </View>
+          {cycleEditing ? (
+            <Card style={styles.cycleCard}>
               <ToggleRow
-                title="예측 기준 사용"
-                description="날짜와 평균을 직접 입력한 경우에만 참고용 예측을 만들어요."
-                value={hasCycleSeed}
+                title="주기 관련 기록 사용"
+                description="끄면 기존 원본은 삭제하지 않지만 새 생리 시작·종료 기록을 멈춰요."
+                value={cycleRecords}
                 disabled={backendBusy}
-                onValueChange={setHasCycleSeed}
+                onValueChange={setCycleRecords}
               />
-              {hasCycleSeed ? (
+              {cycleRecords ? (
                 <>
-                  <Text style={styles.fieldLabel}>최근 생리 시작일</Text>
-                  <TextInput
-                    accessibilityLabel="최근 생리 시작일"
-                    autoCapitalize="none"
-                    editable={!backendBusy}
-                    maxLength={10}
-                    placeholder="YYYY-MM-DD"
-                    placeholderTextColor={colors.textSubtle}
-                    style={[
-                      styles.dateInput,
-                      !cycleDateValid && styles.inputInvalid,
-                    ]}
-                    value={cycleSeed.lastPeriodStart}
-                    onChangeText={lastPeriodStart =>
-                      setCycleSeed(current => ({
-                        ...current,
-                        lastPeriodStart,
-                        lastPeriodEnd: undefined,
-                      }))
-                    }
+                  <ToggleRow
+                    title="예측 기준 사용"
+                    description="날짜와 평균을 직접 입력한 경우에만 참고용 예측을 만들어요."
+                    value={hasCycleSeed}
+                    disabled={backendBusy}
+                    onValueChange={setHasCycleSeed}
                   />
-                  {!cycleDateValid ? (
-                    <Text style={styles.inputError}>
-                      오늘까지의 실제 날짜를 YYYY-MM-DD 형식으로 입력해 주세요.
+                  {hasCycleSeed ? (
+                    <>
+                      <Text style={styles.fieldLabel}>최근 생리 시작일</Text>
+                      <TextInput
+                        accessibilityLabel="최근 생리 시작일"
+                        autoCapitalize="none"
+                        editable={!backendBusy}
+                        maxLength={10}
+                        placeholder="YYYY-MM-DD"
+                        placeholderTextColor={colors.textSubtle}
+                        style={[
+                          styles.dateInput,
+                          !cycleDateValid && styles.inputInvalid,
+                        ]}
+                        value={cycleSeed.lastPeriodStart}
+                        onChangeText={lastPeriodStart =>
+                          setCycleSeed(current => ({
+                            ...current,
+                            lastPeriodStart,
+                            lastPeriodEnd: undefined,
+                          }))
+                        }
+                      />
+                      {!cycleDateValid ? (
+                        <Text style={styles.inputError}>
+                          오늘까지의 실제 날짜를 YYYY-MM-DD 형식으로 입력해
+                          주세요.
+                        </Text>
+                      ) : null}
+                      <Stepper
+                        label="평균 주기"
+                        value={cycleSeed.averageCycleLength}
+                        suffix="일"
+                        min={21}
+                        max={45}
+                        disabled={backendBusy}
+                        onChange={averageCycleLength =>
+                          setCycleSeed(current => ({
+                            ...current,
+                            averageCycleLength,
+                          }))
+                        }
+                      />
+                      <Stepper
+                        label="평균 기간"
+                        value={cycleSeed.averagePeriodLength}
+                        suffix="일"
+                        min={2}
+                        max={10}
+                        disabled={backendBusy}
+                        onChange={averagePeriodLength =>
+                          setCycleSeed(current => ({
+                            ...current,
+                            averagePeriodLength,
+                          }))
+                        }
+                      />
+                    </>
+                  ) : (
+                    <Text style={styles.cycleSummaryBody}>
+                      예측 없이 실제 기록과 오늘의 컨디션만 관리합니다.
                     </Text>
-                  ) : null}
-                  <Stepper
-                    label="평균 주기"
-                    value={cycleSeed.averageCycleLength}
-                    suffix="일"
-                    min={21}
-                    max={45}
-                    disabled={backendBusy}
-                    onChange={averageCycleLength =>
-                      setCycleSeed(current => ({
-                        ...current,
-                        averageCycleLength,
-                      }))
-                    }
-                  />
-                  <Stepper
-                    label="평균 기간"
-                    value={cycleSeed.averagePeriodLength}
-                    suffix="일"
-                    min={2}
-                    max={10}
-                    disabled={backendBusy}
-                    onChange={averagePeriodLength =>
-                      setCycleSeed(current => ({
-                        ...current,
-                        averagePeriodLength,
-                      }))
-                    }
-                  />
+                  )}
                 </>
-              ) : (
-                <Text style={styles.cycleSummaryBody}>
-                  예측 없이 실제 기록과 오늘의 컨디션만 관리합니다.
-                </Text>
-              )}
-            </>
-          ) : null}
-          <View style={styles.cycleActions}>
-            <SecondaryButton
-              label="취소"
-              disabled={backendBusy}
-              onPress={() => {
-                setCycleRecords(state.isLogger);
-                setHasCycleSeed(state.hasCycleSeed);
-                setCycleSeed(state.seed);
-                setCycleEditing(false);
-              }}
-            />
-            <PrimaryButton
-              label={backendBusy ? '저장 중…' : '주기 기준 저장'}
-              disabled={backendBusy || !cycleDateValid}
-              onPress={() => {
-                saveCycleSetup().catch(() => undefined);
-              }}
-            />
-          </View>
-        </Card>
-      ) : (
-        <Card style={styles.cycleSummaryCard}>
-          <Text style={styles.cycleSummaryTitle}>
-            {state.isLogger
-              ? state.hasCycleSeed
-                ? '주기 기록과 참고용 예측 사용 중'
-                : '주기 기록 중 · 예측 기준 없음'
-              : '주기 기록 사용 안 함'}
-          </Text>
-          <Text style={styles.cycleSummaryBody}>
-            {state.isLogger
-              ? state.hasCycleSeed
-                ? `최근 시작일 ${state.seed.lastPeriodStart} · 평균 ${state.seed.averageCycleLength}일 · 기간 ${state.seed.averagePeriodLength}일`
-                : '실제 시작·종료와 컨디션은 기록하지만 임의 기준으로 예측하지 않아요.'
-              : '기분·증상·컨디션 기록은 주기 예측 없이 계속 사용할 수 있어요.'}
-          </Text>
-        </Card>
-      )}
-
-      <SectionHeader
-        title="공유 범위"
-        action={
-          state.paired && state.sharingCompleted ? (
-            <Text style={styles.count}>{selectedCount}개 공유 중</Text>
-          ) : undefined
-        }
-      />
-      {state.paired && state.sharingCompleted ? (
-        <Card style={styles.rowsCard}>
-          {shareRows.map(row => (
-            <ToggleRow
-              key={row.key}
-              title={row.label}
-              value={state.shareSettings[row.key]}
-              disabled={backendBusy}
-              onValueChange={() => toggleShare(row.key)}
-            />
-          ))}
-        </Card>
-      ) : state.paired ? (
-        <Card tone="primary" style={styles.soloShareCard}>
-          <Text style={styles.soloShareTitle}>공유 설정을 완료해 주세요</Text>
-          <Text style={styles.soloShareBody}>
-            Pair는 연결됐지만 아직 공유 중인 건강 정보는 없습니다.
-          </Text>
-          <PrimaryButton
-            label="공유 설정 계속하기"
-            disabled={backendBusy}
-            onPress={continueToSharing}
-          />
-        </Card>
-      ) : (
-        <Card tone="primary" style={styles.soloShareCard}>
-          <Text style={styles.soloShareTitle}>
-            현재 공유 중인 정보가 없어요
-          </Text>
-          <Text style={styles.soloShareBody}>
-            파트너를 연결한 뒤에도 직접 켠 항목만 별도 projection으로
-            공유됩니다.
-          </Text>
-        </Card>
-      )}
-
-      <SectionHeader title="알림과 개인정보" />
-      <Card style={styles.rowsCard}>
-        <ToggleRow
-          title="중립적인 잠금화면 알림"
-          description={
-            notificationBusy
-              ? '기기 권한과 안전한 알림 등록을 확인하고 있어요.'
-              : '건강정보·이름·날짜 없이 중립 문구로만 표시'
-          }
-          value={state.neutralNotifications}
-          disabled={notificationBusy}
-          onValueChange={() => {
-            if (!notificationBusy) toggleNotifications().catch(() => undefined);
-          }}
-        />
-        {state.neutralNotifications ? (
-          <View style={styles.quietHours}>
-            <View style={styles.quietHeader}>
-              <View style={styles.linkCopy}>
-                <Text style={styles.linkTitle}>조용한 시간</Text>
-                <Text style={styles.linkDescription}>
-                  기기 시간대 기준 · 이 시간에는 발송하지 않아요
-                </Text>
+              ) : null}
+              <View style={styles.cycleActions}>
+                <SecondaryButton
+                  label="취소"
+                  disabled={backendBusy}
+                  onPress={resetCycleDraft}
+                />
+                <PrimaryButton
+                  label={backendBusy ? '저장 중…' : '주기 기준 저장'}
+                  disabled={backendBusy || !cycleDateValid}
+                  onPress={() => {
+                    saveCycleSetup().catch(() => undefined);
+                  }}
+                />
               </View>
-              <TextButton
-                disabled={notificationBusy}
-                label="저장"
-                onPress={() => {
-                  updateNotificationQuietHours(quietStart, quietEnd).catch(
-                    () => undefined,
-                  );
-                }}
-              />
-            </View>
-            <View style={styles.timeInputs}>
-              <TextInput
-                accessibilityLabel="조용한 시간 시작"
-                autoCapitalize="none"
-                editable={!notificationBusy}
-                keyboardType="numbers-and-punctuation"
-                maxLength={5}
-                onChangeText={setQuietStart}
-                placeholder="22:00"
-                placeholderTextColor={colors.textSubtle}
-                style={styles.timeInput}
-                value={quietStart}
-              />
-              <Text style={styles.timeSeparator}>–</Text>
-              <TextInput
-                accessibilityLabel="조용한 시간 종료"
-                autoCapitalize="none"
-                editable={!notificationBusy}
-                keyboardType="numbers-and-punctuation"
-                maxLength={5}
-                onChangeText={setQuietEnd}
-                placeholder="08:00"
-                placeholderTextColor={colors.textSubtle}
-                style={styles.timeInput}
-                value={quietEnd}
-              />
-            </View>
-          </View>
-        ) : null}
-        <ToggleRow
-          title="익명 진단 데이터"
-          description={
-            diagnosticsBusy
-              ? '진단 수집 설정을 적용하고 있어요.'
-              : '민감정보 없이 허용된 이벤트와 고정 오류 코드만 전송'
+            </Card>
+          ) : (
+            <Card style={styles.cycleSummaryCard}>
+              <Text style={styles.cycleSummaryTitle}>
+                {state.isLogger
+                  ? state.hasCycleSeed
+                    ? '주기 기록과 참고용 예측 사용 중'
+                    : '주기 기록 중 · 예측 기준 없음'
+                  : '주기 기록 사용 안 함'}
+              </Text>
+              <Text style={styles.cycleSummaryBody}>
+                {state.isLogger
+                  ? state.hasCycleSeed
+                    ? `최근 시작일 ${state.seed.lastPeriodStart} · 평균 ${state.seed.averageCycleLength}일 · 기간 ${state.seed.averagePeriodLength}일`
+                    : '실제 시작·종료와 컨디션은 기록하지만 임의 기준으로 예측하지 않아요.'
+                  : '기분·증상·컨디션 기록은 주기 예측 없이 계속 사용할 수 있어요.'}
+              </Text>
+            </Card>
+          )}
+        </SettingsAccordionSection>
+
+        <SettingsAccordionSection
+          title="공유 범위"
+          summary={
+            state.paired && state.sharingCompleted
+              ? `${selectedCount}개 공유 중`
+              : state.paired
+              ? '공유 설정 필요'
+              : '공유 없음'
           }
-          value={state.diagnosticsEnabled}
-          disabled={diagnosticsBusy}
-          onValueChange={() => {
-            if (!diagnosticsBusy) toggleDiagnostics().catch(() => undefined);
-          }}
-        />
-        <SettingLink
-          title="개인정보와 데이터 관리 안내"
-          description="수집·공유·알림·진단·내보내기·삭제 동작 확인"
-          onPress={() => setPrivacyVisible(true)}
-        />
-      </Card>
+          expanded={openSection === 'sharing'}
+          onPress={() => toggleSection('sharing')}
+        >
+          {state.paired && state.sharingCompleted ? (
+            <Card style={styles.rowsCard}>
+              {shareRows.map(row => (
+                <ToggleRow
+                  key={row.key}
+                  title={row.label}
+                  value={state.shareSettings[row.key]}
+                  disabled={backendBusy}
+                  onValueChange={() => toggleShare(row.key)}
+                />
+              ))}
+            </Card>
+          ) : state.paired ? (
+            <Card tone="primary" style={styles.soloShareCard}>
+              <Text style={styles.soloShareTitle}>
+                공유 설정을 완료해 주세요
+              </Text>
+              <Text style={styles.soloShareBody}>
+                Pair는 연결됐지만 아직 공유 중인 건강 정보는 없습니다.
+              </Text>
+              <PrimaryButton
+                label="공유 설정 계속하기"
+                disabled={backendBusy}
+                onPress={continueToSharing}
+              />
+            </Card>
+          ) : (
+            <Card tone="primary" style={styles.soloShareCard}>
+              <Text style={styles.soloShareTitle}>
+                현재 공유 중인 정보가 없어요
+              </Text>
+              <Text style={styles.soloShareBody}>
+                파트너를 연결한 뒤에도 직접 켠 항목만 별도 projection으로
+                공유됩니다.
+              </Text>
+            </Card>
+          )}
+        </SettingsAccordionSection>
 
-      {showSubscription ? (
-        <>
-          <SectionHeader title="구독" />
-          <SubscriptionSettingsCard />
-        </>
-      ) : null}
+        <SettingsAccordionSection
+          title="알림과 개인정보"
+          summary={`${
+            state.neutralNotifications ? '알림 켜짐' : '알림 꺼짐'
+          } · ${state.diagnosticsEnabled ? '진단 허용' : '진단 안 함'}`}
+          expanded={openSection === 'notifications'}
+          onPress={() => toggleSection('notifications')}
+        >
+          <Card style={styles.rowsCard}>
+            <ToggleRow
+              title="중립적인 잠금화면 알림"
+              description={
+                notificationBusy
+                  ? '기기 권한과 안전한 알림 등록을 확인하고 있어요.'
+                  : '건강정보·이름·날짜 없이 중립 문구로만 표시'
+              }
+              value={state.neutralNotifications}
+              disabled={notificationBusy}
+              onValueChange={() => {
+                if (!notificationBusy)
+                  toggleNotifications().catch(() => undefined);
+              }}
+            />
+            {state.neutralNotifications ? (
+              <View style={styles.quietHours}>
+                <View style={styles.quietHeader}>
+                  <View style={styles.linkCopy}>
+                    <Text style={styles.linkTitle}>조용한 시간</Text>
+                    <Text style={styles.linkDescription}>
+                      기기 시간대 기준 · 이 시간에는 발송하지 않아요
+                    </Text>
+                  </View>
+                  <TextButton
+                    disabled={notificationBusy}
+                    label="저장"
+                    onPress={() => {
+                      updateNotificationQuietHours(quietStart, quietEnd).catch(
+                        () => undefined,
+                      );
+                    }}
+                  />
+                </View>
+                <View style={styles.timeInputs}>
+                  <TextInput
+                    accessibilityLabel="조용한 시간 시작"
+                    autoCapitalize="none"
+                    editable={!notificationBusy}
+                    keyboardType="numbers-and-punctuation"
+                    maxLength={5}
+                    onChangeText={setQuietStart}
+                    placeholder="22:00"
+                    placeholderTextColor={colors.textSubtle}
+                    style={styles.timeInput}
+                    value={quietStart}
+                  />
+                  <Text style={styles.timeSeparator}>–</Text>
+                  <TextInput
+                    accessibilityLabel="조용한 시간 종료"
+                    autoCapitalize="none"
+                    editable={!notificationBusy}
+                    keyboardType="numbers-and-punctuation"
+                    maxLength={5}
+                    onChangeText={setQuietEnd}
+                    placeholder="08:00"
+                    placeholderTextColor={colors.textSubtle}
+                    style={styles.timeInput}
+                    value={quietEnd}
+                  />
+                </View>
+              </View>
+            ) : null}
+            <ToggleRow
+              title="익명 진단 데이터"
+              description={
+                diagnosticsBusy
+                  ? '진단 수집 설정을 적용하고 있어요.'
+                  : '민감정보 없이 허용된 이벤트와 고정 오류 코드만 전송'
+              }
+              value={state.diagnosticsEnabled}
+              disabled={diagnosticsBusy}
+              onValueChange={() => {
+                if (!diagnosticsBusy)
+                  toggleDiagnostics().catch(() => undefined);
+              }}
+            />
+            <SettingLink
+              title="개인정보와 데이터 관리 안내"
+              description="수집·공유·알림·진단·내보내기·삭제 동작 확인"
+              onPress={() => setPrivacyVisible(true)}
+            />
+          </Card>
+        </SettingsAccordionSection>
 
-      <SectionHeader title="연결과 데이터" />
-      <Card style={styles.rowsCard}>
-        {state.paired ? (
-          <SettingLink
-            title={backendBusy ? '연결 해제 처리 중…' : '파트너 연결 해제'}
-            description="접근권 즉시 회수 · 캐시 tombstone 동기화"
-            onPress={confirmDisconnect}
-            disabled={backendBusy}
-            danger
-          />
-        ) : (
-          <SettingLink
-            title="파트너 연결하기"
-            description="필요할 때 한 사람만 선택적으로 연결"
-            onPress={openPairing}
-            disabled={backendBusy}
-          />
-        )}
-        {backendKind === 'preview' ? (
-          <SettingLink
-            title="개발 데이터 초기화"
-            onPress={confirmReset}
-            danger
-          />
-        ) : null}
-      </Card>
+        <SettingsAccordionSection
+          title="구독"
+          summary={
+            subscriptionState.entitlement.tier === 'premium'
+              ? 'Plus 이용 중'
+              : showSubscription
+              ? 'Free 이용 중'
+              : '현재 구독 상품 없음'
+          }
+          expanded={openSection === 'subscription'}
+          onPress={() => toggleSection('subscription')}
+        >
+          {showSubscription ? (
+            <SubscriptionSettingsCard />
+          ) : (
+            <Card>
+              <Text style={styles.cycleSummaryBody}>
+                이 환경에서는 별도 구독 상품을 제공하지 않아요.
+              </Text>
+            </Card>
+          )}
+        </SettingsAccordionSection>
+
+        <SettingsAccordionSection
+          title="연결과 데이터"
+          summary={
+            state.paired ? `${state.partnerName} 님과 연결됨` : '연결 안 됨'
+          }
+          expanded={openSection === 'connection'}
+          onPress={() => toggleSection('connection')}
+        >
+          <Card style={styles.rowsCard}>
+            {state.paired ? (
+              <SettingLink
+                title={backendBusy ? '연결 해제 처리 중…' : '파트너 연결 해제'}
+                description="접근권 즉시 회수 · 캐시 tombstone 동기화"
+                onPress={confirmDisconnect}
+                disabled={backendBusy}
+                danger
+              />
+            ) : (
+              <SettingLink
+                title="파트너 연결하기"
+                description="필요할 때 한 사람만 선택적으로 연결"
+                onPress={openPairing}
+                disabled={backendBusy}
+              />
+            )}
+            {backendKind === 'preview' ? (
+              <SettingLink
+                title="개발 데이터 초기화"
+                onPress={confirmReset}
+                danger
+              />
+            ) : null}
+          </Card>
+        </SettingsAccordionSection>
+
+        <SettingsAccordionSection
+          title="앱 안내"
+          summary="개인정보 · 비의료 고지"
+          expanded={openSection === 'about'}
+          onPress={() => toggleSection('about')}
+        >
+          <Card style={styles.aboutCard}>
+            <Text style={styles.aboutTitle}>건강 정보 이용 안내</Text>
+            <Text style={styles.aboutBody}>
+              사이클 페어는 의료기기가 아닙니다. 제공되는 기록과 예상 정보는
+              질환을 진단·치료·치유·예방하기 위한 것이 아니며, 피임 또는 임신
+              가능성 판단에 사용할 수 없습니다. 건강에 관한 결정은 의료 전문가와
+              상의해 주세요.
+            </Text>
+            <SettingLink
+              title="개인정보 안내 보기"
+              description="수집·공유·보관·삭제 기준 확인"
+              onPress={() => setPrivacyVisible(true)}
+            />
+            <View style={styles.appIdentity}>
+              <Text style={styles.brand}>∞ 사이클 페어</Text>
+              <Text style={styles.version}>버전 1.0.1</Text>
+            </View>
+          </Card>
+        </SettingsAccordionSection>
+      </View>
 
       {backendError ? (
         <Text style={styles.syncError}>{backendError}</Text>
       ) : null}
 
-      <View style={styles.footer}>
-        <Text style={styles.brand}>∞ 사이클 페어</Text>
-        <Text style={styles.version}>1.0.1 · 의료 도구 아님</Text>
-      </View>
       <PrivacyCenterModal
         visible={privacyVisible}
         onClose={() => setPrivacyVisible(false)}
@@ -542,6 +680,47 @@ const styles = StyleSheet.create({
   profileCopy: { flex: 1, gap: 2 },
   profileTitle: { color: colors.text, fontSize: 16, fontWeight: '900' },
   profileBody: { color: colors.textMuted, fontSize: 11 },
+  accordionList: { gap: spacing.sm, marginTop: spacing.lg },
+  accordionSection: {
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 16,
+    backgroundColor: colors.surface,
+  },
+  accordionHeader: {
+    minHeight: 68,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+  accordionCopy: { flex: 1, gap: 3 },
+  accordionTitle: { color: colors.text, fontSize: 16, fontWeight: '900' },
+  accordionSummary: { color: colors.textMuted, fontSize: 11 },
+  accordionChevron: {
+    width: 24,
+    color: colors.primaryDark,
+    fontSize: 20,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  accordionBody: {
+    gap: spacing.md,
+    padding: spacing.md,
+    paddingTop: 0,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  sectionActionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+    paddingTop: spacing.md,
+  },
+  sectionBodyTitle: { color: colors.text, fontSize: 14, fontWeight: '900' },
   cycleCard: { gap: spacing.md, paddingTop: 0 },
   cycleSummaryCard: { gap: spacing.xs },
   cycleSummaryTitle: { color: colors.text, fontSize: 15, fontWeight: '900' },
@@ -565,7 +744,6 @@ const styles = StyleSheet.create({
   inputInvalid: { borderColor: colors.danger },
   inputError: { color: colors.danger, fontSize: 11, lineHeight: 17 },
   cycleActions: { gap: spacing.sm, marginTop: spacing.md },
-  count: { color: colors.primary, fontSize: 12, fontWeight: '800' },
   soloShareCard: { gap: spacing.xs },
   soloShareTitle: {
     color: colors.primaryDark,
@@ -615,13 +793,16 @@ const styles = StyleSheet.create({
   linkDescription: { color: colors.textMuted, fontSize: 11, lineHeight: 16 },
   chevron: { color: colors.textSubtle, fontSize: 25 },
   danger: { color: colors.danger },
+  aboutCard: { gap: spacing.md },
+  aboutTitle: { color: colors.text, fontSize: 16, fontWeight: '900' },
+  aboutBody: { color: colors.textMuted, fontSize: 13, lineHeight: 20 },
+  appIdentity: { alignItems: 'center', gap: spacing.xs, marginTop: spacing.sm },
   syncError: {
     color: colors.danger,
     fontSize: 12,
     lineHeight: 18,
     marginTop: spacing.md,
   },
-  footer: { alignItems: 'center', gap: spacing.xs, marginTop: spacing.xxl },
   brand: { color: colors.primaryDark, fontSize: 14, fontWeight: '900' },
   version: { color: colors.textSubtle, fontSize: 10 },
 });

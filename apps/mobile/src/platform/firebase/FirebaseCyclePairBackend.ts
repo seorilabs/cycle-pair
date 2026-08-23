@@ -27,6 +27,10 @@ import type {
   CyclePairBackend,
   OfflineSyncReport,
   PairEvent,
+  PartnerNudge,
+  PartnerNudgeSendResult,
+  PartnerNudgeState,
+  PartnerNudgeType,
   PrivateCycleRecord,
   PrivateDailyLogRecord,
   PrivateDailyLogSnapshot,
@@ -284,6 +288,54 @@ function parsePairEvent(
   };
 }
 
+function isPartnerNudgeType(value: unknown): value is PartnerNudgeType {
+  return value === 'check-in-request' || value === 'care-acknowledgement';
+}
+
+function parsePartnerNudge(
+  pairId: string,
+  value: unknown,
+): PartnerNudge | null {
+  const data = asRecord(value);
+  const requestId = asString(data?.requestId);
+  const senderUid = asString(data?.senderUid);
+  const recipientUid = asString(data?.recipientUid);
+  const sentAt = timestampToIso(data?.sentAt);
+  if (
+    !requestId ||
+    !senderUid ||
+    !recipientUid ||
+    !sentAt ||
+    !isPartnerNudgeType(data?.type)
+  ) {
+    return null;
+  }
+  return {
+    requestId,
+    pairId,
+    senderUid,
+    recipientUid,
+    type: data.type,
+    sentAt,
+  };
+}
+
+function parsePartnerNudgeCooldowns(
+  value: unknown,
+): PartnerNudgeState['nextAllowedAt'] {
+  const data = asRecord(value);
+  const checkIn = timestampToIso(data?.checkInNextAllowedAt);
+  const careAcknowledgement = timestampToIso(
+    data?.careAcknowledgementNextAllowedAt,
+  );
+  return {
+    ...(checkIn ? { 'check-in-request': checkIn } : {}),
+    ...(careAcknowledgement
+      ? { 'care-acknowledgement': careAcknowledgement }
+      : {}),
+  };
+}
+
 async function isDefinitelyOffline(): Promise<boolean> {
   try {
     const network = await fetchNetworkState();
@@ -343,7 +395,9 @@ function replayWriteResult(
   mutationId: string,
 ): BackendWriteResult {
   if (report.failureCode) {
-    const error = new Error('저장 대기 항목을 동기화할 수 없습니다.') as Error & {
+    const error = new Error(
+      '저장 대기 항목을 동기화할 수 없습니다.',
+    ) as Error & {
       code: string;
     };
     error.code = `sync/${report.failureCode}`;
@@ -363,7 +417,7 @@ async function queueAfterWriteFailure(
   if (!isRetryableNetworkError(error) && !(await isDefinitelyOffline())) {
     throw error;
   }
-  return {status: 'queued', mutationId: mutation.mutationId};
+  return { status: 'queued', mutationId: mutation.mutationId };
 }
 
 async function writeDailyLog(
@@ -1027,6 +1081,40 @@ export const firebaseCyclePairBackend: CyclePairBackend = {
     });
   },
 
+  async sendPartnerNudge(uid, pairId, type, requestId) {
+    requireSessionActive(uid);
+    requirePairActive(uid, pairId);
+    if (await isDefinitelyOffline()) {
+      const error = new Error(
+        '인터넷에 연결한 뒤 넛지를 다시 보내 주세요.',
+      ) as Error & { code: string };
+      error.code = 'network/offline';
+      throw error;
+    }
+    return call<
+      { pairId: string; type: PartnerNudgeType; requestId: string },
+      PartnerNudgeSendResult
+    >('sendPartnerNudge', { pairId, type, requestId });
+  },
+
+  async acknowledgePartnerNudge(pairId, requestId) {
+    const uid = currentUid();
+    requireSessionActive(uid);
+    requirePairActive(uid, pairId);
+    if (await isDefinitelyOffline()) {
+      const error = new Error(
+        '인터넷에 연결한 뒤 다시 확인해 주세요.',
+      ) as Error & { code: string };
+      error.code = 'network/offline';
+      throw error;
+    }
+    const result = await call<
+      { pairId: string; requestId: string },
+      { acknowledged: boolean }
+    >('acknowledgePartnerNudge', { pairId, requestId });
+    return result.acknowledged;
+  },
+
   async flushPendingMutations(uid) {
     return serializeMutationWrite(uid, () => flushQueuedMutations(uid));
   },
@@ -1213,6 +1301,48 @@ export const firebaseCyclePairBackend: CyclePairBackend = {
         onError,
       ),
     );
+  },
+
+  watchPartnerNudgeState(uid, membership, onValue, onError) {
+    let received: PartnerNudge | null = null;
+    let nextAllowedAt: PartnerNudgeState['nextAllowedAt'] = {};
+    const emit = () => onValue({ received, nextAllowedAt });
+    return trackSessionWatch(uid, () => {
+      const stopInbox = onSnapshot(
+        doc(getFirestore(), 'pairs', membership.pairId, 'nudgeInboxes', uid),
+        snapshot => {
+          if (
+            quiescedUids.has(uid) ||
+            isPairInvalidated(uid, membership.pairId)
+          )
+            return;
+          received = snapshot.exists()
+            ? parsePartnerNudge(membership.pairId, snapshot.data())
+            : null;
+          emit();
+        },
+        onError,
+      );
+      const stopSender = onSnapshot(
+        doc(getFirestore(), 'pairs', membership.pairId, 'nudgeSenders', uid),
+        snapshot => {
+          if (
+            quiescedUids.has(uid) ||
+            isPairInvalidated(uid, membership.pairId)
+          )
+            return;
+          nextAllowedAt = snapshot.exists()
+            ? parsePartnerNudgeCooldowns(snapshot.data())
+            : {};
+          emit();
+        },
+        onError,
+      );
+      return () => {
+        stopInbox();
+        stopSender();
+      };
+    });
   },
 
   watchPendingTombstones(uid, onValue, onError) {

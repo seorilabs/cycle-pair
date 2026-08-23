@@ -160,6 +160,7 @@ describe("neutral notification privacy boundary", () => {
   test("emits only the three routing fields and fixed neutral copy", () => {
     const pairUpdate = neutralNotificationContent("pair-update");
     const eventUpdate = neutralNotificationContent("shared-event-update");
+    const partnerNudge = neutralNotificationContent("partner-nudge");
     expect(pairUpdate).toEqual({
       notification: {
         title: "사이클 페어",
@@ -176,12 +177,17 @@ describe("neutral notification privacy boundary", () => {
       type: "shared-event-update",
       destination: "calendar",
     });
+    expect(partnerNudge.data).toEqual({
+      schemaVersion: "1",
+      type: "partner-nudge",
+      destination: "home",
+    });
     expect(Object.keys(eventUpdate.data).sort()).toEqual([
       "destination",
       "schemaVersion",
       "type",
     ]);
-    expect(JSON.stringify([pairUpdate, eventUpdate])).not.toMatch(
+    expect(JSON.stringify([pairUpdate, eventUpdate, partnerNudge])).not.toMatch(
       /uid|pairId|health|eventId|person|period|mood|symptom|note/i,
     );
   });

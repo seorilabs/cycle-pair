@@ -15,6 +15,10 @@ import {
   TextButton,
 } from '../components/Ui';
 import { colors, spacing } from '../theme';
+import {
+  PartnerNudgeActions,
+  PartnerNudgeInbox,
+} from '../components/PartnerNudges';
 
 export function HomeScreen({ onOpenRecord }: { onOpenRecord(): void }) {
   const { state, setTab } = useCyclePair();
@@ -30,11 +34,11 @@ export function HomeScreen({ onOpenRecord }: { onOpenRecord(): void }) {
       state.checkIn.periodEnded,
   );
   const syncCopy = {
-    idle: '동기화 준비됨',
-    syncing: '안전하게 동기화 중…',
-    queued: '오프라인 저장됨 · 연결되면 자동 동기화',
-    synced: '최신 기록 동기화 완료',
-    error: '동기화에 실패했어요 · 연결 상태를 확인해 주세요',
+    idle: '동기화 준비',
+    syncing: '동기화 중',
+    queued: '오프라인 저장',
+    synced: '동기화 완료',
+    error: '동기화 오류',
   }[state.syncStatus];
   const safePartnerProjection = getSafePartnerProjectionForToday(
     state.partnerProjection,
@@ -46,37 +50,35 @@ export function HomeScreen({ onOpenRecord }: { onOpenRecord(): void }) {
   return (
     <Screen contentStyle={styles.content}>
       <View style={styles.header}>
-        <View>
-          <Text style={styles.date}>
-            {formatKoreanDate(viewModel.today)} · 오늘
+        <Text style={styles.date}>
+          {formatKoreanDate(viewModel.today)} · 오늘
+        </Text>
+        <View style={styles.headlineRow}>
+          <Text numberOfLines={1} style={styles.greeting}>
+            {state.isLogger
+              ? '천천히, 내 몸의 리듬을 살펴봐요'
+              : state.paired
+              ? '함께, 상대의 오늘을 살펴봐요'
+              : '오늘 나의 컨디션을 살펴봐요'}
           </Text>
-          <Text style={styles.greeting}>
-            {state.isLogger ? (
-              <>천천히, 내 몸의{`\n`}리듬을 살펴봐요</>
-            ) : state.paired ? (
-              <>함께, 상대의{`\n`}오늘을 살펴봐요</>
-            ) : (
-              <>오늘 나의{`\n`}컨디션을 살펴봐요</>
-            )}
-          </Text>
-        </View>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>나</Text>
+          {state.syncStatus !== 'idle' ? (
+            <View accessibilityLabel={syncCopy} style={styles.syncRow}>
+              <View
+                style={[
+                  styles.syncDot,
+                  state.syncStatus === 'queued' && styles.syncDotQueued,
+                  state.syncStatus === 'error' && styles.syncDotError,
+                ]}
+              />
+              <Text numberOfLines={1} style={styles.syncText}>
+                {syncCopy}
+              </Text>
+            </View>
+          ) : null}
         </View>
       </View>
 
-      {state.syncStatus !== 'idle' ? (
-        <View style={styles.syncRow}>
-          <View
-            style={[
-              styles.syncDot,
-              state.syncStatus === 'queued' && styles.syncDotQueued,
-              state.syncStatus === 'error' && styles.syncDotError,
-            ]}
-          />
-          <Text style={styles.syncText}>{syncCopy}</Text>
-        </View>
-      ) : null}
+      {state.paired ? <PartnerNudgeInbox /> : null}
 
       {state.paired && state.sharingCompleted ? (
         <>
@@ -135,10 +137,7 @@ export function HomeScreen({ onOpenRecord }: { onOpenRecord(): void }) {
                 ) : null}
               </View>
             </View>
-            <View style={styles.careDivider} />
-            <Text style={styles.careEyebrow}>오늘의 케어 힌트</Text>
-            <Text style={styles.careTitle}>{viewModel.careTip.title}</Text>
-            <Text style={styles.careBody}>{viewModel.careTip.body}</Text>
+            <PartnerNudgeActions canAcknowledgeCare={hasPartnerSharedValues} />
           </Card>
         </>
       ) : (
@@ -163,6 +162,9 @@ export function HomeScreen({ onOpenRecord }: { onOpenRecord(): void }) {
                 ? '파트너 탭에서 공유할 항목을 직접 선택해 주세요.'
                 : '내 기록과 예측은 그대로 사용할 수 있고, 연결은 나중에 선택할 수 있어요.'}
             </Text>
+            {state.paired ? (
+              <PartnerNudgeActions canAcknowledgeCare={false} />
+            ) : null}
           </Card>
         </>
       )}
@@ -245,11 +247,6 @@ export function HomeScreen({ onOpenRecord }: { onOpenRecord(): void }) {
           </Card>
         </>
       ) : null}
-
-      <Text style={styles.disclaimer}>
-        주기 예측과 케어 힌트는 참고 정보이며 의료 진단·치료 또는 피임 도구가
-        아닙니다.
-      </Text>
     </Screen>
   );
 }
@@ -257,33 +254,27 @@ export function HomeScreen({ onOpenRecord }: { onOpenRecord(): void }) {
 const styles = StyleSheet.create({
   content: { paddingBottom: spacing.xl },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    gap: spacing.sm,
     marginBottom: spacing.xl,
   },
   date: {
     color: colors.primary,
     fontSize: 13,
     fontWeight: '800',
-    marginBottom: spacing.sm,
+  },
+  headlineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
   },
   greeting: {
+    flex: 1,
     color: colors.text,
-    fontSize: 27,
-    lineHeight: 35,
+    fontSize: 16,
+    lineHeight: 22,
     fontWeight: '800',
-    letterSpacing: -0.6,
+    letterSpacing: -0.4,
   },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: { color: colors.primaryDark, fontSize: 14, fontWeight: '900' },
   phaseCard: { padding: spacing.xl, borderColor: '#DCD0EF' },
   phaseTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
   phaseRing: {
@@ -346,9 +337,11 @@ const styles = StyleSheet.create({
   syncRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    marginTop: spacing.md,
+    gap: spacing.xs,
+    borderRadius: 999,
+    backgroundColor: colors.surface,
     paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
   },
   syncDot: {
     width: 8,
@@ -428,31 +421,5 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.sm,
     marginTop: spacing.sm,
-  },
-  careDivider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: '#F0CBBE',
-    marginVertical: spacing.lg,
-  },
-  careEyebrow: {
-    color: '#A45E46',
-    fontSize: 11,
-    fontWeight: '900',
-    marginBottom: spacing.xs,
-  },
-  careTitle: { color: colors.text, fontSize: 18, fontWeight: '900' },
-  careBody: {
-    color: colors.textMuted,
-    fontSize: 13,
-    lineHeight: 19,
-    marginTop: spacing.sm,
-  },
-  disclaimer: {
-    color: colors.textSubtle,
-    fontSize: 11,
-    lineHeight: 17,
-    textAlign: 'center',
-    marginTop: spacing.xl,
-    paddingHorizontal: spacing.lg,
   },
 });
