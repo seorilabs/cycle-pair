@@ -6,6 +6,7 @@ const mockWriteConditionShareDraft = jest.fn();
 const mockClearConditionShareDraft = jest.fn();
 const mockGetLocalDateKey = jest.fn();
 const mockOpenShareSheet = jest.fn();
+const mockTdsButton = jest.fn();
 
 jest.mock('@granite-js/react-native', () => ({
   createRoute: (_path: string, options: unknown) => options,
@@ -14,6 +15,102 @@ jest.mock('@granite-js/react-native', () => ({
 jest.mock('@apps-in-toss/framework', () => ({
   eventLog: jest.fn(async () => undefined),
 }));
+
+jest.mock('@toss/tds-react-native', () => {
+  const React = jest.requireActual<typeof import('react')>('react');
+  const ReactNative = jest.requireActual<typeof import('react-native')>('react-native');
+
+  type MockButtonProps = {
+    readonly children: React.ReactNode;
+    readonly disabled?: boolean;
+    readonly loading?: boolean;
+    readonly onPress?: () => void;
+  };
+  type MockTxtProps = {
+    readonly children: React.ReactNode;
+    readonly color?: string;
+    readonly fontWeight?: string;
+    readonly textAlign?: 'auto' | 'left' | 'right' | 'center' | 'justify';
+    readonly typography?: string;
+  };
+  type MockSegmentedItemProps = {
+    readonly children: React.ReactNode;
+    readonly checked?: boolean;
+    readonly onPress?: () => void;
+    readonly value: string;
+  };
+  type MockSegmentedRootProps = {
+    readonly children: React.ReactNode;
+    readonly onChange?: (value: string) => void;
+    readonly value: string;
+  };
+
+  const Button = (props: MockButtonProps) => {
+    mockTdsButton(props);
+    return React.createElement(
+      ReactNative.Pressable,
+      {
+        accessibilityRole: 'button',
+        accessibilityState: { disabled: props.disabled || props.loading },
+        disabled: props.disabled || props.loading,
+        onPress: props.onPress,
+      },
+      React.createElement(ReactNative.Text, null, props.children),
+    );
+  };
+  const SegmentedItem = ({
+    checked,
+    children,
+    onPress,
+  }: MockSegmentedItemProps) =>
+    React.createElement(
+      ReactNative.Pressable,
+      {
+        accessibilityRole: 'radio',
+        accessibilityState: { selected: checked },
+        onPress,
+      },
+      React.createElement(ReactNative.Text, null, children),
+    );
+  const SegmentedRoot = ({
+    children,
+    onChange,
+    value,
+  }: MockSegmentedRootProps) =>
+    React.createElement(
+      ReactNative.View,
+      { accessibilityRole: 'radiogroup' },
+      React.Children.map(children, child => {
+        if (!React.isValidElement<MockSegmentedItemProps>(child)) return child;
+        return React.cloneElement(child, {
+          checked: child.props.value === value,
+          onPress: () => onChange?.(child.props.value),
+        });
+      }),
+    );
+  const Txt = ({ children, textAlign }: MockTxtProps) =>
+    React.createElement(ReactNative.Text, { style: { textAlign } }, children);
+  const FullScreenLoader = ({ label }: { readonly label: string }) =>
+    React.createElement(ReactNative.Text, null, label);
+
+  return {
+    Button,
+    Loader: { FullScreen: FullScreenLoader },
+    SegmentedControl: { Item: SegmentedItem, Root: SegmentedRoot },
+    Txt,
+    colors: {
+      background: '#ffffff',
+      grey500: '#8b95a1',
+      grey600: '#6b7684',
+      grey700: '#4e5968',
+      grey800: '#333d4b',
+      layeredBackground: '#ffffff',
+      purple50: '#f9f0fc',
+      purple600: '#9128b4',
+      purple700: '#8222a2',
+    },
+  };
+});
 
 jest.mock('../condition-storage', () => ({
   readConditionShareDraft: (...args: unknown[]) => mockReadConditionShareDraft(...args),
@@ -171,5 +268,77 @@ describe('AppsInToss condition share analytics', () => {
 
     fireEvent.press(screen.getByText('컨디션 공유하기'));
     await waitFor(() => expect(mockOpenShareSheet).toHaveBeenCalledTimes(1));
+  });
+});
+
+describe('AppsInToss TDS presentation', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetLocalDateKey.mockReturnValue('2026-08-02');
+    mockReadConditionShareDraft.mockResolvedValue(COMPLETE_DRAFT);
+    mockWriteConditionShareDraft.mockResolvedValue(undefined);
+    mockClearConditionShareDraft.mockResolvedValue(undefined);
+    mockOpenShareSheet.mockResolvedValue('opened');
+    jest
+      .spyOn(AppState, 'addEventListener')
+      .mockReturnValue({ remove: jest.fn() });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('renders TDS buttons with full-width, disabled, and loading props', async () => {
+    let finishShare: ((outcome: 'opened') => void) | undefined;
+    mockOpenShareSheet.mockReturnValue(
+      new Promise(resolve => {
+        finishShare = resolve;
+      }),
+    );
+    const screen = render(<ConditionSharePage />);
+    await waitFor(() => expect(screen.getByText('컨디션 공유하기')).toBeTruthy());
+
+    const primary = mockTdsButton.mock.calls.find(
+      ([props]) => props.children === '컨디션 공유하기',
+    )?.[0];
+    const secondary = mockTdsButton.mock.calls.find(
+      ([props]) => props.children === '이 기기의 선택 내용 지우기',
+    )?.[0];
+    expect(primary).toMatchObject({ disabled: false, display: 'full', loading: false });
+    expect(secondary).toMatchObject({ display: 'full', style: 'weak', type: 'dark' });
+
+    fireEvent.press(screen.getByText('컨디션 공유하기'));
+    await waitFor(() =>
+      expect(
+        mockTdsButton.mock.calls.some(
+          ([props]) =>
+            props.children === '컨디션 공유하기' &&
+            props.disabled === true &&
+            props.loading === true,
+        ),
+      ).toBe(true),
+    );
+
+    await act(async () => finishShare?.('opened'));
+  });
+
+  it('keeps TDS selection state exposed as radio accessibility state', async () => {
+    const screen = render(<ConditionSharePage />);
+    await waitFor(() => expect(screen.getByText('편안해요')).toBeTruthy());
+
+    expect(screen.getByRole('radio', { name: '피곤해요' }).props.accessibilityState).toEqual({
+      selected: true,
+    });
+    expect(screen.getByRole('radio', { name: '편안해요' }).props.accessibilityState).toEqual({
+      selected: false,
+    });
+
+    fireEvent.press(screen.getByRole('radio', { name: '편안해요' }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('radio', { name: '편안해요' }).props.accessibilityState).toEqual({
+        selected: true,
+      }),
+    );
   });
 });
