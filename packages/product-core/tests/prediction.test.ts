@@ -5,6 +5,7 @@ import {
   calculateAverageCycleLength,
   createCycle,
   parseLocalDate,
+  PredictionInputError,
   predictFromCycleSeed,
   predictNextPeriod,
 } from "../src/index.js";
@@ -89,6 +90,50 @@ describe("cycle prediction", () => {
     );
     expect(prediction?.confidence).toBe("high");
     expect(prediction?.sampleSize).toBe(5);
+  });
+
+  it("prioritizes recent cycle changes within the default twelve-interval window", () => {
+    const cycles = cyclesFromIntervals(date("2024-01-01"), [
+      ...Array(20).fill(30),
+      ...Array(4).fill(26),
+    ]);
+
+    expect(calculateAverageCycleLength(cycles)).toBeLessThanOrEqual(28);
+    expect(
+      calculateAverageCycleLength(cycles, { recentIntervalWindow: 6 }),
+    ).toBeLessThanOrEqual(27);
+
+    const prediction = predictNextPeriod(cycles, date("2026-01-01"));
+    expect(prediction?.observedCycleLengths).toHaveLength(12);
+    expect(prediction?.sampleSize).toBe(12);
+
+    const sixIntervalPrediction = predictNextPeriod(cycles, date("2026-01-01"), {
+      recentIntervalWindow: 6,
+    });
+    expect(sixIntervalPrediction?.observedCycleLengths).toHaveLength(6);
+    expect(sixIntervalPrediction?.sampleSize).toBe(6);
+  });
+
+  it("keeps all intervals and the existing average below the configured window", () => {
+    const cycles = cyclesFromIntervals(date("2026-01-01"), [28, 30, 29]);
+    const prediction = predictNextPeriod(cycles, date("2026-04-01"), {
+      recentIntervalWindow: 12,
+    });
+
+    expect(calculateAverageCycleLength(cycles, { recentIntervalWindow: 12 })).toBe(29);
+    expect(prediction?.observedCycleLengths).toEqual([28, 30, 29]);
+    expect(prediction?.sampleSize).toBe(3);
+  });
+
+  it("rejects non-positive and non-integer recent interval windows", () => {
+    const cycles = cyclesFromIntervals(date("2026-01-01"), [28, 29]);
+
+    expect(() => calculateAverageCycleLength(cycles, { recentIntervalWindow: 0 })).toThrow(
+      PredictionInputError,
+    );
+    expect(() =>
+      predictNextPeriod(cycles, date("2026-03-01"), { recentIntervalWindow: 1.5 }),
+    ).toThrow(PredictionInputError);
   });
 
   it("returns low confidence for sparse or partially excluded history", () => {
