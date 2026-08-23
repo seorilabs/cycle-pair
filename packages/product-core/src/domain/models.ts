@@ -68,6 +68,7 @@ export interface Prediction {
   readonly generatedOn: LocalDate;
   readonly lastPeriodStart: LocalDate;
   readonly nextPeriodDate: LocalDate;
+  readonly daysLate: number;
   readonly averageCycleLengthDays: number;
   readonly confidence: PredictionConfidence;
   readonly confidenceWindow: {

@@ -40,9 +40,15 @@ export function buildNeutralNotificationSchedule(
   if (recipients.some((recipientId) => recipientId.trim().length === 0)) {
     throw new Error("recipient id must not be empty");
   }
-  const deliveryDates = [...new Set(leadDays.map((lead) => addDays(input.prediction.nextPeriodDate, -lead)))]
+  const futureDeliveryDates = [...new Set(leadDays.map((lead) => addDays(input.prediction.nextPeriodDate, -lead)))]
     .filter((date) => compareLocalDates(date, input.today) >= 0)
     .sort();
+  const deliveryDates =
+    futureDeliveryDates.length > 0
+      ? futureDeliveryDates
+      : compareLocalDates(input.prediction.nextPeriodDate, input.today) < 0
+        ? [input.today]
+        : [];
 
   return Object.freeze(
     recipients.flatMap((recipientId) =>

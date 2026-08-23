@@ -1,6 +1,6 @@
 import { addDays, localDate } from '@cyclepair/product-core';
 import { createInitialState, type DailyHistoryEntry } from './CyclePairStore';
-import { buildCycleViewModel } from './cycleViewModel';
+import { buildCycleViewModel, formatKoreanDate } from './cycleViewModel';
 
 describe('cycle view model roles', () => {
   it.each([
@@ -88,6 +88,36 @@ describe('cycle view model roles', () => {
     expect(viewModel.selfProjection.cyclePhase).toBeUndefined();
     expect(viewModel.selfProjection.periodDates).toBeUndefined();
     expect(viewModel.selfProjection.prediction).toBeUndefined();
+  });
+
+  it('exposes a late prediction without shifting the original expected date', () => {
+    const now = new Date();
+    const today = localDate(now.getFullYear(), now.getMonth() + 1, now.getDate());
+    const lastPeriodStart = addDays(today, -40);
+    const state = {
+      ...createInitialState(),
+      hasCycleSeed: true,
+      seed: {
+        lastPeriodStart,
+        averageCycleLength: 28,
+        averagePeriodLength: 5,
+      },
+    };
+
+    const viewModel = buildCycleViewModel(state);
+
+    expect(viewModel.predictedDate).toBe(addDays(lastPeriodStart, 28));
+    expect(viewModel.daysUntilPrediction).toBe(-12);
+    expect(viewModel.daysLate).toBe(12);
+  });
+
+  it('includes the year only when formatting a date from another year', () => {
+    expect(formatKoreanDate(localDate(2026, 12, 31), localDate(2026, 1, 1))).toBe(
+      '12월 31일',
+    );
+    expect(formatKoreanDate(localDate(2025, 12, 31), localDate(2026, 1, 1))).toBe(
+      '2025년 12월 31일',
+    );
   });
 
   it('does not derive a synthetic cycle for a partner-only user', () => {

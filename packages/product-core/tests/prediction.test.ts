@@ -40,6 +40,7 @@ describe("cycle prediction", () => {
       sampleSize: 0,
       observedCycleLengths: [],
       nextPeriodDate: "2026-08-05",
+      daysLate: 0,
       confidenceWindow: { start: "2026-07-29", end: "2026-08-12" },
     });
   });
@@ -55,11 +56,30 @@ describe("cycle prediction", () => {
       confidence: "medium",
       sampleSize: 3,
       nextPeriodDate: "2026-04-27",
+      daysLate: 0,
     });
     expect(prediction?.confidenceWindow).toEqual({
       start: "2026-04-23",
       end: "2026-05-01",
     });
+  });
+
+  it("reports lateness from the generated date without moving the predicted date", () => {
+    const seedPrediction = predictFromCycleSeed({
+      memberId: "member-a",
+      generatedOn: date("2026-08-15"),
+      lastPeriodStart: date("2026-07-08"),
+      averageCycleLengthDays: 28,
+    });
+    expect(seedPrediction.nextPeriodDate).toBe("2026-08-05");
+    expect(seedPrediction.daysLate).toBe(10);
+
+    const observedPrediction = predictNextPeriod(
+      cyclesFromIntervals(date("2026-05-08"), [28, 28, 28]),
+      date("2026-08-15"),
+    );
+    expect(observedPrediction?.nextPeriodDate).toBe("2026-08-28");
+    expect(observedPrediction?.daysLate).toBe(0);
   });
 
   it("assigns high confidence only to sufficient stable history", () => {
