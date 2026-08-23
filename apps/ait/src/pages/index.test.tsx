@@ -11,6 +11,10 @@ jest.mock('@granite-js/react-native', () => ({
   createRoute: (_path: string, options: unknown) => options,
 }));
 
+jest.mock('@apps-in-toss/framework', () => ({
+  eventLog: jest.fn(async () => undefined),
+}));
+
 jest.mock('../condition-storage', () => ({
   readConditionShareDraft: (...args: unknown[]) => mockReadConditionShareDraft(...args),
   writeConditionShareDraft: (...args: unknown[]) => mockWriteConditionShareDraft(...args),
@@ -23,6 +27,7 @@ jest.mock('../open-share-sheet', () => ({
 }));
 
 import { ConditionSharePage } from './index';
+import { createAitAnalytics, type AitAnalytics } from '../analytics';
 
 const COMPLETE_DRAFT = {
   condition: 'tired' as const,
@@ -80,5 +85,91 @@ describe('AppsInToss condition share date boundary', () => {
     await waitFor(() => expect(mockClearConditionShareDraft).toHaveBeenCalledTimes(1));
     expect(mockOpenShareSheet).not.toHaveBeenCalled();
     expect(screen.queryByText(/오늘 내 컨디션은/)).toBeNull();
+  });
+});
+
+describe('AppsInToss condition share analytics', () => {
+  let analytics: AitAnalytics;
+  let track: jest.Mock;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetLocalDateKey.mockReturnValue('2026-08-02');
+    mockReadConditionShareDraft.mockResolvedValue(COMPLETE_DRAFT);
+    mockWriteConditionShareDraft.mockResolvedValue(undefined);
+    mockClearConditionShareDraft.mockResolvedValue(undefined);
+    mockOpenShareSheet.mockResolvedValue('opened');
+    jest
+      .spyOn(AppState, 'addEventListener')
+      .mockReturnValue({ remove: jest.fn() });
+    track = jest.fn();
+    analytics = { track };
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('tracks restored drafts, condition/help selection, and clearing', async () => {
+    const screen = render(<ConditionSharePage analytics={analytics} />);
+    await waitFor(() =>
+      expect(screen.getByText(/오늘 내 컨디션은/)).toBeTruthy(),
+    );
+
+    expect(track).toHaveBeenCalledWith({ name: 'cp_ait_draft_restored' });
+
+    fireEvent.press(screen.getByText('편안해요'));
+    fireEvent.press(screen.getByText('따뜻하게 챙겨줘요'));
+    fireEvent.press(screen.getByText('이 기기의 선택 내용 지우기'));
+
+    expect(track).toHaveBeenCalledWith({
+      name: 'cp_ait_condition_select',
+      params: { group: 'condition', value: 'comfortable' },
+    });
+    expect(track).toHaveBeenCalledWith({
+      name: 'cp_ait_condition_select',
+      params: { group: 'help', value: 'warmth' },
+    });
+    expect(track).toHaveBeenCalledWith({ name: 'cp_ait_draft_cleared' });
+  });
+
+  it.each(['opened', 'unsupported', 'failed'] as const)(
+    'tracks the actual %s share outcome',
+    async (outcome) => {
+      mockOpenShareSheet.mockResolvedValue(outcome);
+      const screen = render(<ConditionSharePage analytics={analytics} />);
+      await waitFor(() =>
+        expect(screen.getByText('컨디션 공유하기')).toBeTruthy(),
+      );
+
+      fireEvent.press(screen.getByText('컨디션 공유하기'));
+
+      await waitFor(() => expect(mockOpenShareSheet).toHaveBeenCalledTimes(1));
+      expect(track).toHaveBeenCalledWith({ name: 'cp_ait_share_open' });
+      await waitFor(() =>
+        expect(track).toHaveBeenCalledWith({
+          name: 'cp_ait_share_result',
+          params: { outcome },
+        }),
+      );
+    },
+  );
+
+  it('keeps selection and sharing working when analytics throws', async () => {
+    const failingAnalytics = createAitAnalytics({
+      log: () => {
+        throw new Error('unsupported');
+      },
+    });
+    const screen = render(<ConditionSharePage analytics={failingAnalytics} />);
+    await waitFor(() =>
+      expect(screen.getByText('컨디션 공유하기')).toBeTruthy(),
+    );
+
+    fireEvent.press(screen.getByText('편안해요'));
+    expect(mockWriteConditionShareDraft).toHaveBeenCalled();
+
+    fireEvent.press(screen.getByText('컨디션 공유하기'));
+    await waitFor(() => expect(mockOpenShareSheet).toHaveBeenCalledTimes(1));
   });
 });
