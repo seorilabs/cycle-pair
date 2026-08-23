@@ -300,6 +300,40 @@ describe("owner-only raw records", () => {
     );
   });
 
+  test("daily log tombstones are owner-only and strictly validated", async () => {
+    const ownerDb = testEnv.authenticatedContext("alice").firestore();
+    const otherDb = testEnv.authenticatedContext("bob").firestore();
+    const path = "users/alice/privateDailyLogTombstones/2026-07-12";
+    const valid = {
+      schemaVersion: 1,
+      localDate: "2026-07-12",
+      lastMutationId: "delete-1",
+      updatedAt: serverTimestamp(),
+    };
+
+    await assertSucceeds(setDoc(doc(ownerDb, path), valid));
+    await assertSucceeds(getDoc(doc(ownerDb, path)));
+    await assertSucceeds(
+      getDocs(collection(ownerDb, "users/alice/privateDailyLogTombstones")),
+    );
+    await assertFails(getDoc(doc(otherDb, path)));
+    await assertFails(
+      getDocs(collection(otherDb, "users/alice/privateDailyLogTombstones")),
+    );
+    await assertFails(
+      setDoc(
+        doc(
+          ownerDb,
+          "users/alice/privateDailyLogTombstones/2026-07-13",
+        ),
+        valid,
+      ),
+    );
+    await assertFails(
+      setDoc(doc(ownerDb, path), {...valid, unexpected: true}),
+    );
+  });
+
   test("another user and an unauthenticated client cannot access raw records", async () => {
     await testEnv.withSecurityRulesDisabled(async context => {
       await setDoc(

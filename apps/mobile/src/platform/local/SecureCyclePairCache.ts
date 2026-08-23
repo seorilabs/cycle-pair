@@ -3,6 +3,7 @@ import * as Keychain from 'react-native-keychain';
 
 import type {
   ActivePairMembership,
+  DailyLogSyncCursor,
   PairEvent,
   PrivateDailyLogSnapshot,
   PrivateSetupSnapshot,
@@ -35,6 +36,12 @@ type CacheEntry =
     }
   | {
       readonly schemaVersion: typeof SCHEMA_VERSION;
+      readonly type: 'daily-log-sync';
+      readonly uid: string;
+      readonly value: DailyLogSyncCursor;
+    }
+  | {
+      readonly schemaVersion: typeof SCHEMA_VERSION;
       readonly type: 'pair-event';
       readonly uid: string;
       readonly value: PairEvent;
@@ -46,14 +53,13 @@ export interface SecureCyclePairCache {
   clearSetup(uid: string): Promise<void>;
   loadDailyLogs(
     uid: string,
-    fromDate: string,
-    toDate: string,
   ): Promise<readonly PrivateDailyLogSnapshot[]>;
   saveDailyLog(uid: string, log: PrivateDailyLogSnapshot): Promise<void>;
   deleteDailyLog(uid: string, localDate: string): Promise<void>;
-  saveDailyLogs(
+  loadDailyLogSyncCursor(uid: string): Promise<DailyLogSyncCursor | null>;
+  saveDailyLogSyncCursor(
     uid: string,
-    logs: readonly PrivateDailyLogSnapshot[],
+    cursor: DailyLogSyncCursor,
   ): Promise<void>;
   loadMembership(uid: string): Promise<ActivePairMembership | null>;
   saveMembership(
@@ -219,6 +225,14 @@ function isDailyLog(value: unknown): value is PrivateDailyLogSnapshot {
   );
 }
 
+function isDailyLogSyncCursor(value: unknown): value is DailyLogSyncCursor {
+  return (
+    isRecord(value) &&
+    Object.keys(value).length === 1 &&
+    isIsoTimestamp(value.updatedAt)
+  );
+}
+
 function isMembership(value: unknown): value is ActivePairMembership {
   return (
     isRecord(value) && isString(value.pairId) && isString(value.partnerUid)
@@ -259,6 +273,8 @@ function isCacheEntry(value: unknown): value is CacheEntry {
       return isMembership(value.value);
     case 'daily-log':
       return isDailyLog(value.value);
+    case 'daily-log-sync':
+      return isDailyLogSyncCursor(value.value);
     case 'pair-event':
       return isPairEvent(value.value);
     default:
@@ -303,6 +319,10 @@ function dailyService(uid: string, localDate: string): string {
 
 function legacyDailyService(uid: string, localDate: string): string {
   return `${legacyUserPrefix(uid)}daily::${encodeSegment(localDate)}`;
+}
+
+function dailyLogSyncService(uid: string): string {
+  return `${userPrefix(uid)}daily-sync`;
 }
 
 function pairEventPrefix(uid: string, pairId: string): string {
@@ -429,7 +449,9 @@ function uniqueCacheEntries(
   for (const entry of entries) {
     if (!entry) continue;
     const key =
-      entry.type === 'setup' || entry.type === 'membership'
+      entry.type === 'setup' ||
+      entry.type === 'membership' ||
+      entry.type === 'daily-log-sync'
         ? entry.type
         : entry.type === 'daily-log'
           ? `${entry.type}:${entry.value.localDate}`
@@ -470,8 +492,6 @@ class KeychainSecureCyclePairCache implements SecureCyclePairCache {
 
   async loadDailyLogs(
     uid: string,
-    fromDate: string,
-    toDate: string,
   ): Promise<readonly PrivateDailyLogSnapshot[]> {
     const entries = uniqueCacheEntries(
       await Promise.all(
@@ -485,9 +505,7 @@ class KeychainSecureCyclePairCache implements SecureCyclePairCache {
     );
     return entries
       .flatMap(entry =>
-        entry?.type === 'daily-log' &&
-        entry.value.localDate >= fromDate &&
-        entry.value.localDate <= toDate
+        entry?.type === 'daily-log'
           ? [entry.value]
           : [],
       )
@@ -516,21 +534,25 @@ class KeychainSecureCyclePairCache implements SecureCyclePairCache {
     });
   }
 
-  async saveDailyLogs(
+  async loadDailyLogSyncCursor(
     uid: string,
-    logs: readonly PrivateDailyLogSnapshot[],
+  ): Promise<DailyLogSyncCursor | null> {
+    const entry = await readEntry(dailyLogSyncService(uid), uid);
+    return entry?.type === 'daily-log-sync' ? entry.value : null;
+  }
+
+  saveDailyLogSyncCursor(
+    uid: string,
+    value: DailyLogSyncCursor,
   ): Promise<void> {
-    await secureUserDataFence.runWrite(uid, async () => {
-      for (const value of logs) {
-        await writeEntry(dailyService(uid, value.localDate), {
-          schemaVersion: SCHEMA_VERSION,
-          type: 'daily-log',
-          uid,
-          value,
-        });
-        await removeService(legacyDailyService(uid, value.localDate));
-      }
-    });
+    return secureUserDataFence.runWrite(uid, () =>
+      writeEntry(dailyLogSyncService(uid), {
+        schemaVersion: SCHEMA_VERSION,
+        type: 'daily-log-sync',
+        uid,
+        value,
+      }),
+    );
   }
 
   async loadMembership(uid: string): Promise<ActivePairMembership | null> {

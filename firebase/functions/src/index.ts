@@ -2424,7 +2424,31 @@ export const syncCycleProjection = onDocumentWritten(
 export const syncDailyLogProjection = onDocumentWritten(
   "users/{uid}/privateDailyLogs/{logId}",
   async event => {
-    await refreshProjectionForUser(event.params.uid);
+    const uid = event.params.uid;
+    const logId = event.params.logId;
+    const before = event.data?.before;
+    const after = event.data?.after;
+    const tombstoneRef = db.doc(
+      `users/${uid}/privateDailyLogTombstones/${logId}`,
+    );
+    if (after?.exists) {
+      await tombstoneRef.delete();
+    } else if (before?.exists) {
+      const deletionState = await db.doc(`accountDeletionStates/${uid}`).get();
+      if (!deletionState.exists) {
+        const lastMutationId = before.data()?.lastMutationId;
+        await tombstoneRef.set({
+          schemaVersion: 1,
+          localDate: logId,
+          lastMutationId:
+            typeof lastMutationId === "string" && lastMutationId.length > 0
+              ? lastMutationId.slice(0, 128)
+              : `server-delete-${logId}`,
+          updatedAt: Timestamp.now(),
+        });
+      }
+    }
+    await refreshProjectionForUser(uid);
   },
 );
 

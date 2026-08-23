@@ -210,6 +210,24 @@ service cloud.firestore {
           || !(('periodEnded' in data) && data.periodEnded == true));
     }
 
+    function isValidPrivateDailyLogTombstone(logId) {
+      let data = request.resource.data;
+      return data.keys().hasOnly([
+          'schemaVersion', 'localDate', 'lastMutationId', 'updatedAt'
+        ])
+        && data.keys().hasAll([
+          'schemaVersion', 'localDate', 'lastMutationId', 'updatedAt'
+        ])
+        && data.schemaVersion == 1
+        && data.localDate == logId
+        && isReasonableRecordedLocalDate(data.localDate)
+        && data.lastMutationId is string
+        && data.lastMutationId.size() > 0
+        && data.lastMutationId.size() <= 128
+        && data.updatedAt is timestamp
+        && data.updatedAt == request.time;
+    }
+
     function isValidShareSettings() {
       let data = request.resource.data;
       return data.keys().hasOnly([
@@ -253,6 +271,15 @@ service cloud.firestore {
       allow create, update: if accountMutationAllowed(uid)
         && hasCurrentSensitiveHealthConsent(uid)
         && isValidPrivateDailyLog(logId);
+      allow delete: if accountMutationAllowed(uid);
+    }
+
+    // Hard-deleted daily logs leave an owner-only change marker so another
+    // device can remove its encrypted cache without a full collection scan.
+    match /users/{uid}/privateDailyLogTombstones/{logId} {
+      allow read: if isOwner(uid);
+      allow create, update: if accountMutationAllowed(uid)
+        && isValidPrivateDailyLogTombstone(logId);
       allow delete: if accountMutationAllowed(uid);
     }
 

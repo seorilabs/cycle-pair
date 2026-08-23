@@ -11,18 +11,53 @@ import type { PrivateDailyLogSnapshot } from '../backend/CyclePairBackend';
 
 /**
  * Firestore already provides the ascending document-name index by default.
- * Fetch the complete bounded range in that direction, then retain the UI's
- * newest-first contract with a client-side sort.
+ * The first sync establishes a complete baseline in that direction. Later
+ * syncs use the updatedAt index and retain the UI's newest-first contract with
+ * a client-side sort.
  */
 export function buildPrivateDailyLogsQuery(
   uid: string,
-  fromDate: string,
-  toDate: string,
 ) {
   return query(
     collection(getFirestore(), 'users', uid, 'privateDailyLogs'),
-    where(documentId(), '>=', fromDate),
-    where(documentId(), '<=', toDate),
+    orderBy(documentId(), 'asc'),
+  );
+}
+
+function buildChangesQuery(
+  uid: string,
+  collectionName: 'privateDailyLogs' | 'privateDailyLogTombstones',
+  updatedAt: string,
+) {
+  const cursor = new Date(updatedAt);
+  return query(
+    collection(getFirestore(), 'users', uid, collectionName),
+    where('updatedAt', '>=', cursor),
+    orderBy('updatedAt', 'asc'),
+  );
+}
+
+export function buildChangedPrivateDailyLogsQuery(
+  uid: string,
+  updatedAt: string,
+) {
+  return buildChangesQuery(uid, 'privateDailyLogs', updatedAt);
+}
+
+export function buildPrivateDailyLogTombstonesQuery(
+  uid: string,
+  updatedAt?: string,
+) {
+  if (updatedAt) {
+    return buildChangesQuery(uid, 'privateDailyLogTombstones', updatedAt);
+  }
+  return query(
+    collection(
+      getFirestore(),
+      'users',
+      uid,
+      'privateDailyLogTombstones',
+    ),
     orderBy(documentId(), 'asc'),
   );
 }

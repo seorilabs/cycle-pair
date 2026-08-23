@@ -806,6 +806,40 @@ describe("pair lifecycle callables", () => {
         !Object.hasOwn(data, "conditionCode") &&
         !Object.hasOwn(data, "note"),
     );
+    const dailyTombstonePath =
+      `users/${aliceUid}/privateDailyLogTombstones/2026-07-14`;
+    expect(
+      (
+        await getDocFromServer(doc(alice.firestore, dailyTombstonePath))
+      ).data(),
+    ).toMatchObject({
+      schemaVersion: 1,
+      localDate: "2026-07-14",
+      lastMutationId: "daily-latest",
+    });
+    await setDoc(
+      doc(alice.firestore, `users/${aliceUid}/privateDailyLogs/2026-07-14`),
+      {
+        schemaVersion: 2,
+        localDate: "2026-07-14",
+        lastMutationId: "daily-recreated",
+        symptomTags: ["bloating"],
+        updatedAt: serverTimestamp(),
+      },
+    );
+    await waitForProjection(
+      bob.firestore,
+      projectionPath,
+      data =>
+        Array.isArray(data.symptomTags) &&
+        data.symptomTags[0] === "bloating" &&
+        data.dailyLogDate === "2026-07-14",
+    );
+    expect(
+      (
+        await getDocFromServer(doc(alice.firestore, dailyTombstonePath))
+      ).exists(),
+    ).toBe(false);
     await setDoc(
       doc(alice.firestore, settingsPath),
       shareSettings({periodDates: true, cyclePhase: true}),
@@ -1300,6 +1334,11 @@ describe("pair lifecycle callables", () => {
     expect(
       await emulatorDocumentExists(
         `users/${ownerUid}/privateDailyLogs/2026-07-14`,
+      ),
+    ).toBe(false);
+    expect(
+      await emulatorDocumentExists(
+        `users/${ownerUid}/privateDailyLogTombstones/2026-07-14`,
       ),
     ).toBe(false);
     expect(

@@ -81,6 +81,10 @@ export interface PrivateDailyLogSnapshot {
   readonly updatedAt?: string;
 }
 
+export interface DailyLogSyncCursor {
+  readonly updatedAt: string;
+}
+
 export interface PairEventInput {
   readonly id: string;
   readonly title: string;
@@ -217,11 +221,10 @@ export interface CyclePairBackend {
     inviteToken: string,
     recordsCycle: boolean,
   ): Promise<{ pairId: string }>;
-  listDailyLogs(
+  loadCachedDailyLogs(
     uid: string,
-    fromDate: string,
-    toDate: string,
   ): Promise<readonly PrivateDailyLogSnapshot[]>;
+  syncDailyLogs(uid: string): Promise<readonly PrivateDailyLogSnapshot[]>;
   saveDailyLog(
     uid: string,
     localDate: string,

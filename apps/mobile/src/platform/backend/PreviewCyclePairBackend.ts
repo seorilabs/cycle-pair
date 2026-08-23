@@ -54,16 +54,14 @@ export const previewCyclePairBackend: CyclePairBackend = {
   async acceptPairInvite() {
     return unsupported();
   },
-  async listDailyLogs(uid, fromDate, toDate) {
+  async loadCachedDailyLogs(uid) {
     return [...dailyLogs.entries()]
-      .filter(
-        ([key, snapshot]) =>
-          key.startsWith(`${uid}:`) &&
-          snapshot.localDate >= fromDate &&
-          snapshot.localDate <= toDate,
-      )
+      .filter(([key]) => key.startsWith(`${uid}:`))
       .map(([, snapshot]) => snapshot)
       .sort((left, right) => right.localDate.localeCompare(left.localDate));
+  },
+  async syncDailyLogs(uid) {
+    return this.loadCachedDailyLogs(uid);
   },
   async saveDailyLog(uid, localDate, record, mutationId) {
     dailyLogs.set(dailyKey(uid, localDate), {
