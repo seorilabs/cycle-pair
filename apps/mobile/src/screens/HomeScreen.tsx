@@ -227,21 +227,39 @@ export function HomeScreen({ onOpenRecord }: { onOpenRecord(): void }) {
             </Text>
             <View style={styles.predictionRow}>
               <View>
-                <Text style={styles.predictionLabel}>내 다음 예상 범위</Text>
+                <Text style={styles.predictionLabel}>
+                  {viewModel.daysLate ? '마지막 예상 범위' : '내 다음 예상 범위'}
+                </Text>
                 <Text style={styles.predictionValue}>
                   {!state.hasCycleSeed
                     ? '예측 기준을 설정해 주세요'
                     : viewModel.predictionStart && viewModel.predictionEnd
                     ? `${formatKoreanDate(
                         viewModel.predictionStart,
-                      )} – ${formatKoreanDate(viewModel.predictionEnd)}`
+                        viewModel.today,
+                      )} – ${formatKoreanDate(
+                        viewModel.predictionEnd,
+                        viewModel.today,
+                      )}`
                     : '기록이 더 필요해요'}
                 </Text>
+                {viewModel.daysLate ? (
+                  <Text style={styles.lateNotice}>
+                    예정일에서 {viewModel.daysLate}일 지났어요. 새 주기가
+                    시작됐다면 기록해 주세요.
+                  </Text>
+                ) : null}
               </View>
               {state.hasCycleSeed &&
-              viewModel.daysUntilPrediction !== undefined &&
-              viewModel.daysUntilPrediction >= 0 ? (
-                <Chip label={`D-${viewModel.daysUntilPrediction}`} selected />
+              viewModel.daysUntilPrediction !== undefined ? (
+                <Chip
+                  label={
+                    viewModel.daysLate
+                      ? `지연 ${viewModel.daysLate}일`
+                      : `D-${viewModel.daysUntilPrediction}`
+                  }
+                  selected
+                />
               ) : null}
             </View>
           </Card>
@@ -333,6 +351,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
     marginTop: 2,
+  },
+  lateNotice: {
+    color: colors.textMuted,
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: spacing.xs,
+    maxWidth: 220,
   },
   syncRow: {
     flexDirection: 'row',

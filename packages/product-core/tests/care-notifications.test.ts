@@ -90,4 +90,16 @@ describe("neutral notification schedule", () => {
       }),
     ).toThrow("HH:mm");
   });
+
+  it("keeps one neutral reminder today after the predicted date has passed", () => {
+    const schedule = buildNeutralNotificationSchedule({
+      prediction: prediction(),
+      recipientIds: ["member-b"],
+      today: date("2026-07-03"),
+    });
+
+    expect(schedule).toHaveLength(1);
+    expect(schedule[0]?.deliverOn).toBe("2026-07-03");
+    expect(schedule[0]?.body).toBe("함께 확인할 업데이트가 있어요.");
+  });
 });

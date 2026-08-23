@@ -41,12 +41,14 @@ export function predictFromCycleSeed(input: CycleSeedPredictionInput): Predictio
   }
 
   const nextPeriodDate = addDays(input.lastPeriodStart, input.averageCycleLengthDays);
+  const daysLate = Math.max(daysBetween(nextPeriodDate, input.generatedOn), 0);
   const radius = windowRadiusFor("low");
   return Object.freeze({
     memberId: input.memberId,
     generatedOn: input.generatedOn,
     lastPeriodStart: input.lastPeriodStart,
     nextPeriodDate,
+    daysLate,
     averageCycleLengthDays: input.averageCycleLengthDays,
     confidence: "low",
     confidenceWindow: Object.freeze({
@@ -174,6 +176,7 @@ export function predictNextPeriod(
     return null;
   }
   const nextPeriodDate = addDays(lastPeriodStart, averageCycleLengthDays);
+  const daysLate = Math.max(daysBetween(nextPeriodDate, generatedOn), 0);
   const confidence = confidenceFor(summary.validIntervals, summary.excludedIntervalCount > 0);
   const radius = windowRadiusFor(confidence);
 
@@ -182,6 +185,7 @@ export function predictNextPeriod(
     generatedOn,
     lastPeriodStart,
     nextPeriodDate,
+    daysLate,
     averageCycleLengthDays,
     confidence,
     confidenceWindow: Object.freeze({

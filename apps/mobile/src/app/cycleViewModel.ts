@@ -76,6 +76,7 @@ export interface CycleViewModel {
   predictionStart?: LocalDate;
   predictionEnd?: LocalDate;
   daysUntilPrediction?: number;
+  daysLate?: number;
   selfProjection: PartnerProjection;
   partnerProjection: PartnerProjection;
   careTip: CareTip;
@@ -314,6 +315,7 @@ export function buildCycleViewModel(state: CyclePairState): CycleViewModel {
           predictionStart: prediction.confidenceWindow.start,
           predictionEnd: prediction.confidenceWindow.end,
           daysUntilPrediction: daysBetween(today, prediction.nextPeriodDate),
+          daysLate: prediction.daysLate,
         }
       : {}),
     selfProjection,
@@ -322,7 +324,12 @@ export function buildCycleViewModel(state: CyclePairState): CycleViewModel {
   };
 }
 
-export function formatKoreanDate(value: LocalDate | string): string {
-  const [, month, day] = String(value).split('-');
-  return `${Number(month)}월 ${Number(day)}일`;
+export function formatKoreanDate(
+  value: LocalDate | string,
+  reference: LocalDate | string = todayLocalDate(),
+): string {
+  const [year, month, day] = String(value).split('-');
+  const [referenceYear] = String(reference).split('-');
+  const date = `${Number(month)}월 ${Number(day)}일`;
+  return year === referenceYear ? date : `${Number(year)}년 ${date}`;
 }
