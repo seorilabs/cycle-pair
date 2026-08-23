@@ -1151,16 +1151,26 @@ export function CyclePairProvider({
         // when uncached Firestore reads fail while the device is offline.
         setBackendSession(session);
         // Historical records are not required to decide the startup route.
-        // Hydrate them after the shell can render so a year-long query cannot
-        // hold the loading indicator. Merge protects a check-in saved while
-        // the background read is still in flight.
+        // Restore the complete encrypted cache before starting remote sync so
+        // neither rendering nor long-term cycle history waits on Firestore.
         setBackendHydrating(false);
         const dailyHistoryLoad = backend
-          .listDailyLogs(session.uid, daysAgo(365), toDeviceLocalDate())
+          .loadCachedDailyLogs(session.uid)
           .then(dailyLogs => {
             if (!active) return;
             dispatch({
               type: 'MERGE_DAILY_HISTORY',
+              payload: dailyLogs.map(fromPrivateDailyLogSnapshot),
+            });
+          })
+          .catch(error => {
+            if (active) reportBackendError(error);
+          })
+          .then(() => backend.syncDailyLogs(session.uid))
+          .then(dailyLogs => {
+            if (!active) return;
+            dispatch({
+              type: 'RESTORE_DAILY_HISTORY',
               payload: dailyLogs.map(fromPrivateDailyLogSnapshot),
             });
           })
@@ -2128,11 +2138,7 @@ export function CyclePairProvider({
           if (!active) return;
           dailyHistory = latestState.current.dailyHistory;
         } else {
-          const dailyLogs = await backend.listDailyLogs(
-            backendSession.uid,
-            daysAgo(365),
-            toDeviceLocalDate(),
-          );
+          const dailyLogs = await backend.syncDailyLogs(backendSession.uid);
           if (!active) return;
           dailyHistory = dailyLogs.map(fromPrivateDailyLogSnapshot);
           dispatch({

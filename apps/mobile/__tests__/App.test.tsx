@@ -215,7 +215,7 @@ describe('CyclePair mobile app', () => {
     );
   });
 
-  it('연간 기록 조회가 끝나기 전에 저장된 setup으로 홈을 연다', async () => {
+  it('원격 증분 동기화를 기다리지 않고 암호화 캐시 기록을 먼저 복원한다', async () => {
     await AsyncStorage.setItem(
       '@cyclepair/app-state/v1',
       JSON.stringify({
@@ -227,12 +227,12 @@ describe('CyclePair mobile app', () => {
     );
     let resolveDailyLogs:
       | ((
-          value: Awaited<ReturnType<CyclePairBackend['listDailyLogs']>>,
+          value: Awaited<ReturnType<CyclePairBackend['syncDailyLogs']>>,
         ) => void)
       | undefined;
-    const listDailyLogs = jest.fn(
+    const syncDailyLogs = jest.fn(
       () =>
-        new Promise<Awaited<ReturnType<CyclePairBackend['listDailyLogs']>>>(
+        new Promise<Awaited<ReturnType<CyclePairBackend['syncDailyLogs']>>>(
           resolve => {
             resolveDailyLogs = resolve;
           },
@@ -247,24 +247,33 @@ describe('CyclePair mobile app', () => {
           consentVersion: SENSITIVE_HEALTH_CONSENT_VERSION,
         };
       },
-      listDailyLogs,
+      async loadCachedDailyLogs() {
+        return [
+          {
+            localDate: deviceLocalDate(),
+            record: {moodTag: 'good', note: '캐시에서 즉시 복원'},
+          },
+        ];
+      },
+      syncDailyLogs,
     };
 
     const view = await render(<App backend={backend} />);
 
     await waitFor(() => expect(view.getByText(/오늘 나의/)).toBeTruthy());
-    expect(listDailyLogs).toHaveBeenCalledTimes(1);
+    expect(syncDailyLogs).toHaveBeenCalledTimes(1);
+    await fireEvent.press(view.getByLabelText('달력'));
+    await waitFor(() => expect(view.getByText('캐시에서 즉시 복원')).toBeTruthy());
 
     await act(async () => {
       resolveDailyLogs?.([
         {
           localDate: deviceLocalDate(),
-          record: { moodTag: 'good', note: '백그라운드 복원' },
+          record: { moodTag: 'good', note: '원격 증분 복원' },
         },
       ]);
     });
-    await fireEvent.press(view.getByLabelText('달력'));
-    await waitFor(() => expect(view.getByText('백그라운드 복원')).toBeTruthy());
+    await waitFor(() => expect(view.getByText('원격 증분 복원')).toBeTruthy());
   });
 
   it('does not hydrate Pair membership or events from device cache on startup', async () => {
@@ -574,7 +583,15 @@ describe('CyclePair mobile app', () => {
           consentVersion: SENSITIVE_HEALTH_CONSENT_VERSION,
         };
       },
-      async listDailyLogs() {
+      async loadCachedDailyLogs() {
+        return [
+          {
+            localDate: today,
+            record: { moodTag: 'good', note: '삭제할 기록' },
+          },
+        ];
+      },
+      async syncDailyLogs() {
         return [
           {
             localDate: today,

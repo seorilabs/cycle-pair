@@ -16,6 +16,8 @@ jest.mock('@react-native-firebase/firestore', () => ({
 
 import { collection, orderBy, where } from '@react-native-firebase/firestore';
 import {
+  buildChangedPrivateDailyLogsQuery,
+  buildPrivateDailyLogTombstonesQuery,
   buildPrivateDailyLogsQuery,
   sortDailyLogsNewestFirst,
 } from './privateDailyLogsQuery';
@@ -29,8 +31,8 @@ describe('private daily log query', () => {
     jest.clearAllMocks();
   });
 
-  it('uses the built-in ascending document-name index for a bounded range', () => {
-    buildPrivateDailyLogsQuery('user-1', '2026-07-01', '2026-07-31');
+  it('uses the built-in ascending document-name index for the first full sync', () => {
+    buildPrivateDailyLogsQuery('user-1');
 
     expect(mockCollection).toHaveBeenCalledWith(
       'firestore',
@@ -38,20 +40,45 @@ describe('private daily log query', () => {
       'user-1',
       'privateDailyLogs',
     );
+    expect(mockWhere).not.toHaveBeenCalled();
+    expect(mockOrderBy).toHaveBeenCalledWith('__name__', 'asc');
+    expect(mockOrderBy).not.toHaveBeenCalledWith('__name__', 'desc');
+  });
+
+  it('queries only log and tombstone changes from the persisted cursor', () => {
+    const updatedAt = '2026-07-14T01:02:03.000Z';
+
+    buildChangedPrivateDailyLogsQuery('user-1', updatedAt);
+    buildPrivateDailyLogTombstonesQuery('user-1', updatedAt);
+
+    expect(mockCollection).toHaveBeenNthCalledWith(
+      1,
+      'firestore',
+      'users',
+      'user-1',
+      'privateDailyLogs',
+    );
+    expect(mockCollection).toHaveBeenNthCalledWith(
+      2,
+      'firestore',
+      'users',
+      'user-1',
+      'privateDailyLogTombstones',
+    );
     expect(mockWhere).toHaveBeenNthCalledWith(
       1,
-      '__name__',
+      'updatedAt',
       '>=',
-      '2026-07-01',
+      new Date(updatedAt),
     );
     expect(mockWhere).toHaveBeenNthCalledWith(
       2,
-      '__name__',
-      '<=',
-      '2026-07-31',
+      'updatedAt',
+      '>=',
+      new Date(updatedAt),
     );
-    expect(mockOrderBy).toHaveBeenCalledWith('__name__', 'asc');
-    expect(mockOrderBy).not.toHaveBeenCalledWith('__name__', 'desc');
+    expect(mockOrderBy).toHaveBeenNthCalledWith(1, 'updatedAt', 'asc');
+    expect(mockOrderBy).toHaveBeenNthCalledWith(2, 'updatedAt', 'asc');
   });
 
   it('keeps the public newest-first result contract without mutating input', () => {

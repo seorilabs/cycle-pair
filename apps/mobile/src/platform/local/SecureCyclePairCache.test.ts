@@ -92,7 +92,7 @@ describe('secureCyclePairCache', () => {
       setup,
     );
     await expect(
-      secureCyclePairCache.loadDailyLogs('user-a', '2026-07-01', '2026-07-31'),
+      secureCyclePairCache.loadDailyLogs('user-a'),
     ).resolves.toEqual([daily]);
     expect(setPassword).toHaveBeenCalledWith(
       'user-a',
@@ -122,10 +122,29 @@ describe('secureCyclePairCache', () => {
     await secureCyclePairCache.deleteDailyLog('user-a', '2026-07-14');
 
     await expect(
-      secureCyclePairCache.loadDailyLogs('user-a', '2026-07-01', '2026-07-31'),
+      secureCyclePairCache.loadDailyLogs('user-a'),
     ).resolves.toEqual([
       {localDate: '2026-07-13', record: {moodTag: 'low'}},
     ]);
+  });
+
+  it('365일 이전 기록과 증분 동기화 커서를 함께 보존한다', async () => {
+    const oldLog = {
+      localDate: '2024-01-01',
+      record: {periodStarted: true},
+      updatedAt: '2024-01-01T01:00:00.000Z',
+    };
+    const cursor = {updatedAt: '2026-08-23T00:00:00.000Z'};
+
+    await secureCyclePairCache.saveDailyLog('user-a', oldLog);
+    await secureCyclePairCache.saveDailyLogSyncCursor('user-a', cursor);
+
+    await expect(secureCyclePairCache.loadDailyLogs('user-a')).resolves.toEqual([
+      oldLog,
+    ]);
+    await expect(
+      secureCyclePairCache.loadDailyLogSyncCursor('user-a'),
+    ).resolves.toEqual(cursor);
   });
 
   it('기존 raw service cache를 읽되 다음 저장부터 원문 식별자를 제거한다', async () => {

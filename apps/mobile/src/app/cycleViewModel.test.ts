@@ -175,6 +175,39 @@ describe('cycle view model roles', () => {
     expect(viewModel.selfProjection.prediction?.confidence).toBe('low');
   });
 
+  it('keeps period starts older than 365 days in the observed prediction history', () => {
+    const today = new Date();
+    const todayValue = localDate(
+      today.getFullYear(),
+      today.getMonth() + 1,
+      today.getDate(),
+    );
+    const oldest = addDays(todayValue, -420);
+    const middle = addDays(todayValue, -370);
+    const latest = addDays(todayValue, -340);
+    const state = {
+      ...createInitialState(),
+      hasCycleSeed: true,
+      seed: {
+        lastPeriodStart: latest,
+        averageCycleLength: 28,
+        averagePeriodLength: 5,
+      },
+      dailyHistory: [oldest, middle].map(localDateValue => ({
+        localDate: localDateValue,
+        checkIn: {
+          symptoms: [],
+          periodStarted: true,
+          periodEnded: false,
+        },
+      })),
+    };
+
+    const viewModel = buildCycleViewModel(state);
+
+    expect(viewModel.predictedDate).toBe(addDays(latest, 40));
+  });
+
   it('maps explicit energy, condition, and note into the private domain log', () => {
     const state = {
       ...createInitialState(),

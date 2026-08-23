@@ -19,11 +19,20 @@ jest.mock('@react-native-firebase/firestore', () => ({
   initializeFirestore: jest.fn(async () => ({})),
   limit: jest.fn((value: number) => ({ limit: value })),
   onSnapshot: jest.fn(),
-  orderBy: jest.fn(),
-  query: jest.fn((reference: unknown) => reference),
+  orderBy: jest.fn((field: unknown, direction: unknown) => ({
+    orderBy: {field, direction},
+  })),
+  query: jest.fn((...constraints: unknown[]) => constraints),
   serverTimestamp: jest.fn(),
   setDoc: jest.fn(),
-  where: jest.fn(),
+  where: jest.fn((field: unknown, operator: unknown, value: unknown) => ({
+    where: {field, operator, value},
+  })),
+  writeBatch: jest.fn(() => ({
+    set: jest.fn(),
+    delete: jest.fn(),
+    commit: jest.fn(async () => undefined),
+  })),
 }));
 
 jest.mock('@react-native-firebase/functions', () => ({
@@ -32,22 +41,23 @@ jest.mock('@react-native-firebase/functions', () => ({
 }));
 
 import {
-  deleteDoc,
   getDocs,
   onSnapshot,
   setDoc,
+  writeBatch,
 } from '@react-native-firebase/firestore';
 import { fetch as fetchNetworkState } from '@react-native-community/netinfo';
 import { httpsCallable } from '@react-native-firebase/functions';
 
 import { secureOfflineMutationQueue } from '../local/SecureOfflineMutationQueue';
+import { secureCyclePairCache } from '../local/SecureCyclePairCache';
 import { firebaseCyclePairBackend } from './FirebaseCyclePairBackend';
 import { SENSITIVE_HEALTH_CONSENT_VERSION } from '../../domain/privacy/SensitiveHealthConsent';
 
 const onSnapshotMock = onSnapshot as jest.MockedFunction<typeof onSnapshot>;
-const deleteDocMock = deleteDoc as jest.MockedFunction<typeof deleteDoc>;
 const getDocsMock = getDocs as jest.MockedFunction<typeof getDocs>;
 const setDocMock = setDoc as jest.MockedFunction<typeof setDoc>;
+const writeBatchMock = writeBatch as jest.MockedFunction<typeof writeBatch>;
 const fetchNetworkStateMock = fetchNetworkState as jest.MockedFunction<
   typeof fetchNetworkState
 >;
@@ -110,11 +120,13 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     await secureOfflineMutationQueue.clearUser(uid);
+    await secureCyclePairCache.clearUser(uid);
     firebaseCyclePairBackend.resumeSession(uid);
   });
 
   afterEach(async () => {
     await secureOfflineMutationQueue.clearUser(uid);
+    await secureCyclePairCache.clearUser(uid);
   });
 
   it('현재 동의 버전만 schema v2 setup으로 저장한다', async () => {
@@ -174,7 +186,13 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
   });
 
   it('기록 권한 오류를 오프라인 저장으로 숨기지 않고 암호화 큐에 보존한다', async () => {
-    setDocMock.mockRejectedValueOnce({ code: 'firestore/permission-denied' });
+    writeBatchMock.mockReturnValueOnce({
+      set: jest.fn(),
+      delete: jest.fn(),
+      commit: jest.fn(async () => {
+        throw {code: 'firestore/permission-denied'};
+      }),
+    } as unknown as ReturnType<typeof writeBatch>);
 
     await expect(
       firebaseCyclePairBackend.saveDailyLog(
@@ -195,9 +213,13 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
   });
 
   it('삭제 권한 오류도 오프라인 저장으로 숨기지 않고 암호화 큐에서 재시도한다', async () => {
-    deleteDocMock.mockRejectedValueOnce({
-      code: 'firestore/permission-denied',
-    });
+    writeBatchMock.mockReturnValueOnce({
+      set: jest.fn(),
+      delete: jest.fn(),
+      commit: jest.fn(async () => {
+        throw {code: 'firestore/permission-denied'};
+      }),
+    } as unknown as ReturnType<typeof writeBatch>);
 
     await expect(
       firebaseCyclePairBackend.deleteDailyLog(
@@ -218,7 +240,13 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
   });
 
   it('대기 중인 삭제를 원격의 이전 문서로 다시 표시하지 않는다', async () => {
-    deleteDocMock.mockRejectedValueOnce({ code: 'firestore/unavailable' });
+    writeBatchMock.mockReturnValueOnce({
+      set: jest.fn(),
+      delete: jest.fn(),
+      commit: jest.fn(async () => {
+        throw {code: 'firestore/unavailable'};
+      }),
+    } as unknown as ReturnType<typeof writeBatch>);
     getDocsMock.mockResolvedValueOnce({
       docs: [
         {
@@ -227,10 +255,16 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
             localDate: '2026-07-14',
             moodTag: 'good',
             lastMutationId: 'older-write',
+            updatedAt: {
+              toDate: () => new Date('2026-07-14T01:00:00.000Z'),
+            },
           }),
         },
       ],
     } as Awaited<ReturnType<typeof getDocs>>);
+    getDocsMock.mockResolvedValueOnce({docs: []} as unknown as Awaited<
+      ReturnType<typeof getDocs>
+    >);
 
     await firebaseCyclePairBackend.deleteDailyLog(
       uid,
@@ -239,8 +273,119 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
     );
 
     await expect(
-      firebaseCyclePairBackend.listDailyLogs(uid, '2026-07-01', '2026-07-31'),
+      firebaseCyclePairBackend.syncDailyLogs(uid),
     ).resolves.toEqual([]);
+  });
+
+  it('첫 동기화 뒤에는 전체 문서 ID 범위 대신 변경 시점 쿼리를 사용한다', async () => {
+    getDocsMock.mockResolvedValue({docs: []} as unknown as Awaited<
+      ReturnType<typeof getDocs>
+    >);
+
+    await firebaseCyclePairBackend.syncDailyLogs(uid);
+    await firebaseCyclePairBackend.syncDailyLogs(uid);
+
+    const firstLogQuery = getDocsMock.mock.calls[0]?.[0] as unknown as unknown[];
+    const secondLogQuery = getDocsMock.mock.calls[2]?.[0] as unknown as unknown[];
+    expect(firstLogQuery).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          orderBy: expect.objectContaining({direction: 'asc'}),
+        }),
+      ]),
+    );
+    expect(firstLogQuery).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({where: expect.anything()}),
+      ]),
+    );
+    expect(secondLogQuery).toEqual(
+      expect.arrayContaining([
+        {
+          where: {
+            field: 'updatedAt',
+            operator: '>=',
+            value: new Date('1970-01-01T00:00:00.000Z'),
+          },
+        },
+      ]),
+    );
+  });
+
+  it('증분 삭제 표식으로 다른 기기의 캐시 기록을 제거한다', async () => {
+    const firstUpdatedAt = '2026-07-14T01:00:00.000Z';
+    const deletedAt = '2026-07-15T01:00:00.000Z';
+    getDocsMock
+      .mockResolvedValueOnce({
+        docs: [
+          {
+            id: '2026-07-14',
+            data: () => ({
+              localDate: '2026-07-14',
+              moodTag: 'good',
+              lastMutationId: 'first-write',
+              updatedAt: {toDate: () => new Date(firstUpdatedAt)},
+            }),
+          },
+        ],
+      } as Awaited<ReturnType<typeof getDocs>>)
+      .mockResolvedValueOnce({docs: []} as unknown as Awaited<
+        ReturnType<typeof getDocs>
+      >)
+      .mockResolvedValueOnce({docs: []} as unknown as Awaited<
+        ReturnType<typeof getDocs>
+      >)
+      .mockResolvedValueOnce({
+        docs: [
+          {
+            id: '2026-07-14',
+            data: () => ({
+              schemaVersion: 1,
+              localDate: '2026-07-14',
+              lastMutationId: 'remote-delete',
+              updatedAt: {toDate: () => new Date(deletedAt)},
+            }),
+          },
+        ],
+      } as Awaited<ReturnType<typeof getDocs>>);
+
+    await expect(firebaseCyclePairBackend.syncDailyLogs(uid)).resolves.toEqual([
+      expect.objectContaining({localDate: '2026-07-14'}),
+    ]);
+    await expect(firebaseCyclePairBackend.syncDailyLogs(uid)).resolves.toEqual(
+      [],
+    );
+    await expect(secureCyclePairCache.loadDailyLogs(uid)).resolves.toEqual([]);
+  });
+
+  it('저장과 삭제를 기록 문서와 삭제 표식의 원자적 배치로 반영한다', async () => {
+    await firebaseCyclePairBackend.saveDailyLog(
+      uid,
+      '2026-07-14',
+      {moodTag: 'good'},
+      'atomic-save',
+    );
+    await firebaseCyclePairBackend.deleteDailyLog(
+      uid,
+      '2026-07-14',
+      'atomic-delete',
+    );
+
+    const saveBatch = writeBatchMock.mock.results[0]?.value;
+    const deleteBatch = writeBatchMock.mock.results[1]?.value;
+    expect(saveBatch?.set).toHaveBeenCalledTimes(1);
+    expect(saveBatch?.delete).toHaveBeenCalledTimes(1);
+    expect(saveBatch?.commit).toHaveBeenCalledTimes(1);
+    expect(deleteBatch?.delete).toHaveBeenCalledTimes(1);
+    expect(deleteBatch?.set).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        schemaVersion: 1,
+        localDate: '2026-07-14',
+        lastMutationId: 'atomic-delete',
+      }),
+    );
+    expect(deleteBatch?.commit).toHaveBeenCalledTimes(1);
   });
 
   it('넛지는 오프라인에서 callable이나 재시도 큐에 넣지 않는다', async () => {

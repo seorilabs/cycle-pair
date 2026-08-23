@@ -3,7 +3,6 @@ import { fetch as fetchNetworkState } from '@react-native-community/netinfo';
 import { getAuth } from '@react-native-firebase/auth';
 import {
   collection,
-  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -16,6 +15,7 @@ import {
   serverTimestamp,
   setDoc,
   where,
+  writeBatch,
 } from '@react-native-firebase/firestore';
 import { getFunctions, httpsCallable } from '@react-native-firebase/functions';
 import type {
@@ -43,6 +43,8 @@ import {
 import { secureCyclePairCache } from '../local/SecureCyclePairCache';
 import { secureUserDataFence } from '../local/SecureUserDataFence';
 import {
+  buildChangedPrivateDailyLogsQuery,
+  buildPrivateDailyLogTombstonesQuery,
   buildPrivateDailyLogsQuery,
   sortDailyLogsNewestFirst,
 } from './privateDailyLogsQuery';
@@ -60,6 +62,7 @@ const CONDITION_CODES = new Set<BackendConditionCode>([
   'needs-space',
 ]);
 const DAILY_NOTE_MAX_LENGTH = 500;
+const DAILY_LOG_SYNC_EPOCH = '1970-01-01T00:00:00.000Z';
 
 let initialization: Promise<void> | undefined;
 const mutationWrites = new SerializedWriteQueue();
@@ -67,6 +70,15 @@ const quiescedUids = new Set<string>();
 const sessionWatchStops = new Map<string, Set<() => void>>();
 const invalidatedPairKeys = new Set<string>();
 const lastAuthoritativeMemberships = new Map<string, ActivePairMembership>();
+const dailyLogSyncs = new Map<
+  string,
+  Promise<readonly PrivateDailyLogSnapshot[]>
+>();
+
+interface PrivateDailyLogTombstone {
+  readonly localDate: string;
+  readonly updatedAt: string;
+}
 
 function pairKey(uid: string, pairId: string): string {
   return `${uid.length}:${uid}${pairId}`;
@@ -254,6 +266,17 @@ function parseDailyLog(
   };
 }
 
+function parseDailyLogTombstone(
+  localDate: string,
+  value: unknown,
+): PrivateDailyLogTombstone | null {
+  const data = asRecord(value);
+  const recordedDate = asString(data?.localDate);
+  const updatedAt = timestampToIso(data?.updatedAt);
+  if (recordedDate !== localDate || !updatedAt) return null;
+  return { localDate, updatedAt };
+}
+
 function parsePairEvent(
   pairId: string,
   id: string,
@@ -426,8 +449,10 @@ async function writeDailyLog(
   record: PrivateDailyLogRecord,
   mutationId: string,
 ): Promise<void> {
-  await setDoc(
-    doc(getFirestore(), 'users', uid, 'privateDailyLogs', localDate),
+  const firestore = getFirestore();
+  const batch = writeBatch(firestore);
+  batch.set(
+    doc(firestore, 'users', uid, 'privateDailyLogs', localDate),
     {
       ...record,
       localDate,
@@ -436,15 +461,30 @@ async function writeDailyLog(
       schemaVersion: 2,
     },
   );
+  batch.delete(
+    doc(firestore, 'users', uid, 'privateDailyLogTombstones', localDate),
+  );
+  await batch.commit();
 }
 
 async function deleteDailyLogDocument(
   uid: string,
   localDate: string,
+  mutationId: string,
 ): Promise<void> {
-  await deleteDoc(
-    doc(getFirestore(), 'users', uid, 'privateDailyLogs', localDate),
+  const firestore = getFirestore();
+  const batch = writeBatch(firestore);
+  batch.delete(doc(firestore, 'users', uid, 'privateDailyLogs', localDate));
+  batch.set(
+    doc(firestore, 'users', uid, 'privateDailyLogTombstones', localDate),
+    {
+      schemaVersion: 1,
+      localDate,
+      lastMutationId: mutationId,
+      updatedAt: serverTimestamp(),
+    },
   );
+  await batch.commit();
 }
 
 async function writePrivateSetup(
@@ -685,7 +725,11 @@ async function executeQueuedMutation(mutation: OfflineMutation): Promise<void> {
       mutation.mutationId,
     );
   } else if (mutation.type === 'delete-daily-log') {
-    await deleteDailyLogDocument(mutation.uid, mutation.localDate);
+    await deleteDailyLogDocument(
+      mutation.uid,
+      mutation.localDate,
+      mutation.mutationId,
+    );
   } else if (mutation.type === 'upsert-pair-event') {
     await call('upsertPairEvent', {
       pairId: mutation.pairId,
@@ -718,6 +762,146 @@ async function flushQueuedMutations(uid: string) {
     isRetryable: isRetryableNetworkError,
     failureCode: sanitizedOfflineFailureCode,
   });
+}
+
+function mergePendingDailyMutations(
+  logs: readonly PrivateDailyLogSnapshot[],
+  mutations: readonly OfflineMutation[],
+): readonly PrivateDailyLogSnapshot[] {
+  const byDate = new Map(logs.map(log => [log.localDate, log] as const));
+  for (const mutation of mutations) {
+    if (mutation.type === 'daily-log') {
+      byDate.set(mutation.localDate, {
+        localDate: mutation.localDate,
+        record: mutation.record,
+        mutationId: mutation.mutationId,
+        updatedAt: mutation.createdAt,
+      });
+    } else if (mutation.type === 'delete-daily-log') {
+      byDate.delete(mutation.localDate);
+    }
+  }
+  return sortDailyLogsNewestFirst([...byDate.values()]);
+}
+
+async function loadCachedDailyLogs(
+  uid: string,
+): Promise<readonly PrivateDailyLogSnapshot[]> {
+  return mergePendingDailyMutations(
+    await secureCyclePairCache.loadDailyLogs(uid),
+    await secureOfflineMutationQueue.list(uid),
+  );
+}
+
+type DailyLogRemoteChange =
+  | {
+      readonly kind: 'log';
+      readonly localDate: string;
+      readonly updatedAt: string;
+      readonly log: PrivateDailyLogSnapshot;
+    }
+  | {
+      readonly kind: 'delete';
+      readonly localDate: string;
+      readonly updatedAt: string;
+    };
+
+function remoteChanges(
+  logs: readonly PrivateDailyLogSnapshot[],
+  tombstones: readonly PrivateDailyLogTombstone[],
+): readonly DailyLogRemoteChange[] {
+  return [
+    ...logs.map(log => ({
+      kind: 'log' as const,
+      localDate: log.localDate,
+      updatedAt: log.updatedAt ?? DAILY_LOG_SYNC_EPOCH,
+      log,
+    })),
+    ...tombstones.map(tombstone => ({
+      kind: 'delete' as const,
+      localDate: tombstone.localDate,
+      updatedAt: tombstone.updatedAt,
+    })),
+  ].sort((left, right) => {
+    const byTimestamp = left.updatedAt.localeCompare(right.updatedAt);
+    if (byTimestamp !== 0) return byTimestamp;
+    return left.kind === right.kind ? 0 : left.kind === 'log' ? -1 : 1;
+  });
+}
+
+async function performDailyLogSync(
+  uid: string,
+): Promise<readonly PrivateDailyLogSnapshot[]> {
+  const [cachedLogs, cursor] = await Promise.all([
+    secureCyclePairCache.loadDailyLogs(uid),
+    secureCyclePairCache.loadDailyLogSyncCursor(uid),
+  ]);
+  await ensureFirestoreConfigured();
+  try {
+    const [logSnapshots, tombstoneSnapshots] = await Promise.all([
+      getDocs(
+        cursor
+          ? buildChangedPrivateDailyLogsQuery(uid, cursor.updatedAt)
+          : buildPrivateDailyLogsQuery(uid),
+      ),
+      getDocs(
+        buildPrivateDailyLogTombstonesQuery(uid, cursor?.updatedAt),
+      ),
+    ]);
+    const remoteLogs = logSnapshots.docs.map(snapshot =>
+      parseDailyLog(snapshot.id, snapshot.data()),
+    );
+    const tombstones = tombstoneSnapshots.docs.flatMap(snapshot => {
+      const tombstone = parseDailyLogTombstone(
+        snapshot.id,
+        snapshot.data(),
+      );
+      return tombstone ? [tombstone] : [];
+    });
+
+    if (!cursor) {
+      const remoteDates = new Set(remoteLogs.map(log => log.localDate));
+      for (const cached of cachedLogs) {
+        if (!remoteDates.has(cached.localDate)) {
+          await secureCyclePairCache.deleteDailyLog(uid, cached.localDate);
+        }
+      }
+    }
+
+    const changes = remoteChanges(remoteLogs, tombstones);
+    for (const change of changes) {
+      if (change.kind === 'log') {
+        await secureCyclePairCache.saveDailyLog(uid, change.log);
+      } else {
+        await secureCyclePairCache.deleteDailyLog(uid, change.localDate);
+      }
+    }
+    const nextCursor = changes.reduce(
+      (latest, change) =>
+        change.updatedAt > latest ? change.updatedAt : latest,
+      cursor?.updatedAt ?? DAILY_LOG_SYNC_EPOCH,
+    );
+    await secureCyclePairCache.saveDailyLogSyncCursor(uid, {
+      updatedAt: nextCursor,
+    });
+  } catch (error) {
+    if (!isRetryableNetworkError(error) && !(await isDefinitelyOffline())) {
+      throw error;
+    }
+  }
+  return loadCachedDailyLogs(uid);
+}
+
+function syncDailyLogs(
+  uid: string,
+): Promise<readonly PrivateDailyLogSnapshot[]> {
+  const existing = dailyLogSyncs.get(uid);
+  if (existing) return existing;
+  const sync = performDailyLogSync(uid).finally(() => {
+    if (dailyLogSyncs.get(uid) === sync) dailyLogSyncs.delete(uid);
+  });
+  dailyLogSyncs.set(uid, sync);
+  return sync;
 }
 
 export const firebaseCyclePairBackend: CyclePairBackend = {
@@ -857,69 +1041,12 @@ export const firebaseCyclePairBackend: CyclePairBackend = {
     });
   },
 
-  async listDailyLogs(uid, fromDate, toDate) {
-    const byDate = new Map<string, PrivateDailyLogSnapshot>();
-    const cachedLogs = await secureCyclePairCache.loadDailyLogs(
-      uid,
-      fromDate,
-      toDate,
-    );
-    for (const cached of cachedLogs) {
-      byDate.set(cached.localDate, cached);
-    }
-    const pendingMutations = await secureOfflineMutationQueue.list(uid);
-    const pendingDailyDates = new Set(
-      pendingMutations.flatMap(mutation =>
-        mutation.type === 'daily-log' || mutation.type === 'delete-daily-log'
-          ? [mutation.localDate]
-          : [],
-      ),
-    );
-    await ensureFirestoreConfigured();
-    try {
-      const snapshots = await getDocs(
-        buildPrivateDailyLogsQuery(uid, fromDate, toDate),
-      );
-      const remoteLogs = snapshots.docs
-        .map(snapshot => parseDailyLog(snapshot.id, snapshot.data()))
-        .filter(log => !pendingDailyDates.has(log.localDate));
-      const remoteDates = new Set(remoteLogs.map(log => log.localDate));
-      for (const cached of cachedLogs) {
-        if (remoteDates.has(cached.localDate)) continue;
-        await secureCyclePairCache.deleteDailyLog(uid, cached.localDate);
-        byDate.delete(cached.localDate);
-      }
-      await secureCyclePairCache.saveDailyLogs(uid, remoteLogs);
-      for (const log of remoteLogs) {
-        byDate.set(log.localDate, log);
-      }
-    } catch (error) {
-      if (!isRetryableNetworkError(error) && !(await isDefinitelyOffline()))
-        throw error;
-    }
+  loadCachedDailyLogs(uid) {
+    return loadCachedDailyLogs(uid);
+  },
 
-    for (const mutation of pendingMutations) {
-      if (
-        mutation.type === 'daily-log' &&
-        mutation.localDate >= fromDate &&
-        mutation.localDate <= toDate
-      ) {
-        byDate.set(mutation.localDate, {
-          localDate: mutation.localDate,
-          record: mutation.record,
-          mutationId: mutation.mutationId,
-          updatedAt: mutation.createdAt,
-        });
-      } else if (
-        mutation.type === 'delete-daily-log' &&
-        mutation.localDate >= fromDate &&
-        mutation.localDate <= toDate
-      ) {
-        byDate.delete(mutation.localDate);
-      }
-    }
-
-    return sortDailyLogsNewestFirst([...byDate.values()]);
+  syncDailyLogs(uid) {
+    return syncDailyLogs(uid);
   },
 
   async saveDailyLog(uid, localDate, record, mutationId) {
@@ -981,7 +1108,7 @@ export const firebaseCyclePairBackend: CyclePairBackend = {
           const report = await flushQueuedMutations(uid);
           return replayWriteResult(report, mutationId);
         }
-        await deleteDailyLogDocument(uid, localDate);
+        await deleteDailyLogDocument(uid, localDate, mutationId);
         return { status: 'synced' as const, mutationId };
       } catch (error) {
         return queueAfterWriteFailure(mutation, error);
