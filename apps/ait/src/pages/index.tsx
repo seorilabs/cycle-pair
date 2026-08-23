@@ -1,12 +1,16 @@
 import { createRoute } from '@granite-js/react-native';
+import {
+  Button,
+  Loader,
+  SegmentedControl,
+  Txt,
+  colors,
+} from '@toss/tds-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   AppState,
-  Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -29,6 +33,8 @@ import {
 
 export const Route = createRoute('/', { component: ConditionSharePage });
 
+// TDS has no generic safe-area, scroll, or layout primitives, so RN containers remain structural only.
+
 function ChoiceGroup<T extends string>({
   title,
   options,
@@ -40,26 +46,28 @@ function ChoiceGroup<T extends string>({
   readonly value: T | null;
   readonly onChange: (next: T) => void;
 }) {
+  const handleChange = (nextValue: string) => {
+    const nextOption = options.find(option => option.value === nextValue);
+    if (nextOption) onChange(nextOption.value);
+  };
+
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <View style={styles.choiceGrid}>
+      <Txt fontWeight="bold" typography="t4">
+        {title}
+      </Txt>
+      <SegmentedControl.Root
+        name={title}
+        onChange={handleChange}
+        value={value ?? ''}>
         {options.map(option => {
-          const selected = option.value === value;
           return (
-            <Pressable
-              accessibilityRole="radio"
-              accessibilityState={{ checked: selected }}
-              key={option.value}
-              onPress={() => onChange(option.value)}
-              style={[styles.choice, selected && styles.choiceSelected]}>
-              <Text style={[styles.choiceText, selected && styles.choiceTextSelected]}>
-                {option.label}
-              </Text>
-            </Pressable>
+            <SegmentedControl.Item key={option.value} value={option.value}>
+              {option.label}
+            </SegmentedControl.Item>
           );
         })}
-      </View>
+      </SegmentedControl.Root>
     </View>
   );
 }
@@ -167,9 +175,8 @@ export function ConditionSharePage({
 
   if (hydrating) {
     return (
-      <SafeAreaView style={styles.loading}>
-        <ActivityIndicator color="#76558F" size="large" />
-        <Text style={styles.loadingText}>내 선택을 불러오고 있어요</Text>
+      <SafeAreaView style={styles.safeArea}>
+        <Loader.FullScreen label="내 선택을 불러오고 있어요" size="large" />
       </SafeAreaView>
     );
   }
@@ -178,11 +185,15 @@ export function ConditionSharePage({
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.hero}>
-          <Text style={styles.eyebrow}>사이클 페어</Text>
-          <Text style={styles.title}>오늘의 컨디션을{`\n`}내가 고른 만큼만</Text>
-          <Text style={styles.description}>
+          <Txt color={colors.purple600} fontWeight="bold" typography="t6">
+            사이클 페어
+          </Txt>
+          <Txt fontWeight="bold" typography="t1">
+            오늘의 컨디션을{`\n`}내가 고른 만큼만
+          </Txt>
+          <Txt color={colors.grey700} typography="t5">
             주기나 날짜는 담지 않아요. 지금 상태와 원하는 배려를 직접 골라 공유해요.
-          </Text>
+          </Txt>
         </View>
 
         <ChoiceGroup
@@ -212,90 +223,66 @@ export function ConditionSharePage({
 
         {preview ? (
           <View style={styles.preview}>
-            <Text style={styles.previewLabel}>공유할 내용</Text>
-            <Text style={styles.previewText}>{preview}</Text>
+            <Txt color={colors.purple600} fontWeight="bold" typography="t6">
+              공유할 내용
+            </Txt>
+            <Txt color={colors.grey800} typography="t5">
+              {preview}
+            </Txt>
           </View>
         ) : (
-          <Text style={styles.helper}>두 항목을 모두 고르면 공유 내용을 미리 볼 수 있어요.</Text>
+          <Txt color={colors.grey600} textAlign="center" typography="t6">
+            두 항목을 모두 고르면 공유 내용을 미리 볼 수 있어요.
+          </Txt>
         )}
 
-        <Pressable
-          accessibilityRole="button"
-          disabled={!ready || sharing}
-          onPress={handleShare}
-          style={[styles.primaryButton, (!ready || sharing) && styles.buttonDisabled]}>
-          <Text style={styles.primaryButtonText}>
-            {sharing ? '공유 화면 여는 중…' : '컨디션 공유하기'}
-          </Text>
-        </Pressable>
-        <Pressable accessibilityRole="button" onPress={handleClear} style={styles.clearButton}>
-          <Text style={styles.clearButtonText}>이 기기의 선택 내용 지우기</Text>
-        </Pressable>
+        <View style={styles.actions}>
+          <Button
+            disabled={!ready || sharing}
+            display="full"
+            loading={sharing}
+            onPress={handleShare}
+            size="big">
+            컨디션 공유하기
+          </Button>
+          <Button
+            display="full"
+            onPress={handleClear}
+            size="medium"
+            style="weak"
+            type="dark">
+            이 기기의 선택 내용 지우기
+          </Button>
+        </View>
 
-        {status ? <Text style={styles.status}>{status}</Text> : null}
-        <Text style={styles.privacyNote}>
+        {status ? (
+          <Txt color={colors.purple700} textAlign="center" typography="t6">
+            {status}
+          </Txt>
+        ) : null}
+        <Txt color={colors.grey500} textAlign="center" typography="t7">
           선택 내용은 AppsInToss Storage에만 보관되고, 공유 버튼을 누를 때만 공유 화면으로 전달돼요.
-        </Text>
+        </Txt>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#FBF8FC' },
+  safeArea: { flex: 1, backgroundColor: colors.background },
   content: { padding: 20, paddingBottom: 36, gap: 20 },
-  loading: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    backgroundColor: '#FBF8FC',
-  },
-  loadingText: { color: '#6D6677', fontSize: 15 },
   hero: {
     borderRadius: 24,
     padding: 22,
-    backgroundColor: '#F0E6F3',
+    backgroundColor: colors.purple50,
     gap: 8,
   },
-  eyebrow: { color: '#76558F', fontSize: 14, fontWeight: '800' },
-  title: {
-    color: '#2D2837',
-    fontSize: 30,
-    fontWeight: '900',
-    lineHeight: 38,
-  },
-  description: { color: '#625A6C', fontSize: 15, lineHeight: 22 },
   section: { gap: 12 },
-  sectionTitle: { color: '#2D2837', fontSize: 18, fontWeight: '800' },
-  choiceGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  choice: {
-    minWidth: '47%',
-    flexGrow: 1,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#DED5E3',
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    backgroundColor: '#FFFFFF',
+  preview: {
+    borderRadius: 18,
+    backgroundColor: colors.layeredBackground,
+    padding: 18,
+    gap: 8,
   },
-  choiceSelected: { borderColor: '#76558F', backgroundColor: '#F0E6F3' },
-  choiceText: { color: '#514A5A', textAlign: 'center', fontSize: 15, fontWeight: '600' },
-  choiceTextSelected: { color: '#5D3E75', fontWeight: '800' },
-  preview: { borderRadius: 18, backgroundColor: '#FFFFFF', padding: 18, gap: 8 },
-  previewLabel: { color: '#76558F', fontSize: 13, fontWeight: '800' },
-  previewText: { color: '#3D3745', fontSize: 15, lineHeight: 23 },
-  helper: { color: '#746D7C', fontSize: 14, lineHeight: 20, textAlign: 'center' },
-  primaryButton: {
-    alignItems: 'center',
-    borderRadius: 16,
-    paddingVertical: 16,
-    backgroundColor: '#76558F',
-  },
-  buttonDisabled: { opacity: 0.42 },
-  primaryButtonText: { color: '#FFFFFF', fontSize: 17, fontWeight: '800' },
-  clearButton: { alignItems: 'center', paddingVertical: 10 },
-  clearButtonText: { color: '#6D6677', fontSize: 14, fontWeight: '600' },
-  status: { color: '#5D3E75', fontSize: 14, lineHeight: 20, textAlign: 'center' },
-  privacyNote: { color: '#817987', fontSize: 12, lineHeight: 18, textAlign: 'center' },
+  actions: { gap: 8 },
 });
