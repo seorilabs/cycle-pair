@@ -105,6 +105,49 @@ describe("cycle prediction", () => {
     expect(withGap?.confidence).toBe("low");
   });
 
+  it("recovers high confidence when an excluded interval is older than recent history", () => {
+    const prediction = predictNextPeriod(
+      cyclesFromIntervals(date("2024-01-01"), [75, ...Array(20).fill(28)]),
+      date("2026-01-01"),
+    );
+
+    expect(prediction).not.toBeNull();
+    if (!prediction) {
+      throw new Error("prediction fixture failed");
+    }
+    expect(prediction?.excludedIntervalCount).toBe(1);
+    expect(prediction?.confidence).toBe("high");
+    expect(prediction?.confidenceWindow).toEqual({
+      start: addDays(prediction.nextPeriodDate, -2),
+      end: addDays(prediction.nextPeriodDate, 2),
+    });
+  });
+
+  it("keeps low confidence when the most recent interval is excluded", () => {
+    const prediction = predictNextPeriod(
+      cyclesFromIntervals(date("2026-01-01"), [28, 28, 28, 28, 28, 75]),
+      date("2026-08-01"),
+    );
+
+    expect(prediction?.excludedIntervalCount).toBe(1);
+    expect(prediction?.confidence).toBe("low");
+  });
+
+  it("limits exclusion impact to the latest six interval positions", () => {
+    const excludedSixthFromLatest = predictNextPeriod(
+      cyclesFromIntervals(date("2025-01-01"), [28, 28, 28, 28, 28, 28, 75, 28, 28, 28, 28, 28]),
+      date("2026-03-01"),
+    );
+    const excludedSeventhFromLatest = predictNextPeriod(
+      cyclesFromIntervals(date("2025-01-01"), [28, 28, 28, 28, 28, 75, 28, 28, 28, 28, 28, 28]),
+      date("2026-03-01"),
+    );
+
+    expect(excludedSixthFromLatest?.confidence).toBe("low");
+    expect(excludedSeventhFromLatest?.confidence).toBe("high");
+    expect(excludedSeventhFromLatest?.excludedIntervalCount).toBe(1);
+  });
+
   it("needs at least one valid interval and rejects mixed-member history", () => {
     expect(
       predictNextPeriod(cyclesFromIntervals(date("2026-01-01"), []), date("2026-01-02")),

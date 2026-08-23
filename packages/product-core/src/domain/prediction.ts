@@ -4,6 +4,7 @@ import type { Cycle, Prediction, PredictionConfidence } from "./models.js";
 
 const DEFAULT_MIN_CYCLE_DAYS = 15;
 const DEFAULT_MAX_CYCLE_DAYS = 60;
+const RECENT_EXCLUSION_WINDOW = 6;
 
 export class PredictionInputError extends Error {
   constructor(message: string) {
@@ -66,6 +67,7 @@ interface CycleIntervalSummary {
   readonly starts: readonly LocalDate[];
   readonly validIntervals: readonly number[];
   readonly excludedIntervalCount: number;
+  readonly hasRecentExcludedInterval: boolean;
 }
 
 function summarizeIntervals(
@@ -94,6 +96,8 @@ function summarizeIntervals(
   const starts = sortUniqueLocalDates(cycles.map((cycle) => cycle.startedOn));
   const validIntervals: number[] = [];
   let excludedIntervalCount = 0;
+  let hasRecentExcludedInterval = false;
+  const intervalCount = Math.max(starts.length - 1, 0);
   for (let index = 1; index < starts.length; index += 1) {
     const previous = starts[index - 1];
     const current = starts[index];
@@ -105,6 +109,9 @@ function summarizeIntervals(
       validIntervals.push(interval);
     } else {
       excludedIntervalCount += 1;
+      if (index > intervalCount - RECENT_EXCLUSION_WINDOW) {
+        hasRecentExcludedInterval = true;
+      }
     }
   }
 
@@ -113,6 +120,7 @@ function summarizeIntervals(
     starts,
     validIntervals: Object.freeze(validIntervals),
     excludedIntervalCount,
+    hasRecentExcludedInterval,
   };
 }
 
@@ -134,8 +142,11 @@ function populationStandardDeviation(values: readonly number[]): number {
   return Math.sqrt(variance);
 }
 
-function confidenceFor(intervals: readonly number[], hadExcludedIntervals: boolean): PredictionConfidence {
-  if (hadExcludedIntervals) {
+function confidenceFor(
+  intervals: readonly number[],
+  hasRecentExcludedInterval: boolean,
+): PredictionConfidence {
+  if (hasRecentExcludedInterval) {
     return "low";
   }
   const deviation = populationStandardDeviation(intervals);
@@ -177,7 +188,10 @@ export function predictNextPeriod(
   }
   const nextPeriodDate = addDays(lastPeriodStart, averageCycleLengthDays);
   const daysLate = Math.max(daysBetween(nextPeriodDate, generatedOn), 0);
-  const confidence = confidenceFor(summary.validIntervals, summary.excludedIntervalCount > 0);
+  const confidence = confidenceFor(
+    summary.validIntervals,
+    summary.hasRecentExcludedInterval,
+  );
   const radius = windowRadiusFor(confidence);
 
   return Object.freeze({
