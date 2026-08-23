@@ -1,4 +1,5 @@
 import {
+  addDays,
   createCycle,
   createCycleLog,
   createShareSettings,
@@ -22,6 +23,11 @@ import {
 } from '@cyclepair/product-core';
 import { DailyCheckIn, CyclePairState } from './CyclePairStore';
 import { getSafePartnerProjectionForToday } from './partnerProjectionPresentation';
+import type {CycleFeaturePolicy} from './subscription/cycleFeaturePolicy';
+import {
+  FREE_CARE_TIP_LIMIT,
+  FREE_HISTORY_LOOKBACK_DAYS,
+} from './subscription/cycleFeaturePolicy';
 
 const SELF_MEMBER_ID = 'local-self';
 const PARTNER_MEMBER_ID = 'remote-partner';
@@ -79,18 +85,41 @@ export interface CycleViewModel {
   daysLate?: number;
   selfProjection: PartnerProjection;
   partnerProjection: PartnerProjection;
-  careTip: CareTip;
+  careTips: readonly CareTip[];
+  advancedPrediction?: {
+    readonly averageCycleLengthDays: number;
+    readonly confidence: Prediction['confidence'];
+    readonly sampleSize: number;
+    readonly observedCycleLengths: readonly number[];
+    readonly standardDeviationDays: number | null;
+    readonly excludedIntervalCount: number;
+  };
 }
+
+const FREE_CYCLE_FEATURE_POLICY: CycleFeaturePolicy = Object.freeze({
+  extendedHistoryEnabled: false,
+  advancedPredictionEnabled: false,
+  fullCareTipsEnabled: false,
+  historyLookbackDays: FREE_HISTORY_LOOKBACK_DAYS,
+  careTipLimit: FREE_CARE_TIP_LIMIT,
+});
 
 export function todayLocalDate(): LocalDate {
   const date = new Date();
   return localDate(date.getFullYear(), date.getMonth() + 1, date.getDate());
 }
 
-function observedCycles(state: CyclePairState) {
+function observedCycles(
+  state: CyclePairState,
+  today: LocalDate,
+  historyLookbackDays: number,
+) {
+  const historyCutoff = addDays(today, -historyLookbackDays);
   const starts = new Set<string>([state.seed.lastPeriodStart]);
   for (const entry of state.dailyHistory) {
-    if (entry.checkIn.periodStarted) starts.add(entry.localDate);
+    if (entry.checkIn.periodStarted && entry.localDate >= historyCutoff) {
+      starts.add(entry.localDate);
+    }
   }
   return [...starts].sort().map((start, index) =>
     createCycle({
@@ -104,8 +133,9 @@ function observedCycles(state: CyclePairState) {
 function predictionForState(
   state: CyclePairState,
   today: LocalDate,
+  historyLookbackDays: number,
 ): Prediction {
-  const cycles = observedCycles(state);
+  const cycles = observedCycles(state, today, historyLookbackDays);
   const observed = predictNextPeriod(cycles, today);
   if (observed) return observed;
   const lastStart =
@@ -166,11 +196,23 @@ function mapHelpPreferences(
     : undefined;
 }
 
-export function buildCycleViewModel(state: CyclePairState): CycleViewModel {
+function standardDeviation(values: readonly number[]): number | null {
+  if (values.length === 0) return null;
+  const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+  const variance =
+    values.reduce((sum, value) => sum + (value - mean) ** 2, 0) /
+    values.length;
+  return Math.round(Math.sqrt(variance) * 10) / 10;
+}
+
+export function buildCycleViewModel(
+  state: CyclePairState,
+  featurePolicy: CycleFeaturePolicy = FREE_CYCLE_FEATURE_POLICY,
+): CycleViewModel {
   const today = todayLocalDate();
   const hasPredictionBasis = state.isLogger && state.hasCycleSeed;
   const prediction = hasPredictionBasis
-    ? predictionForState(state, today)
+    ? predictionForState(state, today, featurePolicy.historyLookbackDays)
     : undefined;
   const currentCycle = prediction
     ? buildCurrentCycle(state, prediction.lastPeriodStart)
@@ -292,15 +334,11 @@ export function buildCycleViewModel(state: CyclePairState): CycleViewModel {
         }
       : {}),
   };
-  const careTip = selectCareTips({
+  const careTips = selectCareTips({
     helpPreferences: partnerProjection.helpPreferences,
     condition: partnerProjection.condition,
-    limit: 1,
-  })[0] ?? {
-    id: 'fallback',
-    title: '직접 물어보는 것이 가장 정확해요',
-    body: '추측하지 말고 지금 필요한 것이 있는지 가볍게 확인해 보세요.',
-  };
+    limit: featurePolicy.careTipLimit,
+  });
 
   const copy = phaseCopy[phase];
   return {
@@ -320,7 +358,21 @@ export function buildCycleViewModel(state: CyclePairState): CycleViewModel {
       : {}),
     selfProjection,
     partnerProjection,
-    careTip,
+    careTips,
+    ...(prediction && featurePolicy.advancedPredictionEnabled
+      ? {
+          advancedPrediction: {
+            averageCycleLengthDays: prediction.averageCycleLengthDays,
+            confidence: prediction.confidence,
+            sampleSize: prediction.sampleSize,
+            observedCycleLengths: prediction.observedCycleLengths,
+            standardDeviationDays: standardDeviation(
+              prediction.observedCycleLengths,
+            ),
+            excludedIntervalCount: prediction.excludedIntervalCount,
+          },
+        }
+      : {}),
   };
 }
 

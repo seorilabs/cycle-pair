@@ -7,6 +7,8 @@ import {
   getSafePartnerProjectionForToday,
 } from '../app/partnerProjectionPresentation';
 import { useCyclePair } from '../app/CyclePairStore';
+import { useSubscription } from '../app/subscription/SubscriptionContext';
+import { resolveCycleFeaturePolicy } from '../app/subscription/cycleFeaturePolicy';
 import {
   Card,
   Chip,
@@ -22,7 +24,9 @@ import {
 
 export function HomeScreen({ onOpenRecord }: { onOpenRecord(): void }) {
   const { state, setTab } = useCyclePair();
-  const viewModel = buildCycleViewModel(state);
+  const { hasFeature } = useSubscription();
+  const featurePolicy = resolveCycleFeaturePolicy(hasFeature);
+  const viewModel = buildCycleViewModel(state, featurePolicy);
   const hasCheckIn = Boolean(
     state.checkIn.mood ||
       state.checkIn.symptoms.length ||
@@ -262,6 +266,50 @@ export function HomeScreen({ onOpenRecord }: { onOpenRecord(): void }) {
                 />
               ) : null}
             </View>
+            {state.hasCycleSeed ? (
+              <View style={styles.featureAccess}>
+                <Text style={styles.historyAccessText}>
+                  {featurePolicy.extendedHistoryEnabled
+                    ? '최근 10년 기록을 예측에 반영해요.'
+                    : '최근 12개월 기록을 반영해요. 더 오래된 기록 반영은 Plus 기능이에요.'}
+                </Text>
+                {viewModel.advancedPrediction ? (
+                  <View style={styles.predictionDetail}>
+                    <Text style={styles.predictionDetailTitle}>예측 근거</Text>
+                    <Text style={styles.predictionDetailBody}>
+                      평균 {viewModel.advancedPrediction.averageCycleLengthDays}일
+                      {' · '}관측 {viewModel.advancedPrediction.sampleSize}개
+                      {' · '}신뢰도{' '}
+                      {{ low: '낮음', medium: '보통', high: '높음' }[
+                        viewModel.advancedPrediction.confidence
+                      ]}
+                    </Text>
+                    <Text style={styles.predictionDetailMeta}>
+                      {viewModel.advancedPrediction.observedCycleLengths.length >
+                      0
+                        ? `최근 주기 ${viewModel.advancedPrediction.observedCycleLengths.join(
+                            ' · ',
+                          )}일 · 표준편차 ${
+                            viewModel.advancedPrediction.standardDeviationDays
+                          }일`
+                        : '관측된 주기가 더 쌓이면 상세 근거를 표시해요.'}
+                    </Text>
+                  </View>
+                ) : (
+                  <View
+                    accessibilityLabel="Plus 예측 상세 잠김"
+                    style={styles.lockedFeature}
+                  >
+                    <Text style={styles.lockedFeatureTitle}>
+                      🔒 Plus 예측 상세
+                    </Text>
+                    <Text style={styles.lockedFeatureBody}>
+                      관측 주기와 신뢰도 근거는 Plus에서 확인할 수 있어요.
+                    </Text>
+                  </View>
+                )}
+              </View>
+            ) : null}
           </Card>
         </>
       ) : null}
@@ -358,6 +406,52 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginTop: spacing.xs,
     maxWidth: 220,
+  },
+  featureAccess: {
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+  },
+  historyAccessText: {
+    color: colors.textMuted,
+    fontSize: 11,
+    lineHeight: 17,
+  },
+  predictionDetail: {
+    gap: spacing.xs,
+    borderRadius: 14,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+  },
+  predictionDetailTitle: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  predictionDetailBody: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  predictionDetailMeta: {
+    color: colors.textMuted,
+    fontSize: 11,
+    lineHeight: 17,
+  },
+  lockedFeature: {
+    gap: spacing.xs,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.58)',
+    padding: spacing.md,
+  },
+  lockedFeatureTitle: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  lockedFeatureBody: {
+    color: colors.textMuted,
+    fontSize: 11,
+    lineHeight: 17,
   },
   syncRow: {
     flexDirection: 'row',

@@ -1,11 +1,14 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { buildCycleViewModel } from '../app/cycleViewModel';
 import {
   buildPartnerSharedFields,
   getSafePartnerProjectionForToday,
   getPartnerProjectionFreshness,
 } from '../app/partnerProjectionPresentation';
 import { useCyclePair } from '../app/CyclePairStore';
+import { useSubscription } from '../app/subscription/SubscriptionContext';
+import { resolveCycleFeaturePolicy } from '../app/subscription/cycleFeaturePolicy';
 import {
   Body,
   Card,
@@ -22,6 +25,9 @@ import {
 
 export function PartnerScreen() {
   const { state, openPairing, continueToSharing } = useCyclePair();
+  const { hasFeature } = useSubscription();
+  const featurePolicy = resolveCycleFeaturePolicy(hasFeature);
+  const viewModel = buildCycleViewModel(state, featurePolicy);
 
   if (!state.paired) {
     return (
@@ -72,44 +78,9 @@ export function PartnerScreen() {
 
   const rawRemote = state.partnerProjection;
   const remote = getSafePartnerProjectionForToday(rawRemote);
-  const preferenceCopy: Record<string, { title: string; body: string }> = {
-    listen: {
-      title: '그냥 이야기를 들어주세요',
-      body: '해결책보다 편하게 들어주는 것이 좋아요.',
-    },
-    'quiet-space': {
-      title: '조용히 쉴 시간을 주세요',
-      body: '답을 재촉하지 않고 쉬도록 배려해 주세요.',
-    },
-    warmth: {
-      title: '따뜻하게 챙겨주세요',
-      body: '따뜻한 음료나 찜질팩이 필요한지 가볍게 물어보세요.',
-    },
-    'meal-support': {
-      title: '식사를 챙겨주세요',
-      body: '먹고 싶은 것이 있는지 먼저 물어보고 준비를 도와주세요.',
-    },
-    'schedule-flexibility': {
-      title: '일정을 여유롭게 해주세요',
-      body: '부담되는 일정을 조정할지 가볍게 확인해 주세요.',
-    },
-    'practical-help': {
-      title: '실질적인 도움을 주세요',
-      body: '지금 대신할 수 있는 작은 일이 있는지 물어봐 주세요.',
-    },
-    'check-in': {
-      title: '가볍게 상태를 물어봐 주세요',
-      body: '답을 재촉하지 않고 필요한 것이 있는지만 확인해 주세요.',
-    },
-    'no-action': {
-      title: '평소처럼 대해주세요',
-      body: '특별히 추측하거나 과하게 챙기지 않는 것이 좋아요.',
-    },
-  };
-  const preferenceTag = remote?.carePreferences?.find(
-    value => preferenceCopy[value],
+  const hasDirectCareContext = Boolean(
+    remote?.carePreferences?.length || remote?.conditionCode,
   );
-  const preference = preferenceTag ? preferenceCopy[preferenceTag] : undefined;
   const sharedFields = buildPartnerSharedFields(remote);
   const freshness = getPartnerProjectionFreshness(rawRemote);
   const mood = sharedFields.find(field => field.key === 'moodTag');
@@ -187,12 +158,32 @@ export function PartnerScreen() {
             </Text>
           </View>
         )}
-        {preference ? (
+        {hasDirectCareContext && viewModel.careTips.length > 0 ? (
           <View style={styles.preferenceInline}>
             <Text style={styles.preferenceLabel}>원하는 도움</Text>
-            <View style={styles.preferenceCopy}>
-              <Text style={styles.preferenceTitle}>{preference.title}</Text>
-              <Text style={styles.preferenceBody}>{preference.body}</Text>
+            <View style={styles.preferenceList}>
+              {viewModel.careTips.map((tip, index) => (
+                <View
+                  key={tip.id}
+                  style={[
+                    styles.preferenceCopy,
+                    index > 0 && styles.preferenceDivider,
+                  ]}
+                >
+                  <Text style={styles.preferenceTitle}>{tip.title}</Text>
+                  <Text style={styles.preferenceBody}>{tip.body}</Text>
+                </View>
+              ))}
+              {!featurePolicy.fullCareTipsEnabled ? (
+                <View
+                  accessibilityLabel="Plus 도움 팁 잠김"
+                  style={styles.careTipsLock}
+                >
+                  <Text style={styles.careTipsLockText}>
+                    🔒 공유된 도움 팁 전체 보기는 Plus 기능이에요.
+                  </Text>
+                </View>
+              ) : null}
             </View>
           </View>
         ) : null}
@@ -334,7 +325,25 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '800',
   },
+  preferenceList: { flex: 1 },
   preferenceCopy: { flex: 1, gap: spacing.xs },
+  preferenceDivider: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#F0CBBE',
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+  },
   preferenceTitle: { color: colors.text, fontSize: 15, fontWeight: '800' },
   preferenceBody: { color: colors.textMuted, fontSize: 12, lineHeight: 18 },
+  careTipsLock: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#F0CBBE',
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+  },
+  careTipsLockText: {
+    color: colors.textMuted,
+    fontSize: 11,
+    lineHeight: 17,
+  },
 });
