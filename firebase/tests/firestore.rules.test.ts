@@ -653,6 +653,62 @@ describe("shared pair event boundary", () => {
   });
 });
 
+describe("partner nudge boundary", () => {
+  async function seedPartnerNudge(): Promise<void> {
+    await seedActivePair();
+    await testEnv.withSecurityRulesDisabled(async context => {
+      const db = context.firestore();
+      await setDoc(doc(db, "pairs/pair-1/nudgeInboxes/bob"), {
+        schemaVersion: 1,
+        requestId: "nudge-1",
+        pairId: "pair-1",
+        senderUid: "alice",
+        recipientUid: "bob",
+        type: "check-in-request",
+      });
+      await setDoc(doc(db, "pairs/pair-1/nudgeSenders/alice"), {
+        schemaVersion: 1,
+        senderUid: "alice",
+        checkInRequestId: "nudge-1",
+      });
+    });
+  }
+
+  test("only the recipient reads the inbox and the sender reads own cooldown", async () => {
+    await seedPartnerNudge();
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+    const outsiderDb = testEnv.authenticatedContext("charlie").firestore();
+    const inboxPath = "pairs/pair-1/nudgeInboxes/bob";
+    const cooldownPath = "pairs/pair-1/nudgeSenders/alice";
+
+    await assertSucceeds(getDoc(doc(bobDb, inboxPath)));
+    await assertFails(getDoc(doc(aliceDb, inboxPath)));
+    await assertFails(getDoc(doc(outsiderDb, inboxPath)));
+    await assertSucceeds(getDoc(doc(aliceDb, cooldownPath)));
+    await assertFails(getDoc(doc(bobDb, cooldownPath)));
+    await assertFails(getDoc(doc(outsiderDb, cooldownPath)));
+  });
+
+  test("clients cannot write nudge documents and revoke blocks all reads", async () => {
+    await seedPartnerNudge();
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    const bobDb = testEnv.authenticatedContext("bob").firestore();
+    const inboxPath = "pairs/pair-1/nudgeInboxes/bob";
+    const cooldownPath = "pairs/pair-1/nudgeSenders/alice";
+
+    await assertFails(deleteDoc(doc(bobDb, inboxPath)));
+    await assertFails(updateDoc(doc(aliceDb, cooldownPath), {forged: true}));
+    await testEnv.withSecurityRulesDisabled(async context => {
+      await updateDoc(doc(context.firestore(), "pairs/pair-1"), {
+        status: "revoked",
+      });
+    });
+    await assertFails(getDoc(doc(bobDb, inboxPath)));
+    await assertFails(getDoc(doc(aliceDb, cooldownPath)));
+  });
+});
+
 describe("server-managed lifecycle documents", () => {
   test("clients cannot create pairs, invites, bindings, or projections", async () => {
     const db = testEnv.authenticatedContext("alice").firestore();

@@ -172,8 +172,11 @@ test('Google Play build stays API 36, versioned, signed, and pnpm-safe for Herme
   );
   assert.match(
     settingsScreen,
-    new RegExp(`>${mobilePackage.version} · 의료 도구 아님<`)
+    new RegExp(`>버전 ${mobilePackage.version}<`)
   );
+  assert.match(settingsScreen, /사이클 페어는 의료기기가 아닙니다/);
+  assert.match(settingsScreen, /질환을 진단·치료·치유·예방하기 위한 것이 아니며/);
+  assert.match(settingsScreen, /피임 또는 임신/);
 });
 
 test('AppsInToss target uses supported SDK and a build-only candidate workflow', async () => {

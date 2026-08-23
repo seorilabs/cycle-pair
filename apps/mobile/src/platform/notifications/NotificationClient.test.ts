@@ -102,21 +102,39 @@ describe('privacy-safe notification client', () => {
   });
 
   it('accepts only neutral allowlisted notification payload keys', () => {
-    expect(parseNeutralNotificationPayload({
-      schemaVersion: '1',
-      type: 'pair-update',
-      destination: 'home',
-    })).toEqual({
+    expect(
+      parseNeutralNotificationPayload({
+        schemaVersion: '1',
+        type: 'pair-update',
+        destination: 'home',
+      }),
+    ).toEqual({
       schemaVersion: '1',
       type: 'pair-update',
       destination: 'home',
     });
-    expect(parseNeutralNotificationPayload({
+    expect(
+      parseNeutralNotificationPayload({
+        schemaVersion: '1',
+        type: 'pair-update',
+        destination: 'home',
+        note: '민감한 자유 텍스트',
+      }),
+    ).toBeNull();
+  });
+
+  it('routes a fixed partner nudge notification to home', () => {
+    expect(
+      parseNeutralNotificationPayload({
+        schemaVersion: '1',
+        type: 'partner-nudge',
+        destination: 'home',
+      }),
+    ).toEqual({
       schemaVersion: '1',
-      type: 'pair-update',
+      type: 'partner-nudge',
       destination: 'home',
-      note: '민감한 자유 텍스트',
-    })).toBeNull();
+    });
   });
 
   it('re-registers a refreshed token and removes the previous registration', async () => {
@@ -173,9 +191,10 @@ describe('privacy-safe notification client', () => {
     const client = createNotificationClient(native);
     await client.enable(preferences);
     (native.register as jest.Mock).mockImplementationOnce(
-      () => new Promise<void>(resolve => {
-        finishRefreshRegistration = resolve;
-      }),
+      () =>
+        new Promise<void>(resolve => {
+          finishRefreshRegistration = resolve;
+        }),
     );
     client.watchTokenRefresh(preferences, error => {
       throw error;

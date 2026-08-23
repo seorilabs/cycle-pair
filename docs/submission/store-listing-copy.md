@@ -12,7 +12,7 @@
 
 **전체 설명 (ko)**:
 ```
-사이클 페어는 주기를 기록하는 사람과 가까운 한 사람이, 생리주기와 그날의 컨디션을 '내가 허용한 만큼만' 나누며 함께 대비하도록 돕는 커플 케어 앱입니다. 의료 진단이나 피임·임신 가능성 판단 도구가 아닙니다.
+사이클 페어는 주기를 기록하는 사람과 가까운 한 사람이, 생리주기와 그날의 컨디션을 '내가 허용한 만큼만' 나누며 함께 대비하도록 돕는 커플 케어 앱입니다. 이 앱은 의료기기가 아니며 질환을 진단·치료·치유·예방하지 않고, 피임 또는 임신 가능성 판단에 사용할 수 없습니다.
 
 ■ 두 사람을 위한 설계
 - 정확히 두 명이 서로 수락해 연결되는 대칭형 Pair
@@ -25,7 +25,7 @@
 
 ■ 함께 준비
 - 다음 생리 예정일을 참고용으로 표시(개인차가 있으며 의료·피임 판단에 쓰지 않아요)
-- 공동 캘린더와 기념일, 내가 요청한 도움 중심의 케어 가이드
+- 공동 캘린더와 기념일, 두 가지 고정 메시지로 보내는 파트너 넛지
 
 ■ 프라이버시 우선
 - 잠금화면 알림은 건강정보를 드러내지 않는 중립 문구
@@ -35,7 +35,7 @@
 
 **전체 설명 (en)**:
 ```
-Cycle Pair helps someone who tracks their cycle and one close partner prepare together—sharing menstrual cycle and daily condition only as much as you allow. It is not a medical, diagnostic, or contraception tool.
+Cycle Pair helps someone who tracks their cycle and one close partner prepare together—sharing menstrual cycle and daily condition only as much as you allow. It is not a medical device and does not diagnose, treat, cure, or prevent any medical condition. It must not be used for contraceptive or pregnancy-likelihood decisions.
 
 ■ Built for two
 - A symmetric Pair of exactly two people who both accept the connection
@@ -48,7 +48,7 @@ Cycle Pair helps someone who tracks their cycle and one close partner prepare to
 
 ■ Prepare together
 - See your next expected period as reference only (individual variation applies; not for medical or contraceptive decisions)
-- Shared calendar, anniversaries, and care tips centered on the help you ask for
+- Shared calendar, anniversaries, and two fixed partner nudges
 
 ■ Privacy first
 - Neutral lock-screen notifications that never reveal health details

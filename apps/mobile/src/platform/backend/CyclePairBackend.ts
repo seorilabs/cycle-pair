@@ -99,6 +99,30 @@ export interface PairEvent extends PairEventInput {
   readonly updatedAt?: string;
 }
 
+export type PartnerNudgeType = 'check-in-request' | 'care-acknowledgement';
+
+export interface PartnerNudge {
+  readonly requestId: string;
+  readonly pairId: string;
+  readonly senderUid: string;
+  readonly recipientUid: string;
+  readonly type: PartnerNudgeType;
+  readonly sentAt: string;
+}
+
+export interface PartnerNudgeState {
+  readonly received: PartnerNudge | null;
+  readonly nextAllowedAt: Readonly<Partial<Record<PartnerNudgeType, string>>>;
+}
+
+export interface PartnerNudgeSendResult {
+  readonly requestId: string;
+  readonly type: PartnerNudgeType;
+  readonly sentAt: string;
+  readonly nextAllowedAt: string;
+  readonly alreadyApplied: boolean;
+}
+
 export type BackendWriteStatus = 'synced' | 'queued';
 
 export interface BackendWriteResult {
@@ -226,6 +250,13 @@ export interface CyclePairBackend {
     eventId: string,
     mutationId: string,
   ): Promise<BackendWriteResult>;
+  sendPartnerNudge(
+    uid: string,
+    pairId: string,
+    type: PartnerNudgeType,
+    requestId: string,
+  ): Promise<PartnerNudgeSendResult>;
+  acknowledgePartnerNudge(pairId: string, requestId: string): Promise<boolean>;
   flushPendingMutations(uid: string): Promise<OfflineSyncReport>;
   clearPendingPairMutations(uid: string, pairId: string): Promise<void>;
   revokePair(pairId: string): Promise<void>;
@@ -249,6 +280,12 @@ export interface CyclePairBackend {
   watchPairEvents(
     membership: ActivePairMembership,
     onValue: (events: readonly PairEvent[]) => void,
+    onError: BackendErrorHandler,
+  ): Unsubscribe;
+  watchPartnerNudgeState(
+    uid: string,
+    membership: ActivePairMembership,
+    onValue: (state: PartnerNudgeState) => void,
     onError: BackendErrorHandler,
   ): Unsubscribe;
   watchPendingTombstones(

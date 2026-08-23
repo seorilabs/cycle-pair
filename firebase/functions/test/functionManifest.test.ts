@@ -40,7 +40,9 @@ describe("Functions deployment manifest", () => {
       deployedFunctions.cleanupExpiredPairRetentionData,
     );
 
-    expect(endpoints).toHaveLength(24);
+    expect(endpoints).toHaveLength(26);
+    expect(endpoint(deployedFunctions.sendPartnerNudge)).toBeDefined();
+    expect(endpoint(deployedFunctions.acknowledgePartnerNudge)).toBeDefined();
     expect(retentionEndpoint?.scheduleTrigger).toMatchObject({
       schedule: RETENTION_CLEANUP_SCHEDULE,
       timeZone: RETENTION_CLEANUP_TIME_ZONE,

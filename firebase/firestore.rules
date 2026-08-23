@@ -336,6 +336,20 @@ service cloud.firestore {
       match /eventMutations/{mutationId} {
         allow read, write: if false;
       }
+
+      // Fixed-copy nudges are server-written. A member may read only the
+      // single inbox addressed to their UID and their own cooldown state.
+      match /nudgeInboxes/{recipientUid} {
+        allow read: if isActivePairMember(pairId)
+          && request.auth.uid == recipientUid;
+        allow write: if false;
+      }
+
+      match /nudgeSenders/{senderUid} {
+        allow read: if isActivePairMember(pairId)
+          && request.auth.uid == senderUid;
+        allow write: if false;
+      }
     }
 
     // Invite codes are bearer secrets. Only a SHA-256 digest is persisted and

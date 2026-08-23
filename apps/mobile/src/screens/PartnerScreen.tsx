@@ -1,5 +1,4 @@
-import { selectCareTips, type HelpPreference } from '@cyclepair/product-core';
-import React, { useState } from 'react';
+import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import {
   buildPartnerSharedFields,
@@ -13,27 +12,16 @@ import {
   Chip,
   PrimaryButton,
   Screen,
-  SectionHeader,
   Title,
 } from '../components/Ui';
 import { colors, spacing } from '../theme';
-
-function isHelpPreference(value: string): value is HelpPreference {
-  return (
-    value === 'listen' ||
-    value === 'quiet-space' ||
-    value === 'warmth' ||
-    value === 'meal-support' ||
-    value === 'schedule-flexibility' ||
-    value === 'practical-help' ||
-    value === 'check-in' ||
-    value === 'no-action'
-  );
-}
+import {
+  PartnerNudgeActions,
+  PartnerNudgeInbox,
+} from '../components/PartnerNudges';
 
 export function PartnerScreen() {
   const { state, openPairing, continueToSharing } = useCyclePair();
-  const [acknowledged, setAcknowledged] = useState(false);
 
   if (!state.paired) {
     return (
@@ -56,13 +44,6 @@ export function PartnerScreen() {
           <PrimaryButton label="파트너 연결하기" onPress={openPairing} />
         </Card>
 
-        <Card style={styles.soloPrivacyCard}>
-          <Text style={styles.privacyTitle}>지금은 내 기록만 저장돼요</Text>
-          <Text style={styles.privacyBody}>
-            연결 전에는 partner projection이 만들어지지 않고 다른 사용자가 내
-            기록을 볼 수 없습니다.
-          </Text>
-        </Card>
       </Screen>
     );
   }
@@ -133,17 +114,6 @@ export function PartnerScreen() {
   const freshness = getPartnerProjectionFreshness(rawRemote);
   const mood = sharedFields.find(field => field.key === 'moodTag');
   const hasSharedValues = sharedFields.length > 0;
-  const careTip = selectCareTips({
-    helpPreferences: (remote?.carePreferences ?? []).filter(isHelpPreference),
-    condition: remote?.conditionCode,
-    phase: remote?.cyclePhase,
-    limit: 1,
-  })[0] ?? {
-    id: 'fallback',
-    title: '직접 물어보는 것이 가장 정확해요',
-    body: '추측하지 말고 지금 필요한 것이 있는지 가볍게 확인해 보세요.',
-  };
-
   return (
     <Screen contentStyle={styles.content}>
       <View style={styles.header}>
@@ -164,17 +134,9 @@ export function PartnerScreen() {
         </View>
       </View>
 
-      {freshness.stale ? (
-        <Card style={styles.staleCard}>
-          <Text style={styles.staleTitle}>오래된 공유 정보예요</Text>
-          <Text style={styles.staleBody}>
-            상대가 앱을 열고 동기화하기 전까지 현재 상태와 다를 수 있어요.
-          </Text>
-        </Card>
-      ) : null}
+      <PartnerNudgeInbox />
 
       <Card tone="accent" style={styles.statusCard}>
-        <Text style={styles.quote}>“</Text>
         <Text style={styles.statusTitle}>
           {mood
             ? `오늘은 ${mood.value}`
@@ -192,99 +154,49 @@ export function PartnerScreen() {
             <Chip key={field.key} label={field.label} />
           ))}
         </View>
-      </Card>
-
-      <SectionHeader title="직접 공유된 정보" />
-      {hasSharedValues ? (
-        <Card style={styles.sharedValuesCard}>
-          {sharedFields.map((field, index) => (
-            <View
-              accessibilityLabel={`${field.label}: ${field.value}`}
-              key={field.key}
-              style={[
-                styles.sharedValueRow,
-                index > 0 && styles.sharedValueDivider,
-              ]}
-            >
-              <Text style={styles.sharedValueLabel}>{field.label}</Text>
-              <Text
+        {hasSharedValues ? (
+          <View style={styles.sharedValuesCard}>
+            {sharedFields.map((field, index) => (
+              <View
+                accessibilityLabel={`${field.label}: ${field.value}`}
+                key={field.key}
                 style={[
-                  styles.sharedValue,
-                  field.key === 'note' && styles.sharedNote,
+                  styles.sharedValueRow,
+                  index > 0 && styles.sharedValueDivider,
                 ]}
               >
-                {field.value}
-              </Text>
+                <Text style={styles.sharedValueLabel}>{field.label}</Text>
+                <Text
+                  style={[
+                    styles.sharedValue,
+                    field.key === 'note' && styles.sharedNote,
+                  ]}
+                >
+                  {field.value}
+                </Text>
+              </View>
+            ))}
+          </View>
+        ) : (
+          <View style={styles.emptySharedCard}>
+            <Text style={styles.emptySharedTitle}>
+              아직 공유된 정보가 없어요
+            </Text>
+            <Text style={styles.emptySharedBody}>
+              연결 정보만 확인됐으며 건강 정보는 전달되지 않았어요.
+            </Text>
+          </View>
+        )}
+        {preference ? (
+          <View style={styles.preferenceInline}>
+            <Text style={styles.preferenceLabel}>원하는 도움</Text>
+            <View style={styles.preferenceCopy}>
+              <Text style={styles.preferenceTitle}>{preference.title}</Text>
+              <Text style={styles.preferenceBody}>{preference.body}</Text>
             </View>
-          ))}
-        </Card>
-      ) : (
-        <Card style={styles.emptySharedCard}>
-          <Text style={styles.emptySharedTitle}>아직 공유된 정보가 없어요</Text>
-          <Text style={styles.emptySharedBody}>
-            연결 정보만 확인됐으며 건강 정보는 전달되지 않았어요.
-          </Text>
-        </Card>
-      )}
-
-      <SectionHeader title="원하는 도움" />
-      <Card tone="mint" style={styles.preferenceCard}>
-        <View style={styles.preferenceIcon}>
-          <Text style={styles.preferenceIconText}>♡</Text>
-        </View>
-        <View style={styles.preferenceCopy}>
-          <Text style={styles.preferenceTitle}>
-            {preference?.title ?? '직접 필요한 것을 물어봐 주세요'}
-          </Text>
-          <Text style={styles.preferenceBody}>
-            {preference?.body ??
-              '공유된 도움 선호가 없을 때는 추측하지 않는 것이 가장 안전해요.'}
-          </Text>
-        </View>
-      </Card>
-
-      <SectionHeader title="오늘의 케어 힌트" />
-      <Card style={styles.tipCard}>
-        <View style={styles.tipNumber}>
-          <Text style={styles.tipNumberText}>1</Text>
-        </View>
-        <View style={styles.tipCopy}>
-          <Text style={styles.tipTitle}>{careTip.title}</Text>
-          <Text style={styles.tipBody}>{careTip.body}</Text>
-        </View>
-      </Card>
-      <Card style={styles.tipCard}>
-        <View style={styles.tipNumber}>
-          <Text style={styles.tipNumberText}>2</Text>
-        </View>
-        <View style={styles.tipCopy}>
-          <Text style={styles.tipTitle}>답이 없어도 재촉하지 않기</Text>
-          <Text style={styles.tipBody}>
-            케어 힌트는 명령이 아니에요. 상대의 실제 반응과 경계를 항상 먼저
-            존중해 주세요.
-          </Text>
-        </View>
-      </Card>
-
-      <View style={styles.action}>
-        <PrimaryButton
-          label={acknowledged ? '마음으로 응원했어요 ✓' : '오늘 챙겨볼게요'}
-          onPress={() => setAcknowledged(true)}
-          disabled={acknowledged}
-        />
-        <Body muted style={styles.actionNote}>
-          이 행동은 파트너에게 알림을 보내지 않아요.
-        </Body>
-      </View>
-
-      <Card tone="primary" style={styles.privacyCard}>
-        <Text style={styles.privacyTitle}>
-          보이지 않는 정보가 있는 것이 정상이에요
-        </Text>
-        <Text style={styles.privacyBody}>
-          상대가 공유하지 않은 날짜·증상·메모는 이 화면의 데이터에도 포함되지
-          않습니다.
-        </Text>
+          </View>
+        ) : null}
+        <PartnerNudgeActions canAcknowledgeCare={hasSharedValues} />
       </Card>
     </Screen>
   );
@@ -311,7 +223,6 @@ const styles = StyleSheet.create({
   soloIconText: { color: colors.primary, fontSize: 31 },
   soloTitle: { color: colors.primaryDark, fontSize: 18, fontWeight: '900' },
   soloBody: { color: colors.textMuted, fontSize: 13, lineHeight: 20 },
-  soloPrivacyCard: { gap: spacing.xs, marginTop: spacing.lg },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -349,21 +260,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   staleBadgeText: { color: colors.danger, fontSize: 9, fontWeight: '900' },
-  staleCard: {
-    backgroundColor: colors.dangerSoft,
-    borderColor: colors.danger,
-    gap: spacing.xs,
-    marginBottom: spacing.md,
-  },
-  staleTitle: { color: colors.danger, fontSize: 13, fontWeight: '900' },
-  staleBody: { color: colors.textMuted, fontSize: 11, lineHeight: 17 },
   statusCard: { padding: spacing.xl },
-  quote: {
-    color: colors.accent,
-    fontSize: 42,
-    lineHeight: 35,
-    fontWeight: '900',
-  },
   statusTitle: {
     color: colors.text,
     fontSize: 21,
@@ -382,7 +279,12 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginTop: spacing.lg,
   },
-  sharedValuesCard: { paddingVertical: spacing.sm },
+  sharedValuesCard: {
+    paddingVertical: spacing.sm,
+    marginTop: spacing.lg,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#F0CBBE',
+  },
   sharedValueRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -408,47 +310,31 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   sharedNote: { textAlign: 'left', fontWeight: '500' },
-  emptySharedCard: { gap: spacing.xs },
+  emptySharedCard: {
+    gap: spacing.xs,
+    marginTop: spacing.lg,
+    paddingTop: spacing.lg,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#F0CBBE',
+  },
   emptySharedTitle: { color: colors.text, fontSize: 14, fontWeight: '900' },
   emptySharedBody: { color: colors.textMuted, fontSize: 12, lineHeight: 18 },
-  preferenceCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  preferenceIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  preferenceIconText: { color: colors.mint, fontSize: 27 },
-  preferenceCopy: { flex: 1, gap: spacing.xs },
-  preferenceTitle: { color: colors.text, fontSize: 15, fontWeight: '800' },
-  preferenceBody: { color: colors.textMuted, fontSize: 12, lineHeight: 18 },
-  tipCard: {
+  preferenceInline: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: spacing.md,
-    marginBottom: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#F0CBBE',
+    paddingTop: spacing.lg,
+    marginTop: spacing.sm,
   },
-  tipNumber: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
+  preferenceLabel: {
+    width: 72,
+    color: colors.textMuted,
+    fontSize: 11,
+    fontWeight: '800',
   },
-  tipNumberText: { color: colors.primaryDark, fontSize: 12, fontWeight: '900' },
-  tipCopy: { flex: 1, gap: spacing.xs },
-  tipTitle: { color: colors.text, fontSize: 15, fontWeight: '800' },
-  tipBody: { color: colors.textMuted, fontSize: 12, lineHeight: 18 },
-  action: { gap: spacing.sm, marginTop: spacing.lg },
-  actionNote: { fontSize: 11, textAlign: 'center' },
-  privacyCard: { marginTop: spacing.xl, gap: spacing.xs },
-  privacyTitle: { color: colors.primaryDark, fontSize: 14, fontWeight: '900' },
-  privacyBody: { color: colors.textMuted, fontSize: 12, lineHeight: 18 },
+  preferenceCopy: { flex: 1, gap: spacing.xs },
+  preferenceTitle: { color: colors.text, fontSize: 15, fontWeight: '800' },
+  preferenceBody: { color: colors.textMuted, fontSize: 12, lineHeight: 18 },
 });

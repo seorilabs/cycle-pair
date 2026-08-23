@@ -165,9 +165,11 @@ describe("account deletion inventory", () => {
       "pairs/pair-1/projections/alice",
       "pairs/pair-1/projections/bob",
     ]);
-    expect(inventory.eventCollectionPaths).toEqual([
+    expect(inventory.pairDataCollectionPaths).toEqual([
       "pairs/pair-1/events",
       "pairs/pair-1/eventMutations",
+      "pairs/pair-1/nudgeInboxes",
+      "pairs/pair-1/nudgeSenders",
     ]);
     expect(inventory.cacheTombstoneDocumentPaths).toContain(
       "users/bob/cacheTombstones/pair-1",

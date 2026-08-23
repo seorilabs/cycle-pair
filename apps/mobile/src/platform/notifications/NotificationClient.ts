@@ -16,7 +16,7 @@ export interface NotificationRegistration {
 
 export interface NeutralNotificationPayload {
   readonly schemaVersion: '1';
-  readonly type: 'pair-update' | 'shared-event-update';
+  readonly type: 'pair-update' | 'shared-event-update' | 'partner-nudge';
   readonly destination: 'home' | 'calendar';
 }
 
@@ -72,7 +72,9 @@ export function parseNeutralNotificationPayload(
       key => !['schemaVersion', 'type', 'destination'].includes(key),
     ) ||
     payload.schemaVersion !== '1' ||
-    (payload.type !== 'pair-update' && payload.type !== 'shared-event-update') ||
+    (payload.type !== 'pair-update' &&
+      payload.type !== 'shared-event-update' &&
+      payload.type !== 'partner-nudge') ||
     (payload.destination !== 'home' && payload.destination !== 'calendar')
   ) {
     return null;
@@ -134,7 +136,7 @@ class PrivacySafeNotificationClient implements NotificationClient {
     ++this.registrationEpoch;
     this.refreshRegistrationAllowed = false;
     if (this.knownDisabled) return;
-    const token = this.registeredToken ?? await this.delegate.getToken();
+    const token = this.registeredToken ?? (await this.delegate.getToken());
     let unregisterError: unknown;
     try {
       if (token) await this.delegate.unregister(token);
@@ -151,7 +153,7 @@ class PrivacySafeNotificationClient implements NotificationClient {
     ++this.registrationEpoch;
     this.refreshRegistrationAllowed = false;
     if (this.knownDisabled) return;
-    const token = this.registeredToken ?? await this.delegate.getToken();
+    const token = this.registeredToken ?? (await this.delegate.getToken());
     // Do not delete the device token when the authenticated server unregister
     // fails. Keeping both the token and registeredToken makes logout retryable
     // without leaving a deliverable token bound to the previous UID.
@@ -200,7 +202,9 @@ class PrivacySafeNotificationClient implements NotificationClient {
           this.registeredToken = token;
           this.knownDisabled = false;
           if (previousToken && previousToken !== token) {
-            await this.delegate.unregister(previousToken).catch(() => undefined);
+            await this.delegate
+              .unregister(previousToken)
+              .catch(() => undefined);
           }
         })
         .catch(onError);

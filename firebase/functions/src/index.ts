@@ -78,6 +78,13 @@ import {
   parseNotificationToken,
   shouldSendEventNotification,
 } from "./domain/notification.js";
+import {
+  PARTNER_NUDGE_SCHEMA_VERSION,
+  PartnerNudgeType,
+  evaluatePartnerNudgeCooldown,
+  parsePartnerNudgeType,
+  partnerNudgeCooldownFields,
+} from "./domain/partnerNudge.js";
 import {buildPartnerProjection} from "./domain/projection.js";
 import {
   SubscriptionPolicyError,
@@ -504,12 +511,14 @@ async function notifyActivePartner(
   }
 }
 
-async function cleanupPairEventData(
+async function cleanupPairScopedData(
   pairRef: DocumentReference<DocumentData>,
 ): Promise<void> {
   await Promise.all([
     db.recursiveDelete(pairRef.collection("events")),
     db.recursiveDelete(pairRef.collection("eventMutations")),
+    db.recursiveDelete(pairRef.collection("nudgeInboxes")),
+    db.recursiveDelete(pairRef.collection("nudgeSenders")),
   ]);
 }
 
@@ -1027,6 +1036,168 @@ export const unregisterNotificationDevice = onCall(
     });
 
     return {unregistered: true, removed};
+  },
+);
+
+export const sendPartnerNudge = onCall(callableOptions, async request => {
+  const uid = requireAuth(request);
+  const data = asRecord(request.data);
+  if (
+    Object.keys(data).length !== 3 ||
+    !("pairId" in data) ||
+    !("requestId" in data) ||
+    !("type" in data)
+  ) {
+    throw new HttpsError("invalid-argument", "요청 형식이 올바르지 않습니다.");
+  }
+  const pairId = requireDocumentId(data, "pairId");
+  const requestId = requireDocumentId(data, "requestId");
+  let type: PartnerNudgeType;
+  try {
+    type = parsePartnerNudgeType(data.type);
+  } catch {
+    throw new HttpsError("invalid-argument", "넛지 종류가 올바르지 않습니다.");
+  }
+
+  const pairRef = db.doc(`pairs/${pairId}`);
+  const senderRef = pairRef.collection("nudgeSenders").doc(uid);
+  const deletionStateRef = db.doc(`accountDeletionStates/${uid}`);
+  const now = Timestamp.now();
+  const fields = partnerNudgeCooldownFields(type);
+
+  const result = await db.runTransaction(async transaction => {
+    const [pairSnapshot, senderSnapshot, deletionStateSnapshot] =
+      await Promise.all([
+        transaction.get(pairRef),
+        transaction.get(senderRef),
+        transaction.get(deletionStateRef),
+      ]);
+    requireAccountMutationAllowed(deletionStateSnapshot);
+    const members = requireActivePairMember(pairSnapshot.data(), uid);
+    const recipientUid = members[0] === uid ? members[1] : members[0];
+    const sender = senderSnapshot.data();
+    const previousRequestId = sender?.[fields.requestId];
+    const previousNextAllowedAtMillis = timestampMillis(
+      sender?.[fields.nextAllowedAt],
+    );
+    const decision = evaluatePartnerNudgeCooldown(
+      {
+        ...(typeof previousRequestId === "string"
+          ? {requestId: previousRequestId}
+          : {}),
+        ...(previousNextAllowedAtMillis !== null
+          ? {nextAllowedAtMillis: previousNextAllowedAtMillis}
+          : {}),
+      },
+      requestId,
+      now.toMillis(),
+    );
+
+    if (decision.kind === "blocked") {
+      const retryAfterSeconds = Math.max(
+        1,
+        Math.ceil((decision.nextAllowedAtMillis - now.toMillis()) / 1_000),
+      );
+      throw new HttpsError(
+        "resource-exhausted",
+        "같은 넛지는 30분 뒤에 다시 보낼 수 있습니다.",
+        {
+          retryAfterSeconds,
+          nextAllowedAt: new Date(decision.nextAllowedAtMillis).toISOString(),
+        },
+      );
+    }
+
+    const sentAt = decision.kind === "idempotent"
+      ? (sender?.[fields.sentAt] instanceof Timestamp
+        ? sender[fields.sentAt] as Timestamp
+        : now)
+      : now;
+    const nextAllowedAt = Timestamp.fromMillis(decision.nextAllowedAtMillis);
+    if (decision.kind === "allowed") {
+      transaction.set(senderRef, {
+        schemaVersion: PARTNER_NUDGE_SCHEMA_VERSION,
+        senderUid: uid,
+        [fields.requestId]: requestId,
+        [fields.sentAt]: sentAt,
+        [fields.nextAllowedAt]: nextAllowedAt,
+        updatedAt: now,
+      }, {merge: true});
+      transaction.set(
+        pairRef.collection("nudgeInboxes").doc(recipientUid),
+        {
+          schemaVersion: PARTNER_NUDGE_SCHEMA_VERSION,
+          requestId,
+          senderUid: uid,
+          recipientUid,
+          type,
+          sentAt,
+        },
+      );
+    }
+
+    return {
+      sentAt: sentAt.toDate().toISOString(),
+      nextAllowedAt: nextAllowedAt.toDate().toISOString(),
+      alreadyApplied: decision.kind === "idempotent",
+    };
+  });
+
+  if (!result.alreadyApplied) {
+    await notifyActivePartner(pairId, uid, "partner-nudge");
+  }
+  return {
+    requestId,
+    type,
+    sentAt: result.sentAt,
+    nextAllowedAt: result.nextAllowedAt,
+    alreadyApplied: result.alreadyApplied,
+  };
+});
+
+export const acknowledgePartnerNudge = onCall(
+  callableOptions,
+  async request => {
+    const uid = requireAuth(request);
+    const data = asRecord(request.data);
+    if (
+      Object.keys(data).length !== 2 ||
+      !("pairId" in data) ||
+      !("requestId" in data)
+    ) {
+      throw new HttpsError(
+        "invalid-argument",
+        "요청 형식이 올바르지 않습니다.",
+      );
+    }
+    const pairId = requireDocumentId(data, "pairId");
+    const requestId = requireDocumentId(data, "requestId");
+    const pairRef = db.doc(`pairs/${pairId}`);
+    const inboxRef = pairRef.collection("nudgeInboxes").doc(uid);
+    const deletionStateRef = db.doc(`accountDeletionStates/${uid}`);
+
+    const acknowledged = await db.runTransaction(async transaction => {
+      const [pairSnapshot, inboxSnapshot, deletionStateSnapshot] =
+        await Promise.all([
+          transaction.get(pairRef),
+          transaction.get(inboxRef),
+          transaction.get(deletionStateRef),
+        ]);
+      requireAccountMutationAllowed(deletionStateSnapshot);
+      requireActivePairMember(pairSnapshot.data(), uid);
+      const inbox = inboxSnapshot.data();
+      if (
+        !inboxSnapshot.exists ||
+        inbox?.recipientUid !== uid ||
+        inbox?.requestId !== requestId
+      ) {
+        return false;
+      }
+      transaction.delete(inboxRef);
+      return true;
+    });
+
+    return {requestId, acknowledged};
   },
 );
 
@@ -1629,7 +1800,7 @@ async function revokePairAccess(
   // Pair status changes inside the transaction, so Security Rules deny reads
   // immediately. Physical cleanup follows after commit and is retried when a
   // client repeats revokePair for an already-revoked Pair.
-  await cleanupPairEventData(pairRef);
+  await cleanupPairScopedData(pairRef);
 
   return {
     pairId,
