@@ -4,6 +4,7 @@ import type { Cycle, Prediction, PredictionConfidence } from "./models.js";
 
 const DEFAULT_MIN_CYCLE_DAYS = 15;
 const DEFAULT_MAX_CYCLE_DAYS = 60;
+const DEFAULT_RECENT_INTERVAL_WINDOW = 12;
 const RECENT_EXCLUSION_WINDOW = 6;
 
 export class PredictionInputError extends Error {
@@ -16,6 +17,7 @@ export class PredictionInputError extends Error {
 export interface PredictionConfig {
   readonly minimumCycleLengthDays?: number;
   readonly maximumCycleLengthDays?: number;
+  readonly recentIntervalWindow?: number;
 }
 
 export interface CycleSeedPredictionInput {
@@ -66,6 +68,7 @@ interface CycleIntervalSummary {
   readonly memberId: string;
   readonly starts: readonly LocalDate[];
   readonly validIntervals: readonly number[];
+  readonly truncatedIntervalCount: number;
   readonly excludedIntervalCount: number;
   readonly hasRecentExcludedInterval: boolean;
 }
@@ -89,8 +92,13 @@ function summarizeIntervals(
 
   const minimum = config.minimumCycleLengthDays ?? DEFAULT_MIN_CYCLE_DAYS;
   const maximum = config.maximumCycleLengthDays ?? DEFAULT_MAX_CYCLE_DAYS;
+  const recentIntervalWindow =
+    config.recentIntervalWindow ?? DEFAULT_RECENT_INTERVAL_WINDOW;
   if (!Number.isInteger(minimum) || !Number.isInteger(maximum) || minimum < 1 || minimum >= maximum) {
     throw new PredictionInputError("Cycle interval bounds are invalid");
+  }
+  if (!Number.isInteger(recentIntervalWindow) || recentIntervalWindow < 1) {
+    throw new PredictionInputError("Recent interval window must be a positive integer");
   }
 
   const starts = sortUniqueLocalDates(cycles.map((cycle) => cycle.startedOn));
@@ -115,13 +123,31 @@ function summarizeIntervals(
     }
   }
 
+  const recentValidIntervals = validIntervals.slice(-recentIntervalWindow);
   return {
     memberId,
     starts,
-    validIntervals: Object.freeze(validIntervals),
+    validIntervals: Object.freeze(recentValidIntervals),
+    truncatedIntervalCount: validIntervals.length - recentValidIntervals.length,
     excludedIntervalCount,
     hasRecentExcludedInterval,
   };
+}
+
+function averageCycleLengthFor(summary: CycleIntervalSummary): number {
+  if (summary.truncatedIntervalCount === 0) {
+    const total = summary.validIntervals.reduce((sum, value) => sum + value, 0);
+    return Math.round(total / summary.validIntervals.length);
+  }
+
+  let weightedTotal = 0;
+  let totalWeight = 0;
+  summary.validIntervals.forEach((value, index) => {
+    const weight = index + 1;
+    weightedTotal += value * weight;
+    totalWeight += weight;
+  });
+  return Math.round(weightedTotal / totalWeight);
 }
 
 export function calculateAverageCycleLength(
@@ -132,8 +158,7 @@ export function calculateAverageCycleLength(
   if (!summary || summary.validIntervals.length === 0) {
     return null;
   }
-  const total = summary.validIntervals.reduce((sum, value) => sum + value, 0);
-  return Math.round(total / summary.validIntervals.length);
+  return averageCycleLengthFor(summary);
 }
 
 function populationStandardDeviation(values: readonly number[]): number {
@@ -180,8 +205,7 @@ export function predictNextPeriod(
     return null;
   }
 
-  const total = summary.validIntervals.reduce((sum, value) => sum + value, 0);
-  const averageCycleLengthDays = Math.round(total / summary.validIntervals.length);
+  const averageCycleLengthDays = averageCycleLengthFor(summary);
   const lastPeriodStart = summary.starts.at(-1);
   if (!lastPeriodStart) {
     return null;
