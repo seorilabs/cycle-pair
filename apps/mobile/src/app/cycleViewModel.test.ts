@@ -1,6 +1,10 @@
 import { addDays, localDate } from '@cyclepair/product-core';
 import { createInitialState, type DailyHistoryEntry } from './CyclePairStore';
 import { buildCycleViewModel, formatKoreanDate } from './cycleViewModel';
+import { resolveCycleFeaturePolicy } from './subscription/cycleFeaturePolicy';
+
+const freeFeaturePolicy = resolveCycleFeaturePolicy(() => false);
+const premiumFeaturePolicy = resolveCycleFeaturePolicy(() => true);
 
 describe('cycle view model roles', () => {
   it.each([
@@ -74,7 +78,7 @@ describe('cycle view model roles', () => {
 
     expect(viewModel.partnerProjection.mood).toBe('very-low');
     expect(viewModel.partnerProjection.condition).toBeUndefined();
-    expect(viewModel.careTip.id).toBe('general-respect');
+    expect(viewModel.careTips[0]?.id).toBe('general-respect');
   });
 
   it('does not predict for a logger until a complete seed is explicitly saved', () => {
@@ -203,9 +207,78 @@ describe('cycle view model roles', () => {
       })),
     };
 
-    const viewModel = buildCycleViewModel(state);
+    const freeViewModel = buildCycleViewModel(state, freeFeaturePolicy);
+    const premiumViewModel = buildCycleViewModel(state, premiumFeaturePolicy);
 
-    expect(viewModel.predictedDate).toBe(addDays(latest, 40));
+    expect(freeViewModel.predictedDate).toBe(addDays(latest, 28));
+    expect(premiumViewModel.predictedDate).toBe(addDays(latest, 40));
+  });
+
+  it('shows one care tip for free and multiple matching tips for premium', () => {
+    const now = new Date();
+    const dailyLogDate = localDate(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      now.getDate(),
+    );
+    const state = {
+      ...createInitialState(),
+      partnerProjection: {
+        ownerUid: 'partner',
+        pairId: 'pair-1',
+        dailyLogDate,
+        carePreferences: ['listen', 'quiet-space'],
+      },
+    };
+
+    expect(
+      buildCycleViewModel(state, freeFeaturePolicy).careTips.map(tip => tip.id),
+    ).toEqual(['preference-listen']);
+    expect(
+      buildCycleViewModel(state, premiumFeaturePolicy).careTips.map(
+        tip => tip.id,
+      ),
+    ).toEqual(['preference-listen', 'preference-space']);
+  });
+
+  it('keeps advanced prediction evidence locked for free users', () => {
+    const today = new Date();
+    const todayValue = localDate(
+      today.getFullYear(),
+      today.getMonth() + 1,
+      today.getDate(),
+    );
+    const latest = addDays(todayValue, -29);
+    const state = {
+      ...createInitialState(),
+      hasCycleSeed: true,
+      seed: {
+        lastPeriodStart: latest,
+        averageCycleLength: 28,
+        averagePeriodLength: 5,
+      },
+      dailyHistory: [-90, -60, -29].map(offset => ({
+        localDate: addDays(todayValue, offset),
+        checkIn: {
+          symptoms: [],
+          periodStarted: true,
+          periodEnded: false,
+        },
+      })),
+    };
+
+    expect(
+      buildCycleViewModel(state, freeFeaturePolicy).advancedPrediction,
+    ).toBeUndefined();
+    expect(
+      buildCycleViewModel(state, premiumFeaturePolicy).advancedPrediction,
+    ).toEqual(
+      expect.objectContaining({
+        averageCycleLengthDays: 31,
+        sampleSize: 2,
+        observedCycleLengths: [30, 31],
+      }),
+    );
   });
 
   it('maps explicit energy, condition, and note into the private domain log', () => {
@@ -270,7 +343,7 @@ describe('cycle view model roles', () => {
 
     expect(viewModel.partnerProjection.condition).toBeUndefined();
     expect(viewModel.partnerProjection.helpPreferences).toBeUndefined();
-    expect(viewModel.careTip.id).toBe('general-respect');
+    expect(viewModel.careTips[0]?.id).toBe('general-respect');
   });
 
   it('실재하지 않는 파트너 생리 날짜는 화면 모델에서 안전하게 제외한다', () => {

@@ -1,7 +1,9 @@
 import {
   determineEntitlementAt,
+  hasEntitlement,
   parseIsoTimestamp,
   type Entitlement,
+  type EntitlementFeature,
   type MemberId,
   type SubscriptionProduct,
   type SubscriptionSnapshot,
@@ -37,6 +39,7 @@ export interface SubscriptionState {
 
 export interface SubscriptionContextValue {
   readonly state: SubscriptionState;
+  hasFeature(feature: EntitlementFeature): boolean;
   clearFeedback(): void;
   refresh(): Promise<boolean>;
   loadProducts(): Promise<boolean>;
@@ -304,6 +307,11 @@ export function SubscriptionProvider({
     setState(current => ({...current, error: null, notice: null}));
   }, []);
 
+  const hasFeature = useCallback(
+    (feature: EntitlementFeature) => hasEntitlement(state.entitlement, feature),
+    [state.entitlement],
+  );
+
   const loadProducts = useCallback(async () => {
     if (!purchaseClient?.salesEnabled) return true;
     setState(current => ({
@@ -423,6 +431,7 @@ export function SubscriptionProvider({
   const value = useMemo<SubscriptionContextValue>(
     () => ({
       state,
+      hasFeature,
       clearFeedback,
       refresh,
       loadProducts,
@@ -432,6 +441,7 @@ export function SubscriptionProvider({
     }),
     [
       clearFeedback,
+      hasFeature,
       loadProducts,
       manage,
       purchase,

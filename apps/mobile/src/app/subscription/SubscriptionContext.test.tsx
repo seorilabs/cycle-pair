@@ -66,9 +66,13 @@ function runtime() {
 }
 
 function Harness() {
-  const {state} = useSubscription();
+  const {state, hasFeature} = useSubscription();
   return (
-    <Text>{`${state.subscription.status}:${state.entitlement.tier}:${state.entitlement.reason}`}</Text>
+    <Text>{`${state.subscription.status}:${state.entitlement.tier}:${state.entitlement.reason}:${Number(
+      hasFeature('extended-history'),
+    )}${Number(hasFeature('advanced-prediction'))}${Number(
+      hasFeature('full-care-tips'),
+    )}`}</Text>
   );
 }
 
@@ -93,7 +97,9 @@ describe('SubscriptionProvider server state lifecycle', () => {
     await act(async () => {
       store.emit(activeSubscription('2026-08-14T10:00:00.000Z'));
     });
-    expect(view.getByText('active:premium:active-subscription')).toBeTruthy();
+    expect(
+      view.getByText('active:premium:active-subscription:111'),
+    ).toBeTruthy();
 
     await act(async () => {
       store.emit({
@@ -103,7 +109,7 @@ describe('SubscriptionProvider server state lifecycle', () => {
         paymentState: 'refunded',
       });
     });
-    expect(view.getByText('refunded:free:refunded')).toBeTruthy();
+    expect(view.getByText('refunded:free:refunded:000')).toBeTruthy();
 
     await act(async () => view.unmount());
     expect(store.unsubscribe).toHaveBeenCalledTimes(1);
@@ -120,11 +126,13 @@ describe('SubscriptionProvider server state lifecycle', () => {
     await act(async () => {
       store.emit(activeSubscription('2026-07-14T10:00:01.000Z'));
     });
-    expect(view.getByText('active:premium:active-subscription')).toBeTruthy();
+    expect(
+      view.getByText('active:premium:active-subscription:111'),
+    ).toBeTruthy();
 
     await act(async () => {
       jest.advanceTimersByTime(1_100);
     });
-    expect(view.getByText('active:free:expired')).toBeTruthy();
+    expect(view.getByText('active:free:expired:000')).toBeTruthy();
   });
 });
