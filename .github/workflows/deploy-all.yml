@@ -91,6 +91,7 @@ jobs:
     secrets: inherit
     with:
       release_tag: ${{ needs.resolve.outputs.tag }}
+      snapshot_candidate: false
       upload: ${{ inputs.google_play_upload }}
       release_status: ${{ inputs.google_play_release_status }}
       changes_not_sent_for_review: false
@@ -113,4 +114,5 @@ jobs:
     secrets: inherit
     with:
       release_tag: ${{ needs.resolve.outputs.tag }}
+      snapshot_candidate: false
       memo: ${{ inputs.apps_in_toss_memo }}

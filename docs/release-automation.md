@@ -2,9 +2,9 @@
 
 ## Android와 AppsInToss
 
-- `Deploy Google Play`: private ARM64 ARC runner가 선택한 stable SemVer 태그를
+- `Deploy Google Play`: private ARM64 ARC runner가 선택한 SemVer 태그를
   `seorilabs-ci` global endpoint의 32-vCPU x64 Cloud Build로 제출한다. Cloud
-  Build는 고정 RN Android builder에서 Gradle worker와 CMake 병렬도를 각각 2로 제한한
+  Build는 고정 RN Android builder에서 Gradle worker와 CMake 병렬도를 각각 4로 제한한
   `scripts/build-android.sh`를 실행해 서명 AAB를 만들고, caller가 GCS에서 회수한다.
   명시적 `upload=true`일 때만 Google Play `internal` 트랙에 업로드한다.
   같은 tag/versionCode가 이미 동일 상태로 존재하면 재업로드하지 않고 성공으로
@@ -13,7 +13,16 @@
   `ubuntu-latest`에서 `.ait`를 빌드하고 비공개 업로드한다.
 - 두 workflow 모두 `workflow_dispatch`와 `workflow_call`을 제공하며 Backoffice의
   앱별 릴리스 배포 버튼에서 호출할 수 있다.
+- `snapshot_candidate=false`는 `vX.Y.Z` stable 태그만, `true`는
+  `vX.Y.Z-snapshot.N` 후보 태그만 허용한다. snapshot 후보도 AppsInToss 비공개와
+  Google Play internal 경로 밖으로는 나가지 않는다.
 - production 승격, 심사 제출, 공개 출시는 이 자동화에 포함하지 않는다.
+
+`v1.0.3`까지 stable 태그는 기존 versionCode를 보존한다. 이후에는 다음 stable
+버전마다 100칸을 예약해 snapshot 1-99와 stable을 단조 증가시킨다. 따라서
+`v1.0.4-snapshot.1=1000004`, `v1.0.4-snapshot.99=1000102`,
+`v1.0.4=1000103`이다. Cloud Build에는 numeric `versionName`과 code뿐 아니라 원본
+`release_tag` 전체를 전달해 후보 provenance를 잃지 않는다.
 
 Android 서명 키와 Firebase 설정은 로컬 자격증명 카탈로그가 source of truth다.
 Cloud Build에는 `seorilabs-ci` Secret Manager의 Cycle Pair 전용 실행 복제본만

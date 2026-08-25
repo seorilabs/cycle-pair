@@ -55,7 +55,7 @@ export function createPlatformFirebaseGuestClient(
               'Content-Type': 'application/json',
               'X-Seori-App': PLATFORM_APP_ID,
               'X-Seori-Runtime': 'rn-native',
-              'X-Seori-Sdk': 'cycle-pair/1.0.1',
+              'X-Seori-Sdk': 'cycle-pair/1.0.4',
             },
             body: JSON.stringify({ appId: PLATFORM_APP_ID }),
           },

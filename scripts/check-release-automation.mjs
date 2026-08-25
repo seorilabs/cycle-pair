@@ -5,12 +5,14 @@ const files = {
   ci: '.github/workflows/ci.yml',
   all: '.github/workflows/deploy-all.yml',
   google: '.github/workflows/deploy-google-play.yml',
+  androidCandidate: '.github/workflows/build-android.yml',
   androidCloudBuild: 'cloudbuild-android.yaml',
   androidBuildScript: 'scripts/build-android.sh',
   androidBuildEnvironment: 'build.env',
   gcloudIgnore: '.gcloudignore',
   apple: '.github/workflows/deploy-app-store.yml',
   ait: '.github/workflows/deploy-apps-in-toss.yml',
+  aitCandidate: '.github/workflows/build-ait.yml',
   xcodePostClone: 'apps/mobile/ios/ci_scripts/ci_post_clone.sh',
   xcodePreBuild: 'apps/mobile/ios/ci_scripts/ci_pre_xcodebuild.sh',
   xcodeTrigger: 'scripts/trigger-xcode-cloud-build.mjs',
@@ -87,6 +89,21 @@ try {
     'Google Play Android 빌드가 Cloud Build로 제출되지 않습니다.',
   );
   assertIncludes(
+    google,
+    'snapshot_candidate:',
+    'Google Play caller에 snapshot 후보 mode 입력이 없습니다.',
+  );
+  assertIncludes(
+    google,
+    'validate-release-candidate.mjs',
+    'Google Play caller가 stable/snapshot mode와 package base를 검증하지 않습니다.',
+  );
+  assertIncludes(
+    google,
+    '_RELEASE_TAG=$RELEASE_TAG',
+    'Google Play caller가 전체 릴리스 태그를 Cloud Build에 전달하지 않습니다.',
+  );
+  assertIncludes(
     androidBuildEnvironment,
     'REACT_NATIVE_ARCHITECTURES=armeabi-v7a,arm64-v8a',
     'Google Play release AAB는 검증된 ARM 32/64비트 ABI 쌍만 빌드해야 합니다.',
@@ -118,6 +135,11 @@ try {
   );
   assertIncludes(
     androidBuildScript,
+    '--tag "$RELEASE_TAG"',
+    'Cloud Build가 snapshot suffix를 포함한 전체 태그를 빌드에 전달하지 않습니다.',
+  );
+  assertIncludes(
+    androidBuildScript,
     'jarsigner -verify -strict',
     'Cloud Build signed AAB 서명 검증이 없습니다.',
   );
@@ -141,6 +163,11 @@ try {
     google,
     'python3 scripts/upload-google-play-internal.py',
     'Google Play 업로드가 Android Publisher 스크립트를 사용하지 않습니다.',
+  );
+  assertIncludes(
+    google,
+    '--expected-version-code "$ANDROID_VERSION_CODE"',
+    'Google Play 업로드가 빌드에서 확정한 versionCode를 검증하지 않습니다.',
   );
   if (/--track\s+production/u.test(google)) {
     throw new Error('Google Play 자동화가 production track을 직접 건드리면 안 됩니다.');
@@ -198,6 +225,29 @@ try {
     ait,
     'public release: false',
     'AppsInToss 자동화는 비공개 업로드로 제한해야 합니다.',
+  );
+  assertIncludes(
+    ait,
+    'snapshot_candidate:',
+    'AppsInToss caller에 snapshot 후보 mode 입력이 없습니다.',
+  );
+  assertIncludes(
+    ait,
+    'validate-release-candidate.mjs',
+    'AppsInToss caller가 stable/snapshot mode와 package base를 검증하지 않습니다.',
+  );
+
+  const androidCandidate = read(files.androidCandidate);
+  assertIncludes(
+    androidCandidate,
+    'snapshot_candidate: ${{ inputs.snapshot_candidate }}',
+    'Android candidate caller가 snapshot mode를 전달하지 않습니다.',
+  );
+  const aitCandidate = read(files.aitCandidate);
+  assertIncludes(
+    aitCandidate,
+    'validate-release-candidate.mjs',
+    'AIT candidate caller가 snapshot mode를 검증하지 않습니다.',
   );
 
   const postClone = read(files.xcodePostClone);
@@ -263,6 +313,11 @@ try {
       `Deploy All에 ${uploadInput} opt-in 입력이 없습니다.`,
     );
   }
+  assertIncludes(
+    deployAll,
+    'snapshot_candidate: false',
+    '정식 Deploy All caller가 stable mode를 명시하지 않습니다.',
+  );
 
   const tag = read(files.tag);
   assertOrgPin(files.tag, tag, 'release-tag.yml');

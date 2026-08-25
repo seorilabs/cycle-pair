@@ -43,6 +43,7 @@ export CYCLEPAIR_ANDROID_GRADLE_MAX_WORKERS="$GRADLE_MAX_WORKERS"
 export CMAKE_BUILD_PARALLEL_LEVEL
 
 required_environment=(
+  RELEASE_TAG
   ANDROID_VERSION_NAME
   ANDROID_VERSION_CODE
   FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64
@@ -70,9 +71,14 @@ unset GOOGLE_PLAY_UPLOAD_KEY_PASSWORD
 pnpm install --frozen-lockfile
 
 version_name="${ANDROID_VERSION_NAME#v}"
-version_json="$(node scripts/resolve-release-version.mjs --tag "v$version_name")"
+version_json="$(node scripts/resolve-release-version.mjs --tag "$RELEASE_TAG")"
 resolved_version_name="$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).version_name)' "$version_json")"
 resolved_version_code="$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).android_version_code)' "$version_json")"
+resolved_release_tag="$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).release_tag)' "$version_json")"
+[[ "$resolved_release_tag" == "$RELEASE_TAG" ]] || {
+  echo "릴리스 태그 provenance 해석에 실패했습니다." >&2
+  exit 1
+}
 [[ "$resolved_version_name" == "$version_name" ]] || {
   echo "Android versionName 해석에 실패했습니다." >&2
   exit 1
@@ -127,7 +133,7 @@ export CYCLEPAIR_ANDROID_UPLOAD_KEY_ALIAS="$GOOGLE_PLAY_UPLOAD_KEY_ALIAS"
 export CYCLEPAIR_ANDROID_UPLOAD_KEY_PASSWORD="$upload_key_password"
 export ORG_GRADLE_PROJECT_reactNativeArchitectures="$REACT_NATIVE_ARCHITECTURES"
 
-node scripts/build-google-play.mjs --tag "v$version_name"
+node scripts/build-google-play.mjs --tag "$RELEASE_TAG"
 
 source_aab="$repo_root/apps/mobile/android/app/build/outputs/bundle/release/app-release.aab"
 [[ -f "$source_aab" ]] || {
@@ -144,4 +150,4 @@ jarsigner -verify -strict \
   "$output_aab" "$GOOGLE_PLAY_UPLOAD_KEY_ALIAS" >/dev/null
 
 artifact_bytes="$(wc -c <"$output_aab" | tr -d ' ')"
-echo "Android signed AAB 생성 완료: path=$AAB_PATH bytes=$artifact_bytes versionName=$version_name versionCode=$ANDROID_VERSION_CODE"
+echo "Android signed AAB 생성 완료: path=$AAB_PATH bytes=$artifact_bytes releaseTag=$RELEASE_TAG versionName=$version_name versionCode=$ANDROID_VERSION_CODE"

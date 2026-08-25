@@ -641,7 +641,7 @@ export function SettingsScreen() {
             />
             <View style={styles.appIdentity}>
               <Text style={styles.brand}>∞ 사이클 페어</Text>
-              <Text style={styles.version}>버전 1.0.1</Text>
+              <Text style={styles.version}>버전 1.0.4</Text>
             </View>
           </Card>
         </SettingsAccordionSection>

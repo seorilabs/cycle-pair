@@ -104,7 +104,7 @@ def releaseVersionName = (
     project.findProperty("versionNameOverride") ?:
         System.getenv("GOOGLE_PLAY_VERSION_NAME") ?:
         System.getenv("APP_VERSION_NAME") ?:
-        "1.0.1"
+        "1.0.4"
 ).toString()
 if (!(releaseVersionName ==~ /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/)) {
     throw new GradleException("Google Play versionName must use numeric SemVer: ${releaseVersionName}")

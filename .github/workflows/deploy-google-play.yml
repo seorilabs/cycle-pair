@@ -4,10 +4,15 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "빌드하고 업로드할 stable SemVer 태그. 비우면 최신 vX.Y.Z"
+        description: "빌드하고 업로드할 SemVer 태그. snapshot 후보는 snapshot_candidate=true 필수"
         type: string
         required: false
         default: ""
+      snapshot_candidate:
+        description: "내부 테스트용 vX.Y.Z-snapshot.N 후보만 허용"
+        type: boolean
+        required: false
+        default: false
       upload:
         description: "signed AAB를 Google Play internal 트랙에 업로드"
         type: boolean
@@ -31,6 +36,10 @@ on:
         type: string
         required: false
         default: ""
+      snapshot_candidate:
+        type: boolean
+        required: false
+        default: false
       upload:
         type: boolean
         required: false
@@ -60,6 +69,7 @@ jobs:
     environment: google-play
     outputs:
       artifact_name: ${{ steps.meta.outputs.artifact_name }}
+      android_version_code: ${{ steps.version.outputs.android_version_code }}
       release_name: ${{ steps.version.outputs.release_name }}
       release_tag: ${{ steps.version.outputs.release_tag }}
       source_sha: ${{ steps.meta.outputs.source_sha }}
@@ -83,18 +93,21 @@ jobs:
         shell: bash
         env:
           REQUESTED_TAG: ${{ inputs.release_tag }}
+          SNAPSHOT_CANDIDATE: ${{ inputs.snapshot_candidate }}
         run: |
           set -euo pipefail
           tag="$REQUESTED_TAG"
           if [ -z "$tag" ]; then
+            [ "$SNAPSHOT_CANDIDATE" = "false" ] \
+              || { echo "snapshot_candidate=true이면 release_tag가 필요합니다." >&2; exit 1; }
             tag="$(git tag --list 'v*' --sort=-v:refname | grep -E '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' | head -n 1 || true)"
             [ -n "$tag" ] || { echo "release_tag이 비어 있고 vX.Y.Z 태그도 없습니다." >&2; exit 1; }
           fi
-          [[ "$tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] \
-            || { echo "release_tag는 stable SemVer vX.Y.Z여야 합니다: $tag" >&2; exit 1; }
           git -c advice.detachedHead=false checkout --detach "$tag"
+          node scripts/validate-release-candidate.mjs \
+            --tag "$tag" \
+            --snapshot-candidate "$SNAPSHOT_CANDIDATE"
           node scripts/resolve-release-version.mjs --tag "$tag" --github-output
-          echo "release_tag=$tag" >> "$GITHUB_OUTPUT"
 
       - name: Resolve build contract
         id: meta
@@ -150,6 +163,7 @@ jobs:
           UPLOAD_ALIAS: ${{ vars.GOOGLE_PLAY_UPLOAD_KEY_ALIAS }}
           VERSION_NAME: ${{ steps.version.outputs.version_name }}
           VERSION_CODE: ${{ steps.version.outputs.android_version_code }}
+          RELEASE_TAG: ${{ steps.version.outputs.release_tag }}
         run: |
           set -euo pipefail
           gcloud builds submit . \
@@ -157,7 +171,7 @@ jobs:
             --region=global \
             --config=cloudbuild-android.yaml \
             --ignore-file=.gcloudignore \
-            --substitutions="_ANDROID_VERSION_NAME=$VERSION_NAME,_ANDROID_VERSION_CODE=$VERSION_CODE,_GOOGLE_PLAY_UPLOAD_KEY_ALIAS=$UPLOAD_ALIAS,_ARTIFACT_BUCKET=$ARTIFACT_BUCKET"
+            --substitutions="_RELEASE_TAG=$RELEASE_TAG,_ANDROID_VERSION_NAME=$VERSION_NAME,_ANDROID_VERSION_CODE=$VERSION_CODE,_GOOGLE_PLAY_UPLOAD_KEY_ALIAS=$UPLOAD_ALIAS,_ARTIFACT_BUCKET=$ARTIFACT_BUCKET"
 
       - name: Fetch signed AAB
         shell: bash
@@ -187,6 +201,7 @@ jobs:
             echo "### Cycle Pair Android Cloud Build 후보"
             echo "- source: \`${{ steps.meta.outputs.source_sha }}\`"
             echo "- release: \`${{ steps.version.outputs.release_tag }}\`"
+            echo "- snapshot candidate: \`${{ inputs.snapshot_candidate }}\`"
             echo "- builder: \`${{ steps.meta.outputs.builder }}\`"
             echo "- artifact: \`${{ steps.meta.outputs.artifact_name }}\`"
             echo "- bytes: \`$(wc -c <"$AAB_PATH" | tr -d ' ')\`"
@@ -236,6 +251,7 @@ jobs:
         shell: bash
         env:
           RELEASE_NAME: ${{ needs.build.outputs.release_name }}
+          ANDROID_VERSION_CODE: ${{ needs.build.outputs.android_version_code }}
           RELEASE_STATUS: ${{ inputs.release_status }}
           CHANGES_NOT_SENT_FOR_REVIEW: ${{ inputs.changes_not_sent_for_review }}
           GOOGLE_PLAY_API_TIMEOUT_SECONDS: "900"
@@ -247,6 +263,7 @@ jobs:
           args=(
             --aab-path "${aabs[0]}"
             --release-name "$RELEASE_NAME"
+            --expected-version-code "$ANDROID_VERSION_CODE"
             --release-status "$RELEASE_STATUS"
             --track internal
           )
@@ -262,6 +279,8 @@ jobs:
             echo "### Google Play internal 업로드"
             echo "- source: \`${{ needs.build.outputs.source_sha }}\`"
             echo "- release: \`${{ needs.build.outputs.release_tag }}\`"
+            echo "- versionCode: \`${{ needs.build.outputs.android_version_code }}\`"
+            echo "- snapshot candidate: \`${{ inputs.snapshot_candidate }}\`"
             echo "- track: \`internal\`"
             echo "- status: \`${{ inputs.release_status }}\`"
             echo "- production promotion: \`false\`"

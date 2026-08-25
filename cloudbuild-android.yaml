@@ -1,6 +1,7 @@
 substitutions:
-  _ANDROID_VERSION_NAME: "1.0.1"
-  _ANDROID_VERSION_CODE: "1000001"
+  _RELEASE_TAG: "v1.0.4"
+  _ANDROID_VERSION_NAME: "1.0.4"
+  _ANDROID_VERSION_CODE: "1000103"
   _GOOGLE_PLAY_UPLOAD_KEY_ALIAS: "upload"
   _ARTIFACT_BUCKET: "gs://seorilabs-ci-build-artifacts/seorilabs/cycle-pair/manual"
 
@@ -11,6 +12,7 @@ steps:
     args:
       - scripts/build-android.sh
     env:
+      - RELEASE_TAG=${_RELEASE_TAG}
       - ANDROID_VERSION_NAME=${_ANDROID_VERSION_NAME}
       - ANDROID_VERSION_CODE=${_ANDROID_VERSION_CODE}
       - GOOGLE_PLAY_UPLOAD_KEY_ALIAS=${_GOOGLE_PLAY_UPLOAD_KEY_ALIAS}

@@ -4,9 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "업로드할 stable SemVer 태그"
+        description: "업로드할 SemVer 태그. snapshot 후보는 snapshot_candidate=true 필수"
         type: string
         required: true
+      snapshot_candidate:
+        description: "비공개 vX.Y.Z-snapshot.N 후보만 허용"
+        type: boolean
+        required: false
+        default: false
       memo:
         description: "AppsInToss 비공개 배포 메모"
         type: string
@@ -17,6 +22,10 @@ on:
       release_tag:
         type: string
         required: true
+      snapshot_candidate:
+        type: boolean
+        required: false
+        default: false
       memo:
         type: string
         required: false
@@ -43,20 +52,22 @@ jobs:
         with:
           ref: ${{ inputs.release_tag }}
 
-      - name: Validate release tag
-        shell: bash
-        env:
-          RELEASE_TAG: ${{ inputs.release_tag }}
-        run: |
-          set -euo pipefail
-          [[ "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] \
-            || { echo "release_tag는 stable SemVer vX.Y.Z여야 함: $RELEASE_TAG" >&2; exit 1; }
-
       - name: Setup Node
         uses: actions/setup-node@v7
         with:
           node-version: 24.16.0
           check-latest: false
+
+      - name: Validate release candidate
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          SNAPSHOT_CANDIDATE: ${{ inputs.snapshot_candidate }}
+        run: |
+          set -euo pipefail
+          node scripts/validate-release-candidate.mjs \
+            --tag "$RELEASE_TAG" \
+            --snapshot-candidate "$SNAPSHOT_CANDIDATE"
 
       - name: Enable pnpm
         shell: bash
@@ -108,6 +119,7 @@ jobs:
             echo "### AppsInToss private upload"
             echo ""
             echo "- tag: ${{ inputs.release_tag }}"
+            echo "- snapshot candidate: ${{ inputs.snapshot_candidate }}"
             echo "- artifact: apps/ait/cycle-pair.ait"
             echo "- private upload: true"
             echo "- public release: false"

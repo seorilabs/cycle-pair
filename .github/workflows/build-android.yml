@@ -4,10 +4,15 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "빌드할 SemVer 태그. 비우면 최신 vX.Y.Z"
+        description: "빌드할 SemVer 태그. snapshot 후보는 snapshot_candidate=true 필수"
         type: string
         required: false
         default: ""
+      snapshot_candidate:
+        description: "vX.Y.Z-snapshot.N 후보 빌드"
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
@@ -22,6 +27,7 @@ jobs:
     uses: ./.github/workflows/deploy-google-play.yml
     with:
       release_tag: ${{ inputs.release_tag }}
+      snapshot_candidate: ${{ inputs.snapshot_candidate }}
       upload: false
       release_status: draft
       changes_not_sent_for_review: false

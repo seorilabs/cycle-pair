@@ -20,9 +20,16 @@ pnpm --filter @cyclepair/mobile build:android:debug
 pnpm build:google-play
 ~~~
 
-`pnpm build:google-play`은 root와 mobile package version이 같은지 먼저 확인하고, 해당 버전을 기존 `resolve-release-version.mjs`에 전달해 `versionName`과 단조 증가 `versionCode`를 함께 주입한다. 예를 들어 `0.1.0`은 versionCode `1000`, `0.1.1`은 `1001`이다. 다음 업로드 전에는 두 `package.json`의 version을 함께 올려야 하며, 필요하면 같은 버전의 `--tag vX.Y.Z`를 명시할 수 있다. 태그와 package version이 다르면 빌드는 중단한다.
+`pnpm build:google-play`은 root·mobile·AIT package version이 같은지 확인하고,
+태그의 numeric base를 package version과 비교한 뒤 `versionName`과 단조 증가
+`versionCode`를 주입한다. `v1.0.3`까지 stable은 기존 code를 보존한다. 이후
+`v1.0.4-snapshot.1`부터 snapshot 1-99와 stable에 100칸 블록을 사용하므로 각각
+`1000004`부터 `1000102`, `1000103`이 된다. snapshot suffix는 표시용
+`versionName=1.0.4`에서 제거하되 원본 release tag는 Cloud Build와 Play internal
+release 이름까지 보존한다.
 
-Backoffice의 앱별 `릴리스 > 빌드 산출물`에서는 `vX.Y.Z` 태그를 선택해
+Backoffice의 앱별 `릴리스 > 빌드 산출물`에서는 stable `vX.Y.Z` 또는 명시적인
+`snapshot_candidate=true`의 `vX.Y.Z-snapshot.N` 태그를 선택해
 동일한 release signing·production Firebase gate를 통과한 signed AAB를 생성한다.
 전용 build-only workflow는 private ARC에서 WIF로 x64 Cloud Build만 제출하고,
 signed AAB를 회수해 3일 보관한다. `배포 > Google Play`는 같은 Cloud Build 경로로

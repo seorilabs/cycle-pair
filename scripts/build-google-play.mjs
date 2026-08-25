@@ -1,9 +1,14 @@
 #!/usr/bin/env node
-import { execFileSync, spawnSync } from 'node:child_process';
+import {spawnSync} from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import process from 'node:process';
+
+import {
+  assertReleasePackageVersions,
+  resolveReleaseVersion,
+} from './release-version-lib.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, '..');
@@ -37,33 +42,18 @@ function readRequestedTag(arguments_) {
 try {
   const rootPackage = readJson('package.json');
   const mobilePackage = readJson('apps/mobile/package.json');
-  if (rootPackage.version !== mobilePackage.version) {
-    throw new Error(
-      `root/mobile package version이 다릅니다: ${rootPackage.version} / ${mobilePackage.version}`,
-    );
-  }
+  const aitPackage = readJson('apps/ait/package.json');
 
   const expectedTag = `v${rootPackage.version}`;
   const requestedTag = readRequestedTag(process.argv.slice(2)) ?? expectedTag;
-  if (requestedTag !== expectedTag) {
-    throw new Error(
-      `릴리스 태그와 package version이 다릅니다: ${requestedTag} / ${expectedTag}`,
-    );
-  }
-
-  const resolvedVersion = JSON.parse(
-    execFileSync(
-      process.execPath,
-      [
-        path.join(scriptDirectory, 'resolve-release-version.mjs'),
-        '--tag',
-        requestedTag,
-      ],
-      { encoding: 'utf8' },
-    ),
-  );
+  const resolvedVersion = resolveReleaseVersion(requestedTag);
+  assertReleasePackageVersions(resolvedVersion, {
+    root: rootPackage.version,
+    mobile: mobilePackage.version,
+    ait: aitPackage.version,
+  });
   console.log(
-    `Google Play AAB: versionName=${resolvedVersion.version_name}, versionCode=${resolvedVersion.android_version_code}`,
+    `Google Play AAB: releaseTag=${resolvedVersion.release_tag}, versionName=${resolvedVersion.version_name}, versionCode=${resolvedVersion.android_version_code}`,
   );
 
   const gradleCommand = path.join(

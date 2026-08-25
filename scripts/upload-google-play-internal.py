@@ -20,9 +20,14 @@ ANDROID_PUBLISHER_SCOPE = "https://www.googleapis.com/auth/androidpublisher"
 DEFAULT_API_TIMEOUT_SECONDS = 300
 DEFAULT_API_RETRIES = 5
 RELEASE_TAG_PATTERN = re.compile(
-    r"^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$"
+    r"^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"
+    r"(?:-snapshot\.([1-9]\d*))?$"
 )
 VERSION_SEGMENT_BASE = 1000
+GOOGLE_PLAY_MAX_VERSION_CODE = 2_100_000_000
+SNAPSHOT_SEQUENCE_MAX = 99
+FUTURE_RELEASE_BLOCK_SIZE = 100
+LEGACY_STABLE_ANCHOR_CODE = 1_000_003
 
 
 def load_config():
@@ -102,18 +107,43 @@ def expected_version_code(release_name):
     match = RELEASE_TAG_PATTERN.fullmatch(release_name)
     if match is None:
         raise RuntimeError(
-            f"Release name must use stable SemVer vX.Y.Z: {release_name}"
+            "Release name must use vX.Y.Z or vX.Y.Z-snapshot.N: "
+            f"{release_name}"
         )
-    major, minor, patch = (int(segment) for segment in match.groups())
+    major, minor, patch = (int(segment) for segment in match.groups()[:3])
+    snapshot_sequence = (
+        int(match.group(4)) if match.group(4) is not None else None
+    )
     if minor >= VERSION_SEGMENT_BASE or patch >= VERSION_SEGMENT_BASE:
         raise RuntimeError("Release minor and patch must be 999 or lower.")
-    version_code = (
+    legacy_version_code = (
         major * VERSION_SEGMENT_BASE * VERSION_SEGMENT_BASE
         + minor * VERSION_SEGMENT_BASE
         + patch
     )
-    if version_code <= 0:
-        raise RuntimeError("Google Play versionCode must be positive.")
+    if snapshot_sequence is not None:
+        if snapshot_sequence > SNAPSHOT_SEQUENCE_MAX:
+            raise RuntimeError("Snapshot sequence must be between 1 and 99.")
+        if legacy_version_code <= LEGACY_STABLE_ANCHOR_CODE:
+            raise RuntimeError(
+                "Snapshots at or below the v1.0.3 legacy anchor are not allowed."
+            )
+        version_code = (
+            LEGACY_STABLE_ANCHOR_CODE
+            + (legacy_version_code - LEGACY_STABLE_ANCHOR_CODE - 1)
+            * FUTURE_RELEASE_BLOCK_SIZE
+            + snapshot_sequence
+        )
+    elif legacy_version_code <= LEGACY_STABLE_ANCHOR_CODE:
+        version_code = legacy_version_code
+    else:
+        version_code = (
+            LEGACY_STABLE_ANCHOR_CODE
+            + (legacy_version_code - LEGACY_STABLE_ANCHOR_CODE)
+            * FUTURE_RELEASE_BLOCK_SIZE
+        )
+    if version_code <= 0 or version_code > GOOGLE_PLAY_MAX_VERSION_CODE:
+        raise RuntimeError("Google Play versionCode is outside the valid range.")
     return version_code
 
 
@@ -143,6 +173,21 @@ def release_convergence(existing_release, release_name, release_status, version_
     return "already_present"
 
 
+def verified_uploaded_version_code(bundle, requested_version_code):
+    try:
+        uploaded_version_code = int(bundle["versionCode"])
+    except (KeyError, TypeError, ValueError) as error:
+        raise RuntimeError(
+            "Google Play bundle upload did not return a valid versionCode."
+        ) from error
+    if uploaded_version_code != requested_version_code:
+        raise RuntimeError(
+            "Uploaded AAB versionCode does not match the requested candidate: "
+            f"requested={requested_version_code}, uploaded={uploaded_version_code}"
+        )
+    return uploaded_version_code
+
+
 def resolve_track(publisher, package_name, edit_id, requested_track, retries):
     response = execute_request(
         publisher.edits()
@@ -167,7 +212,14 @@ def upload_internal_release(args):
         raise RuntimeError("Release notes are required.")
     if len(args.release_notes) > 500:
         raise RuntimeError("Google Play release notes must be 500 characters or fewer.")
-    requested_version_code = expected_version_code(args.release_name)
+    derived_version_code = expected_version_code(args.release_name)
+    requested_version_code = args.expected_version_code or derived_version_code
+    if requested_version_code != derived_version_code:
+        raise RuntimeError(
+            "Expected versionCode does not match the release tag: "
+            f"tag={args.release_name}, expected={requested_version_code}, "
+            f"derived={derived_version_code}"
+        )
 
     publisher = make_android_publisher(args.api_timeout_seconds)
     edit = execute_request(
@@ -238,7 +290,10 @@ def upload_internal_release(args):
             ),
             args.api_retries,
         )
-        version_code = int(bundle["versionCode"])
+        version_code = verified_uploaded_version_code(
+            bundle,
+            requested_version_code,
+        )
         release = {
             "name": args.release_name,
             "versionCodes": [str(version_code)],
@@ -329,6 +384,7 @@ def main():
         default="draft",
     )
     parser.add_argument("--release-name", required=True)
+    parser.add_argument("--expected-version-code", type=positive_int)
     parser.add_argument("--release-notes-language", default=default_language)
     parser.add_argument(
         "--release-notes",
