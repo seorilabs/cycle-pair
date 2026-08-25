@@ -249,6 +249,14 @@ try {
     'validate-release-candidate.mjs',
     'AIT candidate caller가 snapshot mode를 검증하지 않습니다.',
   );
+  assertIncludes(
+    aitCandidate,
+    'echo "tag=" >> "$GITHUB_OUTPUT"',
+    'AIT candidate caller가 빈 release_tag의 기존 호출 ref 동작을 보존하지 않습니다.',
+  );
+  if (aitCandidate.includes('git tag --list')) {
+    throw new Error('AIT candidate의 빈 release_tag를 최신 stable 태그로 바꾸면 안 됩니다.');
+  }
 
   const postClone = read(files.xcodePostClone);
   assertIncludes(

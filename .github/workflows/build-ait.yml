@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "빌드할 SemVer 태그. snapshot 후보는 snapshot_candidate=true 필수"
+        description: "빌드할 SemVer 태그. 비우면 호출 ref, snapshot 후보는 snapshot_candidate=true 필수"
         type: string
         required: false
         default: ""
@@ -55,8 +55,8 @@ jobs:
           if [ -z "$tag" ]; then
             [ "$SNAPSHOT_CANDIDATE" = "false" ] \
               || { echo "snapshot_candidate=true이면 release_tag가 필요합니다." >&2; exit 1; }
-            tag="$(git tag --list 'v*' --sort=-v:refname | grep -E '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' | head -n 1 || true)"
-            [ -n "$tag" ] || { echo "release_tag이 비어 있고 vX.Y.Z 태그도 없습니다." >&2; exit 1; }
+            echo "tag=" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
           git -c advice.detachedHead=false checkout --detach "$tag"
           node scripts/validate-release-candidate.mjs \

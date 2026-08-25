@@ -196,6 +196,11 @@ test('AppsInToss target uses supported SDK and a build-only candidate workflow',
   assert.match(buildWorkflow, /validate-release-candidate\.mjs/);
   assert.match(
     buildWorkflow,
+    /if \[ -z "\$tag" \]; then[\s\S]*?echo "tag=" >> "\$GITHUB_OUTPUT"[\s\S]*?exit 0/,
+  );
+  assert.doesNotMatch(buildWorkflow, /git tag --list/);
+  assert.match(
+    buildWorkflow,
     /rn-build-ait\.yml@73972d2b34e92145e61e3409c91085c40da10c54/,
   );
   assert.match(buildWorkflow, /release_tag: \$\{\{ needs\.validate\.outputs\.tag \}\}/);
