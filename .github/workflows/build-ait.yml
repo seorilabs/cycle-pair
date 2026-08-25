@@ -49,12 +49,19 @@ jobs:
         env:
           REQUESTED_TAG: ${{ inputs.release_tag }}
           SNAPSHOT_CANDIDATE: ${{ inputs.snapshot_candidate }}
+          CALLER_REF_TYPE: ${{ github.ref_type }}
+          CALLER_REF_NAME: ${{ github.ref_name }}
         run: |
           set -euo pipefail
           tag="$REQUESTED_TAG"
           if [ -z "$tag" ]; then
             [ "$SNAPSHOT_CANDIDATE" = "false" ] \
               || { echo "snapshot_candidate=true이면 release_tag가 필요합니다." >&2; exit 1; }
+            if [ "$CALLER_REF_TYPE" = "tag" ] \
+              && [[ "$CALLER_REF_NAME" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)-snapshot\.([1-9][0-9]*)$ ]]; then
+              echo "snapshot tag ref는 snapshot_candidate=true와 명시 release_tag가 필요합니다: $CALLER_REF_NAME" >&2
+              exit 1
+            fi
             echo "tag=" >> "$GITHUB_OUTPUT"
             exit 0
           fi

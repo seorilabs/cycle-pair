@@ -254,6 +254,16 @@ try {
     'echo "tag=" >> "$GITHUB_OUTPUT"',
     'AIT candidate caller가 빈 release_tag의 기존 호출 ref 동작을 보존하지 않습니다.',
   );
+  assertIncludes(
+    aitCandidate,
+    'CALLER_REF_TYPE: ${{ github.ref_type }}',
+    'AIT candidate caller가 빈 입력의 tag ref 유형을 검증하지 않습니다.',
+  );
+  assertIncludes(
+    aitCandidate,
+    'snapshot tag ref는 snapshot_candidate=true와 명시 release_tag가 필요합니다',
+    'AIT candidate caller가 snapshot tag ref의 mode 우회를 차단하지 않습니다.',
+  );
   if (aitCandidate.includes('git tag --list')) {
     throw new Error('AIT candidate의 빈 release_tag를 최신 stable 태그로 바꾸면 안 됩니다.');
   }

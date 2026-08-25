@@ -198,6 +198,12 @@ test('AppsInToss target uses supported SDK and a build-only candidate workflow',
     buildWorkflow,
     /if \[ -z "\$tag" \]; then[\s\S]*?echo "tag=" >> "\$GITHUB_OUTPUT"[\s\S]*?exit 0/,
   );
+  assert.match(buildWorkflow, /CALLER_REF_TYPE: \$\{\{ github\.ref_type \}\}/);
+  assert.match(buildWorkflow, /CALLER_REF_NAME: \$\{\{ github\.ref_name \}\}/);
+  assert.match(
+    buildWorkflow,
+    /CALLER_REF_TYPE" = "tag"[\s\S]*?-snapshot\\\.\(\[1-9\]\[0-9\]\*\)[\s\S]*?snapshot tag ref는 snapshot_candidate=true와 명시 release_tag가 필요합니다/,
+  );
   assert.doesNotMatch(buildWorkflow, /git tag --list/);
   assert.match(
     buildWorkflow,
