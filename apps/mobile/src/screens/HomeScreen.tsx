@@ -215,7 +215,7 @@ export function HomeScreen({ onOpenRecord }: { onOpenRecord(): void }) {
               <View style={styles.phaseCopy}>
                 <Text style={styles.phaseEyebrow}>나의 주기 기록</Text>
                 <Text style={styles.phaseTitle}>
-                  {state.hasCycleSeed ? viewModel.phaseTitle : '예측 기준 없음'}
+                  {state.hasCycleSeed ? viewModel.phaseTitle : '다음 생리 예상 꺼짐'}
                 </Text>
                 {state.hasCycleSeed && viewModel.cycleDay ? (
                   <Text style={styles.phaseDay}>
@@ -227,7 +227,7 @@ export function HomeScreen({ onOpenRecord }: { onOpenRecord(): void }) {
             <Text style={styles.phaseDescription}>
               {state.hasCycleSeed
                 ? viewModel.phaseDescription
-                : '날짜와 평균을 직접 입력하기 전에는 주기를 예측하지 않아요.'}
+                : '최근 생리일과 평소 주기를 입력하면 다음 예상 범위를 보여드려요.'}
             </Text>
             <View style={styles.predictionRow}>
               <View>
@@ -236,7 +236,7 @@ export function HomeScreen({ onOpenRecord }: { onOpenRecord(): void }) {
                 </Text>
                 <Text style={styles.predictionValue}>
                   {!state.hasCycleSeed
-                    ? '예측 기준을 설정해 주세요'
+                    ? '설정에서 다음 생리 예상을 켜주세요'
                     : viewModel.predictionStart && viewModel.predictionEnd
                     ? `${formatKoreanDate(
                         viewModel.predictionStart,

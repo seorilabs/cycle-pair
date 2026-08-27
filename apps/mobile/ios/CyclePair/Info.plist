@@ -5,7 +5,7 @@
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
-	<string>en</string>
+	<string>ko</string>
 	<key>CFBundleDisplayName</key>
 	<string>사이클 페어 : 내 기분, 주기, 컨디션을 알려요</string>
 	<key>CFBundleExecutable</key>

@@ -180,8 +180,8 @@ export function RecordScreen({ onDone, onCancel }: { onDone(): void; onCancel():
               <Text style={styles.periodTitle}>오늘 생리가 시작했어요</Text>
               <Text style={styles.periodBody}>
                 {state.hasCycleSeed
-                  ? '새 주기 시작일로 기록하고 예측 기준을 갱신해요'
-                  : '새 주기 시작일로 기록해요 · 예측 기준은 설정에서 켤 수 있어요'}
+                  ? '새 주기 시작일로 저장하고 다음 예상일을 다시 계산해요'
+                  : '새 주기 시작일로 저장해요. 다음 생리 예상은 설정에서 켤 수 있어요'}
               </Text>
             </View>
           </Pressable>
