@@ -90,8 +90,17 @@ describe('CyclePair mobile app', () => {
     expect(view.getByText(/무엇을 보여줄지는/)).toBeTruthy();
 
     await fireEvent.press(view.getByText('건너뛰기'));
-    expect(view.getByText('기본 설정')).toBeTruthy();
-    await fireEvent(view.getByLabelText('예측 기준 입력'), 'valueChange', true);
+    expect(view.getByText('시작 설정')).toBeTruthy();
+    expect(view.getByText(/어떤 기록을/)).toBeTruthy();
+    expect(view.getByText('기록 방식')).toBeTruthy();
+    expect(view.getByText('다음 생리 예상')).toBeTruthy();
+    expect(view.getByText('주기·컨디션 정보 이용에 동의해요')).toBeTruthy();
+    expect(view.queryByText(/동의 버전/)).toBeNull();
+    await fireEvent(
+      view.getByLabelText('다음 생리일 미리 보기'),
+      'valueChange',
+      true,
+    );
     expect(view.getByTestId('last-period-start-date-picker')).toBeTruthy();
     await expect(hardwareBack.press()).resolves.toBe(true);
     expect(view.getByText(/말하지 않아도/)).toBeTruthy();
@@ -113,8 +122,8 @@ describe('CyclePair mobile app', () => {
     await waitFor(() => expect(view.getByText('건너뛰기')).toBeTruthy());
 
     await fireEvent.press(view.getByText('건너뛰기'));
-    await fireEvent.press(view.getByText('내 주기는 기록하지 않아요'));
-    await fireEvent.press(view.getByText('민감정보 처리 원칙을 확인했어요'));
+    await fireEvent.press(view.getByText('컨디션만 기록'));
+    await fireEvent.press(view.getByText('주기·컨디션 정보 이용에 동의해요'));
     await fireEvent.press(view.getByText('저장하고 시작'));
     await waitFor(() => expect(view.getByText(/오늘 나의/)).toBeTruthy());
     expect(view.getByText('지금은 혼자 기록하고 있어요')).toBeTruthy();
@@ -519,12 +528,12 @@ describe('CyclePair mobile app', () => {
     );
     expect(persistedBeforeConsent).not.toContain('lastPeriodStart');
     expect(persistedBeforeConsent).not.toContain('checkIn');
-    await fireEvent.press(view.getByText('민감정보 처리 원칙을 확인했어요'));
+    await fireEvent.press(view.getByText('주기·컨디션 정보 이용에 동의해요'));
     await fireEvent.press(view.getByText('저장하고 시작'));
 
     await waitFor(() => expect(view.getByText(/천천히, 내 몸의/)).toBeTruthy());
     expect(view.getByText('지금은 혼자 기록하고 있어요')).toBeTruthy();
-    expect(view.getByText('예측 기준 없음')).toBeTruthy();
+    expect(view.getByText('다음 생리 예상 꺼짐')).toBeTruthy();
     expect(view.getByText('오프라인 저장')).toBeTruthy();
     expect(savePrivateSetup).toHaveBeenCalledWith(
       'preview-self',
@@ -536,7 +545,7 @@ describe('CyclePair mobile app', () => {
     await fireEvent.press(view.getByText('기록하기'));
     expect(
       view.getByText(
-        '새 주기 시작일로 기록해요 · 예측 기준은 설정에서 켤 수 있어요',
+        '새 주기 시작일로 저장해요. 다음 생리 예상은 설정에서 켤 수 있어요',
       ),
     ).toBeTruthy();
     await fireEvent.press(view.getByText('괜찮아요'));

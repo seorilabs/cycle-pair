@@ -1,4 +1,4 @@
-import { isLocalDate } from '@cyclepair/product-core';
+import { isLocalDate, parseLocalDate } from '@cyclepair/product-core';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { CycleSeed, ShareField, useCyclePair } from '../app/CyclePairStore';
+import { formatPickerLocalDate } from '../app/localDatePicker';
 import { AccountSettingsCard } from '../components/AccountSettingsCard';
 import { PrivacyCenterModal } from '../components/PrivacyCenterModal';
 import { SubscriptionSettingsCard } from '../components/SubscriptionSettingsCard';
@@ -282,8 +283,8 @@ export function SettingsScreen() {
           summary={
             state.isLogger
               ? state.hasCycleSeed
-                ? '주기 기록 · 참고용 예측 사용'
-                : '주기 기록 · 예측 기준 없음'
+                ? '주기 기록 · 다음 생리 예상 켜짐'
+                : '주기 기록 · 다음 생리 예상 꺼짐'
               : '주기 기록 사용 안 함'
           }
           expanded={openSection === 'cycle'}
@@ -312,8 +313,8 @@ export function SettingsScreen() {
               {cycleRecords ? (
                 <>
                   <ToggleRow
-                    title="예측 기준 사용"
-                    description="날짜와 평균을 직접 입력한 경우에만 참고용 예측을 만들어요."
+                    title="다음 생리일 미리 보기"
+                    description="최근 생리일과 평소 주기를 바탕으로 다음 예상 범위를 보여드려요."
                     value={hasCycleSeed}
                     disabled={backendBusy}
                     onValueChange={setHasCycleSeed}
@@ -348,7 +349,7 @@ export function SettingsScreen() {
                         </Text>
                       ) : null}
                       <Stepper
-                        label="평균 주기"
+                        label="다음 생리까지 보통"
                         value={cycleSeed.averageCycleLength}
                         suffix="일"
                         min={21}
@@ -362,7 +363,7 @@ export function SettingsScreen() {
                         }
                       />
                       <Stepper
-                        label="평균 기간"
+                        label="생리가 보통"
                         value={cycleSeed.averagePeriodLength}
                         suffix="일"
                         min={2}
@@ -390,7 +391,7 @@ export function SettingsScreen() {
                   onPress={resetCycleDraft}
                 />
                 <PrimaryButton
-                  label={backendBusy ? '저장 중…' : '주기 기준 저장'}
+                  label={backendBusy ? '저장 중…' : '변경사항 저장'}
                   disabled={backendBusy || !cycleDateValid}
                   onPress={() => {
                     saveCycleSetup().catch(() => undefined);
@@ -403,15 +404,19 @@ export function SettingsScreen() {
               <Text style={styles.cycleSummaryTitle}>
                 {state.isLogger
                   ? state.hasCycleSeed
-                    ? '주기 기록과 참고용 예측 사용 중'
-                    : '주기 기록 중 · 예측 기준 없음'
+                    ? '주기와 다음 생리 예상 사용 중'
+                    : '주기 기록 중 · 다음 생리 예상 꺼짐'
                   : '주기 기록 사용 안 함'}
               </Text>
               <Text style={styles.cycleSummaryBody}>
                 {state.isLogger
                   ? state.hasCycleSeed
-                    ? `최근 시작일 ${state.seed.lastPeriodStart} · 평균 ${state.seed.averageCycleLength}일 · 기간 ${state.seed.averagePeriodLength}일`
-                    : '실제 시작·종료와 컨디션은 기록하지만 임의 기준으로 예측하지 않아요.'
+                    ? `최근 시작일 ${formatPickerLocalDate(
+                        parseLocalDate(state.seed.lastPeriodStart),
+                      )} · 주기 ${state.seed.averageCycleLength}일 · 기간 ${
+                        state.seed.averagePeriodLength
+                      }일`
+                    : '실제 생리일과 컨디션만 기록해요.'
                   : '기분·증상·컨디션 기록은 주기 예측 없이 계속 사용할 수 있어요.'}
               </Text>
             </Card>

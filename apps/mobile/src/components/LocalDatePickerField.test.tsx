@@ -2,7 +2,7 @@ import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { parseLocalDate } from '@cyclepair/product-core';
 import { fireEvent, render } from '@testing-library/react-native';
 import React from 'react';
-import { Platform } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { LocalDatePickerField } from './LocalDatePickerField';
 
 jest.mock('@react-native-community/datetimepicker', () => {
@@ -42,8 +42,16 @@ describe('LocalDatePickerField', () => {
       />,
     );
     const picker = view.getByTestId('date-picker');
+    const container = view.getByTestId('date-picker-container');
 
     expect(picker.props.display).toBe('compact');
+    expect(picker.props.accessibilityValue).toEqual({
+      text: '2026년 8월 24일',
+    });
+    expect(StyleSheet.flatten(container.props.style).justifyContent).toBe(
+      'center',
+    );
+    expect(StyleSheet.flatten(picker.props.style).alignSelf).toBe('center');
     fireEvent(picker, 'valueChange', {}, new Date(2026, 8, 1, 12));
     expect(onChange).toHaveBeenCalledWith('2026-09-01');
   });

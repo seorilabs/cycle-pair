@@ -68,9 +68,13 @@ export function LocalDatePickerField({
   }
 
   return (
-    <View style={[styles.field, disabled && styles.disabled]}>
+    <View
+      style={[styles.field, styles.iosField, disabled && styles.disabled]}
+      testID={testID ? `${testID}-container` : undefined}
+    >
       <DateTimePicker
         accessibilityLabel={accessibilityLabel}
+        accessibilityValue={{ text: formatPickerLocalDate(value) }}
         accentColor={colors.primary}
         disabled={disabled}
         display="compact"
@@ -104,5 +108,6 @@ const styles = StyleSheet.create({
   disabled: { opacity: 0.5 },
   value: { color: colors.text, fontSize: 15, fontWeight: '700' },
   action: { color: colors.primaryDark, fontSize: 12, fontWeight: '800' },
-  iosPicker: { alignSelf: 'flex-start' },
+  iosField: { justifyContent: 'center' },
+  iosPicker: { alignSelf: 'center' },
 });

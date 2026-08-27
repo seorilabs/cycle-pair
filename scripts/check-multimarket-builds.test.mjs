@@ -98,6 +98,20 @@ test('Korean market title and AppsInToss short brand stay within each market con
   );
 });
 
+test('iOS declares Korean localization for native date controls', async () => {
+  const [iosInfoPlist, iosProject] = await Promise.all([
+    readFile('apps/mobile/ios/CyclePair/Info.plist', 'utf8'),
+    readFile('apps/mobile/ios/CyclePair.xcodeproj/project.pbxproj', 'utf8'),
+  ]);
+
+  assert.match(
+    iosInfoPlist,
+    /<key>CFBundleDevelopmentRegion<\/key>\s*<string>ko<\/string>/,
+  );
+  assert.match(iosProject, /developmentRegion = ko;/);
+  assert.match(iosProject, /knownRegions = \(\s*ko,\s*Base,\s*\);/);
+});
+
 test('Google Play build stays API 36, versioned, signed, and pnpm-safe for Hermes', async () => {
   const [
     androidRoot,

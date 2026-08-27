@@ -78,15 +78,14 @@ export function SetupScreen() {
     <Screen contentStyle={styles.content}>
       <View style={styles.header}>
         <TextButton label="이전" onPress={goBack} />
-        <Text style={styles.step}>기본 설정</Text>
+        <Text style={styles.step}>시작 설정</Text>
       </View>
-      <Title>내 기록을 위한{`\n`}기본값을 알려주세요</Title>
+      <Title>어떤 기록을{`\n`}남길까요?</Title>
       <Body muted style={styles.intro}>
-        처음부터 정확할 필요 없어요. 파트너 연결 없이 바로 시작할 수 있고, 이
-        값은 누구에게도 자동 공개되지 않아요.
+        파트너 연결 없이 시작할 수 있고, 기록은 자동으로 공유되지 않아요.
       </Body>
 
-      <Text style={styles.label}>나는</Text>
+      <Text style={styles.label}>기록 방식</Text>
       <View style={styles.roleGrid}>
         <Pressable
           accessibilityRole="radio"
@@ -103,8 +102,8 @@ export function SetupScreen() {
           ]}
         >
           <Text style={styles.roleIcon}>∞</Text>
-          <Text style={styles.roleTitle}>내 주기를 기록해요</Text>
-          <Text style={styles.roleBody}>기록하고 원하는 항목만 공유할게요</Text>
+          <Text style={styles.roleTitle}>주기와 컨디션 기록</Text>
+          <Text style={styles.roleBody}>생리 주기와 오늘의 상태를 기록해요</Text>
         </Pressable>
         <Pressable
           accessibilityRole="radio"
@@ -121,24 +120,23 @@ export function SetupScreen() {
           ]}
         >
           <Text style={styles.roleIcon}>♡</Text>
-          <Text style={styles.roleTitle}>내 주기는 기록하지 않아요</Text>
-          <Text style={styles.roleBody}>오늘의 컨디션만 기록할게요</Text>
+          <Text style={styles.roleTitle}>컨디션만 기록</Text>
+          <Text style={styles.roleBody}>주기 없이 오늘의 상태만 기록해요</Text>
         </Pressable>
       </View>
       {roleLocked ? (
         <Text style={styles.roleLockNote}>
-          기본 설정을 저장한 뒤에는 기록 경계를 보호하기 위해 여기서 역할을
-          변경할 수 없어요.
+          기존 기록을 보호하기 위해 이 화면에서는 기록 방식을 바꿀 수 없어요.
         </Text>
       ) : null}
 
       {isLogger ? (
         <>
-          <Text style={styles.label}>최근 기록</Text>
+          <Text style={styles.label}>다음 생리 예상</Text>
           <Card>
             <ToggleRow
-              title="예측 기준 입력"
-              description="정확히 아는 경우에만 켜세요. 끄면 임의 날짜나 평균으로 예측하지 않아요."
+              title="다음 생리일 미리 보기"
+              description="최근 생리일과 평소 주기를 바탕으로 다음 예상 범위를 보여드려요."
               value={hasCycleSeed}
               disabled={backendBusy}
               onValueChange={setHasCycleSeed}
@@ -164,7 +162,7 @@ export function SetupScreen() {
                   </Text>
                 ) : null}
                 <Stepper
-                  label="평균 주기"
+                  label="다음 생리까지 보통"
                   value={seed.averageCycleLength}
                   suffix="일"
                   min={21}
@@ -175,7 +173,7 @@ export function SetupScreen() {
                   }
                 />
                 <Stepper
-                  label="평균 기간"
+                  label="생리가 보통"
                   value={seed.averagePeriodLength}
                   suffix="일"
                   min={2}
@@ -188,31 +186,29 @@ export function SetupScreen() {
               </>
             ) : (
               <Body muted>
-                날짜와 평균 없이 시작합니다. 오늘의 상태와 실제 생리 시작·종료
-                기록은 계속 남길 수 있어요.
+                지금은 건너뛰어도 돼요. 실제 생리일은 언제든 기록할 수 있어요.
               </Body>
             )}
           </Card>
           <View style={styles.notice}>
             <Text style={styles.noticeIcon}>i</Text>
             <Text style={styles.noticeText}>
-              예측은 참고용이며 개인차가 커요. 진단·치료 또는 피임에 사용할 수
-              없어요.
+              예상일은 참고용이에요. 피임이나 의료 판단에는 사용하지 마세요.
             </Text>
           </View>
         </>
       ) : (
         <Card tone="primary" style={styles.partnerOnlyCard}>
-          <Chip label="기록 없이 시작" selected />
+          <Chip label="컨디션만 기록" selected />
           <Body style={styles.partnerOnlyBody}>
-            주기 예측 없이도 오늘의 기분·증상·도움 선호를 기록할 수 있어요.
+            주기 정보 없이 기분, 증상, 필요한 도움을 기록해요.
           </Body>
         </Card>
       )}
 
       <Pressable
         accessibilityRole="checkbox"
-        accessibilityLabel="민감정보 처리 원칙 동의"
+        accessibilityLabel="주기·컨디션 정보 이용 동의"
         accessibilityState={{ checked: consentAccepted, disabled: backendBusy }}
         disabled={backendBusy}
         onPress={() => setConsentAccepted(value => !value)}
@@ -228,12 +224,11 @@ export function SetupScreen() {
         </View>
         <View style={styles.consentCopy}>
           <Text style={styles.consentTitle}>
-            민감정보 처리 원칙을 확인했어요
+            주기·컨디션 정보 이용에 동의해요
           </Text>
           <Text style={styles.consentBody}>
-            동의 버전 {SENSITIVE_HEALTH_CONSENT_VERSION}. 주기·컨디션은 본인
-            기록과 예측, 직접 선택한 공유에만 사용하며 언제든 공유 철회·삭제할 수
-            있어요. 민감 건강정보는 이 동의가 유효한 동안에만 새로 저장합니다.
+            입력한 정보는 기록과 예상에만 사용하고, 선택한 항목만 파트너에게
+            공유해요.
           </Text>
         </View>
       </Pressable>
