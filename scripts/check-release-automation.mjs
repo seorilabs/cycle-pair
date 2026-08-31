@@ -23,8 +23,8 @@ const files = {
 // 조직 재사용 워크플로우는 workflow별로 개별 pin한다. 값은 저장소의 실제 pin과 일치해야 한다.
 const orgWorkflowPins = {
   'rn-build-ait.yml': '73972d2b34e92145e61e3409c91085c40da10c54',
-  'rn-deploy-google-play.yml': 'c8db7834f6b72198a898f699b6f91e3a185fc7f5',
-  'release-tag.yml': 'c8db7834f6b72198a898f699b6f91e3a185fc7f5',
+  'rn-deploy-google-play.yml': '8a11a145fed35479a4a89ebc7ca97edd0a0f05fd',
+  'release-tag.yml': '8a11a145fed35479a4a89ebc7ca97edd0a0f05fd',
   'cleanup-actions-storage.yml': '143458719a525a0a5da34cded4c1d7b8445b9f8b',
 };
 

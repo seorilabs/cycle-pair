@@ -237,7 +237,7 @@ test('Android candidate workflow creates a signed AAB without Play upload', asyn
   assert.match(workflow, /workflow_dispatch:[\s\S]*?inputs:[\s\S]*?release_tag:/);
   assert.match(
     workflow,
-    /rn-deploy-google-play\.yml@c8db7834f6b72198a898f699b6f91e3a185fc7f5/,
+    /rn-deploy-google-play\.yml@8a11a145fed35479a4a89ebc7ca97edd0a0f05fd/,
   );
   assert.match(workflow, /release_tag: \$\{\{ inputs\.release_tag \}\}/);
   assert.match(workflow, /upload: false/);
@@ -300,7 +300,7 @@ test('Google Play deployment binds the exact stable tag to the central workflow'
   assert.match(workflow, /workflow_call:[\s\S]*?upload:/);
   assert.match(
     workflow,
-    /rn-deploy-google-play\.yml@c8db7834f6b72198a898f699b6f91e3a185fc7f5/,
+    /rn-deploy-google-play\.yml@8a11a145fed35479a4a89ebc7ca97edd0a0f05fd/,
   );
   assert.match(
     workflow,

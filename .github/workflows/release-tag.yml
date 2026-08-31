@@ -35,7 +35,7 @@ concurrency:
 
 jobs:
   tag:
-    uses: seorilabs/.github/.github/workflows/release-tag.yml@c8db7834f6b72198a898f699b6f91e3a185fc7f5
+    uses: seorilabs/.github/.github/workflows/release-tag.yml@8a11a145fed35479a4a89ebc7ca97edd0a0f05fd
     with:
       target_ref: ${{ inputs.target_ref || github.ref_name }}
       tag: ${{ inputs.tag }}
