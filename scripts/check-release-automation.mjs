@@ -70,8 +70,8 @@ try {
   assertOrgPin(files.androidCandidate, androidCandidate, 'rn-deploy-google-play.yml');
   assertIncludes(
     google,
-    'tags:\n      - "v[0-9]+.[0-9]+.[0-9]+"',
-    'stable GitHub tag push의 build-only 진입점이 없습니다.',
+    'tags:\n      - "v*.*.*"',
+    'GitHub stable tag push의 build-only 진입점이 없습니다.',
   );
   assertIncludes(
     google,

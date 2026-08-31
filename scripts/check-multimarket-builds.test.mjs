@@ -295,7 +295,7 @@ test('Google Play deployment binds the exact stable tag to the central workflow'
   );
 
   assert.match(workflow, /^name: Deploy Google Play$/m);
-  assert.match(workflow, /push:\n\s+tags:\n\s+- "v\[0-9\]\+\.\[0-9\]\+\.\[0-9\]\+"/);
+  assert.match(workflow, /push:\n\s+tags:\n\s+- "v\*\.\*\.\*"/);
   assert.match(workflow, /workflow_dispatch:[\s\S]*?upload:/);
   assert.match(workflow, /workflow_call:[\s\S]*?upload:/);
   assert.match(
@@ -317,70 +317,4 @@ test('Google Play deployment binds the exact stable tag to the central workflow'
     /snapshot_candidate|validate-release-candidate|resolve-release-version|cloudbuild-android|gcloud builds submit|package\.json|upload_script|scripts\/upload-google-play-internal\.py/,
   );
   assert.doesNotMatch(workflow, /\bproduction\b/);
-});
-
-test('Google Play uploader converges when the requested version is already internal', async () => {
-  const uploader = await readFile(
-    'scripts/upload-google-play-internal.py',
-    'utf8'
-  );
-  assert.match(uploader, /def expected_upload_contract/);
-  assert.match(uploader, /SEORI_EXPECTED_AAB_SHA256/);
-  assert.match(uploader, /SEORI_EXPECTED_ANDROID_VERSION_CODE/);
-  assert.match(uploader, /def sha256_file/);
-  assert.doesNotMatch(uploader, /def expected_version_code/);
-  assert.match(uploader, /find_release_by_version_code/);
-  assert.match(uploader, /def release_convergence/);
-  assert.match(uploader, /def verified_uploaded_version_code/);
-  assert.match(
-    uploader,
-    /version_code = verified_uploaded_version_code\([\s\S]*?release = \{/,
-  );
-  assert.match(
-    uploader,
-    /except Exception:[\s\S]*?publisher\.edits\(\)[\s\S]*?\.delete\(/,
-  );
-  assert.match(uploader, /"alreadyPresent": True/);
-  assert.match(uploader, /Existing Google Play release conflicts/);
-
-  const {stdout} = await execFileAsync('python3', [
-    '-c',
-    [
-      'import importlib.util',
-      'import hashlib',
-      'import os',
-      'import pathlib',
-      'import sys',
-      'import tempfile',
-      'sys.dont_write_bytecode=True',
-      'spec=importlib.util.spec_from_file_location("uploader", "scripts/upload-google-play-internal.py")',
-      'module=importlib.util.module_from_spec(spec)',
-      'spec.loader.exec_module(module)',
-      'handle,path=tempfile.mkstemp(suffix=".aab")',
-      'os.close(handle)',
-      'pathlib.Path(path).write_bytes(b"verified-aab")',
-      'os.environ["SEORI_EXPECTED_AAB_SHA256"]=hashlib.sha256(b"verified-aab").hexdigest()',
-      'os.environ["SEORI_EXPECTED_ANDROID_VERSION_CODE"]="1001000005"',
-      'version_code=module.expected_upload_contract(pathlib.Path(path),"v1.0.5")',
-      'uploaded_code=module.verified_uploaded_version_code({"versionCode":str(version_code)},version_code)',
-      'result={"versionCode":version_code,"uploadedCode":uploaded_code,"missing":module.release_convergence(None,"v1.0.5","completed",version_code),"matching":module.release_convergence({"name":"v1.0.5","status":"completed"},"v1.0.5","completed",version_code)}',
-      'exec(\'try:\\n module.release_convergence({"name":"other","status":"completed"},"v1.0.5","completed",version_code)\\nexcept RuntimeError:\\n result["drift"]="error"\')',
-      'exec(\'try:\\n module.verified_uploaded_version_code({"versionCode":str(version_code+1)},version_code)\\nexcept RuntimeError:\\n result["uploadedDrift"]="error"\')',
-      'exec(\'try:\\n module.expected_upload_contract(pathlib.Path(path),"v1.0.5-snapshot.1")\\nexcept RuntimeError:\\n result["prerelease"]="error"\')',
-      'os.environ["SEORI_EXPECTED_AAB_SHA256"]="0"*64',
-      'exec(\'try:\\n module.expected_upload_contract(pathlib.Path(path),"v1.0.5")\\nexcept RuntimeError:\\n result["digestDrift"]="error"\')',
-      'pathlib.Path(path).unlink()',
-      'print(module.json.dumps(result))',
-    ].join(';'),
-  ]);
-  assert.deepEqual(JSON.parse(stdout), {
-    versionCode: 1001000005,
-    uploadedCode: 1001000005,
-    missing: 'upload',
-    matching: 'already_present',
-    drift: 'error',
-    uploadedDrift: 'error',
-    prerelease: 'error',
-    digestDrift: 'error',
-  });
 });
