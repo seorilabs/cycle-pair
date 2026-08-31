@@ -88,10 +88,13 @@ jobs:
     needs: resolve
     if: ${{ inputs.google_play }}
     uses: ./.github/workflows/deploy-google-play.yml
-    secrets: inherit
+    secrets:
+      FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64 }}
+      GOOGLE_PLAY_UPLOAD_KEYSTORE_BASE64: ${{ secrets.GOOGLE_PLAY_UPLOAD_KEYSTORE_BASE64 }}
+      GOOGLE_PLAY_UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.GOOGLE_PLAY_UPLOAD_KEYSTORE_PASSWORD }}
+      GOOGLE_PLAY_UPLOAD_KEY_PASSWORD: ${{ secrets.GOOGLE_PLAY_UPLOAD_KEY_PASSWORD }}
     with:
       release_tag: ${{ needs.resolve.outputs.tag }}
-      snapshot_candidate: false
       upload: ${{ inputs.google_play_upload }}
       release_status: ${{ inputs.google_play_release_status }}
       changes_not_sent_for_review: false

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -20,14 +21,9 @@ ANDROID_PUBLISHER_SCOPE = "https://www.googleapis.com/auth/androidpublisher"
 DEFAULT_API_TIMEOUT_SECONDS = 300
 DEFAULT_API_RETRIES = 5
 RELEASE_TAG_PATTERN = re.compile(
-    r"^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"
-    r"(?:-snapshot\.([1-9]\d*))?$"
+    r"^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$"
 )
-VERSION_SEGMENT_BASE = 1000
 GOOGLE_PLAY_MAX_VERSION_CODE = 2_100_000_000
-SNAPSHOT_SEQUENCE_MAX = 99
-FUTURE_RELEASE_BLOCK_SIZE = 100
-LEGACY_STABLE_ANCHOR_CODE = 1_000_003
 
 
 def load_config():
@@ -103,46 +99,46 @@ def default_release_notes(release_config, language):
     return next((value for value in notes.values() if value), "")
 
 
-def expected_version_code(release_name):
-    match = RELEASE_TAG_PATTERN.fullmatch(release_name)
-    if match is None:
+def required_environment(name):
+    value = os.environ.get(name, "").strip()
+    if not value:
+        raise RuntimeError(f"{name} is required.")
+    return value
+
+
+def sha256_file(path):
+    digest = hashlib.sha256()
+    with path.open("rb") as artifact:
+        for chunk in iter(lambda: artifact.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def expected_upload_contract(aab_path, release_name):
+    if RELEASE_TAG_PATTERN.fullmatch(release_name) is None:
         raise RuntimeError(
-            "Release name must use vX.Y.Z or vX.Y.Z-snapshot.N: "
-            f"{release_name}"
+            f"Release name must use stable SemVer vX.Y.Z: {release_name}"
         )
-    major, minor, patch = (int(segment) for segment in match.groups()[:3])
-    snapshot_sequence = (
-        int(match.group(4)) if match.group(4) is not None else None
+
+    expected_digest = required_environment("SEORI_EXPECTED_AAB_SHA256")
+    if re.fullmatch(r"[0-9a-f]{64}", expected_digest) is None:
+        raise RuntimeError("SEORI_EXPECTED_AAB_SHA256 must be lowercase sha256.")
+    observed_digest = sha256_file(aab_path)
+    if observed_digest != expected_digest:
+        raise RuntimeError(
+            "AAB sha256 does not match the centrally verified artifact: "
+            f"expected={expected_digest}, observed={observed_digest}"
+        )
+
+    version_code_text = required_environment(
+        "SEORI_EXPECTED_ANDROID_VERSION_CODE"
     )
-    if minor >= VERSION_SEGMENT_BASE or patch >= VERSION_SEGMENT_BASE:
-        raise RuntimeError("Release minor and patch must be 999 or lower.")
-    legacy_version_code = (
-        major * VERSION_SEGMENT_BASE * VERSION_SEGMENT_BASE
-        + minor * VERSION_SEGMENT_BASE
-        + patch
-    )
-    if snapshot_sequence is not None:
-        if snapshot_sequence > SNAPSHOT_SEQUENCE_MAX:
-            raise RuntimeError("Snapshot sequence must be between 1 and 99.")
-        if legacy_version_code <= LEGACY_STABLE_ANCHOR_CODE:
-            raise RuntimeError(
-                "Snapshots at or below the v1.0.3 legacy anchor are not allowed."
-            )
-        version_code = (
-            LEGACY_STABLE_ANCHOR_CODE
-            + (legacy_version_code - LEGACY_STABLE_ANCHOR_CODE - 1)
-            * FUTURE_RELEASE_BLOCK_SIZE
-            + snapshot_sequence
+    if re.fullmatch(r"[1-9]\d*", version_code_text) is None:
+        raise RuntimeError(
+            "SEORI_EXPECTED_ANDROID_VERSION_CODE must be a positive integer."
         )
-    elif legacy_version_code <= LEGACY_STABLE_ANCHOR_CODE:
-        version_code = legacy_version_code
-    else:
-        version_code = (
-            LEGACY_STABLE_ANCHOR_CODE
-            + (legacy_version_code - LEGACY_STABLE_ANCHOR_CODE)
-            * FUTURE_RELEASE_BLOCK_SIZE
-        )
-    if version_code <= 0 or version_code > GOOGLE_PLAY_MAX_VERSION_CODE:
+    version_code = int(version_code_text)
+    if version_code > GOOGLE_PLAY_MAX_VERSION_CODE:
         raise RuntimeError("Google Play versionCode is outside the valid range.")
     return version_code
 
@@ -212,14 +208,10 @@ def upload_internal_release(args):
         raise RuntimeError("Release notes are required.")
     if len(args.release_notes) > 500:
         raise RuntimeError("Google Play release notes must be 500 characters or fewer.")
-    derived_version_code = expected_version_code(args.release_name)
-    requested_version_code = args.expected_version_code or derived_version_code
-    if requested_version_code != derived_version_code:
-        raise RuntimeError(
-            "Expected versionCode does not match the release tag: "
-            f"tag={args.release_name}, expected={requested_version_code}, "
-            f"derived={derived_version_code}"
-        )
+    requested_version_code = expected_upload_contract(
+        aab_path,
+        args.release_name,
+    )
 
     publisher = make_android_publisher(args.api_timeout_seconds)
     edit = execute_request(
@@ -384,7 +376,6 @@ def main():
         default="draft",
     )
     parser.add_argument("--release-name", required=True)
-    parser.add_argument("--expected-version-code", type=positive_int)
     parser.add_argument("--release-notes-language", default=default_language)
     parser.add_argument(
         "--release-notes",

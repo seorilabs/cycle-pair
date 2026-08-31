@@ -235,13 +235,20 @@ test('Android candidate workflow creates a signed AAB without Play upload', asyn
 
   assert.match(workflow, /^name: Build Android Candidate$/m);
   assert.match(workflow, /workflow_dispatch:[\s\S]*?inputs:[\s\S]*?release_tag:/);
-  assert.match(workflow, /snapshot_candidate:/);
-  assert.match(workflow, /uses: \.\/\.github\/workflows\/deploy-google-play\.yml/);
+  assert.match(
+    workflow,
+    /rn-deploy-google-play\.yml@c8db7834f6b72198a898f699b6f91e3a185fc7f5/,
+  );
   assert.match(workflow, /release_tag: \$\{\{ inputs\.release_tag \}\}/);
-  assert.match(workflow, /snapshot_candidate: \$\{\{ inputs\.snapshot_candidate \}\}/);
   assert.match(workflow, /upload: false/);
+  assert.match(workflow, /track: internal/);
+  assert.match(workflow, /package_name: com\.seorilabs\.cyclepair/);
   assert.match(workflow, /id-token: write/);
   assert.doesNotMatch(workflow, /secrets: inherit/);
+  assert.doesNotMatch(
+    workflow,
+    /snapshot_candidate|validate-release-candidate|resolve-release-version|package\.json/,
+  );
   assert.doesNotMatch(workflow, /upload: true/);
 });
 
@@ -281,69 +288,35 @@ test('AppsInToss deployment workflow performs an x64 private upload only', async
   assert.match(workflow, /public release: false/);
 });
 
-test('Google Play deployment workflow uploads only to the internal track', async () => {
-  const [workflow, cloudbuild, buildScript, buildEnvironment, ignore] = await Promise.all([
-    readFile('.github/workflows/deploy-google-play.yml', 'utf8'),
-    readFile('cloudbuild-android.yaml', 'utf8'),
-    readFile('scripts/build-android.sh', 'utf8'),
-    readFile('build.env', 'utf8'),
-    readFile('.gcloudignore', 'utf8'),
-  ]);
+test('Google Play deployment binds the exact stable tag to the central workflow', async () => {
+  const workflow = await readFile(
+    '.github/workflows/deploy-google-play.yml',
+    'utf8',
+  );
 
   assert.match(workflow, /^name: Deploy Google Play$/m);
+  assert.match(workflow, /push:\n\s+tags:\n\s+- "v\[0-9\]\+\.\[0-9\]\+\.\[0-9\]\+"/);
   assert.match(workflow, /workflow_dispatch:[\s\S]*?upload:/);
   assert.match(workflow, /workflow_call:[\s\S]*?upload:/);
-  assert.match(workflow, /workflow_dispatch:[\s\S]*?snapshot_candidate:/);
-  assert.match(workflow, /workflow_call:[\s\S]*?snapshot_candidate:/);
-  assert.match(workflow, /validate-release-candidate\.mjs/);
-  assert.match(workflow, /--snapshot-candidate "\$SNAPSHOT_CANDIDATE"/);
-  assert.match(workflow, /runs-on: seorilabs-rpi-arm64/);
-  assert.match(workflow, /gcloud config set billing\/quota_project seorilabs-ci/);
-  assert.match(workflow, /gcloud builds submit/);
-  assert.match(workflow, /--region=global/);
-  assert.match(workflow, /--config=cloudbuild-android\.yaml/);
-  assert.match(workflow, /_RELEASE_TAG=\$RELEASE_TAG/);
-  assert.match(workflow, /--expected-version-code "\$ANDROID_VERSION_CODE"/);
-  assert.deepEqual(releaseArchitectures(buildEnvironment), [
-    'armeabi-v7a',
-    'arm64-v8a',
-  ]);
-  assert.match(workflow, /google-github-actions\/auth@v3/);
-  assert.match(workflow, /actions\/download-artifact@v8/);
-  assert.match(workflow, /actions\/upload-artifact@v7/);
-  assert.match(workflow, /actions\/setup-python@v7/);
-  assert.match(workflow, /--track internal/);
-  assert.match(workflow, /scripts\/upload-google-play-internal\.py/);
-  assert.doesNotMatch(workflow, /--track production|to_track:\s*production/);
-  assert.match(workflow, /production promotion:.*false/);
-  assert.match(cloudbuild, /rn-android-builder:node24-jdk17-android36/);
-  assert.match(cloudbuild, /RELEASE_TAG=\$\{_RELEASE_TAG\}/);
-  assert.match(cloudbuild, /cycle-pair-firebase-google-services/);
-  assert.match(cloudbuild, /cycle-pair-play-keystore-password/);
-  assert.match(cloudbuild, /cycle-pair-play-key-password/);
-  assert.match(cloudbuild, /N1_HIGHCPU_32/);
-  assert.match(buildScript, /pnpm install --frozen-lockfile/);
   assert.match(
-    buildScript,
-    /unset GOOGLE_PLAY_UPLOAD_KEY_PASSWORD[\s\S]*pnpm install --frozen-lockfile[\s\S]*FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64="\$firebase_config_base64"/,
+    workflow,
+    /rn-deploy-google-play\.yml@c8db7834f6b72198a898f699b6f91e3a185fc7f5/,
   );
-  assert.match(buildScript, /scripts\/build-google-play\.mjs/);
-  assert.match(buildScript, /--tag "\$RELEASE_TAG"/);
-  assert.match(buildScript, /jarsigner -verify -strict/);
-  assert.match(buildScript, /기존 로컬 자격증명 파일을 덮어쓰지 않습니다/);
   assert.match(
-    buildScript,
-    /DF0194ACA157C73C66ACBF0954D785B460412B6B632B5270A53BF10BF87CA860/,
+    workflow,
+    /release_tag: \$\{\{ github\.ref_type == 'tag' && github\.ref_name \|\| inputs\.release_tag \}\}/,
   );
-  assert.match(buildEnvironment, /NODE_VERSION=24\.16\.0/);
-  assert.match(buildEnvironment, /PNPM_VERSION=11\.3\.0/);
-  assert.match(buildEnvironment, /JDK_VERSION=17/);
-  assert.match(buildEnvironment, /GRADLE_MAX_WORKERS=4/);
-  assert.match(buildEnvironment, /CMAKE_BUILD_PARALLEL_LEVEL=4/);
-  assert.match(buildEnvironment, /ANDROID_PLATFORM=36/);
-  assert.match(buildEnvironment, /ANDROID_BUILD_TOOLS=36\.0\.0/);
-  assert.match(ignore, /apps\/mobile\/android\/app\/google-services\.json/);
-  assert.match(ignore, /apps\/mobile\/android\/keystore\.properties/);
+  assert.match(workflow, /track: internal/);
+  assert.match(workflow, /upload: \$\{\{ inputs\.upload \|\| false \}\}/);
+  assert.match(workflow, /default: false/);
+  assert.match(workflow, /package_name: com\.seorilabs\.cyclepair/);
+  assert.match(workflow, /GOOGLE_PLAY_UPLOAD_KEYSTORE_BASE64:/);
+  assert.doesNotMatch(workflow, /secrets: inherit/);
+  assert.doesNotMatch(
+    workflow,
+    /snapshot_candidate|validate-release-candidate|resolve-release-version|cloudbuild-android|gcloud builds submit|package\.json|upload_script|scripts\/upload-google-play-internal\.py/,
+  );
+  assert.doesNotMatch(workflow, /\bproduction\b/);
 });
 
 test('Google Play uploader converges when the requested version is already internal', async () => {
@@ -351,7 +324,11 @@ test('Google Play uploader converges when the requested version is already inter
     'scripts/upload-google-play-internal.py',
     'utf8'
   );
-  assert.match(uploader, /def expected_version_code/);
+  assert.match(uploader, /def expected_upload_contract/);
+  assert.match(uploader, /SEORI_EXPECTED_AAB_SHA256/);
+  assert.match(uploader, /SEORI_EXPECTED_ANDROID_VERSION_CODE/);
+  assert.match(uploader, /def sha256_file/);
+  assert.doesNotMatch(uploader, /def expected_version_code/);
   assert.match(uploader, /find_release_by_version_code/);
   assert.match(uploader, /def release_convergence/);
   assert.match(uploader, /def verified_uploaded_version_code/);
@@ -370,29 +347,40 @@ test('Google Play uploader converges when the requested version is already inter
     '-c',
     [
       'import importlib.util',
+      'import hashlib',
+      'import os',
+      'import pathlib',
       'import sys',
+      'import tempfile',
       'sys.dont_write_bytecode=True',
       'spec=importlib.util.spec_from_file_location("uploader", "scripts/upload-google-play-internal.py")',
       'module=importlib.util.module_from_spec(spec)',
       'spec.loader.exec_module(module)',
-      'version_code=module.expected_version_code("v0.1.8")',
-      'snapshot_code=module.expected_version_code("v1.0.4-snapshot.1")',
-      'stable_code=module.expected_version_code("v1.0.4")',
-      'uploaded_code=module.verified_uploaded_version_code({"versionCode":str(snapshot_code)},snapshot_code)',
-      'result={"versionCode":version_code,"snapshotCode":snapshot_code,"stableCode":stable_code,"uploadedCode":uploaded_code,"missing":module.release_convergence(None,"v0.1.8","completed",version_code),"matching":module.release_convergence({"name":"v0.1.8","status":"completed"},"v0.1.8","completed",version_code)}',
-      'exec(\'try:\\n module.release_convergence({"name":"other","status":"completed"},"v0.1.8","completed",version_code)\\nexcept RuntimeError:\\n result["drift"]="error"\')',
-      'exec(\'try:\\n module.verified_uploaded_version_code({"versionCode":str(snapshot_code+1)},snapshot_code)\\nexcept RuntimeError:\\n result["uploadedDrift"]="error"\')',
+      'handle,path=tempfile.mkstemp(suffix=".aab")',
+      'os.close(handle)',
+      'pathlib.Path(path).write_bytes(b"verified-aab")',
+      'os.environ["SEORI_EXPECTED_AAB_SHA256"]=hashlib.sha256(b"verified-aab").hexdigest()',
+      'os.environ["SEORI_EXPECTED_ANDROID_VERSION_CODE"]="1001000005"',
+      'version_code=module.expected_upload_contract(pathlib.Path(path),"v1.0.5")',
+      'uploaded_code=module.verified_uploaded_version_code({"versionCode":str(version_code)},version_code)',
+      'result={"versionCode":version_code,"uploadedCode":uploaded_code,"missing":module.release_convergence(None,"v1.0.5","completed",version_code),"matching":module.release_convergence({"name":"v1.0.5","status":"completed"},"v1.0.5","completed",version_code)}',
+      'exec(\'try:\\n module.release_convergence({"name":"other","status":"completed"},"v1.0.5","completed",version_code)\\nexcept RuntimeError:\\n result["drift"]="error"\')',
+      'exec(\'try:\\n module.verified_uploaded_version_code({"versionCode":str(version_code+1)},version_code)\\nexcept RuntimeError:\\n result["uploadedDrift"]="error"\')',
+      'exec(\'try:\\n module.expected_upload_contract(pathlib.Path(path),"v1.0.5-snapshot.1")\\nexcept RuntimeError:\\n result["prerelease"]="error"\')',
+      'os.environ["SEORI_EXPECTED_AAB_SHA256"]="0"*64',
+      'exec(\'try:\\n module.expected_upload_contract(pathlib.Path(path),"v1.0.5")\\nexcept RuntimeError:\\n result["digestDrift"]="error"\')',
+      'pathlib.Path(path).unlink()',
       'print(module.json.dumps(result))',
     ].join(';'),
   ]);
   assert.deepEqual(JSON.parse(stdout), {
-    versionCode: 1008,
-    snapshotCode: 1000004,
-    stableCode: 1000103,
-    uploadedCode: 1000004,
+    versionCode: 1001000005,
+    uploadedCode: 1001000005,
     missing: 'upload',
     matching: 'already_present',
     drift: 'error',
     uploadedDrift: 'error',
+    prerelease: 'error',
+    digestDrift: 'error',
   });
 });

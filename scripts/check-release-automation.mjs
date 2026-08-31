@@ -6,10 +6,6 @@ const files = {
   all: '.github/workflows/deploy-all.yml',
   google: '.github/workflows/deploy-google-play.yml',
   androidCandidate: '.github/workflows/build-android.yml',
-  androidCloudBuild: 'cloudbuild-android.yaml',
-  androidBuildScript: 'scripts/build-android.sh',
-  androidBuildEnvironment: 'build.env',
-  gcloudIgnore: '.gcloudignore',
   apple: '.github/workflows/deploy-app-store.yml',
   ait: '.github/workflows/deploy-apps-in-toss.yml',
   aitCandidate: '.github/workflows/build-ait.yml',
@@ -27,7 +23,8 @@ const files = {
 // 조직 재사용 워크플로우는 workflow별로 개별 pin한다. 값은 저장소의 실제 pin과 일치해야 한다.
 const orgWorkflowPins = {
   'rn-build-ait.yml': '73972d2b34e92145e61e3409c91085c40da10c54',
-  'release-tag.yml': '143458719a525a0a5da34cded4c1d7b8445b9f8b',
+  'rn-deploy-google-play.yml': 'c8db7834f6b72198a898f699b6f91e3a185fc7f5',
+  'release-tag.yml': 'c8db7834f6b72198a898f699b6f91e3a185fc7f5',
   'cleanup-actions-storage.yml': '143458719a525a0a5da34cded4c1d7b8445b9f8b',
 };
 
@@ -65,113 +62,68 @@ function assertOrgPin(path, workflow, workflowFile) {
 }
 
 try {
-  // Google Play: private ARC가 x64 Cloud Build를 제출하고 internal 업로드는 opt-in
+  // Google Play: exact stable GitHub tag가 유일한 version authority이고 업로드는 opt-in이다.
   const google = read(files.google);
-  const androidCloudBuild = read(files.androidCloudBuild);
-  const androidBuildScript = read(files.androidBuildScript);
-  const androidBuildEnvironment = read(files.androidBuildEnvironment);
-  const gcloudIgnore = read(files.gcloudIgnore);
-  assertNoPushTrigger(files.google, google);
+  const androidCandidate = read(files.androidCandidate);
   assertSafeConcurrency(files.google, google);
+  assertOrgPin(files.google, google, 'rn-deploy-google-play.yml');
+  assertOrgPin(files.androidCandidate, androidCandidate, 'rn-deploy-google-play.yml');
   assertIncludes(
     google,
-    'runs-on: seorilabs-rpi-arm64',
-    'Google Play caller는 private ARC에서 Cloud Build만 제출해야 합니다.',
-  );
-  assertIncludes(
-    google,
-    'gcloud config set billing/quota_project seorilabs-ci',
-    '교차 프로젝트 Cloud Build quota project 지정이 없습니다.',
+    'tags:\n      - "v[0-9]+.[0-9]+.[0-9]+"',
+    'stable GitHub tag push의 build-only 진입점이 없습니다.',
   );
   assertIncludes(
     google,
-    'gcloud builds submit',
-    'Google Play Android 빌드가 Cloud Build로 제출되지 않습니다.',
+    "release_tag: ${{ github.ref_type == 'tag' && github.ref_name || inputs.release_tag }}",
+    'tag push가 exact event tag를 중앙 workflow에 넘기지 않습니다.',
   );
   assertIncludes(
     google,
-    'snapshot_candidate:',
-    'Google Play caller에 snapshot 후보 mode 입력이 없습니다.',
-  );
-  assertIncludes(
-    google,
-    'validate-release-candidate.mjs',
-    'Google Play caller가 stable/snapshot mode와 package base를 검증하지 않습니다.',
-  );
-  assertIncludes(
-    google,
-    '_RELEASE_TAG=$RELEASE_TAG',
-    'Google Play caller가 전체 릴리스 태그를 Cloud Build에 전달하지 않습니다.',
-  );
-  assertIncludes(
-    androidBuildEnvironment,
-    'REACT_NATIVE_ARCHITECTURES=armeabi-v7a,arm64-v8a',
-    'Google Play release AAB는 검증된 ARM 32/64비트 ABI 쌍만 빌드해야 합니다.',
-  );
-  assertIncludes(
-    androidBuildEnvironment,
-    'GRADLE_MAX_WORKERS=4',
-    'Cloud Build Gradle worker 수가 검증된 성능 설정과 다릅니다.',
-  );
-  assertIncludes(
-    androidBuildEnvironment,
-    'CMAKE_BUILD_PARALLEL_LEVEL=4',
-    'Cloud Build CMake 병렬도가 검증된 성능 설정과 다릅니다.',
-  );
-  assertIncludes(
-    androidCloudBuild,
-    'rn-android-builder:node24-jdk17-android36',
-    'Cycle Pair RN Android builder tag가 고정되지 않았습니다.',
-  );
-  assertIncludes(
-    androidCloudBuild,
-    'cycle-pair-firebase-google-services',
-    'Cycle Pair Firebase Android Secret Manager 복제본이 연결되지 않았습니다.',
-  );
-  assertIncludes(
-    androidBuildScript,
-    'node scripts/build-google-play.mjs',
-    'Cloud Build가 저장소의 기존 Google Play 빌드 진입점을 사용하지 않습니다.',
-  );
-  assertIncludes(
-    androidBuildScript,
-    '--tag "$RELEASE_TAG"',
-    'Cloud Build가 snapshot suffix를 포함한 전체 태그를 빌드에 전달하지 않습니다.',
-  );
-  assertIncludes(
-    androidBuildScript,
-    'jarsigner -verify -strict',
-    'Cloud Build signed AAB 서명 검증이 없습니다.',
-  );
-  assertIncludes(
-    gcloudIgnore,
-    'apps/mobile/android/app/google-services.json',
-    'Cloud Build 소스 업로드에서 Firebase Android config가 제외되지 않았습니다.',
-  );
-  assertIncludes(
-    google,
-    '--track internal',
+    'track: internal',
     'Google Play 자동화는 internal track으로 제한해야 합니다.',
   );
   assertIncludes(
     google,
-    'if: inputs.upload',
-    'Google Play 업로드가 opt-in 조건 없이 실행됩니다.',
+    'upload: ${{ inputs.upload || false }}',
+    'Google Play 업로드가 명시적 opt-in이 아닙니다.',
   );
   assertIncludes(google, 'default: false', 'Google Play upload 기본값은 false여야 합니다.');
   assertIncludes(
     google,
-    'python3 scripts/upload-google-play-internal.py',
-    'Google Play 업로드가 Android Publisher 스크립트를 사용하지 않습니다.',
+    'package_name: com.seorilabs.cyclepair',
+    '검증할 Google Play package identity가 고정되지 않았습니다.',
   );
-  assertIncludes(
-    google,
-    '--expected-version-code "$ANDROID_VERSION_CODE"',
-    'Google Play 업로드가 빌드에서 확정한 versionCode를 검증하지 않습니다.',
-  );
-  if (/--track\s+production/u.test(google)) {
+  for (const legacyAuthority of [
+    'snapshot_candidate',
+    'validate-release-candidate.mjs',
+    'resolve-release-version.mjs',
+    'cloudbuild-android.yaml',
+    'gcloud builds submit',
+    'package.json',
+    'upload_script',
+    'scripts/upload-google-play-internal.py',
+  ]) {
+    if (google.includes(legacyAuthority) || androidCandidate.includes(legacyAuthority)) {
+      throw new Error(`Google Play caller가 로컬 version authority를 참조합니다: ${legacyAuthority}`);
+    }
+  }
+  if (/\bsecrets:\s*inherit\b/u.test(google) || /\bsecrets:\s*inherit\b/u.test(androidCandidate)) {
+    throw new Error('Google Play caller는 named secret mapping만 사용해야 합니다.');
+  }
+  if (/\bproduction\b/u.test(google)) {
     throw new Error('Google Play 자동화가 production track을 직접 건드리면 안 됩니다.');
   }
+  assertIncludes(
+    androidCandidate,
+    'upload: false',
+    'Android candidate가 market upload를 실행하면 안 됩니다.',
+  );
+  assertIncludes(
+    androidCandidate,
+    'package_name: com.seorilabs.cyclepair',
+    'Android candidate가 Google Play package identity를 중앙 검증에 넘기지 않습니다.',
+  );
 
   // App Store: GitHub runner는 dispatch만, archive는 Xcode Cloud
   const apple = read(files.apple);
@@ -237,12 +189,6 @@ try {
     'AppsInToss caller가 stable/snapshot mode와 package base를 검증하지 않습니다.',
   );
 
-  const androidCandidate = read(files.androidCandidate);
-  assertIncludes(
-    androidCandidate,
-    'snapshot_candidate: ${{ inputs.snapshot_candidate }}',
-    'Android candidate caller가 snapshot mode를 전달하지 않습니다.',
-  );
   const aitCandidate = read(files.aitCandidate);
   assertIncludes(
     aitCandidate,
@@ -428,7 +374,7 @@ try {
   }
 
   console.log('Release automation contract: PASS');
-  console.log('- Google Play: ARC 제출 + x64 Cloud Build, internal track, upload opt-in');
+  console.log('- Google Play: exact stable tag + 중앙 pinned workflow, internal upload opt-in');
   console.log('- App Store: Xcode Cloud archive/TestFlight, API trigger opt-in');
   console.log('- AppsInToss: ubuntu 빌드, 비공개 업로드 opt-in');
 } catch (error) {
