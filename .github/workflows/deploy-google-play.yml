@@ -1,20 +1,18 @@
 name: Deploy Google Play
 
 on:
+  push:
+    tags:
+      - "v*.*.*"
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "빌드하고 업로드할 SemVer 태그. snapshot 후보는 snapshot_candidate=true 필수"
+        description: "빌드하고 internal 트랙에 업로드할 stable SemVer 태그. 비우면 최신 vX.Y.Z"
         type: string
         required: false
         default: ""
-      snapshot_candidate:
-        description: "내부 테스트용 vX.Y.Z-snapshot.N 후보만 허용"
-        type: boolean
-        required: false
-        default: false
       upload:
-        description: "signed AAB를 Google Play internal 트랙에 업로드"
+        description: "검증된 signed AAB를 Google Play internal 트랙에 업로드"
         type: boolean
         required: false
         default: false
@@ -36,10 +34,6 @@ on:
         type: string
         required: false
         default: ""
-      snapshot_candidate:
-        type: boolean
-        required: false
-        default: false
       upload:
         type: boolean
         required: false
@@ -52,236 +46,44 @@ on:
         type: boolean
         required: false
         default: false
+    secrets:
+      FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64:
+        required: false
+      GOOGLE_PLAY_UPLOAD_KEYSTORE_BASE64:
+        required: true
+      GOOGLE_PLAY_UPLOAD_KEYSTORE_PASSWORD:
+        required: true
+      GOOGLE_PLAY_UPLOAD_KEY_PASSWORD:
+        required: false
 
 permissions:
   contents: read
   id-token: write
+  packages: read
 
 concurrency:
-  group: cycle-pair-google-play-${{ inputs.release_tag || github.ref }}
+  group: cycle-pair-google-play-${{ github.ref_type == 'tag' && github.ref_name || inputs.release_tag || github.ref }}
   cancel-in-progress: false
 
 jobs:
-  build:
-    name: Cloud Build signed Android App Bundle
-    runs-on: seorilabs-rpi-arm64
-    timeout-minutes: 75
-    environment: google-play
-    outputs:
-      artifact_name: ${{ steps.meta.outputs.artifact_name }}
-      android_version_code: ${{ steps.version.outputs.android_version_code }}
-      release_name: ${{ steps.version.outputs.release_name }}
-      release_tag: ${{ steps.version.outputs.release_tag }}
-      source_sha: ${{ steps.meta.outputs.source_sha }}
-
-    steps:
-      - name: Checkout release source
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ inputs.release_tag || github.ref }}
-          fetch-depth: 0
-          fetch-tags: true
-
-      - name: Setup Node
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24.16.0
-          check-latest: false
-
-      - name: Resolve release version
-        id: version
-        shell: bash
-        env:
-          REQUESTED_TAG: ${{ inputs.release_tag }}
-          SNAPSHOT_CANDIDATE: ${{ inputs.snapshot_candidate }}
-        run: |
-          set -euo pipefail
-          tag="$REQUESTED_TAG"
-          if [ -z "$tag" ]; then
-            [ "$SNAPSHOT_CANDIDATE" = "false" ] \
-              || { echo "snapshot_candidate=true이면 release_tag가 필요합니다." >&2; exit 1; }
-            tag="$(git tag --list 'v*' --sort=-v:refname | grep -E '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' | head -n 1 || true)"
-            [ -n "$tag" ] || { echo "release_tag이 비어 있고 vX.Y.Z 태그도 없습니다." >&2; exit 1; }
-          fi
-          git -c advice.detachedHead=false checkout --detach "$tag"
-          node scripts/validate-release-candidate.mjs \
-            --tag "$tag" \
-            --snapshot-candidate "$SNAPSHOT_CANDIDATE"
-          node scripts/resolve-release-version.mjs --tag "$tag" --github-output
-
-      - name: Resolve build contract
-        id: meta
-        shell: bash
-        run: |
-          set -euo pipefail
-          # shellcheck disable=SC1091
-          source build.env
-          source_sha="$(git rev-parse HEAD)"
-          artifact_name="android-aab-${{ steps.version.outputs.release_tag }}"
-          artifact_bucket="gs://seorilabs-ci-build-artifacts/${{ github.repository }}/${{ github.run_id }}-${{ github.run_attempt }}"
-          {
-            echo "source_sha=$source_sha"
-            echo "artifact_name=$artifact_name"
-            echo "artifact_bucket=$artifact_bucket"
-            echo "aab_path=$AAB_PATH"
-            echo "builder=$ANDROID_BUILDER_IMAGE:$ANDROID_BUILDER_TAG"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Validate Workload Identity configuration
-        shell: bash
-        env:
-          WIF_PROVIDER: ${{ vars.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-          SERVICE_ACCOUNT: ${{ vars.GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL }}
-          UPLOAD_ALIAS: ${{ vars.GOOGLE_PLAY_UPLOAD_KEY_ALIAS }}
-        run: |
-          set -euo pipefail
-          [ -n "$WIF_PROVIDER" ] || { echo "GOOGLE_WORKLOAD_IDENTITY_PROVIDER var가 없습니다." >&2; exit 1; }
-          [ -n "$SERVICE_ACCOUNT" ] || { echo "GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL var가 없습니다." >&2; exit 1; }
-          [ -n "$UPLOAD_ALIAS" ] || { echo "GOOGLE_PLAY_UPLOAD_KEY_ALIAS var가 없습니다." >&2; exit 1; }
-
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v3
-        with:
-          workload_identity_provider: ${{ vars.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ vars.GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL }}
-          token_format: access_token
-          create_credentials_file: true
-
-      - name: Setup gcloud
-        uses: google-github-actions/setup-gcloud@v3
-        with:
-          project_id: seorilabs-ci
-
-      - name: Set quota project
-        shell: bash
-        run: gcloud config set billing/quota_project seorilabs-ci
-
-      - name: Build signed AAB on Cloud Build
-        shell: bash
-        env:
-          ARTIFACT_BUCKET: ${{ steps.meta.outputs.artifact_bucket }}
-          UPLOAD_ALIAS: ${{ vars.GOOGLE_PLAY_UPLOAD_KEY_ALIAS }}
-          VERSION_NAME: ${{ steps.version.outputs.version_name }}
-          VERSION_CODE: ${{ steps.version.outputs.android_version_code }}
-          RELEASE_TAG: ${{ steps.version.outputs.release_tag }}
-        run: |
-          set -euo pipefail
-          gcloud builds submit . \
-            --project=seorilabs-ci \
-            --region=global \
-            --config=cloudbuild-android.yaml \
-            --ignore-file=.gcloudignore \
-            --substitutions="_RELEASE_TAG=$RELEASE_TAG,_ANDROID_VERSION_NAME=$VERSION_NAME,_ANDROID_VERSION_CODE=$VERSION_CODE,_GOOGLE_PLAY_UPLOAD_KEY_ALIAS=$UPLOAD_ALIAS,_ARTIFACT_BUCKET=$ARTIFACT_BUCKET"
-
-      - name: Fetch signed AAB
-        shell: bash
-        env:
-          AAB_PATH: ${{ steps.meta.outputs.aab_path }}
-          ARTIFACT_BUCKET: ${{ steps.meta.outputs.artifact_bucket }}
-        run: |
-          set -euo pipefail
-          mkdir -p "$(dirname "$AAB_PATH")"
-          gcloud storage cp "$ARTIFACT_BUCKET/$(basename "$AAB_PATH")" "$AAB_PATH"
-          test -s "$AAB_PATH"
-
-      - name: Upload signed AAB artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: ${{ steps.meta.outputs.artifact_name }}
-          path: ${{ steps.meta.outputs.aab_path }}
-          if-no-files-found: error
-          retention-days: 3
-
-      - name: Build summary
-        shell: bash
-        env:
-          AAB_PATH: ${{ steps.meta.outputs.aab_path }}
-        run: |
-          {
-            echo "### Cycle Pair Android Cloud Build 후보"
-            echo "- source: \`${{ steps.meta.outputs.source_sha }}\`"
-            echo "- release: \`${{ steps.version.outputs.release_tag }}\`"
-            echo "- snapshot candidate: \`${{ inputs.snapshot_candidate }}\`"
-            echo "- builder: \`${{ steps.meta.outputs.builder }}\`"
-            echo "- artifact: \`${{ steps.meta.outputs.artifact_name }}\`"
-            echo "- bytes: \`$(wc -c <"$AAB_PATH" | tr -d ' ')\`"
-            echo "- Google Play upload: \`${{ inputs.upload }}\`"
-            echo "- production promotion: \`false\`"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-  upload:
-    name: Upload to Google Play internal
-    if: inputs.upload
-    needs: build
-    runs-on: seorilabs-rpi-arm64
-    timeout-minutes: 20
-    environment: google-play
-
-    steps:
-      - name: Checkout release tooling
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ needs.build.outputs.release_tag }}
-
-      - name: Download signed AAB
-        uses: actions/download-artifact@v8
-        with:
-          name: ${{ needs.build.outputs.artifact_name }}
-          path: artifacts/android
-
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v3
-        with:
-          workload_identity_provider: ${{ vars.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ vars.GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL }}
-          create_credentials_file: true
-
-      - name: Setup Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.13"
-          architecture: arm64
-
-      - name: Install Android Publisher client
-        run: >-
-          python3 -m pip install --disable-pip-version-check
-          google-api-python-client google-auth google-auth-httplib2 httplib2
-
-      - name: Upload internal release
-        shell: bash
-        env:
-          RELEASE_NAME: ${{ needs.build.outputs.release_name }}
-          ANDROID_VERSION_CODE: ${{ needs.build.outputs.android_version_code }}
-          RELEASE_STATUS: ${{ inputs.release_status }}
-          CHANGES_NOT_SENT_FOR_REVIEW: ${{ inputs.changes_not_sent_for_review }}
-          GOOGLE_PLAY_API_TIMEOUT_SECONDS: "900"
-        run: |
-          set -euo pipefail
-          mapfile -t aabs < <(find artifacts/android -type f -name '*.aab' -print)
-          [ "${#aabs[@]}" -eq 1 ] \
-            || { echo "정확히 하나의 AAB가 필요합니다: ${#aabs[@]}" >&2; exit 1; }
-          args=(
-            --aab-path "${aabs[0]}"
-            --release-name "$RELEASE_NAME"
-            --expected-version-code "$ANDROID_VERSION_CODE"
-            --release-status "$RELEASE_STATUS"
-            --track internal
-          )
-          if [ "$CHANGES_NOT_SENT_FOR_REVIEW" = "true" ]; then
-            args+=(--changes-not-sent-for-review)
-          fi
-          python3 scripts/upload-google-play-internal.py "${args[@]}"
-
-      - name: Upload summary
-        shell: bash
-        run: |
-          {
-            echo "### Google Play internal 업로드"
-            echo "- source: \`${{ needs.build.outputs.source_sha }}\`"
-            echo "- release: \`${{ needs.build.outputs.release_tag }}\`"
-            echo "- versionCode: \`${{ needs.build.outputs.android_version_code }}\`"
-            echo "- snapshot candidate: \`${{ inputs.snapshot_candidate }}\`"
-            echo "- track: \`internal\`"
-            echo "- status: \`${{ inputs.release_status }}\`"
-            echo "- production promotion: \`false\`"
-          } >> "$GITHUB_STEP_SUMMARY"
+  deploy:
+    uses: seorilabs/.github/.github/workflows/rn-deploy-google-play.yml@c8db7834f6b72198a898f699b6f91e3a185fc7f5
+    with:
+      release_tag: ${{ github.ref_type == 'tag' && github.ref_name || inputs.release_tag }}
+      upload: ${{ inputs.upload || false }}
+      track: internal
+      release_status: ${{ inputs.release_status || 'draft' }}
+      changes_not_sent_for_review: ${{ inputs.changes_not_sent_for_review || false }}
+      package_manager: pnpm
+      pnpm_version: 11.3.0
+      node_version: 24.16.0
+      java_version: 17
+      android_dir: apps/mobile/android
+      package_name: com.seorilabs.cyclepair
+      firebase_restore_script: scripts/restore-mobile-firebase-config.mjs
+      timeout_minutes: 45
+    secrets:
+      FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64 }}
+      GOOGLE_PLAY_UPLOAD_KEYSTORE_BASE64: ${{ secrets.GOOGLE_PLAY_UPLOAD_KEYSTORE_BASE64 }}
+      GOOGLE_PLAY_UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.GOOGLE_PLAY_UPLOAD_KEYSTORE_PASSWORD }}
+      GOOGLE_PLAY_UPLOAD_KEY_PASSWORD: ${{ secrets.GOOGLE_PLAY_UPLOAD_KEY_PASSWORD }}

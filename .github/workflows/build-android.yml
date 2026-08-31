@@ -4,19 +4,15 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "빌드할 SemVer 태그. snapshot 후보는 snapshot_candidate=true 필수"
+        description: "빌드할 stable SemVer 태그. 비우면 최신 vX.Y.Z"
         type: string
         required: false
         default: ""
-      snapshot_candidate:
-        description: "vX.Y.Z-snapshot.N 후보 빌드"
-        type: boolean
-        required: false
-        default: false
 
 permissions:
   contents: read
   id-token: write
+  packages: read
 
 concurrency:
   group: cycle-pair-android-build-${{ inputs.release_tag || github.ref }}
@@ -24,10 +20,23 @@ concurrency:
 
 jobs:
   candidate:
-    uses: ./.github/workflows/deploy-google-play.yml
+    uses: seorilabs/.github/.github/workflows/rn-deploy-google-play.yml@c8db7834f6b72198a898f699b6f91e3a185fc7f5
     with:
       release_tag: ${{ inputs.release_tag }}
-      snapshot_candidate: ${{ inputs.snapshot_candidate }}
       upload: false
+      track: internal
       release_status: draft
       changes_not_sent_for_review: false
+      package_manager: pnpm
+      pnpm_version: 11.3.0
+      node_version: 24.16.0
+      java_version: 17
+      android_dir: apps/mobile/android
+      package_name: com.seorilabs.cyclepair
+      firebase_restore_script: scripts/restore-mobile-firebase-config.mjs
+      timeout_minutes: 45
+    secrets:
+      FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64 }}
+      GOOGLE_PLAY_UPLOAD_KEYSTORE_BASE64: ${{ secrets.GOOGLE_PLAY_UPLOAD_KEYSTORE_BASE64 }}
+      GOOGLE_PLAY_UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.GOOGLE_PLAY_UPLOAD_KEYSTORE_PASSWORD }}
+      GOOGLE_PLAY_UPLOAD_KEY_PASSWORD: ${{ secrets.GOOGLE_PLAY_UPLOAD_KEY_PASSWORD }}
