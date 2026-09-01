@@ -22,10 +22,11 @@ const files = {
 
 // 조직 재사용 워크플로우는 workflow별로 개별 pin한다. 값은 저장소의 실제 pin과 일치해야 한다.
 const orgWorkflowPins = {
-  'rn-build-ait.yml': '73972d2b34e92145e61e3409c91085c40da10c54',
-  'rn-deploy-google-play.yml': 'c8db7834f6b72198a898f699b6f91e3a185fc7f5',
-  'release-tag.yml': 'c8db7834f6b72198a898f699b6f91e3a185fc7f5',
-  'cleanup-actions-storage.yml': '143458719a525a0a5da34cded4c1d7b8445b9f8b',
+  'rn-build-ait.yml': '9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5',
+  'rn-deploy-google-play.yml': '9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5',
+  'release-tag.yml': '9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5',
+  'cleanup-actions-storage.yml': '9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5',
+  'resolve-release-version.yml': '9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5',
 };
 
 function read(path) {
@@ -178,38 +179,14 @@ try {
     'public release: false',
     'AppsInToss 자동화는 비공개 업로드로 제한해야 합니다.',
   );
-  assertIncludes(
-    ait,
-    'snapshot_candidate:',
-    'AppsInToss caller에 snapshot 후보 mode 입력이 없습니다.',
-  );
-  assertIncludes(
-    ait,
-    'validate-release-candidate.mjs',
-    'AppsInToss caller가 stable/snapshot mode와 package base를 검증하지 않습니다.',
-  );
+  assertOrgPin(files.ait, ait, 'resolve-release-version.yml');
+  assertIncludes(ait, 'verify-release-artifact.mjs', 'AppsInToss artifact provenance 검증이 없습니다.');
+  if (/snapshot_candidate|validate-release-candidate\.mjs/u.test(ait)) {
+    throw new Error('AppsInToss release 경로에 legacy snapshot authority가 남아 있습니다.');
+  }
 
   const aitCandidate = read(files.aitCandidate);
-  assertIncludes(
-    aitCandidate,
-    'validate-release-candidate.mjs',
-    'AIT candidate caller가 snapshot mode를 검증하지 않습니다.',
-  );
-  assertIncludes(
-    aitCandidate,
-    'echo "tag=" >> "$GITHUB_OUTPUT"',
-    'AIT candidate caller가 빈 release_tag의 기존 호출 ref 동작을 보존하지 않습니다.',
-  );
-  assertIncludes(
-    aitCandidate,
-    'CALLER_REF_TYPE: ${{ github.ref_type }}',
-    'AIT candidate caller가 빈 입력의 tag ref 유형을 검증하지 않습니다.',
-  );
-  assertIncludes(
-    aitCandidate,
-    'snapshot tag ref는 snapshot_candidate=true와 명시 release_tag가 필요합니다',
-    'AIT candidate caller가 snapshot tag ref의 mode 우회를 차단하지 않습니다.',
-  );
+  assertOrgPin(files.aitCandidate, aitCandidate, 'rn-build-ait.yml');
   if (aitCandidate.includes('git tag --list')) {
     throw new Error('AIT candidate의 빈 release_tag를 최신 stable 태그로 바꾸면 안 됩니다.');
   }
@@ -233,11 +210,9 @@ try {
 
   const preBuild = read(files.xcodePreBuild);
   assertIncludes(preBuild, 'CI_TAG', 'Xcode Cloud tag version 주입이 없습니다.');
-  assertIncludes(
-    preBuild,
-    'CI_BUILD_NUMBER',
-    'Xcode Cloud 고유 build number를 사용하지 않습니다.',
-  );
+  assertIncludes(preBuild, 'AUTHORITY_SHA="9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5"', 'Xcode Cloud 중앙 authority pin이 없습니다.');
+  assertIncludes(preBuild, 'xcode-cloud-apply-tag-version.mjs', 'Xcode Cloud 중앙 version applier가 없습니다.');
+  if (preBuild.includes('CI_BUILD_NUMBER')) throw new Error('Xcode Cloud build number가 실행 번호에서 파생됩니다.');
 
   const trigger = read(files.xcodeTrigger);
   assertIncludes(
@@ -250,11 +225,6 @@ try {
   const deployAll = read(files.all);
   assertNoPushTrigger(files.all, deployAll);
   assertSafeConcurrency(files.all, deployAll);
-  assertIncludes(
-    deployAll,
-    'uses: actions/checkout@v7',
-    'Deploy All checkout은 global action major v7을 사용해야 합니다.',
-  );
   for (const caller of [
     './.github/workflows/deploy-google-play.yml',
     './.github/workflows/deploy-app-store.yml',
@@ -277,11 +247,7 @@ try {
       `Deploy All에 ${uploadInput} opt-in 입력이 없습니다.`,
     );
   }
-  assertIncludes(
-    deployAll,
-    'snapshot_candidate: false',
-    '정식 Deploy All caller가 stable mode를 명시하지 않습니다.',
-  );
+  assertOrgPin(files.all, deployAll, 'resolve-release-version.yml');
 
   const tag = read(files.tag);
   assertOrgPin(files.tag, tag, 'release-tag.yml');

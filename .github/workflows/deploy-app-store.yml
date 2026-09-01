@@ -21,6 +21,13 @@ on:
       upload_to_testflight:
         type: boolean
         default: false
+    secrets:
+      APP_STORE_CONNECT_API_KEY_ID:
+        required: true
+      APP_STORE_CONNECT_ISSUER_ID:
+        required: true
+      APP_STORE_CONNECT_PRIVATE_KEY_BASE64:
+        required: true
 
 permissions:
   contents: read
@@ -30,19 +37,32 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  resolve:
+    uses: seorilabs/.github/.github/workflows/resolve-release-version.yml@9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5
+    with:
+      release_tag: ${{ inputs.release_tag }}
+
   xcode-cloud:
     name: Xcode Cloud tag dispatch
+    needs: resolve
     runs-on: ${{ github.event.repository.private && 'seorilabs-rpi-arm64' || 'ubuntu-latest' }}
     timeout-minutes: 10
     environment: app-store
 
     steps:
-      - name: Checkout
+      - name: Checkout exact release tag
         uses: actions/checkout@v7
         with:
+          ref: ${{ needs.resolve.outputs.tag }}
           fetch-depth: 0
           fetch-tags: true
           persist-credentials: false
+
+      - name: Verify exact release source
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ needs.resolve.outputs.source_sha }}
+        run: test "$(git rev-parse 'HEAD^{commit}')" = "$EXPECTED_SHA"
 
       - name: Setup Node
         uses: actions/setup-node@v7
@@ -50,24 +70,6 @@ jobs:
           node-version: 24.16.0
           check-latest: false
           package-manager-cache: false
-
-      - name: Resolve release tag
-        id: release
-        shell: bash
-        env:
-          RELEASE_TAG_INPUT: ${{ inputs.release_tag }}
-        run: |
-          set -euo pipefail
-          tag="$RELEASE_TAG_INPUT"
-          if [ -z "$tag" ]; then
-            tag="$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n 1)"
-          fi
-          [[ "$tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || {
-            echo "vX.Y.Z 태그가 필요합니다. 받은 값: ${tag:-empty}" >&2
-            exit 1
-          }
-          git rev-parse --verify "refs/tags/$tag^{commit}" >/dev/null
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
       - name: Validate or start Xcode Cloud build
         id: xcode-cloud
@@ -80,7 +82,7 @@ jobs:
           SHOULD_START: ${{ inputs.upload_to_testflight }}
         run: |
           set -euo pipefail
-          args=(--tag "${{ steps.release.outputs.tag }}")
+          args=(--tag "${{ needs.resolve.outputs.tag }}")
           if [ "$SHOULD_START" = "true" ]; then
             args+=(--start)
           fi
@@ -93,7 +95,7 @@ jobs:
           {
             echo "### App Store — Xcode Cloud"
             echo ""
-            echo "- tag: ${{ steps.release.outputs.tag }}"
+            echo "- tag: ${{ needs.resolve.outputs.tag }} @ ${{ needs.resolve.outputs.source_sha }}"
             echo "- Xcode Cloud started: ${{ steps.xcode-cloud.outputs.started }}"
             echo "- build number: ${{ steps.xcode-cloud.outputs.build_number }}"
             echo "- GitHub macOS runner: 사용 안 함"

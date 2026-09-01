@@ -4,15 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "빌드할 SemVer 태그. 비우면 호출 ref, snapshot 후보는 snapshot_candidate=true 필수"
+        description: "빌드할 tag 또는 ref. 비우면 호출 ref"
         type: string
         required: false
         default: ""
-      snapshot_candidate:
-        description: "vX.Y.Z-snapshot.N 후보 빌드"
-        type: boolean
-        required: false
-        default: false
 
 permissions:
   contents: read
@@ -22,60 +17,10 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  validate:
-    name: Validate candidate contract
-    runs-on: seorilabs-rpi-arm64
-    timeout-minutes: 10
-    outputs:
-      tag: ${{ steps.release.outputs.tag }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-          persist-credentials: false
-
-      - name: Setup Node
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24.16.0
-          check-latest: false
-
-      - name: Resolve and validate candidate
-        id: release
-        shell: bash
-        env:
-          REQUESTED_TAG: ${{ inputs.release_tag }}
-          SNAPSHOT_CANDIDATE: ${{ inputs.snapshot_candidate }}
-          CALLER_REF_TYPE: ${{ github.ref_type }}
-          CALLER_REF_NAME: ${{ github.ref_name }}
-        run: |
-          set -euo pipefail
-          tag="$REQUESTED_TAG"
-          if [ -z "$tag" ]; then
-            [ "$SNAPSHOT_CANDIDATE" = "false" ] \
-              || { echo "snapshot_candidate=true이면 release_tag가 필요합니다." >&2; exit 1; }
-            if [ "$CALLER_REF_TYPE" = "tag" ] \
-              && [[ "$CALLER_REF_NAME" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)-snapshot\.([1-9][0-9]*)$ ]]; then
-              echo "snapshot tag ref는 snapshot_candidate=true와 명시 release_tag가 필요합니다: $CALLER_REF_NAME" >&2
-              exit 1
-            fi
-            echo "tag=" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          git -c advice.detachedHead=false checkout --detach "$tag"
-          node scripts/validate-release-candidate.mjs \
-            --tag "$tag" \
-            --snapshot-candidate "$SNAPSHOT_CANDIDATE"
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
-
   candidate:
-    needs: validate
-    uses: seorilabs/.github/.github/workflows/rn-build-ait.yml@73972d2b34e92145e61e3409c91085c40da10c54
+    uses: seorilabs/.github/.github/workflows/rn-build-ait.yml@9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5
     with:
-      release_tag: ${{ needs.validate.outputs.tag }}
+      release_tag: ${{ inputs.release_tag }}
       ait_dir: apps/ait
       package_manager: pnpm
       pnpm_version: 11.3.0

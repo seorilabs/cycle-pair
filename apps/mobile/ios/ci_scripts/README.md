@@ -19,12 +19,12 @@ API key는 저장소에 커밋하지 않는다.
 기본 Ruby보다 새로우면 `ruby@3.2`를 설치한 뒤 동일 Bundler 버전으로
 Pods를 설치한다.
 
-`ci_pre_xcodebuild.sh`는 `CI_TAG`와 `CI_BUILD_NUMBER`를 marketing version과
-build number로 반영한다.
+`ci_pre_xcodebuild.sh`는 exact `CI_TAG`를 중앙 release authority helper에 전달해
+marketing version과 deterministic build number를 반영한다.
 
 로컬 version hook 점검:
 
 ```sh
-CI_TAG=v1.2.3 CI_BUILD_NUMBER=42 CI_PRE_XCODEBUILD_DRY_RUN=1 \
+CI_TAG=v1.2.3 CI_PRE_XCODEBUILD_DRY_RUN=1 \
   sh apps/mobile/ios/ci_scripts/ci_pre_xcodebuild.sh
 ```

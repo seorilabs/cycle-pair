@@ -4,16 +4,12 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "업로드할 SemVer 태그. snapshot 후보는 snapshot_candidate=true 필수"
+        description: "업로드할 exact stable SemVer 태그. 비우면 최신 vX.Y.Z"
         type: string
-        required: true
-      snapshot_candidate:
-        description: "비공개 vX.Y.Z-snapshot.N 후보만 허용"
-        type: boolean
         required: false
-        default: false
+        default: ""
       memo:
-        description: "AppsInToss 비공개 배포 메모"
+        description: "canonical release memo 뒤에 붙일 운영 메모"
         type: string
         required: false
         default: "Cycle Pair private upload"
@@ -21,53 +17,65 @@ on:
     inputs:
       release_tag:
         type: string
-        required: true
-      snapshot_candidate:
-        type: boolean
         required: false
-        default: false
+        default: ""
       memo:
         type: string
         required: false
         default: "Cycle Pair private upload"
+    secrets:
+      APPS_IN_TOSS_API_KEY:
+        required: true
 
 permissions:
   contents: read
 
 concurrency:
-  group: cycle-pair-apps-in-toss-${{ inputs.release_tag }}
+  group: cycle-pair-apps-in-toss-${{ inputs.release_tag || github.ref }}
   cancel-in-progress: false
 
 jobs:
+  resolve:
+    uses: seorilabs/.github/.github/workflows/resolve-release-version.yml@9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5
+    with:
+      release_tag: ${{ inputs.release_tag }}
+
   deploy:
-    name: Build and upload private mini-app
-    # AppsInToss SDK 2.x가 포함한 Linux Hermes compiler는 x86-64 바이너리다.
+    name: Build and upload exact private mini-app
+    needs: resolve
+    # AppsInToss SDK 2.x의 Linux Hermes compiler가 x86-64 바이너리라 이 경로만 x64를 유지한다.
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: apps-in-toss
 
     steps:
-      - name: Checkout release tag
+      - name: Checkout exact release tag
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.release_tag }}
+          ref: ${{ needs.resolve.outputs.tag }}
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+
+      - name: Verify exact release source
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ needs.resolve.outputs.source_sha }}
+        run: test "$(git rev-parse 'HEAD^{commit}')" = "$EXPECTED_SHA"
+
+      - name: Checkout canonical release authority
+        uses: actions/checkout@v7
+        with:
+          repository: seorilabs/.github
+          ref: 9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5
+          path: .seorilabs-release-authority
+          persist-credentials: false
 
       - name: Setup Node
         uses: actions/setup-node@v7
         with:
           node-version: 24.16.0
           check-latest: false
-
-      - name: Validate release candidate
-        shell: bash
-        env:
-          RELEASE_TAG: ${{ inputs.release_tag }}
-          SNAPSHOT_CANDIDATE: ${{ inputs.snapshot_candidate }}
-        run: |
-          set -euo pipefail
-          node scripts/validate-release-candidate.mjs \
-            --tag "$RELEASE_TAG" \
-            --snapshot-candidate "$SNAPSHOT_CANDIDATE"
 
       - name: Enable pnpm
         shell: bash
@@ -76,30 +84,39 @@ jobs:
           corepack enable
           corepack prepare pnpm@11.3.0 --activate
 
-      - name: Validate AppsInToss credential
-        shell: bash
-        env:
-          APPS_IN_TOSS_API_KEY: ${{ secrets.APPS_IN_TOSS_API_KEY }}
-        run: |
-          set -euo pipefail
-          [ -n "$APPS_IN_TOSS_API_KEY" ] \
-            || { echo "APPS_IN_TOSS_API_KEY secret이 필요합니다." >&2; exit 1; }
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build AIT artifact
+      - name: Build exact AIT artifact
+        env:
+          SEORI_RELEASE_TAG: ${{ needs.resolve.outputs.tag }}
+          SEORI_RELEASE_VERSION: ${{ needs.resolve.outputs.version_name }}
+          SEORI_RELEASE_VERSION_CODE: ${{ needs.resolve.outputs.android_version_code }}
+          SEORI_RELEASE_SOURCE_SHA: ${{ needs.resolve.outputs.source_sha }}
         run: pnpm build:ait
 
-      - name: Verify AIT artifact
+      - name: Verify AIT artifact provenance
+        id: provenance
         shell: bash
-        run: test -s apps/ait/cycle-pair.ait
+        env:
+          RELEASE_BINDING_BASE64: ${{ needs.resolve.outputs.binding_base64 }}
+          RELEASE_MEMO_NOTE: ${{ inputs.memo }}
+        run: |
+          set -euo pipefail
+          binding="$RUNNER_TEMP/release-binding.json"
+          printf '%s' "$RELEASE_BINDING_BASE64" | base64 --decode > "$binding"
+          RELEASE_BINDING_PATH="$binding" node \
+            .seorilabs-release-authority/scripts/release/verify-release-artifact.mjs \
+            --kind ait \
+            --artifact apps/ait/cycle-pair.ait \
+            --receipt "$RUNNER_TEMP/release-artifact-receipt.txt" \
+            --github-output
 
       - name: Upload AIT artifact
         uses: actions/upload-artifact@v7
         with:
-          name: apps-in-toss-${{ inputs.release_tag }}
-          path: apps/ait/cycle-pair.ait
+          name: apps-in-toss-${{ needs.resolve.outputs.tag }}-${{ needs.resolve.outputs.android_version_code }}
+          path: ${{ steps.provenance.outputs.artifact_path }}
           if-no-files-found: error
           retention-days: 3
 
@@ -107,20 +124,25 @@ jobs:
         shell: bash
         env:
           APPS_IN_TOSS_API_KEY: ${{ secrets.APPS_IN_TOSS_API_KEY }}
-          DEPLOY_MEMO: ${{ inputs.memo }}
+          DEPLOY_MEMO: ${{ steps.provenance.outputs.release_memo }}
+          VERIFIED_AIT_PATH: ${{ steps.provenance.outputs.artifact_path }}
+          VERIFIED_AIT_DIGEST: ${{ steps.provenance.outputs.artifact_digest }}
         run: |
           set -euo pipefail
-          pnpm --dir apps/ait run deploy --api-key "$APPS_IN_TOSS_API_KEY" --memo "$DEPLOY_MEMO"
+          observed="$(sha256sum "$VERIFIED_AIT_PATH" | cut -d ' ' -f 1)"
+          test "$observed" = "$VERIFIED_AIT_DIGEST"
+          pnpm --dir apps/ait run deploy \
+            --api-key "$APPS_IN_TOSS_API_KEY" \
+            --memo "$DEPLOY_MEMO" \
+            --location "$VERIFIED_AIT_PATH"
 
       - name: Summary
         shell: bash
         run: |
           {
             echo "### AppsInToss private upload"
-            echo ""
-            echo "- tag: ${{ inputs.release_tag }}"
-            echo "- snapshot candidate: ${{ inputs.snapshot_candidate }}"
-            echo "- artifact: apps/ait/cycle-pair.ait"
-            echo "- private upload: true"
+            echo "- tag: ${{ needs.resolve.outputs.tag }} @ ${{ needs.resolve.outputs.source_sha }}"
+            echo "- version: ${{ needs.resolve.outputs.version_name }} (${{ needs.resolve.outputs.android_version_code }})"
+            echo "- artifact: ${{ steps.provenance.outputs.artifact_path }} sha256:${{ steps.provenance.outputs.artifact_digest }}"
             echo "- public release: false"
           } >> "$GITHUB_STEP_SUMMARY"

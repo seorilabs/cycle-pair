@@ -1,59 +1,27 @@
 #!/usr/bin/env node
 import {spawnSync} from 'node:child_process';
-import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import process from 'node:process';
-
-import {
-  assertReleasePackageVersions,
-  resolveReleaseVersion,
-} from './release-version-lib.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, '..');
 const androidDirectory = path.join(repositoryRoot, 'apps/mobile/android');
 
-function readJson(relativePath) {
-  return JSON.parse(
-    readFileSync(path.join(repositoryRoot, relativePath), 'utf8'),
-  );
-}
-
-function readRequestedTag(arguments_) {
-  let tag = process.env.RELEASE_TAG ?? null;
-  for (let index = 0; index < arguments_.length; index += 1) {
-    const argument = arguments_[index];
-    if (argument === '--') continue;
-    if (argument === '--tag') {
-      tag = arguments_[index + 1] ?? null;
-      index += 1;
-      continue;
-    }
-    if (argument.startsWith('--tag=')) {
-      tag = argument.slice('--tag='.length);
-      continue;
-    }
-    throw new Error(`지원하지 않는 인자입니다: ${argument}`);
-  }
-  return tag;
-}
-
 try {
-  const rootPackage = readJson('package.json');
-  const mobilePackage = readJson('apps/mobile/package.json');
-  const aitPackage = readJson('apps/ait/package.json');
-
-  const expectedTag = `v${rootPackage.version}`;
-  const requestedTag = readRequestedTag(process.argv.slice(2)) ?? expectedTag;
-  const resolvedVersion = resolveReleaseVersion(requestedTag);
-  assertReleasePackageVersions(resolvedVersion, {
-    root: rootPackage.version,
-    mobile: mobilePackage.version,
-    ait: aitPackage.version,
-  });
+  if (process.argv.slice(2).some(argument => argument !== '--')) {
+    throw new Error('버전 인자는 받지 않습니다. 중앙 release authority 환경변수를 사용하세요.');
+  }
+  const versionName = process.env.SEORI_RELEASE_VERSION_NAME ?? '';
+  const versionCode = process.env.SEORI_RELEASE_VERSION_CODE ?? '';
+  if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(versionName)) {
+    throw new Error(`SEORI_RELEASE_VERSION_NAME이 올바르지 않습니다: ${versionName || 'empty'}`);
+  }
+  if (!/^[1-9]\d*$/.test(versionCode)) {
+    throw new Error(`SEORI_RELEASE_VERSION_CODE가 올바르지 않습니다: ${versionCode || 'empty'}`);
+  }
   console.log(
-    `Google Play AAB: releaseTag=${resolvedVersion.release_tag}, versionName=${resolvedVersion.version_name}, versionCode=${resolvedVersion.android_version_code}`,
+    `Google Play AAB: versionName=${versionName}, versionCode=${versionCode}`,
   );
 
   const gradleCommand = path.join(
@@ -62,8 +30,8 @@ try {
   );
   const buildEnvironment = {
     ...process.env,
-    GOOGLE_PLAY_VERSION_NAME: resolvedVersion.version_name,
-    GOOGLE_PLAY_VERSION_CODE: resolvedVersion.android_version_code,
+    GOOGLE_PLAY_VERSION_NAME: versionName,
+    GOOGLE_PLAY_VERSION_CODE: versionCode,
   };
   const runGradle = task => {
     const gradleArguments = [];

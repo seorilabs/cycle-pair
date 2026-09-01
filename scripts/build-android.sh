@@ -43,9 +43,9 @@ export CYCLEPAIR_ANDROID_GRADLE_MAX_WORKERS="$GRADLE_MAX_WORKERS"
 export CMAKE_BUILD_PARALLEL_LEVEL
 
 required_environment=(
-  RELEASE_TAG
-  ANDROID_VERSION_NAME
-  ANDROID_VERSION_CODE
+  SEORI_RELEASE_TAG
+  SEORI_RELEASE_VERSION_NAME
+  SEORI_RELEASE_VERSION_CODE
   FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64
   GOOGLE_PLAY_UPLOAD_KEYSTORE_BASE64
   GOOGLE_PLAY_UPLOAD_KEYSTORE_PASSWORD
@@ -70,21 +70,17 @@ unset GOOGLE_PLAY_UPLOAD_KEY_PASSWORD
 
 pnpm install --frozen-lockfile
 
-version_name="${ANDROID_VERSION_NAME#v}"
-version_json="$(node scripts/resolve-release-version.mjs --tag "$RELEASE_TAG")"
-resolved_version_name="$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).version_name)' "$version_json")"
-resolved_version_code="$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).android_version_code)' "$version_json")"
-resolved_release_tag="$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).release_tag)' "$version_json")"
-[[ "$resolved_release_tag" == "$RELEASE_TAG" ]] || {
-  echo "릴리스 태그 provenance 해석에 실패했습니다." >&2
+version_name="$SEORI_RELEASE_VERSION_NAME"
+[[ "$SEORI_RELEASE_TAG" == "v$version_name" ]] || {
+  echo "중앙 release tag와 versionName이 다릅니다." >&2
   exit 1
 }
-[[ "$resolved_version_name" == "$version_name" ]] || {
-  echo "Android versionName 해석에 실패했습니다." >&2
+[[ "$version_name" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || {
+  echo "SEORI_RELEASE_VERSION_NAME이 올바르지 않습니다." >&2
   exit 1
 }
-[[ "$ANDROID_VERSION_CODE" == "$resolved_version_code" ]] || {
-  echo "Android versionCode가 릴리스 태그 파생값과 다릅니다." >&2
+[[ "$SEORI_RELEASE_VERSION_CODE" =~ ^[1-9][0-9]*$ ]] || {
+  echo "SEORI_RELEASE_VERSION_CODE가 올바르지 않습니다." >&2
   exit 1
 }
 
@@ -133,7 +129,7 @@ export CYCLEPAIR_ANDROID_UPLOAD_KEY_ALIAS="$GOOGLE_PLAY_UPLOAD_KEY_ALIAS"
 export CYCLEPAIR_ANDROID_UPLOAD_KEY_PASSWORD="$upload_key_password"
 export ORG_GRADLE_PROJECT_reactNativeArchitectures="$REACT_NATIVE_ARCHITECTURES"
 
-node scripts/build-google-play.mjs --tag "$RELEASE_TAG"
+node scripts/build-google-play.mjs
 
 source_aab="$repo_root/apps/mobile/android/app/build/outputs/bundle/release/app-release.aab"
 [[ -f "$source_aab" ]] || {
@@ -141,7 +137,7 @@ source_aab="$repo_root/apps/mobile/android/app/build/outputs/bundle/release/app-
   exit 1
 }
 
-output_aab="$repo_root/$AAB_PATH"
+output_aab="${SEORI_ANDROID_AAB_OUTPUT:-$repo_root/$AAB_PATH}"
 mkdir -p "$(dirname "$output_aab")"
 cp "$source_aab" "$output_aab"
 jarsigner -verify -strict \
@@ -150,4 +146,4 @@ jarsigner -verify -strict \
   "$output_aab" "$GOOGLE_PLAY_UPLOAD_KEY_ALIAS" >/dev/null
 
 artifact_bytes="$(wc -c <"$output_aab" | tr -d ' ')"
-echo "Android signed AAB 생성 완료: path=$AAB_PATH bytes=$artifact_bytes releaseTag=$RELEASE_TAG versionName=$version_name versionCode=$ANDROID_VERSION_CODE"
+echo "Android signed AAB 생성 완료: path=$output_aab bytes=$artifact_bytes releaseTag=$SEORI_RELEASE_TAG versionName=$version_name versionCode=$SEORI_RELEASE_VERSION_CODE"
