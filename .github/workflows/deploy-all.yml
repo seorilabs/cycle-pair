@@ -51,37 +51,9 @@ concurrency:
 
 jobs:
   resolve:
-    name: Resolve release tag
-    runs-on: ${{ github.event.repository.private && 'seorilabs-rpi-arm64' || 'ubuntu-latest' }}
-    timeout-minutes: 10
-    outputs:
-      tag: ${{ steps.release.outputs.tag }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-          persist-credentials: false
-
-      - name: Resolve and verify tag
-        id: release
-        shell: bash
-        env:
-          RELEASE_TAG_INPUT: ${{ inputs.release_tag }}
-        run: |
-          set -euo pipefail
-          tag="$RELEASE_TAG_INPUT"
-          if [ -z "$tag" ]; then
-            tag="$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n 1)"
-          fi
-          [[ "$tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || {
-            echo "vX.Y.Z 태그가 필요합니다. 받은 값: ${tag:-empty}" >&2
-            exit 1
-          }
-          git rev-parse --verify "refs/tags/$tag^{commit}" >/dev/null
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+    uses: seorilabs/.github/.github/workflows/resolve-release-version.yml@9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5
+    with:
+      release_tag: ${{ inputs.release_tag }}
 
   google-play:
     name: Google Play
@@ -104,7 +76,10 @@ jobs:
     needs: resolve
     if: ${{ inputs.deploy_app_store }}
     uses: ./.github/workflows/deploy-app-store.yml
-    secrets: inherit
+    secrets:
+      APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+      APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      APP_STORE_CONNECT_PRIVATE_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY_BASE64 }}
     with:
       release_tag: ${{ needs.resolve.outputs.tag }}
       upload_to_testflight: ${{ inputs.app_store_upload }}
@@ -114,8 +89,8 @@ jobs:
     needs: resolve
     if: ${{ inputs.apps_in_toss }}
     uses: ./.github/workflows/deploy-apps-in-toss.yml
-    secrets: inherit
+    secrets:
+      APPS_IN_TOSS_API_KEY: ${{ secrets.APPS_IN_TOSS_API_KEY }}
     with:
       release_tag: ${{ needs.resolve.outputs.tag }}
-      snapshot_candidate: false
       memo: ${{ inputs.apps_in_toss_memo }}

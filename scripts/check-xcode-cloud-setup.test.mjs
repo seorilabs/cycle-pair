@@ -61,9 +61,10 @@ test('Xcode Cloud hooks install Pods, restore Firebase and apply cloud version',
     /run_ruby_arch bundle "_\$\{BUNDLER_VERSION\}_" exec pod install/,
   );
   assert.match(preBuild, /CI_TAG/);
-  assert.match(preBuild, /CI_BUILD_NUMBER/);
-  assert.match(preBuild, /agvtool new-marketing-version/);
-  assert.match(preBuild, /agvtool new-version -all/);
+  assert.doesNotMatch(preBuild, /CI_BUILD_NUMBER|agvtool/);
+  assert.match(preBuild, /AUTHORITY_SHA="9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5"/);
+  assert.match(preBuild, /xcode-cloud-apply-tag-version\.mjs/);
+  assert.match(preBuild, /b399afde0016e23947e173437e266aa83071079d1345b41ff580ebfe63357d6f/);
   accessSync('apps/mobile/ios/ci_scripts/ci_post_clone.sh', constants.X_OK);
   accessSync('apps/mobile/ios/ci_scripts/ci_pre_xcodebuild.sh', constants.X_OK);
 });

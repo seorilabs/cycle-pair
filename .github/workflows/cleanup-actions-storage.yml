@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   cleanup:
-    uses: seorilabs/.github/.github/workflows/cleanup-actions-storage.yml@143458719a525a0a5da34cded4c1d7b8445b9f8b
+    uses: seorilabs/.github/.github/workflows/cleanup-actions-storage.yml@9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5
     secrets: inherit
     with:
       delete_artifacts: ${{ inputs.delete_artifacts }}

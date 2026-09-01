@@ -67,7 +67,7 @@ concurrency:
 
 jobs:
   deploy:
-    uses: seorilabs/.github/.github/workflows/rn-deploy-google-play.yml@c8db7834f6b72198a898f699b6f91e3a185fc7f5
+    uses: seorilabs/.github/.github/workflows/rn-deploy-google-play.yml@9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5
     with:
       release_tag: ${{ github.ref_type == 'tag' && github.ref_name || inputs.release_tag }}
       upload: ${{ inputs.upload || false }}
