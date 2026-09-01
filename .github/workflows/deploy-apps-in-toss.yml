@@ -88,11 +88,6 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build exact AIT artifact
-        env:
-          SEORI_RELEASE_TAG: ${{ needs.resolve.outputs.tag }}
-          SEORI_RELEASE_VERSION: ${{ needs.resolve.outputs.version_name }}
-          SEORI_RELEASE_VERSION_CODE: ${{ needs.resolve.outputs.android_version_code }}
-          SEORI_RELEASE_SOURCE_SHA: ${{ needs.resolve.outputs.source_sha }}
         run: pnpm build:ait
 
       - name: Verify AIT artifact provenance

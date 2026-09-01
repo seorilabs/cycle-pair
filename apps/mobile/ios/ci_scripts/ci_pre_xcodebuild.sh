@@ -31,7 +31,7 @@ curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
   printf '%s  %s\n' "$AUTHORITY_SHA256" tag-version-authority.mjs | shasum -a 256 -c
 )
 
-git -C "$REPO" fetch --force --tags origin >/dev/null 2>&1
+git -C "$REPO" fetch --force --tags origin >/dev/null
 args=""
 if [ "${CI_PRE_XCODEBUILD_DRY_RUN:-0}" = "1" ]; then
   args="--dry-run"
@@ -48,5 +48,8 @@ build_number="$(node -e 'process.stdout.write(String(JSON.parse(process.argv[1])
   echo "중앙 release binding 결과가 불완전합니다." >&2
   exit 1
 }
-echo "DRY_RUN marketing=${marketing_version} build=${build_number} tag=${RELEASE_TAG}"
-[ "${CI_PRE_XCODEBUILD_DRY_RUN:-0}" = "1" ] || echo "✅ Xcode Cloud version 주입 완료"
+if [ "${CI_PRE_XCODEBUILD_DRY_RUN:-0}" = "1" ]; then
+  echo "DRY_RUN marketing=${marketing_version} build=${build_number} tag=${RELEASE_TAG}"
+else
+  echo "✅ Xcode Cloud version 주입 완료: marketing=${marketing_version} build=${build_number}"
+fi
