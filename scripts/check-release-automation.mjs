@@ -210,9 +210,12 @@ try {
 
   const preBuild = read(files.xcodePreBuild);
   assertIncludes(preBuild, 'CI_TAG', 'Xcode Cloud tag version 주입이 없습니다.');
-  assertIncludes(preBuild, 'AUTHORITY_SHA="9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5"', 'Xcode Cloud 중앙 authority pin이 없습니다.');
+  assertIncludes(preBuild, 'AUTHORITY_SHA="6db01149a7700c0557bbeaf2e045aac7df0e78f2"', 'Xcode Cloud 중앙 authority pin이 없습니다.');
   assertIncludes(preBuild, 'xcode-cloud-apply-tag-version.mjs', 'Xcode Cloud 중앙 version applier가 없습니다.');
-  if (preBuild.includes('CI_BUILD_NUMBER')) throw new Error('Xcode Cloud build number가 실행 번호에서 파생됩니다.');
+  // Apple build number 정본은 Xcode Cloud의 CI_BUILD_NUMBER다(중앙 계약 schemaVersion 2의
+  // appleBuildNumberExceptions). 값 검증과 중앙 binding 대조가 둘 다 있어야 한다.
+  assertIncludes(preBuild, 'CLOUD_BUILD_NUMBER="${CI_BUILD_NUMBER:-}"', 'Xcode Cloud build number 검증이 없습니다.');
+  assertIncludes(preBuild, '[ "$build_number" = "$CLOUD_BUILD_NUMBER" ]', '중앙 binding과 Xcode Cloud build number 대조가 없습니다.');
 
   const trigger = read(files.xcodeTrigger);
   assertIncludes(
