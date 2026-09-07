@@ -13,7 +13,8 @@
   "scripts": {
     "lint": "pnpm -r --if-present lint",
     "typecheck": "pnpm -r --if-present typecheck",
-    "test": "pnpm test:core && pnpm test:mobile && pnpm test:ait && pnpm test:firebase && pnpm test:release",
+    "test": "pnpm check:platform-sdk && pnpm test:core && pnpm test:mobile && pnpm test:ait && pnpm test:firebase && pnpm test:release",
+    "check:platform-sdk": "node scripts/check-platform-sdk-lock.mjs && node --test scripts/check-platform-sdk-lock.test.mjs",
     "test:core": "pnpm --filter @cyclepair/product-core test",
     "test:mobile": "pnpm --filter @cyclepair/mobile test",
     "test:ait": "pnpm --filter @cyclepair/ait test",
