@@ -11,7 +11,6 @@ const files = {
   aitCandidate: '.github/workflows/build-ait.yml',
   xcodePostClone: 'apps/mobile/ios/ci_scripts/ci_post_clone.sh',
   xcodePreBuild: 'apps/mobile/ios/ci_scripts/ci_pre_xcodebuild.sh',
-  xcodeTrigger: 'scripts/trigger-xcode-cloud-build.mjs',
   tag: '.github/workflows/release-tag.yml',
   cleanup: '.github/workflows/cleanup-actions-storage.yml',
   gradle: 'apps/mobile/android/app/build.gradle',
@@ -130,28 +129,16 @@ try {
   const apple = read(files.apple);
   assertNoPushTrigger(files.apple, apple);
   assertSafeConcurrency(files.apple, apple);
-  assertIncludes(
-    apple,
-    "'seorilabs-rpi-arm64'",
-    'App Store dispatch는 private ARC에서 실행해야 합니다.',
-  );
+  // 러너와 action pin은 조직 재사용 워크플로의 책임이라 여기서 다시 고정하지 않는다.
+  // 이 저장소가 지켜야 하는 것은 세 가지다 - macOS archive 금지, 정확한 commit의 중앙
+  // 워크플로 호출, 그리고 실행 기본값이 꺼짐일 것.
   if (/runs-on:\s*macos-/u.test(apple) || apple.includes('xcodebuild')) {
     throw new Error('App Store GitHub workflow에서 macOS archive를 실행하면 안 됩니다.');
   }
   assertIncludes(
     apple,
-    'uses: actions/checkout@v7',
-    'App Store checkout은 stable major v7이어야 합니다.',
-  );
-  assertIncludes(
-    apple,
-    'uses: actions/setup-node@v7',
-    'App Store setup-node는 stable major v7이어야 합니다.',
-  );
-  assertIncludes(
-    apple,
-    'node scripts/trigger-xcode-cloud-build.mjs',
-    'App Store workflow가 Xcode Cloud API trigger를 사용하지 않습니다.',
+    'seorilabs/.github/.github/workflows/app-store-xcode-cloud.yml@',
+    'App Store workflow가 조직 Xcode Cloud 트리거를 부르지 않습니다.',
   );
   assertIncludes(
     apple,
@@ -216,13 +203,6 @@ try {
   // appleBuildNumberExceptions). 값 검증과 중앙 binding 대조가 둘 다 있어야 한다.
   assertIncludes(preBuild, 'CLOUD_BUILD_NUMBER="${CI_BUILD_NUMBER:-}"', 'Xcode Cloud build number 검증이 없습니다.');
   assertIncludes(preBuild, '[ "$build_number" = "$CLOUD_BUILD_NUMBER" ]', '중앙 binding과 Xcode Cloud build number 대조가 없습니다.');
-
-  const trigger = read(files.xcodeTrigger);
-  assertIncludes(
-    trigger,
-    "'/v1/ciBuildRuns'",
-    'App Store Connect ciBuildRuns API 호출이 없습니다.',
-  );
 
   // Deploy All: 세 마켓 caller를 모두 노출하고 업로드는 opt-in 유지
   const deployAll = read(files.all);

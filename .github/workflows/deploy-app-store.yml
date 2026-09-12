@@ -37,67 +37,14 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  resolve:
-    uses: seorilabs/.github/.github/workflows/resolve-release-version.yml@9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5
+  app-store:
+    uses: seorilabs/.github/.github/workflows/app-store-xcode-cloud.yml@afc062e68e35a23d0c436ea83e49f9c0d214c6f8
     with:
       release_tag: ${{ inputs.release_tag }}
-
-  xcode-cloud:
-    name: Xcode Cloud tag dispatch
-    needs: resolve
-    runs-on: ${{ github.event.repository.private && 'seorilabs-rpi-arm64' || 'ubuntu-latest' }}
-    timeout-minutes: 10
-    environment: app-store
-
-    steps:
-      - name: Checkout exact release tag
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ needs.resolve.outputs.tag }}
-          fetch-depth: 0
-          fetch-tags: true
-          persist-credentials: false
-
-      - name: Verify exact release source
-        shell: bash
-        env:
-          EXPECTED_SHA: ${{ needs.resolve.outputs.source_sha }}
-        run: test "$(git rev-parse 'HEAD^{commit}')" = "$EXPECTED_SHA"
-
-      - name: Setup Node
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24.16.0
-          check-latest: false
-          package-manager-cache: false
-
-      - name: Validate or start Xcode Cloud build
-        id: xcode-cloud
-        shell: bash
-        env:
-          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
-          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
-          APP_STORE_CONNECT_PRIVATE_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY_BASE64 }}
-          XCODE_CLOUD_WORKFLOW_NAME: Cycle Pair Release
-          SHOULD_START: ${{ inputs.upload_to_testflight }}
-        run: |
-          set -euo pipefail
-          args=(--tag "${{ needs.resolve.outputs.tag }}")
-          if [ "$SHOULD_START" = "true" ]; then
-            args+=(--start)
-          fi
-          node scripts/trigger-xcode-cloud-build.mjs "${args[@]}"
-
-      - name: Summary
-        if: ${{ always() }}
-        shell: bash
-        run: |
-          {
-            echo "### App Store — Xcode Cloud"
-            echo ""
-            echo "- tag: ${{ needs.resolve.outputs.tag }} @ ${{ needs.resolve.outputs.source_sha }}"
-            echo "- Xcode Cloud started: ${{ steps.xcode-cloud.outputs.started }}"
-            echo "- build number: ${{ steps.xcode-cloud.outputs.build_number }}"
-            echo "- GitHub macOS runner: 사용 안 함"
-            echo "- upload_to_testflight=false는 제품·workflow·tag만 검증"
-          } >> "$GITHUB_STEP_SUMMARY"
+      # upload_to_testflight=false면 제품·workflow·태그 해석까지만 하고 빌드를 시작하지
+      # 않는다. 중앙 워크플로의 start 입력이 같은 뜻이다.
+      start: ${{ inputs.upload_to_testflight }}
+    secrets:
+      APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+      APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      APP_STORE_CONNECT_PRIVATE_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY_BASE64 }}
