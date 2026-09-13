@@ -1,12 +1,11 @@
 #!/usr/bin/env node
-import {readFileSync} from 'node:fs';
+import {readFileSync, readdirSync} from 'node:fs';
 
 const files = {
   ci: '.github/workflows/ci.yml',
   all: '.github/workflows/deploy-all.yml',
   google: '.github/workflows/deploy-google-play.yml',
   androidCandidate: '.github/workflows/build-android.yml',
-  apple: '.github/workflows/deploy-app-store.yml',
   ait: '.github/workflows/deploy-apps-in-toss.yml',
   aitCandidate: '.github/workflows/build-ait.yml',
   xcodePostClone: 'apps/mobile/ios/ci_scripts/ci_post_clone.sh',
@@ -19,14 +18,16 @@ const files = {
   package: 'package.json',
 };
 
-// 조직 재사용 워크플로우는 workflow별로 개별 pin한다. 값은 저장소의 실제 pin과 일치해야 한다.
-const orgWorkflowPins = {
-  'rn-build-ait.yml': '9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5',
-  'rn-deploy-google-play.yml': '9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5',
-  'release-tag.yml': '9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5',
-  'cleanup-actions-storage.yml': '9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5',
-  'resolve-release-version.yml': '9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5',
-};
+// 조직 재사용 워크플로우는 workflow별로 개별 pin한다. 특정 SHA 를 여기 박아 두면
+// 중앙 판본을 올릴 때마다 이 파일도 같이 고쳐야 하고, 빠뜨리면 CI 가 빨간불로 남는다.
+// immutable commit SHA 로 고정돼 있는지만 본다.
+const orgWorkflowNames = [
+  'rn-build-ait.yml',
+  'rn-deploy-google-play.yml',
+  'release-tag.yml',
+  'cleanup-actions-storage.yml',
+  'resolve-release-version.yml',
+];
 
 function read(path) {
   return readFileSync(path, 'utf8');
@@ -53,12 +54,18 @@ function assertSafeConcurrency(path, workflow) {
 }
 
 function assertOrgPin(path, workflow, workflowFile) {
-  const sha = orgWorkflowPins[workflowFile];
-  assertIncludes(
-    workflow,
-    `seorilabs/.github/.github/workflows/${workflowFile}@${sha}`,
-    `${path}의 ${workflowFile} SHA pin이 없거나 기대값과 다릅니다.`,
+  if (!orgWorkflowNames.includes(workflowFile)) {
+    throw new Error(`${workflowFile}은 조직 재사용 워크플로 목록에 없습니다.`);
+  }
+  const pattern = new RegExp(
+    `seorilabs/\\.github/\\.github/workflows/${workflowFile.replace('.', '\\.')}@[0-9a-f]{40}`,
+    'u',
   );
+  if (!pattern.test(workflow)) {
+    throw new Error(
+      `${path}의 ${workflowFile} 호출이 40자 commit SHA로 고정돼 있지 않습니다.`,
+    );
+  }
 }
 
 try {
@@ -125,27 +132,16 @@ try {
     'Android candidate가 Google Play package identity를 중앙 검증에 넘기지 않습니다.',
   );
 
-  // App Store: GitHub runner는 dispatch만, archive는 Xcode Cloud
-  const apple = read(files.apple);
-  assertNoPushTrigger(files.apple, apple);
-  assertSafeConcurrency(files.apple, apple);
-  // 러너와 action pin은 조직 재사용 워크플로의 책임이라 여기서 다시 고정하지 않는다.
-  // 이 저장소가 지켜야 하는 것은 세 가지다 - macOS archive 금지, 정확한 commit의 중앙
-  // 워크플로 호출, 그리고 실행 기본값이 꺼짐일 것.
-  if (/runs-on:\s*macos-/u.test(apple) || apple.includes('xcodebuild')) {
-    throw new Error('App Store GitHub workflow에서 macOS archive를 실행하면 안 됩니다.');
+  // App Store 트리거는 Backoffice 가 ASC ciBuildRuns 로 직접 한다. 이 저장소에는
+  // App Store 워크플로를 두지 않는다. macOS archive 로 되돌아가지 않는지는 워크플로
+  // 전체를 훑어 본다.
+  for (const name of readdirSync('.github/workflows')) {
+    if (!name.endsWith('.yml')) continue;
+    const text = read(`.github/workflows/${name}`);
+    if (/runs-on:\s*macos-/u.test(text) || text.includes('xcodebuild')) {
+      throw new Error(`${name}: macOS archive 를 실행하면 안 됩니다.`);
+    }
   }
-  assertIncludes(
-    apple,
-    'seorilabs/.github/.github/workflows/app-store-xcode-cloud.yml@',
-    'App Store workflow가 조직 Xcode Cloud 트리거를 부르지 않습니다.',
-  );
-  assertIncludes(
-    apple,
-    'upload_to_testflight:',
-    'App Store Xcode Cloud 실행 입력이 없습니다.',
-  );
-  assertIncludes(apple, 'default: false', 'Xcode Cloud 실행 기본값은 false여야 합니다.');
 
   // AppsInToss: 비공개 업로드까지만 자동화한다.
   const ait = read(files.ait);
@@ -204,13 +200,12 @@ try {
   assertIncludes(preBuild, 'CLOUD_BUILD_NUMBER="${CI_BUILD_NUMBER:-}"', 'Xcode Cloud build number 검증이 없습니다.');
   assertIncludes(preBuild, '[ "$build_number" = "$CLOUD_BUILD_NUMBER" ]', '중앙 binding과 Xcode Cloud build number 대조가 없습니다.');
 
-  // Deploy All: 세 마켓 caller를 모두 노출하고 업로드는 opt-in 유지
+  // Deploy All: 두 마켓 caller를 모두 노출하고 업로드는 opt-in 유지
   const deployAll = read(files.all);
   assertNoPushTrigger(files.all, deployAll);
   assertSafeConcurrency(files.all, deployAll);
   for (const caller of [
     './.github/workflows/deploy-google-play.yml',
-    './.github/workflows/deploy-app-store.yml',
     './.github/workflows/deploy-apps-in-toss.yml',
   ]) {
     assertIncludes(
@@ -221,7 +216,6 @@ try {
   }
   for (const uploadInput of [
     'google_play_upload',
-    'app_store_upload',
     'apps_in_toss',
   ]) {
     assertIncludes(

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {accessSync, constants, readFileSync} from 'node:fs';
+import {accessSync, constants, readdirSync, readFileSync} from 'node:fs';
 import test from 'node:test';
 
 const read = file => readFileSync(file, 'utf8');
@@ -20,16 +20,15 @@ test('Xcode Cloud workflow contract is pinned to Cycle Pair release', () => {
   assert.equal(config.xcodeCloud.distribution, 'APP_STORE_ELIGIBLE');
 });
 
-test('GitHub dispatch uses ARC for API only and requires explicit upload opt-in', () => {
-  const workflow = read('.github/workflows/deploy-app-store.yml');
-  assert.match(workflow, /actions\/checkout@v7/);
-  assert.match(workflow, /actions\/setup-node@v7/);
-  assert.match(workflow, /node-version: 24\.16\.0/);
-  assert.match(workflow, /seorilabs-rpi-arm64/);
-  assert.match(workflow, /XCODE_CLOUD_WORKFLOW_NAME: Cycle Pair Release/);
-  assert.match(workflow, /upload_to_testflight:\n[\s\S]*default: false/);
-  assert.doesNotMatch(workflow, /runs-on:\s*macos/);
-  assert.doesNotMatch(workflow, /\bxcodebuild\b/);
+test('저장소 워크플로 어디에도 macOS archive 가 없다', () => {
+  // App Store 트리거는 Backoffice 가 ASC ciBuildRuns 로 직접 한다. 이 저장소에는
+  // App Store 워크플로를 두지 않으므로, 대신 macOS archive 로 되돌아가지 않는지 본다.
+  for (const name of readdirSync('.github/workflows')) {
+    if (!name.endsWith('.yml')) continue;
+    const workflow = read(`.github/workflows/${name}`);
+    assert.doesNotMatch(workflow, /runs-on:\s*macos/, name);
+    assert.doesNotMatch(workflow, /\bxcodebuild\b/, name);
+  }
 });
 
 test('Xcode Cloud hooks install Pods, restore Firebase and apply cloud version', () => {
