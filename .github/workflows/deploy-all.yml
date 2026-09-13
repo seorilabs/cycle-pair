@@ -51,7 +51,7 @@ concurrency:
 
 jobs:
   resolve:
-    uses: seorilabs/.github/.github/workflows/resolve-release-version.yml@9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5
+    uses: seorilabs/.github/.github/workflows/resolve-release-version.yml@565fba53aa5053785c63c9b732b93a3fbd7be847
     with:
       release_tag: ${{ inputs.release_tag }}
 

@@ -38,7 +38,7 @@ concurrency:
 
 jobs:
   app-store:
-    uses: seorilabs/.github/.github/workflows/app-store-xcode-cloud.yml@9c6f2df3133cbdf97b83792f79d92a920a27380b
+    uses: seorilabs/.github/.github/workflows/app-store-xcode-cloud.yml@565fba53aa5053785c63c9b732b93a3fbd7be847
     with:
       release_tag: ${{ inputs.release_tag }}
       # upload_to_testflight=false면 제품·workflow·태그 해석까지만 하고 빌드를 시작하지
