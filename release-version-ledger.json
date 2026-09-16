@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "release": {
+    "lastTag": null,
+    "lastSourceSha": null,
+    "marketingVersion": null
+  },
+  "android": {
+    "authority": "github-ledger",
+    "lastVersionCode": 1000103,
+    "legacyFallbackSealed": false
+  },
+  "ios": {
+    "authority": "xcode-cloud",
+    "lastObservedBuildNumber": null,
+    "lastObservedTag": null
+  },
+  "provenance": {
+    "initializedAt": "2026-09-16T14:39:28Z",
+    "initializedBy": "release-version-ledger-init-v1",
+    "initializedFromWorkflowSha": "53c0819ec0976a48c7e8302234bcfc408f0a1e0b",
+    "authorityRevision": "4fc4d51809da6e41e645919b7e2b89b0849d511613469617984815eb09e95cec",
+    "baseline": {
+      "androidVersionCode": 1000103,
+      "rule": "max-of-verified-sources",
+      "sources": [
+        {
+          "kind": "google-play-bundles-list",
+          "androidVersionCode": 1000103,
+          "packageName": "com.seorilabs.cyclepair",
+          "observedAt": "2026-09-16T12:55:36Z",
+          "evidenceDigest": "sha256:000e978bcb573f3594b82bc9192ba7e3761c0c732d67e3fd1aefcf88acdd3898"
+        }
+      ]
+    }
+  }
+}
