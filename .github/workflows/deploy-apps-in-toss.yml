@@ -67,7 +67,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: seorilabs/.github
-          ref: 53c0819ec0976a48c7e8302234bcfc408f0a1e0b
+          ref: 700348a9511b5ea202291ee1e1de4f73335783e0
           path: .seorilabs-release-authority
           persist-credentials: false
 
