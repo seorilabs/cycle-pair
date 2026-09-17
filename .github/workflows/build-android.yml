@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
   candidate:
-    uses: seorilabs/.github/.github/workflows/rn-deploy-google-play.yml@700348a9511b5ea202291ee1e1de4f73335783e0
+    uses: seorilabs/.github/.github/workflows/rn-deploy-google-play.yml@main
     with:
       release_tag: ${{ inputs.release_tag }}
       upload: false
