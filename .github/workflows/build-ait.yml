@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   candidate:
-    uses: seorilabs/.github/.github/workflows/rn-build-ait.yml@565fba53aa5053785c63c9b732b93a3fbd7be847
+    uses: seorilabs/.github/.github/workflows/rn-build-ait.yml@main
     with:
       release_tag: ${{ inputs.release_tag }}
       ait_dir: apps/ait
