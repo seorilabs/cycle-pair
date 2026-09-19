@@ -18,9 +18,12 @@ const files = {
   package: 'package.json',
 };
 
-// 조직 재사용 워크플로우는 workflow별로 개별 pin한다. 특정 SHA 를 여기 박아 두면
-// 중앙 판본을 올릴 때마다 이 파일도 같이 고쳐야 하고, 빠뜨리면 CI 가 빨간불로 남는다.
-// immutable commit SHA 로 고정돼 있는지만 본다.
+// 조직 재사용 워크플로우는 정본을 seorilabs/.github@main 에서 받는다. caller 마다 SHA 를
+// 박아 두던 구조는 seorilabs/.github#179 에서 걷어냈다. 중앙을 한 줄 고칠 때마다 저장소
+// 25곳에 pin 승격 PR 이 따라붙었고, caller 가 서로 다른 SHA 로 갈라져 어느 저장소가 무슨
+// 판본으로 도는지 알 수 없었다. 여기서는 caller 가 정본 ref 를 보고 있는지만 본다.
+// 외부 저장소 스크립트를 실행하는 authority 체크아웃은 이 검사 대상이 아니고 SHA 고정을
+// 유지한다.
 const orgWorkflowNames = [
   'rn-build-ait.yml',
   'rn-deploy-google-play.yml',
@@ -53,17 +56,18 @@ function assertSafeConcurrency(path, workflow) {
   );
 }
 
-function assertOrgPin(path, workflow, workflowFile) {
+function assertOrgCanonicalRef(path, workflow, workflowFile) {
   if (!orgWorkflowNames.includes(workflowFile)) {
     throw new Error(`${workflowFile}은 조직 재사용 워크플로 목록에 없습니다.`);
   }
+  const escapedFile = workflowFile.replace(/\./gu, '\\.');
   const pattern = new RegExp(
-    `seorilabs/\\.github/\\.github/workflows/${workflowFile.replace('.', '\\.')}@[0-9a-f]{40}`,
-    'u',
+    `^\\s*uses:\\s*seorilabs/\\.github/\\.github/workflows/${escapedFile}@main\\s*$`,
+    'mu',
   );
   if (!pattern.test(workflow)) {
     throw new Error(
-      `${path}의 ${workflowFile} 호출이 40자 commit SHA로 고정돼 있지 않습니다.`,
+      `${path}의 ${workflowFile} 호출이 중앙 정본 @main을 보고 있지 않습니다.`,
     );
   }
 }
@@ -73,8 +77,8 @@ try {
   const google = read(files.google);
   const androidCandidate = read(files.androidCandidate);
   assertSafeConcurrency(files.google, google);
-  assertOrgPin(files.google, google, 'rn-deploy-google-play.yml');
-  assertOrgPin(files.androidCandidate, androidCandidate, 'rn-deploy-google-play.yml');
+  assertOrgCanonicalRef(files.google, google, 'rn-deploy-google-play.yml');
+  assertOrgCanonicalRef(files.androidCandidate, androidCandidate, 'rn-deploy-google-play.yml');
   assertIncludes(
     google,
     'tags:\n      - "v*.*.*"',
@@ -162,14 +166,14 @@ try {
     'public release: false',
     'AppsInToss 자동화는 비공개 업로드로 제한해야 합니다.',
   );
-  assertOrgPin(files.ait, ait, 'resolve-release-version.yml');
+  assertOrgCanonicalRef(files.ait, ait, 'resolve-release-version.yml');
   assertIncludes(ait, 'verify-release-artifact.mjs', 'AppsInToss artifact provenance 검증이 없습니다.');
   if (/snapshot_candidate|validate-release-candidate\.mjs/u.test(ait)) {
     throw new Error('AppsInToss release 경로에 legacy snapshot authority가 남아 있습니다.');
   }
 
   const aitCandidate = read(files.aitCandidate);
-  assertOrgPin(files.aitCandidate, aitCandidate, 'rn-build-ait.yml');
+  assertOrgCanonicalRef(files.aitCandidate, aitCandidate, 'rn-build-ait.yml');
   if (aitCandidate.includes('git tag --list')) {
     throw new Error('AIT candidate의 빈 release_tag를 최신 stable 태그로 바꾸면 안 됩니다.');
   }
@@ -224,14 +228,14 @@ try {
       `Deploy All에 ${uploadInput} opt-in 입력이 없습니다.`,
     );
   }
-  assertOrgPin(files.all, deployAll, 'resolve-release-version.yml');
+  assertOrgCanonicalRef(files.all, deployAll, 'resolve-release-version.yml');
 
   const tag = read(files.tag);
-  assertOrgPin(files.tag, tag, 'release-tag.yml');
+  assertOrgCanonicalRef(files.tag, tag, 'release-tag.yml');
   assertIncludes(tag, 'default: true', 'Release Tag dry-run 기본값은 true여야 합니다.');
 
   const cleanup = read(files.cleanup);
-  assertOrgPin(files.cleanup, cleanup, 'cleanup-actions-storage.yml');
+  assertOrgCanonicalRef(files.cleanup, cleanup, 'cleanup-actions-storage.yml');
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
   process.exit(1);
@@ -317,7 +321,7 @@ try {
   }
 
   console.log('Release automation contract: PASS');
-  console.log('- Google Play: exact stable tag + 중앙 pinned workflow, internal upload opt-in');
+  console.log('- Google Play: exact stable tag + 중앙 정본 @main workflow, internal upload opt-in');
   console.log('- App Store: Xcode Cloud archive/TestFlight, API trigger opt-in');
   console.log('- AppsInToss: ubuntu 빌드, 비공개 업로드 opt-in');
 } catch (error) {

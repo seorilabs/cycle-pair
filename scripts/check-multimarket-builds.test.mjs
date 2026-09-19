@@ -194,7 +194,7 @@ test('AppsInToss target uses supported SDK and a build-only candidate workflow',
   assert.doesNotMatch(buildWorkflow, /git tag --list/);
   assert.match(
     buildWorkflow,
-    /rn-build-ait\.yml@[0-9a-f]{40}/,
+    /^\s*uses: seorilabs\/\.github\/\.github\/workflows\/rn-build-ait\.yml@main$/m,
   );
   assert.match(buildWorkflow, /release_tag: \$\{\{ inputs\.release_tag \}\}/);
   assert.match(buildWorkflow, /build_command: "pnpm build:ait"/);
@@ -210,7 +210,7 @@ test('Android candidate workflow creates a signed AAB without Play upload', asyn
   assert.match(workflow, /workflow_dispatch:[\s\S]*?inputs:[\s\S]*?release_tag:/);
   assert.match(
     workflow,
-    /rn-deploy-google-play\.yml@[0-9a-f]{40}/,
+    /^\s*uses: seorilabs\/\.github\/\.github\/workflows\/rn-deploy-google-play\.yml@main$/m,
   );
   assert.match(workflow, /release_tag: \$\{\{ inputs\.release_tag \}\}/);
   assert.match(workflow, /upload: false/);
@@ -247,7 +247,7 @@ test('AppsInToss deployment workflow performs an x64 private upload only', async
   assert.match(workflow, /workflow_dispatch:[\s\S]*?release_tag:/);
   assert.match(workflow, /workflow_call:[\s\S]*?release_tag:/);
   assert.doesNotMatch(workflow, /snapshot_candidate|validate-release-candidate\.mjs/);
-  assert.match(workflow, /resolve-release-version\.yml@[0-9a-f]{40}/);
+  assert.match(workflow, /^\s*uses: seorilabs\/\.github\/\.github\/workflows\/resolve-release-version\.yml@main$/m);
   assert.match(workflow, /verify-release-artifact\.mjs/);
   assert.match(workflow, /RELEASE_BINDING_BASE64/);
   assert.match(workflow, /runs-on: ubuntu-latest/);
@@ -273,7 +273,7 @@ test('Google Play deployment binds the exact stable tag to the central workflow'
   assert.match(workflow, /workflow_call:[\s\S]*?upload:/);
   assert.match(
     workflow,
-    /rn-deploy-google-play\.yml@[0-9a-f]{40}/,
+    /^\s*uses: seorilabs\/\.github\/\.github\/workflows\/rn-deploy-google-play\.yml@main$/m,
   );
   assert.match(
     workflow,
