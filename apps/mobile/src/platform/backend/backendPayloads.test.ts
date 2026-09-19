@@ -1,4 +1,9 @@
 import {
+  addDays,
+  determineCyclePhase,
+  parseLocalDate,
+} from '@cyclepair/product-core';
+import {
   fromBackendShareSettings,
   fromPrivateDailyLogRecord,
   toBackendShareSettings,
@@ -219,5 +224,109 @@ describe('Firebase backend payload mapping', () => {
     });
 
     expect(record.note).toHaveLength(500);
+  });
+});
+
+describe('파트너에게 보내는 주기 국면', () => {
+  const start = '2026-03-01';
+  const on = (offset: number) =>
+    addDays(parseLocalDate(start), offset) as string;
+
+  it('짧은 주기에서도 생리 중인 날이 가임 구간으로 넘어가지 않는다', () => {
+    // averageCycleLength 16 이면 배란일이 2일차로 계산된다. 도메인은
+    // ovulationStart 를 periodLength + 1 로 막아 생리 기간과 겹치지 않게 한다.
+    const seed = {
+      lastPeriodStart: start,
+      averageCycleLength: 16,
+      averagePeriodLength: 5,
+    } as never;
+
+    for (let offset = 0; offset < 5; offset += 1) {
+      const record = toPrivateCycleRecord(seed, on(offset));
+      expect(record.cyclePhase).toBe('menstrual');
+      expect(record.cycleStatus).not.toBe('fertile-window');
+    }
+  });
+
+  it('같은 입력에서 도메인 정본과 국면이 일치한다', () => {
+    const seeds = [
+      { averageCycleLength: 28, averagePeriodLength: 5 },
+      { averageCycleLength: 16, averagePeriodLength: 5 },
+      { averageCycleLength: 45, averagePeriodLength: 7 },
+      { averageCycleLength: 21, averagePeriodLength: 3 },
+    ];
+    for (const partial of seeds) {
+      const seed = { lastPeriodStart: start, ...partial } as never;
+      for (let offset = 0; offset < partial.averageCycleLength; offset += 1) {
+        const onDate = on(offset);
+        const canonical = determineCyclePhase({
+          lastPeriodStart: parseLocalDate(start),
+          on: parseLocalDate(onDate),
+          averageCycleLengthDays: partial.averageCycleLength,
+          periodLengthDays: partial.averagePeriodLength,
+        });
+        expect(toPrivateCycleRecord(seed, onDate).cyclePhase).toBe(
+          canonical.phase,
+        );
+      }
+    }
+  });
+
+  it('가임 상태는 국면이 배란기일 때만 나간다', () => {
+    const seed = {
+      lastPeriodStart: start,
+      averageCycleLength: 28,
+      averagePeriodLength: 5,
+    } as never;
+    for (let offset = 0; offset < 28; offset += 1) {
+      const record = toPrivateCycleRecord(seed, on(offset));
+      if (record.cycleStatus === 'fertile-window') {
+        expect(record.cyclePhase).toBe('ovulatory');
+      }
+    }
+  });
+
+  it('도메인 불변식을 어긴 seed는 예외 대신 unknown으로 나간다', () => {
+    const invalid = [
+      { averageCycleLength: 14, averagePeriodLength: 5 },
+      { averageCycleLength: 61, averagePeriodLength: 5 },
+      { averageCycleLength: 20, averagePeriodLength: 20 },
+      { averageCycleLength: 28, averagePeriodLength: 0 },
+    ];
+    for (const partial of invalid) {
+      const seed = { lastPeriodStart: start, ...partial } as never;
+      const record = toPrivateCycleRecord(seed, on(3));
+      expect(record.cyclePhase).toBe('unknown');
+      expect(record.cycleStatus).toBe('unknown');
+    }
+  });
+
+  it('주기 길이가 정수가 아니어도 전송 payload를 만들 수 있다', () => {
+    // 예전 지역 구현은 Date 산술이라 조용히 넘어갔고, 도메인 날짜 유틸은
+    // 정수가 아닌 일수를 거부한다. 예상 구간은 선택 필드이므로 비우고,
+    // 개인 기록 전송 자체는 막지 않는다.
+    const seed = {
+      lastPeriodStart: start,
+      averageCycleLength: 28.5,
+      averagePeriodLength: 5,
+    } as never;
+
+    const record = toPrivateCycleRecord(seed, on(3));
+    expect(record.cyclePhase).toBe('unknown');
+    expect(record.nextPeriodWindow).toBeUndefined();
+    expect(record.periodDates.startDate).toBe(start);
+  });
+
+  it('유효한 seed에서는 예상 구간이 예정일 앞뒤 7일이다', () => {
+    const seed = {
+      lastPeriodStart: start,
+      averageCycleLength: 28,
+      averagePeriodLength: 5,
+    } as never;
+
+    expect(toPrivateCycleRecord(seed, on(3)).nextPeriodWindow).toEqual({
+      startDate: on(21),
+      endDate: on(35),
+    });
   });
 });
