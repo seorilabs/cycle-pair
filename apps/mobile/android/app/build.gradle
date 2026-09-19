@@ -231,7 +231,13 @@ def registerFirebaseConfigVerificationTask = { String buildType ->
 def verifyDebugFirebaseConfig = registerFirebaseConfigVerificationTask("debug")
 def verifyReleaseFirebaseConfig = registerFirebaseConfigVerificationTask("release")
 
-def releaseSigningPropertiesFile = rootProject.file("keystore.properties")
+// 중앙 재사용 워크플로(rn-deploy-google-play.yml)는 서명 값을 android/key.properties
+// 에 쓴다. 로컬 개발은 기존대로 android/keystore.properties 를 쓴다. 둘 다 받아
+// CI 와 로컬이 같은 build.gradle 로 돌게 한다.
+def releaseSigningPropertiesFile = [
+    rootProject.file("key.properties"),
+    rootProject.file("keystore.properties"),
+].find { it.exists() } ?: rootProject.file("keystore.properties")
 def releaseSigningProperties = new Properties()
 if (releaseSigningPropertiesFile.exists()) {
     releaseSigningPropertiesFile.withInputStream { stream ->
@@ -295,7 +301,7 @@ def verifyReleaseSigning = tasks.register("verifyReleaseSigning") {
             throw new GradleException(
                 "Cycle Pair release signing is not configured:\n- " +
                     releaseSigningProblems.join("\n- ") +
-                    "\nUse ignored android/keystore.properties or the CYCLEPAIR_ANDROID_UPLOAD_* environment variables.",
+                    "\nUse ignored android/key.properties, android/keystore.properties, or the CYCLEPAIR_ANDROID_UPLOAD_* environment variables.",
             )
         }
     }
