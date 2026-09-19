@@ -217,3 +217,26 @@ describe('국면 문구 커버리지', () => {
     }
   });
 });
+
+describe('지연 상태 표시', () => {
+  it('예정일 +3일 상태를 기록 부족이 아니라 지연으로 표현한다', () => {
+    const summary = buildPartnerTodaySummary(
+      { ...metadata, cycleStatus: 'period-late' },
+      metadataDate,
+    );
+
+    expect(summary.cycleTitle).toBe('예정일이 지났어요');
+    expect(summary.cycleDetail).not.toMatch(/기록이 더 쌓이면/);
+    expect(summary.cycleDetail).toBeTruthy();
+  });
+
+  it('지연 상태가 공유 필드 목록에도 지연 문구로 나온다', () => {
+    const fields = buildPartnerSharedFields(
+      { ...metadata, cycleStatus: 'period-late' },
+      metadataDate,
+    );
+    const statusField = fields.find(field => field.key === 'cycleStatus');
+
+    expect(statusField?.value).toBe('예정일이 지났어요');
+  });
+});

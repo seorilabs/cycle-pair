@@ -330,3 +330,43 @@ describe('파트너에게 보내는 주기 국면', () => {
     });
   });
 });
+
+describe('예정일을 넘긴 상태', () => {
+  const start = '2026-03-01';
+  const on = (offset: number) => addDays(parseLocalDate(start), offset) as string;
+  const seed = {
+    lastPeriodStart: start,
+    averageCycleLength: 28,
+    averagePeriodLength: 5,
+  } as never;
+
+  it('예정일이 지나면 국면은 unknown이지만 상태는 지연으로 나간다', () => {
+    for (const offset of [28, 31, 40, 90]) {
+      const record = toPrivateCycleRecord(seed, on(offset));
+      expect(record.cyclePhase).toBe('unknown');
+      expect(record.cycleStatus).toBe('period-late');
+    }
+  });
+
+  it('주기 마지막 날까지는 지연이 아니다', () => {
+    const record = toPrivateCycleRecord(seed, on(27));
+    expect(record.cycleStatus).not.toBe('period-late');
+  });
+
+  it('계산 불가인 과거 날짜는 지연이 아니라 unknown이다', () => {
+    const record = toPrivateCycleRecord(seed, on(-1));
+    expect(record.cyclePhase).toBe('unknown');
+    expect(record.cycleStatus).toBe('unknown');
+  });
+
+  it('도메인 불변식을 어긴 seed는 지연으로 단정하지 않는다', () => {
+    const invalidSeed = {
+      lastPeriodStart: start,
+      averageCycleLength: 14,
+      averagePeriodLength: 5,
+    } as never;
+
+    const record = toPrivateCycleRecord(invalidSeed, on(30));
+    expect(record.cycleStatus).toBe('unknown');
+  });
+});

@@ -158,6 +158,10 @@ const cycleStatusCopy: Record<
     title: '주기가 진행 중이에요',
     detail: '공유된 주기 기준으로 오늘의 흐름을 보여줘요.',
   },
+  'period-late': {
+    title: '예정일이 지났어요',
+    detail: '평균 주기로 계산한 예상일보다 늦어지고 있어요.',
+  },
   unknown: {
     title: '주기 상태를 더 지켜보고 있어요',
     detail: '기록이 더 쌓이면 오늘 상태를 표시할 수 있어요.',

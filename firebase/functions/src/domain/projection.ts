@@ -21,6 +21,7 @@ const CYCLE_STATUSES = new Set([
   "fertile-window",
   "pre-period",
   "cycle-in-progress",
+  "period-late",
   "unknown",
 ]);
 const CONDITION_CODES = new Set<ConditionCode>([

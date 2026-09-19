@@ -4,6 +4,7 @@ import {
   determineCyclePhase,
   parseLocalDate,
   type CyclePhaseResult,
+  type LocalDate,
 } from '@cyclepair/product-core';
 import type {
   CycleSeed,
@@ -68,73 +69,44 @@ const conditionByTag = Object.fromEntries(
   Object.entries(conditionTags).map(([label, tag]) => [tag, label]),
 ) as Record<string, NonNullable<DailyCheckIn['condition']>>;
 
-const UNKNOWN_PHASE: CyclePhaseResult = Object.freeze({
-  phase: 'unknown',
-  cycleDay: null,
-  estimated: true,
+interface CycleProjectionValues {
+  readonly cyclePhase: NonNullable<PrivateCycleRecord['cyclePhase']>;
+  readonly cycleStatus: BackendCycleStatus;
+}
+
+const UNKNOWN_VALUES: CycleProjectionValues = Object.freeze({
+  cyclePhase: 'unknown',
+  cycleStatus: 'unknown',
 });
 
-/**
- * 파트너에게 보낼 국면을 도메인 정본으로 판정한다.
- *
- * 예전에는 이 파일이 국면 규칙을 따로 구현했고, 배란 구간 클램프와 입력 검증이
- * 없어 짧은 주기에서 생리 중인 날이 `ovulatory`로 넘어갈 수 있었다. 그래서
- * 같은 날 홈 화면과 파트너 화면의 국면이 달랐다.
- *
- * 도메인이 던지는 불변식 위반과 잘못된 날짜는 `unknown`으로 흡수한다. 관측
- * 값 하나 때문에 전송 경로 전체가 막히면 안 된다.
- */
-function cyclePhaseResultForDate(
-  seed: CycleSeed,
-  onDate: string,
-): CyclePhaseResult {
+function parsedOrNull(value: string): LocalDate | null {
   try {
-    const lastPeriodStart = parseLocalDate(seed.lastPeriodStart);
-    const on = parseLocalDate(onDate);
-    const explicitPeriodLength = seed.lastPeriodEnd
-      ? daysBetween(lastPeriodStart, parseLocalDate(seed.lastPeriodEnd)) + 1
-      : 0;
-    return determineCyclePhase({
-      lastPeriodStart,
-      on,
-      averageCycleLengthDays: seed.averageCycleLength,
-      periodLengthDays:
-        explicitPeriodLength > 0
-          ? explicitPeriodLength
-          : seed.averagePeriodLength,
-    });
+    return parseLocalDate(value);
   } catch {
-    return UNKNOWN_PHASE;
+    return null;
   }
 }
 
 /**
- * 주기 상태는 국면 판정에서 파생한다.
+ * 주기 상태를 국면 판정에서 파생한다.
  *
  * 가임 구간을 여기서 다시 계산하면 `cyclePhase`가 `menstrual`인 날에
  * `cycleStatus`가 `fertile-window`로 나가는 모순이 생긴다. 같은 판정 결과를
  * 입력으로 받아 두 값이 서로 어긋나지 않게 한다.
  */
-function cycleStatusFromPhase(
+function statusForCycleDay(
   seed: CycleSeed,
   onDate: string,
   phase: CyclePhaseResult,
+  cycleDay: number,
 ): BackendCycleStatus {
-  const cycleDay = phase.cycleDay;
-  if (cycleDay === null) return 'unknown';
   if (cycleDay === 1) return 'period-starting';
 
   if (seed.lastPeriodEnd) {
-    let daysAfterEnd: number | null;
-    try {
-      daysAfterEnd = daysBetween(
-        parseLocalDate(seed.lastPeriodEnd),
-        parseLocalDate(onDate),
-      );
-    } catch {
-      daysAfterEnd = null;
-    }
-    if (daysAfterEnd !== null) {
+    const periodEnd = parsedOrNull(seed.lastPeriodEnd);
+    const on = parsedOrNull(onDate);
+    if (periodEnd !== null && on !== null) {
+      const daysAfterEnd = daysBetween(periodEnd, on);
       if (daysAfterEnd < 0) return 'period-in-progress';
       if (daysAfterEnd === 0) return 'period-ending';
       if (daysAfterEnd <= 2) return 'post-period';
@@ -148,6 +120,65 @@ function cycleStatusFromPhase(
   if (phase.phase === 'ovulatory') return 'fertile-window';
   if (cycleDay >= seed.averageCycleLength - 2) return 'pre-period';
   return 'cycle-in-progress';
+}
+
+/**
+ * 파트너에게 보낼 국면과 상태를 한 번에 판정한다.
+ *
+ * 국면은 도메인 정본(`determineCyclePhase`)이 정한다. 예전에는 이 파일이
+ * 국면 규칙을 따로 구현했고, 배란 구간 클램프와 입력 검증이 없어 규칙이 갈릴
+ * 수 있었다.
+ *
+ * 두 값을 함께 계산하는 이유는 **지연 상태** 때문이다. 예정일을 넘기면 국면은
+ * `unknown`이 맞지만(어느 국면인지 모른다), 상태는 `period-late`로 말할 수
+ * 있다. 예전에는 둘 다 `unknown`이라 파트너 화면이 `기록이 더 쌓이면`으로
+ * 바뀌었다 — 기록은 충분한데 사실과 다른 문구였다.
+ *
+ * 도메인 불변식을 어긴 seed는 지연 여부도 신뢰할 수 없으므로 둘 다
+ * `unknown`이다.
+ */
+function cycleProjectionValues(
+  seed: CycleSeed,
+  onDate: string,
+): CycleProjectionValues {
+  const lastPeriodStart = parsedOrNull(seed.lastPeriodStart);
+  const on = parsedOrNull(onDate);
+  if (lastPeriodStart === null || on === null) return UNKNOWN_VALUES;
+
+  const lastPeriodEnd = seed.lastPeriodEnd
+    ? parsedOrNull(seed.lastPeriodEnd)
+    : null;
+  const explicitPeriodLength =
+    lastPeriodEnd === null ? 0 : daysBetween(lastPeriodStart, lastPeriodEnd) + 1;
+
+  let phase: CyclePhaseResult;
+  try {
+    phase = determineCyclePhase({
+      lastPeriodStart,
+      on,
+      averageCycleLengthDays: seed.averageCycleLength,
+      periodLengthDays:
+        explicitPeriodLength > 0
+          ? explicitPeriodLength
+          : seed.averagePeriodLength,
+    });
+  } catch {
+    return UNKNOWN_VALUES;
+  }
+
+  if (phase.cycleDay === null) {
+    const offset = daysBetween(lastPeriodStart, on);
+    return {
+      cyclePhase: 'unknown',
+      cycleStatus:
+        offset >= seed.averageCycleLength ? 'period-late' : 'unknown',
+    };
+  }
+
+  return {
+    cyclePhase: phase.phase,
+    cycleStatus: statusForCycleDay(seed, onDate, phase, phase.cycleDay),
+  };
 }
 
 /**
@@ -178,7 +209,7 @@ export function toPrivateCycleRecord(
   seed: CycleSeed,
   onDate = toDeviceLocalDate(),
 ): PrivateCycleRecord {
-  const phase = cyclePhaseResultForDate(seed, onDate);
+  const values = cycleProjectionValues(seed, onDate);
   const nextPeriodWindow = nextPeriodWindowFor(seed);
   return {
     asOfDate: onDate,
@@ -188,8 +219,8 @@ export function toPrivateCycleRecord(
       startDate: seed.lastPeriodStart,
       ...(seed.lastPeriodEnd ? { endDate: seed.lastPeriodEnd } : {}),
     },
-    cyclePhase: phase.phase,
-    cycleStatus: cycleStatusFromPhase(seed, onDate, phase),
+    cyclePhase: values.cyclePhase,
+    cycleStatus: values.cycleStatus,
     ...(nextPeriodWindow ? { nextPeriodWindow } : {}),
   };
 }
