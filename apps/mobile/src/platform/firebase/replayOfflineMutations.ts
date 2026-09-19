@@ -13,6 +13,7 @@ interface OfflineMutationQueuePort {
   ): Promise<void>;
   count(uid: string): Promise<number>;
   countFailed(uid: string): Promise<number>;
+  takeDiscardedCount(uid: string): number;
 }
 
 export async function replayOfflineMutations({
@@ -59,6 +60,7 @@ export async function replayOfflineMutations({
     }
   }
 
+  const discarded = queue.takeDiscardedCount(uid);
   return {
     flushed,
     remaining: await queue.count(uid),
@@ -66,5 +68,7 @@ export async function replayOfflineMutations({
     // 예전에는 개인 기록 실패가 두 번 계산돼 경고가 과장됐다.
     failed: await queue.countFailed(uid),
     ...(firstFailureCode ? {failureCode: firstFailureCode} : {}),
+    // 상한 초과로 버린 항목이 있으면 조용히 넘기지 않는다.
+    ...(discarded > 0 ? {discarded} : {}),
   };
 }

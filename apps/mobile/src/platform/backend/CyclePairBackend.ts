@@ -143,6 +143,8 @@ export interface OfflineSyncReport {
   readonly failed: number;
   /** First non-retryable failure observed while replaying the queue. */
   readonly failureCode?: string;
+  /** Oldest queued changes dropped because the queue hit its length cap. */
+  readonly discarded?: number;
 }
 
 export interface BackendShareSettings {

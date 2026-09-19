@@ -44,6 +44,7 @@ function dependencies(mutations: readonly OfflineMutation[]) {
       ),
       count: jest.fn(async () => remaining.size),
       countFailed: jest.fn(async () => quarantined.size),
+      takeDiscardedCount: jest.fn(() => 0),
     },
   };
 }
@@ -206,5 +207,41 @@ describe('영구 실패한 개인 기록이 큐에서 나간다', () => {
 
     expect(report.failed).toBe(1);
     await expect(secureOfflineMutationQueue.countFailed(uid)).resolves.toBe(1);
+  });
+});
+
+describe('상한 초과로 버린 항목을 동기화 리포트로 알린다', () => {
+  it('버린 수를 리포트에 담고 큐에서 비운다', async () => {
+    const input = dependencies([]);
+    (input.queue.takeDiscardedCount as jest.Mock).mockReturnValue(3);
+
+    const report = await replayOfflineMutations({
+      uid: 'user-a',
+      mutations: [],
+      queue: input.queue,
+      execute: jest.fn(),
+      isPairInvalidated: () => false,
+      isRetryable: () => false,
+      failureCode: () => 'invalid-argument',
+    });
+
+    expect(report.discarded).toBe(3);
+    expect(input.queue.takeDiscardedCount).toHaveBeenCalledWith('user-a');
+  });
+
+  it('버린 항목이 없으면 필드를 넣지 않는다', async () => {
+    const input = dependencies([]);
+
+    const report = await replayOfflineMutations({
+      uid: 'user-a',
+      mutations: [],
+      queue: input.queue,
+      execute: jest.fn(),
+      isPairInvalidated: () => false,
+      isRetryable: () => false,
+      failureCode: () => 'invalid-argument',
+    });
+
+    expect(Object.hasOwn(report, 'discarded')).toBe(false);
   });
 });
