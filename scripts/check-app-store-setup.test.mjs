@@ -4,34 +4,51 @@ import test from 'node:test';
 
 const read = file => readFileSync(file, 'utf8');
 
-test('Xcode Cloud workflow contract is pinned to Cycle Pair release', () => {
+test('App Store Connect 앱 신원이 고정돼 있다', () => {
   const config = JSON.parse(read('app-store/app-store.config.json'));
   assert.equal(config.appStoreConnectAppId, '6792393652');
-  assert.equal(
-    config.xcodeCloud.productId,
-    'D071BF40-979E-4D7D-A7C5-2202072488D5',
-  );
-  assert.equal(
-    config.xcodeCloud.workflowId,
-    '6310D1DD-4A04-4E5C-8B17-B86D7A744D09',
-  );
-  assert.equal(config.xcodeCloud.workflowName, 'Cycle Pair Release');
-  assert.equal(config.xcodeCloud.startCondition, 'manual v* tag');
-  assert.equal(config.xcodeCloud.distribution, 'APP_STORE_ELIGIBLE');
 });
 
-test('저장소 워크플로 어디에도 macOS archive 가 없다', () => {
-  // App Store 트리거는 Backoffice 가 ASC ciBuildRuns 로 직접 한다. 이 저장소에는
-  // App Store 워크플로를 두지 않으므로, 대신 macOS archive 로 되돌아가지 않는지 본다.
+test('App Store archive 는 중앙 재사용 워크플로로 GitHub Actions 에서 돈다', () => {
+  // 이 저장소는 public 이다. 조직 표준상 public 저장소의 Apple 경로는 GitHub
+  // Actions 의 GitHub-hosted macOS runner 를 쓴다. Xcode Cloud 는 private
+  // 저장소용이다(macOS runner 분당 배수 과금 회피).
+  const workflow = read('.github/workflows/deploy-app-store.yml');
+  assert.match(
+    workflow,
+    /uses:\s*seorilabs\/\.github\/\.github\/workflows\/rn-deploy-app-store\.yml@main/,
+  );
+  assert.match(workflow, /bundle_id:\s*com\.seorilabs\.cyclepair/);
+  assert.match(workflow, /xcode_workspace:\s*CyclePair\.xcworkspace/);
+  assert.match(workflow, /scheme:\s*CyclePair/);
+  assert.match(workflow, /export_options_plist:\s*app-store\/exportOptions\.plist/);
+  // 업로드는 opt-in 이다. dispatch 기본값이 false 여야 한다.
+  assert.match(workflow, /upload:\n\s+description:[^\n]*\n\s+type: boolean\n\s+default: false/);
+});
+
+test('ARC self-hosted runner 로 Apple 경로를 보내지 않는다', () => {
+  // public 저장소는 조직 러너 그룹(allows_public_repositories=false)에 접근할 수
+  // 없다. 여기로 보내면 job 이 영구 대기한다.
   for (const name of readdirSync('.github/workflows')) {
     if (!name.endsWith('.yml')) continue;
     const workflow = read(`.github/workflows/${name}`);
-    assert.doesNotMatch(workflow, /runs-on:\s*macos/, name);
-    assert.doesNotMatch(workflow, /\bxcodebuild\b/, name);
+    assert.doesNotMatch(workflow, /runs-on:\s*seorilabs-/, name);
   }
 });
 
-test('Xcode Cloud hooks install Pods, restore Firebase and apply cloud version', () => {
+test('exportOptions 는 자동 서명이고 빌드 번호를 Xcode 가 임의로 올리지 않는다', () => {
+  const plist = read('app-store/exportOptions.plist');
+  assert.match(plist, /<key>method<\/key>\s*<string>app-store-connect<\/string>/);
+  assert.match(plist, /<key>teamID<\/key>\s*<string>HCDUXX4Z3X<\/string>/);
+  assert.match(plist, /<key>signingStyle<\/key>\s*<string>automatic<\/string>/);
+  // 버전 정본은 릴리즈 태그 하나다. true 면 업로드 값이 archive 검증값과 갈린다.
+  assert.match(
+    plist,
+    /<key>manageAppVersionAndBuildNumber<\/key>\s*<false\/>/,
+  );
+});
+
+test('iOS CI 훅이 Pods 설치와 Firebase 복원을 유지한다', () => {
   const gemfile = read('apps/mobile/Gemfile');
   const postClone = read('apps/mobile/ios/ci_scripts/ci_post_clone.sh');
   const preBuild = read('apps/mobile/ios/ci_scripts/ci_pre_xcodebuild.sh');

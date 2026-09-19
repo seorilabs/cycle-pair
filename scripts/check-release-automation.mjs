@@ -136,14 +136,26 @@ try {
     'Android candidate가 Google Play package identity를 중앙 검증에 넘기지 않습니다.',
   );
 
-  // App Store 트리거는 Backoffice 가 ASC ciBuildRuns 로 직접 한다. 이 저장소에는
-  // App Store 워크플로를 두지 않는다. macOS archive 로 되돌아가지 않는지는 워크플로
-  // 전체를 훑어 본다.
+  // 이 저장소는 public 이므로 Apple 경로는 GitHub Actions 의 GitHub-hosted macOS
+  // runner 를 쓴다. archive 절차 자체는 중앙 정본이 갖고, 여기서는 caller 가
+  // 그 정본을 @main 으로 부르는지와 ARC 로 새지 않는지만 본다.
+  const appStoreWorkflow = read('.github/workflows/deploy-app-store.yml');
+  assertIncludes(
+    appStoreWorkflow,
+    'seorilabs/.github/.github/workflows/rn-deploy-app-store.yml@main',
+    'App Store caller 가 중앙 정본 @main 을 부르지 않습니다.',
+  );
+  assertIncludes(
+    appStoreWorkflow,
+    'bundle_id: com.seorilabs.cyclepair',
+    'App Store caller 가 bundle identity 를 중앙 검증에 넘기지 않습니다.',
+  );
   for (const name of readdirSync('.github/workflows')) {
     if (!name.endsWith('.yml')) continue;
     const text = read(`.github/workflows/${name}`);
-    if (/runs-on:\s*macos-/u.test(text) || text.includes('xcodebuild')) {
-      throw new Error(`${name}: macOS archive 를 실행하면 안 됩니다.`);
+    // public 저장소는 조직 러너 그룹에 접근할 수 없다. 보내면 영구 대기한다.
+    if (/runs-on:\s*seorilabs-/u.test(text)) {
+      throw new Error(`${name}: public 저장소를 ARC runner 로 보내면 안 됩니다.`);
     }
   }
 
@@ -302,7 +314,7 @@ try {
     xcodeProject.includes('PROVISIONING_PROFILE_SPECIFIER = "Cycle Pair App Store') ||
     xcodeProject.includes('CODE_SIGN_STYLE = Manual;')
   ) {
-    throw new Error('Xcode Cloud 대상은 manual signing profile을 고정하면 안 됩니다.');
+    throw new Error('자동 서명 대상은 manual signing profile을 고정하면 안 됩니다.');
   }
 
   const readiness = JSON.parse(read(files.readiness));
@@ -322,7 +334,7 @@ try {
 
   console.log('Release automation contract: PASS');
   console.log('- Google Play: exact stable tag + 중앙 정본 @main workflow, internal upload opt-in');
-  console.log('- App Store: Xcode Cloud archive/TestFlight, API trigger opt-in');
+  console.log('- App Store: GitHub-hosted macOS archive/TestFlight, 중앙 정본 @main workflow, upload opt-in');
   console.log('- AppsInToss: ubuntu 빌드, 비공개 업로드 opt-in');
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
