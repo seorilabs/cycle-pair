@@ -98,6 +98,37 @@ function safeCycleStatus(value: unknown): string | undefined {
     : undefined;
 }
 
+/**
+ * 가임 정보를 동의 없이 내보내지 않으면서, 그 사실이 **부재로 역추론되지도**
+ * 않게 만든다.
+ *
+ * 예전에는 가임을 드러내는 값만 빼고 나머지 날은 그대로 보냈다. 그러면 다른
+ * 날에는 값이 보이고 가임 구간에만 사라지므로, 값이 없다는 사실 자체가 가임
+ * 정보였다. 숨기는 대신 인접 값으로 접어 필드 존재 여부가 날짜와 무관하게
+ * 한다.
+ *
+ * 필드 동의가 없으면 날짜와 무관하게 언제나 부재한다. 가임 동의만 있으면
+ * 가임 구간에만 값이 나가는데, 그건 사용자가 공유하기로 한 정보 그 자체다.
+ */
+function sharedFertilitySafeValue(
+  raw: string | undefined,
+  options: {
+    readonly fertilityValue: string;
+    readonly foldedValue: string;
+    readonly sharesField: boolean;
+    readonly sharesFertility: boolean;
+  },
+): string | undefined {
+  if (raw === undefined) return undefined;
+  if (options.sharesFertility) {
+    return options.sharesField || raw === options.fertilityValue
+      ? raw
+      : undefined;
+  }
+  if (!options.sharesField) return undefined;
+  return raw === options.fertilityValue ? options.foldedValue : raw;
+}
+
 function isIsoLocalDate(value: unknown): value is string {
   if (typeof value !== "string" || !ISO_DATE.test(value)) {
     return false;
@@ -210,25 +241,23 @@ export function buildPartnerProjection(
   const sharesDetailedCycle = isShared(shareSettings, "cycleStatus");
   const sharesFertility = isShared(shareSettings, "fertilityStatus");
   const cyclePhase =
-    cycleAsOfDate === undefined || rawCyclePhase === undefined
+    cycleAsOfDate === undefined
       ? undefined
-      : rawCyclePhase === "ovulatory"
-        ? sharesFertility
-          ? rawCyclePhase
-          : undefined
-        : sharesGeneralCycle
-          ? rawCyclePhase
-          : undefined;
+      : sharedFertilitySafeValue(rawCyclePhase, {
+          fertilityValue: "ovulatory",
+          foldedValue: "follicular",
+          sharesField: sharesGeneralCycle,
+          sharesFertility,
+        });
   const cycleStatus =
-    cycleAsOfDate === undefined || rawCycleStatus === undefined
+    cycleAsOfDate === undefined
       ? undefined
-      : rawCycleStatus === "fertile-window"
-        ? sharesFertility
-          ? rawCycleStatus
-          : undefined
-        : sharesDetailedCycle
-          ? rawCycleStatus
-          : undefined;
+      : sharedFertilitySafeValue(rawCycleStatus, {
+          fertilityValue: "fertile-window",
+          foldedValue: "cycle-in-progress",
+          sharesField: sharesDetailedCycle,
+          sharesFertility,
+        });
   const nextPeriodWindow = isShared(shareSettings, "nextPeriodWindow")
     ? safeDateWindow(cycle?.nextPeriodWindow)
     : undefined;

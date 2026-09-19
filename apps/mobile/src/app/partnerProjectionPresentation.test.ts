@@ -194,3 +194,26 @@ describe('partner projection presentation', () => {
     });
   });
 });
+
+describe('국면 문구 커버리지', () => {
+  it('파트너에게 나갈 수 있는 모든 국면에 문구가 있다', () => {
+    const phases = [
+      'menstrual',
+      'follicular',
+      'ovulatory',
+      'luteal',
+      'unknown',
+    ] as const;
+
+    for (const cyclePhase of phases) {
+      const fields = buildPartnerSharedFields(
+        { ...metadata, cyclePhase },
+        metadataDate,
+      );
+      const phaseField = fields.find(field => field.key === 'cyclePhase');
+      expect(phaseField).toBeDefined();
+      expect(phaseField?.value).toBeTruthy();
+      expect(String(phaseField?.value)).not.toContain('undefined');
+    }
+  });
+});

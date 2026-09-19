@@ -140,7 +140,7 @@ describe("buildPartnerProjection", () => {
     expect(projection).not.toHaveProperty("note");
   });
 
-  test("keeps fertility-derived values private without separate consent", () => {
+  test("가임 동의 없이 가임 구간 값을 인접 값으로 접어 보낸다", () => {
     const projection = buildPartnerProjection({
       ...base,
       privateCycle: {
@@ -148,10 +148,73 @@ describe("buildPartnerProjection", () => {
         cyclePhase: "ovulatory",
         cycleStatus: "fertile-window",
       },
-      shareSettings: {cyclePhase: true},
+      shareSettings: {cyclePhase: true, cycleStatus: true},
     });
 
-    expect(projection).toEqual(baseWithSchema());
+    // 배란기와 가임 창은 인접 값으로 접힌다. 원본 값은 나가지 않는다.
+    expect(projection).toEqual({
+      ...baseWithSchema(),
+      cycleAsOfDate: "2026-07-12",
+      cyclePhase: "follicular",
+      cycleStatus: "cycle-in-progress",
+    });
+    expect(JSON.stringify(projection)).not.toMatch(/ovulat|fertil/i);
+  });
+
+  test("필드 존재 여부가 가임 구간인지에 따라 달라지지 않는다", () => {
+    const shareSettings = {cyclePhase: true, cycleStatus: true};
+    const days = [
+      {cyclePhase: "menstrual", cycleStatus: "period-in-progress"},
+      {cyclePhase: "follicular", cycleStatus: "cycle-in-progress"},
+      {cyclePhase: "ovulatory", cycleStatus: "fertile-window"},
+      {cyclePhase: "luteal", cycleStatus: "pre-period"},
+    ];
+
+    for (const day of days) {
+      const projection = buildPartnerProjection({
+        ...base,
+        privateCycle: {asOfDate: "2026-07-12", ...day},
+        shareSettings,
+      }) as Record<string, unknown>;
+
+      expect(Object.hasOwn(projection, "cyclePhase")).toBe(true);
+      expect(Object.hasOwn(projection, "cycleStatus")).toBe(true);
+      expect(projection.cyclePhase).not.toBe("ovulatory");
+      expect(projection.cycleStatus).not.toBe("fertile-window");
+    }
+  });
+
+  test("두 동의가 모두 없으면 어떤 날에도 필드가 부재한다", () => {
+    const days = ["menstrual", "follicular", "ovulatory", "luteal"];
+
+    for (const cyclePhase of days) {
+      const projection = buildPartnerProjection({
+        ...base,
+        privateCycle: {asOfDate: "2026-07-12", cyclePhase},
+        shareSettings: {moodTag: true},
+      }) as Record<string, unknown>;
+
+      expect(Object.hasOwn(projection, "cyclePhase")).toBe(false);
+    }
+  });
+
+  test("가임 동의가 있으면 가임 구간 값을 그대로 전달한다", () => {
+    const projection = buildPartnerProjection({
+      ...base,
+      privateCycle: {
+        asOfDate: "2026-07-12",
+        cyclePhase: "ovulatory",
+        cycleStatus: "fertile-window",
+      },
+      shareSettings: {
+        cyclePhase: true,
+        cycleStatus: true,
+        fertilityStatus: true,
+      },
+    }) as Record<string, unknown>;
+
+    expect(projection.cyclePhase).toBe("ovulatory");
+    expect(projection.cycleStatus).toBe("fertile-window");
   });
 
   test("materializes fertility status only with its dedicated opt-in", () => {
