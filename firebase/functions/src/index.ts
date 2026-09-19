@@ -99,7 +99,11 @@ import {
   FirestoreSubscriptionRepository,
   SubscriptionService,
 } from "./services/subscriptionService.js";
-import {finalizeAccountDeletion} from "./services/accountDeletionFinalizer.js";
+import {
+  accountDeletionFinalizationFailureMessage,
+  finalizeAccountDeletion,
+  summarizeAccountDeletionFinalizations,
+} from "./services/accountDeletionFinalizer.js";
 import {cleanupExpiredPairArtifacts} from "./services/retentionCleanup.js";
 import {deliverPredictedPeriodReminders} from "./services/cycleReminder.js";
 import {
@@ -2374,15 +2378,13 @@ export const finalizePendingAccountDeletions = onSchedule(
       }
       return completeAccountDeletion(snapshot.id, receiptHash);
     }));
-    const report = results.reduce((counts, result) => {
-      if (result.status === "fulfilled" && result.value !== null) counts.completed += 1;
-      else if (result.status === "fulfilled") counts.busy += 1;
-      else counts.failed += 1;
-      return counts;
-    }, {completed: 0, busy: 0, failed: 0});
+    const report = summarizeAccountDeletionFinalizations(
+      results,
+      safeExternalErrorCode,
+    );
     logger.info("Pending account deletion finalizer completed.", report);
     if (report.failed > 0) {
-      throw new Error("One or more pending account deletions could not be finalized.");
+      throw new Error(accountDeletionFinalizationFailureMessage(report));
     }
   },
 );
