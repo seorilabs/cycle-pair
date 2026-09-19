@@ -83,7 +83,16 @@ function asRecord(value: unknown): JsonRecord | undefined {
   return value as JsonRecord;
 }
 
-function isShared(settings: JsonRecord | undefined, field: string): boolean {
+/**
+ * 공유 동의 판정의 정본.
+ *
+ * 누락과 `false`를 같게 다루고 문자열 `"true"` 같은 값은 동의로 보지 않는다.
+ * 이 규칙을 두 벌로 만들면 파트너 화면과 알림이 다른 기준으로 갈린다.
+ */
+export function isShared(
+  settings: JsonRecord | undefined,
+  field: string,
+): boolean {
   return settings?.[field] === true;
 }
 

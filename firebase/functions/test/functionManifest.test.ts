@@ -10,6 +10,10 @@ import {
   RETENTION_CLEANUP_SCHEDULE,
   RETENTION_CLEANUP_TIME_ZONE,
 } from "../src/domain/retentionPolicy.js";
+import {
+  CYCLE_REMINDER_SCHEDULE,
+  CYCLE_REMINDER_TIME_ZONE,
+} from "../src/domain/cycleReminder.js";
 
 interface EndpointDefinition {
   readonly scheduleTrigger?: {
@@ -40,12 +44,23 @@ describe("Functions deployment manifest", () => {
       deployedFunctions.cleanupExpiredPairRetentionData,
     );
 
-    expect(endpoints).toHaveLength(26);
+    expect(endpoints).toHaveLength(27);
     expect(endpoint(deployedFunctions.sendPartnerNudge)).toBeDefined();
     expect(endpoint(deployedFunctions.acknowledgePartnerNudge)).toBeDefined();
     expect(retentionEndpoint?.scheduleTrigger).toMatchObject({
       schedule: RETENTION_CLEANUP_SCHEDULE,
       timeZone: RETENTION_CLEANUP_TIME_ZONE,
+    });
+  });
+
+  test("contains the daily predicted period reminder schedule", () => {
+    const reminderEndpoint = endpoint(
+      deployedFunctions.deliverPredictedPeriodReminder,
+    );
+
+    expect(reminderEndpoint?.scheduleTrigger).toMatchObject({
+      schedule: CYCLE_REMINDER_SCHEDULE,
+      timeZone: CYCLE_REMINDER_TIME_ZONE,
     });
   });
 

@@ -314,6 +314,12 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // 예측일 리마인더의 배달 기록. 같은 날 중복 발송을 막는 서버 전용
+    // 표식이고, 배달일 외에 어떤 건강 정보도 담지 않는다.
+    match /users/{uid}/cycleReminderDeliveries/{deliverOn} {
+      allow read, write: if false;
+    }
+
     // Store evidence is verified and written only by Functions. The owner may
     // read the normalized subscription and stable pseudonymous account token,
     // but can never grant or mutate an entitlement from the client.

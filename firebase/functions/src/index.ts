@@ -101,6 +101,11 @@ import {
 } from "./services/subscriptionService.js";
 import {finalizeAccountDeletion} from "./services/accountDeletionFinalizer.js";
 import {cleanupExpiredPairArtifacts} from "./services/retentionCleanup.js";
+import {deliverPredictedPeriodReminders} from "./services/cycleReminder.js";
+import {
+  CYCLE_REMINDER_SCHEDULE,
+  CYCLE_REMINDER_TIME_ZONE,
+} from "./domain/cycleReminder.js";
 
 initializeApp();
 
@@ -445,6 +450,19 @@ async function deliverNotificationToActivePartner(
     return;
   }
   const recipientUid = members[0] === actorUid ? members[1] : members[0];
+  await deliverNeutralNotificationToUser(recipientUid, type);
+}
+
+/**
+ * 한 사용자의 등록 기기에 중립 알림을 보낸다.
+ *
+ * 조용시간에 걸린 기기는 건너뛰고, FCM이 미등록으로 거부한 기기 문서는
+ * 정리한다. 알림 본문에는 주기·건강 정보를 넣지 않는다.
+ */
+async function deliverNeutralNotificationToUser(
+  recipientUid: string,
+  type: NeutralNotificationType,
+): Promise<void> {
   const deviceSnapshot = await db
     .collection(`users/${recipientUid}/notificationDevices`)
     .limit(NOTIFICATION_DEVICE_LIMIT)
@@ -1693,6 +1711,50 @@ export const cleanupExpiredPairRetentionData = onSchedule(
     logger.info("Pair artifact retention cleanup completed.", report);
   },
 );
+
+/**
+ * 예측일 리마인더.
+ *
+ * 하루 한 번 돌며, 예정일 3일 전과 당일에 파트너에게 중립 알림을 보낸다.
+ * 배달 날짜는 `buildNeutralNotificationSchedule()`이 정하고, 같은 사용자·같은
+ * 배달일에는 문서 하나로 한 번만 보낸다.
+ */
+export const deliverPredictedPeriodReminder = onSchedule(
+  {
+    schedule: CYCLE_REMINDER_SCHEDULE,
+    timeZone: CYCLE_REMINDER_TIME_ZONE,
+    timeoutSeconds: 300,
+    maxInstances: 1,
+    retryCount: 3,
+    minBackoffSeconds: 60,
+    maxBackoffSeconds: 3_600,
+  },
+  async () => {
+    const report = await deliverPredictedPeriodReminders(db, {
+      today: deviceLocalDateIn(CYCLE_REMINDER_TIME_ZONE, new Date()),
+      deliver: recipientUid =>
+        deliverNeutralNotificationToUser(recipientUid, "pair-update").catch(
+          error => {
+            // 한 사용자의 발송 실패가 나머지 배달을 막지 않는다.
+            logger.warn("Cycle reminder delivery failed.", {
+              code: safeExternalErrorCode(error),
+            });
+          },
+        ),
+    });
+    logger.info("Predicted period reminder completed.", report);
+  },
+);
+
+/** 스케줄 실행 시각을 리마인더 기준 달력 날짜로 바꾼다. */
+function deviceLocalDateIn(timeZone: string, now: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+}
 
 interface PairRevocationResult {
   readonly pairId: string;
