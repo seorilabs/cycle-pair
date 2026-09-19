@@ -188,3 +188,69 @@ describe('account session cleanup', () => {
     expect(input.backend.resumeSession).toHaveBeenCalledWith('user-a');
   });
 });
+
+describe('셸 선호 스키마 버전 판정', () => {
+  function withStoredPreferences(raw: string | null) {
+    const input = dependencies();
+    (input.storage.read as jest.Mock).mockImplementation(async () => raw);
+    return input;
+  }
+
+  it.each([2, 3, 5, 'four', null as unknown as number])(
+    'schemaVersion %p 문서는 알 수 없음으로 보고 로그아웃에서 해제한다',
+    async schemaVersion => {
+      const input = withStoredPreferences(
+        JSON.stringify({schemaVersion, neutralNotifications: false}),
+      );
+      const cleanup = createAccountSessionCleanup(input);
+
+      await cleanup.prepareForLogout('user-a', true);
+
+      expect(input.notificationClient.disableForAccountExit).toHaveBeenCalled();
+    },
+  );
+
+  it.each([2, 3, 5])(
+    'schemaVersion %p 문서는 계정 삭제에서도 해제한다',
+    async schemaVersion => {
+      const input = withStoredPreferences(
+        JSON.stringify({schemaVersion, neutralNotifications: false}),
+      );
+      const cleanup = createAccountSessionCleanup(input);
+
+      await cleanup.prepareForAccountDeletion('user-a');
+
+      expect(input.notificationClient.disable).toHaveBeenCalled();
+    },
+  );
+
+  it('저장된 선호가 아예 없을 때만 해제를 건너뛴다', async () => {
+    const input = withStoredPreferences(null);
+    const cleanup = createAccountSessionCleanup(input);
+
+    await cleanup.prepareForLogout('user-a', true);
+
+    expect(input.notificationClient.disableForAccountExit).not.toHaveBeenCalled();
+    expect(input.notificationClient.disable).not.toHaveBeenCalled();
+  });
+
+  it('파싱 실패는 기존대로 해제 쪽으로 넘긴다', async () => {
+    const input = withStoredPreferences('{not json');
+    const cleanup = createAccountSessionCleanup(input);
+
+    await cleanup.prepareForLogout('user-a', true);
+
+    expect(input.notificationClient.disableForAccountExit).toHaveBeenCalled();
+  });
+
+  it('현재 버전 문서에서 opt-in 이 꺼져 있으면 해제하지 않는다', async () => {
+    const input = withStoredPreferences(
+      JSON.stringify({schemaVersion: 4, neutralNotifications: false}),
+    );
+    const cleanup = createAccountSessionCleanup(input);
+
+    await cleanup.prepareForLogout('user-a', true);
+
+    expect(input.notificationClient.disableForAccountExit).not.toHaveBeenCalled();
+  });
+});
