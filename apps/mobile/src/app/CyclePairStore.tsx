@@ -43,6 +43,11 @@ import {
 } from '../platform/backend/backendPayloads';
 import { previewCyclePairBackend } from '../platform/backend/PreviewCyclePairBackend';
 import { SELF_MEMBER_ID } from './memberIds';
+import {
+  SHELL_PREFERENCES_SCHEMA_VERSION,
+  isReadableShellPreferencesSchemaVersion,
+  type ShellPreferencesSchemaVersion,
+} from './shellPreferencesSchema';
 import type {
   NotificationClient,
   QuietHours,
@@ -120,7 +125,7 @@ export interface EditablePairEvent extends PairEventInput {
 }
 
 export interface CyclePairState {
-  schemaVersion: 4;
+  schemaVersion: ShellPreferencesSchemaVersion;
   stage: AppStage;
   activeTab: MainTab;
   currentLocalDate: string;
@@ -148,7 +153,7 @@ export interface CyclePairState {
 }
 
 interface PersistedShellPreferences {
-  readonly schemaVersion: 4;
+  readonly schemaVersion: ShellPreferencesSchemaVersion;
   readonly onboardingComplete: boolean;
   readonly neutralNotifications: boolean;
   readonly notificationQuietHours: NotificationQuietHours;
@@ -355,7 +360,7 @@ function currentCheckInForRole(
 
 export function createInitialState(): CyclePairState {
   return {
-    schemaVersion: 4,
+    schemaVersion: SHELL_PREFERENCES_SCHEMA_VERSION,
     stage: 'onboarding',
     activeTab: 'home',
     currentLocalDate: toLocalDate(new Date()),
@@ -912,6 +917,10 @@ export function CyclePairProvider({
   const initialDailyHistoryLoad = useRef<Promise<void> | null>(null);
   const latestState = useRef(state);
   latestState.current = state;
+  // 하이드레이션 effect 는 저장소 한 번만 읽어야 한다. 알림 클라이언트를
+  // 의존성에 넣으면 effect 가 다시 돌아 사용자가 바꾼 선호를 되돌릴 수 있다.
+  const notificationClientRef = useRef(notificationClient);
+  notificationClientRef.current = notificationClient;
 
   useEffect(() => {
     let midnightTimer: ReturnType<typeof setTimeout> | undefined;
@@ -960,6 +969,8 @@ export function CyclePairProvider({
     },
     [crashReporter],
   );
+  const reportFailureRef = useRef(reportFailure);
+  reportFailureRef.current = reportFailure;
 
   const reportBackendError = useCallback(
     (error: unknown) => reportFailure(error),
@@ -1060,18 +1071,17 @@ export function CyclePairProvider({
       .then(value => {
         if (!active || !value) return;
         const persisted = JSON.parse(value) as {
-          schemaVersion?: 2 | 3 | 4;
+          schemaVersion?: unknown;
           onboardingComplete?: unknown;
           neutralNotifications?: unknown;
           notificationQuietHours?: unknown;
           diagnosticsEnabled?: unknown;
         };
-        if (
-          persisted.schemaVersion !== 2 &&
-          persisted.schemaVersion !== 3 &&
-          persisted.schemaVersion !== 4
-        )
+        if (!isReadableShellPreferencesSchemaVersion(persisted.schemaVersion)) {
           return;
+        }
+        const isCurrentSchema =
+          persisted.schemaVersion === SHELL_PREFERENCES_SCHEMA_VERSION;
         const quietHours =
           typeof persisted.notificationQuietHours === 'object' &&
           persisted.notificationQuietHours !== null
@@ -1088,19 +1098,30 @@ export function CyclePairProvider({
         dispatch({
           type: 'RESTORE_SHELL_PREFERENCES',
           payload: {
-            schemaVersion: 4,
+            schemaVersion: SHELL_PREFERENCES_SCHEMA_VERSION,
             onboardingComplete: persisted.onboardingComplete === true,
             // Older schemas defaulted notifications on without explicit OS
             // permission. Migration deliberately resets them to opt-in.
             neutralNotifications:
-              persisted.schemaVersion === 4 &&
-              persisted.neutralNotifications === true,
+              isCurrentSchema && persisted.neutralNotifications === true,
             notificationQuietHours: restoredQuietHours,
             diagnosticsEnabled:
-              persisted.schemaVersion === 4 &&
-              persisted.diagnosticsEnabled === true,
+              isCurrentSchema && persisted.diagnosticsEnabled === true,
           },
         });
+        if (!isCurrentSchema) {
+          // 로컬 선호만 끄면 서버 등록이 살아남는다. 그 상태로 로그아웃하면
+          // 정리 경로가 "해제할 것이 없다"고 판단해 건너뛰고, 이전 계정의
+          // 알림이 이 기기로 계속 온다. 선호를 끌 때 등록도 함께 해제한다.
+          notificationClientRef.current.disable().catch(error => {
+            reportFailureRef.current(
+              error,
+              'notification',
+              'unregister-device',
+              false,
+            );
+          });
+        }
       })
       .catch(() => undefined)
       .finally(() => {
@@ -1361,7 +1382,7 @@ export function CyclePairProvider({
   useEffect(() => {
     if (localHydrating) return;
     const preferences: PersistedShellPreferences = {
-      schemaVersion: 4,
+      schemaVersion: SHELL_PREFERENCES_SCHEMA_VERSION,
       onboardingComplete: state.stage !== 'onboarding',
       neutralNotifications: state.neutralNotifications,
       notificationQuietHours: state.notificationQuietHours,

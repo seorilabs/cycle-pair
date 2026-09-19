@@ -5,22 +5,35 @@ import type { NotificationClient } from '../notifications/NotificationClient';
 import type { ProductAnalytics } from '../observability/ProductAnalytics';
 import type { SafeCrashReporter } from '../observability/SafeCrashReporter';
 import {AccountOperationError} from '../../domain/account/AccountPort';
+import { SHELL_PREFERENCES_SCHEMA_VERSION } from '../../app/shellPreferencesSchema';
 
 interface ShellPreferenceSnapshot {
   readonly neutralNotifications: boolean;
 }
 
+/**
+ * 신원이 바뀌기 전에 이전 계정의 푸시 등록을 해제할지 판정한다.
+ *
+ * 원칙은 하나다 — **알 수 없으면 해제 쪽**이다. 알림 opt-in 이 꺼져 있었다고
+ * 증명하지 못하면 해제를 시도한다. 저장된 것이 아예 없을 때만 해제할 것도
+ * 없다고 본다.
+ *
+ * 예전에는 파싱 실패는 해제 쪽으로 넘기면서, 파싱은 됐는데 버전을 모르는
+ * 경우는 건너뛰기 쪽으로 넘겼다. 같은 "알 수 없음"을 반대로 처리한 것이다.
+ * 구버전에서 올라온 기기는 서버 등록이 살아 있는데 로컬 선호만 off 라,
+ * 로그아웃해도 이전 계정의 알림이 계속 갔다.
+ */
 function readShellPreferenceSnapshot(raw: string | null): ShellPreferenceSnapshot {
+  // 저장된 선호가 없다. 해제할 등록도 없다.
   if (raw === null) return { neutralNotifications: false };
   try {
     const value = JSON.parse(raw) as Record<string, unknown>;
-    return {
-      neutralNotifications:
-        value.schemaVersion === 4 && value.neutralNotifications === true,
-    };
+    if (value.schemaVersion !== SHELL_PREFERENCES_SCHEMA_VERSION) {
+      // 구버전이거나 미래 버전이다. 이 문서의 opt-in 표현을 신뢰할 수 없다.
+      return { neutralNotifications: true };
+    }
+    return { neutralNotifications: value.neutralNotifications === true };
   } catch {
-    // A corrupt preference cannot prove that notification opt-in was off.
-    // Fail toward unregistering before an identity change.
     return { neutralNotifications: true };
   }
 }

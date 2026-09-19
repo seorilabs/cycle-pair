@@ -501,6 +501,114 @@ describe('CyclePair mobile app', () => {
     expect(notificationClient.watchTokenRefresh).not.toHaveBeenCalled();
   });
 
+  it.each([2, 3])(
+    'v%i 선호를 복원하면 서버 등록도 한 번 해제한다',
+    async schemaVersion => {
+      // 구버전은 OS 권한 없이 알림을 기본 on 으로 뒀다. 마이그레이션이 로컬
+      // 선호만 끄면 서버 등록이 살아남아, 로그아웃 뒤에도 이전 계정 알림이
+      // 이 기기로 온다.
+      await AsyncStorage.setItem(
+        '@cyclepair/app-state/v1',
+        JSON.stringify({
+          schemaVersion,
+          onboardingComplete: true,
+          neutralNotifications: true,
+        }),
+      );
+      const notificationClient = {
+        enable: jest.fn(async () => 'authorized' as const),
+        disable: jest.fn(async () => undefined),
+        disableForAccountExit: jest.fn(async () => undefined),
+        watchTokenRefresh: jest.fn(() => jest.fn()),
+        watchOpened: jest.fn(() => jest.fn()),
+      };
+
+      await render(
+        <App
+          backend={previewCyclePairBackend}
+          notificationClient={notificationClient}
+        />,
+      );
+
+      await waitFor(() =>
+        expect(notificationClient.disable).toHaveBeenCalledTimes(1),
+      );
+      // 선호는 off 로 남는다. 알림 배선이 켜지지 않는다.
+      expect(notificationClient.enable).not.toHaveBeenCalled();
+    },
+  );
+
+  it('v4 선호를 복원할 때는 서버 등록을 해제하지 않는다', async () => {
+    await AsyncStorage.setItem(
+      '@cyclepair/app-state/v1',
+      JSON.stringify({
+        schemaVersion: 4,
+        onboardingComplete: true,
+        neutralNotifications: false,
+      }),
+    );
+    const notificationClient = {
+      enable: jest.fn(async () => 'authorized' as const),
+      disable: jest.fn(async () => undefined),
+      disableForAccountExit: jest.fn(async () => undefined),
+      watchTokenRefresh: jest.fn(() => jest.fn()),
+      watchOpened: jest.fn(() => jest.fn()),
+    };
+
+    const view = await render(
+      <App
+        backend={previewCyclePairBackend}
+        notificationClient={notificationClient}
+      />,
+    );
+
+    await waitFor(() => expect(view.queryByText('건너뛰기')).toBeNull());
+    expect(notificationClient.disable).not.toHaveBeenCalled();
+  });
+
+  it('마이그레이션 해제가 실패해도 앱이 죽지 않고 선호는 off 로 남는다', async () => {
+    await AsyncStorage.setItem(
+      '@cyclepair/app-state/v1',
+      JSON.stringify({
+        schemaVersion: 3,
+        onboardingComplete: true,
+        neutralNotifications: true,
+      }),
+    );
+    const notificationClient = {
+      enable: jest.fn(async () => 'authorized' as const),
+      disable: jest.fn(async () => {
+        throw new Error('unregister failed');
+      }),
+      disableForAccountExit: jest.fn(async () => undefined),
+      watchTokenRefresh: jest.fn(() => jest.fn()),
+      watchOpened: jest.fn(() => jest.fn()),
+    };
+    const crashReporter = {
+      setEnabled: jest.fn(async () => undefined),
+      recordFailure: jest.fn(async () => undefined),
+    };
+
+    const view = await render(
+      <App
+        backend={previewCyclePairBackend}
+        crashReporter={crashReporter}
+        notificationClient={notificationClient}
+      />,
+    );
+
+    await waitFor(() => expect(notificationClient.disable).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(crashReporter.recordFailure).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({operation: 'unregister-device'}),
+      ),
+    );
+    // 실패해도 화면은 계속 뜬다.
+    await waitFor(() => expect(view.queryByText('건너뛰기')).toBeNull());
+    expect(notificationClient.enable).not.toHaveBeenCalled();
+  });
+
   it('subscribes to token refresh only after notification authorization', async () => {
     await AsyncStorage.setItem(
       '@cyclepair/app-state/v1',
