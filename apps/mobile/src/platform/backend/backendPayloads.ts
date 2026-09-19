@@ -1,3 +1,10 @@
+import {
+  addDays as addLocalDays,
+  daysBetween,
+  determineCyclePhase,
+  parseLocalDate,
+  type CyclePhaseResult,
+} from '@cyclepair/product-core';
 import type {
   CycleSeed,
   DailyCheckIn,
@@ -61,67 +68,73 @@ const conditionByTag = Object.fromEntries(
   Object.entries(conditionTags).map(([label, tag]) => [tag, label]),
 ) as Record<string, NonNullable<DailyCheckIn['condition']>>;
 
-function addDays(value: string, days: number): string {
-  const date = new Date(`${value}T12:00:00.000Z`);
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString().slice(0, 10);
-}
+const UNKNOWN_PHASE: CyclePhaseResult = Object.freeze({
+  phase: 'unknown',
+  cycleDay: null,
+  estimated: true,
+});
 
-function cyclePhaseForDate(
+/**
+ * 파트너에게 보낼 국면을 도메인 정본으로 판정한다.
+ *
+ * 예전에는 이 파일이 국면 규칙을 따로 구현했고, 배란 구간 클램프와 입력 검증이
+ * 없어 짧은 주기에서 생리 중인 날이 `ovulatory`로 넘어갈 수 있었다. 그래서
+ * 같은 날 홈 화면과 파트너 화면의 국면이 달랐다.
+ *
+ * 도메인이 던지는 불변식 위반과 잘못된 날짜는 `unknown`으로 흡수한다. 관측
+ * 값 하나 때문에 전송 경로 전체가 막히면 안 된다.
+ */
+function cyclePhaseResultForDate(
   seed: CycleSeed,
   onDate: string,
-): NonNullable<PrivateCycleRecord['cyclePhase']> {
-  const start = Date.parse(`${seed.lastPeriodStart}T12:00:00.000Z`);
-  const current = Date.parse(`${onDate}T12:00:00.000Z`);
-  const offset = Math.round((current - start) / 86_400_000);
-  if (
-    !Number.isFinite(offset) ||
-    offset < 0 ||
-    offset >= seed.averageCycleLength
-  ) {
-    return 'unknown';
+): CyclePhaseResult {
+  try {
+    const lastPeriodStart = parseLocalDate(seed.lastPeriodStart);
+    const on = parseLocalDate(onDate);
+    const explicitPeriodLength = seed.lastPeriodEnd
+      ? daysBetween(lastPeriodStart, parseLocalDate(seed.lastPeriodEnd)) + 1
+      : 0;
+    return determineCyclePhase({
+      lastPeriodStart,
+      on,
+      averageCycleLengthDays: seed.averageCycleLength,
+      periodLengthDays:
+        explicitPeriodLength > 0
+          ? explicitPeriodLength
+          : seed.averagePeriodLength,
+    });
+  } catch {
+    return UNKNOWN_PHASE;
   }
-  const explicitPeriodEnd = seed.lastPeriodEnd
-    ? Date.parse(`${seed.lastPeriodEnd}T12:00:00.000Z`)
-    : Number.NaN;
-  const explicitPeriodLength = Math.round(
-    (explicitPeriodEnd - start) / 86_400_000,
-  ) + 1;
-  const periodLength =
-    Number.isFinite(explicitPeriodLength) && explicitPeriodLength > 0
-      ? explicitPeriodLength
-      : seed.averagePeriodLength;
-  if (offset < periodLength) return 'menstrual';
-  const cycleDay = offset + 1;
-  const ovulationDay = seed.averageCycleLength - 14;
-  if (cycleDay >= ovulationDay - 1 && cycleDay <= ovulationDay + 1) {
-    return 'ovulatory';
-  }
-  if (cycleDay > ovulationDay + 1) return 'luteal';
-  return 'follicular';
 }
 
-function cycleStatusForDate(
+/**
+ * 주기 상태는 국면 판정에서 파생한다.
+ *
+ * 가임 구간을 여기서 다시 계산하면 `cyclePhase`가 `menstrual`인 날에
+ * `cycleStatus`가 `fertile-window`로 나가는 모순이 생긴다. 같은 판정 결과를
+ * 입력으로 받아 두 값이 서로 어긋나지 않게 한다.
+ */
+function cycleStatusFromPhase(
   seed: CycleSeed,
   onDate: string,
+  phase: CyclePhaseResult,
 ): BackendCycleStatus {
-  const start = Date.parse(`${seed.lastPeriodStart}T12:00:00.000Z`);
-  const current = Date.parse(`${onDate}T12:00:00.000Z`);
-  const offset = Math.round((current - start) / 86_400_000);
-  if (
-    !Number.isFinite(offset) ||
-    offset < 0 ||
-    offset >= seed.averageCycleLength
-  ) {
-    return 'unknown';
-  }
-
-  const cycleDay = offset + 1;
+  const cycleDay = phase.cycleDay;
+  if (cycleDay === null) return 'unknown';
   if (cycleDay === 1) return 'period-starting';
+
   if (seed.lastPeriodEnd) {
-    const periodEnd = Date.parse(`${seed.lastPeriodEnd}T12:00:00.000Z`);
-    const daysAfterEnd = Math.round((current - periodEnd) / 86_400_000);
-    if (Number.isFinite(daysAfterEnd)) {
+    let daysAfterEnd: number | null;
+    try {
+      daysAfterEnd = daysBetween(
+        parseLocalDate(seed.lastPeriodEnd),
+        parseLocalDate(onDate),
+      );
+    } catch {
+      daysAfterEnd = null;
+    }
+    if (daysAfterEnd !== null) {
       if (daysAfterEnd < 0) return 'period-in-progress';
       if (daysAfterEnd === 0) return 'period-ending';
       if (daysAfterEnd <= 2) return 'post-period';
@@ -132,19 +145,41 @@ function cycleStatusForDate(
     if (cycleDay <= seed.averagePeriodLength + 2) return 'post-period';
   }
 
-  const ovulationDay = seed.averageCycleLength - 14;
-  if (cycleDay >= ovulationDay - 1 && cycleDay <= ovulationDay + 1) {
-    return 'fertile-window';
-  }
+  if (phase.phase === 'ovulatory') return 'fertile-window';
   if (cycleDay >= seed.averageCycleLength - 2) return 'pre-period';
   return 'cycle-in-progress';
+}
+
+/**
+ * 예상 구간은 선택 필드다.
+ *
+ * 시작일 형식이나 주기 길이가 유효하지 않으면 잘못된 구간을 보내는 대신
+ * 비운다. 이 함수가 던지면 개인 기록 전송 자체가 막히는데, 관측 값 하나가
+ * 저장을 막아서는 안 된다.
+ */
+function nextPeriodWindowFor(
+  seed: CycleSeed,
+): PrivateCycleRecord['nextPeriodWindow'] {
+  try {
+    const predicted = addLocalDays(
+      parseLocalDate(seed.lastPeriodStart),
+      seed.averageCycleLength,
+    );
+    return {
+      startDate: addLocalDays(predicted, -7),
+      endDate: addLocalDays(predicted, 7),
+    };
+  } catch {
+    return undefined;
+  }
 }
 
 export function toPrivateCycleRecord(
   seed: CycleSeed,
   onDate = toDeviceLocalDate(),
 ): PrivateCycleRecord {
-  const predicted = addDays(seed.lastPeriodStart, seed.averageCycleLength);
+  const phase = cyclePhaseResultForDate(seed, onDate);
+  const nextPeriodWindow = nextPeriodWindowFor(seed);
   return {
     asOfDate: onDate,
     averageCycleLength: seed.averageCycleLength,
@@ -153,12 +188,9 @@ export function toPrivateCycleRecord(
       startDate: seed.lastPeriodStart,
       ...(seed.lastPeriodEnd ? { endDate: seed.lastPeriodEnd } : {}),
     },
-    cyclePhase: cyclePhaseForDate(seed, onDate),
-    cycleStatus: cycleStatusForDate(seed, onDate),
-    nextPeriodWindow: {
-      startDate: addDays(predicted, -7),
-      endDate: addDays(predicted, 7),
-    },
+    cyclePhase: phase.phase,
+    cycleStatus: cycleStatusFromPhase(seed, onDate, phase),
+    ...(nextPeriodWindow ? { nextPeriodWindow } : {}),
   };
 }
 
