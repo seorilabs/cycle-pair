@@ -131,7 +131,9 @@ describe("partner projection", () => {
     expect(Object.hasOwn(disabled, "periodDates")).toBe(false);
   });
 
-  it("keeps the ovulatory phase private without separate fertility consent", () => {
+  it("가임 동의 없이 배란기를 인접 국면으로 접어 보낸다", () => {
+    // 값을 빼면 부재 자체가 "지금이 배란기"라는 신호가 된다. 숨기되 필드는
+    // 남긴다.
     const settings = createShareSettings("member-a", date("2026-06-01"), {
       cyclePhase: true,
     });
@@ -144,8 +146,56 @@ describe("partner projection", () => {
       settings,
     );
 
-    expect(Object.hasOwn(projection, "cyclePhase")).toBe(false);
+    expect(Object.hasOwn(projection, "cyclePhase")).toBe(true);
+    expect(projection.cyclePhase).not.toBe("ovulatory");
     expect(JSON.stringify(projection)).not.toMatch(/ovulat|fertil|배란|가임/i);
+  });
+
+  it("국면 동의만 있으면 어떤 국면에서도 필드가 존재한다", () => {
+    const settings = createShareSettings("member-a", date("2026-06-01"), {
+      cyclePhase: true,
+    });
+    const phases = ["menstrual", "follicular", "ovulatory", "luteal", "unknown"] as const;
+
+    for (const cyclePhase of phases) {
+      const projection = projectForPartner(
+        { subjectMemberId: "member-a", asOf: date("2026-06-01"), cyclePhase },
+        settings,
+      );
+      expect(Object.hasOwn(projection, "cyclePhase")).toBe(true);
+    }
+  });
+
+  it("두 동의가 모두 없으면 어떤 국면에서도 필드가 부재한다", () => {
+    const settings = createShareSettings("member-a", date("2026-06-01"), {
+      mood: true,
+    });
+    const phases = ["menstrual", "follicular", "ovulatory", "luteal", "unknown"] as const;
+
+    for (const cyclePhase of phases) {
+      const projection = projectForPartner(
+        { subjectMemberId: "member-a", asOf: date("2026-06-01"), cyclePhase },
+        settings,
+      );
+      expect(Object.hasOwn(projection, "cyclePhase")).toBe(false);
+    }
+  });
+
+  it("가임 동의가 있으면 배란기를 그대로 보낸다", () => {
+    const settings = createShareSettings("member-a", date("2026-06-01"), {
+      cyclePhase: true,
+      fertilityStatus: true,
+    });
+    const projection = projectForPartner(
+      {
+        subjectMemberId: "member-a",
+        asOf: date("2026-06-01"),
+        cyclePhase: "ovulatory",
+      },
+      settings,
+    );
+
+    expect(projection.cyclePhase).toBe("ovulatory");
   });
 
   it("shares the ovulatory phase only with separate fertility consent", () => {
