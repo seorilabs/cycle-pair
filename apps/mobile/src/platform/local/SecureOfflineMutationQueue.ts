@@ -85,6 +85,44 @@ export type OfflineMutation =
   | UpsertPairEventOfflineMutation
   | DeletePairEventOfflineMutation;
 
+/**
+ * 큐 길이 상한.
+ *
+ * 접기가 같은 대상의 중복을 이미 없애므로, 이 상한은 서로 다른 대상이
+ * 오래 쌓였을 때를 위한 안전장치다. 넘으면 가장 오래된 미격리 항목부터
+ * 버리고 그 사실을 동기화 리포트로 알린다.
+ */
+export const OFFLINE_MUTATION_QUEUE_LIMIT = 200;
+
+/**
+ * 같은 대상을 가리키는 변경을 하나로 접기 위한 자연 키.
+ *
+ * `mutationId` 는 저장을 누를 때마다 새로 만들어지므로 신원으로 쓸 수 없다.
+ * 오프라인에서 같은 날짜 기록을 다섯 번 고치면 같은 값을 쓰는 항목이 다섯 개
+ * 쌓이고, 재생 때도 마지막 하나 말고는 전부 즉시 덮어써질 값이다.
+ *
+ * `daily-log` 와 `delete-daily-log` 는 같은 키를 쓴다. 같은 날짜에 대해
+ * 저장과 삭제가 섞이면 나중 것이 이긴다 — 중간 상태를 서버에 재생하면
+ * 파트너에게 삭제 후 재생성이 그대로 보인다.
+ */
+export function coalesceKeyForOfflineMutation(
+  mutation: OfflineMutation,
+): string {
+  switch (mutation.type) {
+    case 'daily-log':
+    case 'delete-daily-log':
+      return `daily:${mutation.localDate}`;
+    case 'private-setup':
+      return 'private-setup';
+    case 'share-settings':
+      return `share-settings:${mutation.pairId}`;
+    case 'upsert-pair-event':
+      return `pair-event:${mutation.pairId}:${mutation.event.id}`;
+    case 'delete-pair-event':
+      return `pair-event:${mutation.pairId}:${mutation.eventId}`;
+  }
+}
+
 export function pairIdForOfflineMutation(
   mutation: OfflineMutation,
 ): string | null {
@@ -120,6 +158,15 @@ export interface SecureOfflineMutationQueue {
   ): Promise<void>;
   count(uid: string): Promise<number>;
   countFailed(uid: string): Promise<number>;
+  /**
+   * 상한 초과로 버린 항목 수를 돌려주고 0으로 되돌린다.
+   *
+   * 버리는 시점은 enqueue 이고 알리는 시점은 동기화라, 그 사이를 잇는다.
+   * 세션 안에서만 유지되므로 다음 동기화 전에 앱이 다시 시작하면 그 회차의
+   * 알림은 유실된다. 드롭 카운터 하나를 위해 암호화 저장소 왕복을 늘리지
+   * 않기로 한 선택이다.
+   */
+  takeDiscardedCount(uid: string): number;
   listPairIds(uid: string): Promise<readonly string[]>;
   clearUser(uid: string): Promise<void>;
   clearPair(uid: string, pairId: string): Promise<void>;
@@ -459,6 +506,13 @@ async function removeMutationServicesStrict(
 class KeychainSecureOfflineMutationQueue implements SecureOfflineMutationQueue {
   private readonly enqueueChains = new Map<string, Promise<void>>();
   private readonly pairFence = new PairDataFence();
+  private readonly discardedCounts = new Map<string, number>();
+
+  takeDiscardedCount(uid: string): number {
+    const count = this.discardedCounts.get(uid) ?? 0;
+    this.discardedCounts.delete(uid);
+    return count;
+  }
 
   async enqueue(mutation: OfflineMutation): Promise<void> {
     if (!isOfflineMutation(mutation)) {
@@ -493,8 +547,12 @@ class KeychainSecureOfflineMutationQueue implements SecureOfflineMutationQueue {
   private async persistWithSequence(mutation: OfflineMutation): Promise<void> {
     await secureUserDataFence.runWrite(mutation.uid, async () => {
       const current = await this.listStored(mutation.uid);
+      const key = coalesceKeyForOfflineMutation(mutation);
+      // 격리된 항목은 접기 대상이 아니다. 진단 이력이므로 그대로 남긴다.
       const existing = current.find(
-        item => item.mutationId === mutation.mutationId,
+        item =>
+          item.queueState !== 'failed' &&
+          coalesceKeyForOfflineMutation(item) === key,
       );
       const maximumSequence = current.reduce(
         (maximum, item) => Math.max(maximum, item.queueSequence ?? 0),
@@ -502,6 +560,8 @@ class KeychainSecureOfflineMutationQueue implements SecureOfflineMutationQueue {
       );
       const stored: StoredOfflineMutation = {
         ...mutation,
+        // 접을 때 기존 순번을 유지한다. 그래야 다른 날짜·다른 종류와의
+        // 상대 재생 순서가 바뀌지 않는다.
         queueSequence: existing?.queueSequence ?? maximumSequence + 1,
       };
       const result = await Keychain.setGenericPassword(
@@ -523,6 +583,17 @@ class KeychainSecureOfflineMutationQueue implements SecureOfflineMutationQueue {
       await removeService(
         legacyServiceFor(mutation.uid, mutation.mutationId),
       );
+      // 접힌 항목의 Keychain service 를 지운다. mutationId 가 달라지므로
+      // 지우지 않으면 같은 대상의 고아 항목이 남는다.
+      if (existing && existing.mutationId !== mutation.mutationId) {
+        await Promise.all(
+          [
+            serviceFor(mutation.uid, existing.mutationId),
+            legacyServiceFor(mutation.uid, existing.mutationId),
+          ].map(removeService),
+        );
+      }
+      await this.enforceQueueLimit(mutation.uid);
     });
   }
 
@@ -615,6 +686,34 @@ class KeychainSecureOfflineMutationQueue implements SecureOfflineMutationQueue {
         left.mutationId.localeCompare(right.mutationId)
       );
     });
+  }
+
+  /**
+   * 상한을 넘으면 가장 오래된 미격리 항목부터 버린다.
+   *
+   * 격리 항목은 건드리지 않는다. 진단 이력이고 재생 대상도 아니라 큐를
+   * 굶기지 않는다. 버린 수는 다음 동기화 리포트로 나간다 — 조용히 잘라
+   * 내지 않는다.
+   */
+  private async enforceQueueLimit(uid: string): Promise<void> {
+    const stored = await this.listStored(uid);
+    const active = stored.filter(item => item.queueState !== 'failed');
+    const overflow = active.length - OFFLINE_MUTATION_QUEUE_LIMIT;
+    if (overflow <= 0) return;
+
+    const discarded = active.slice(0, overflow);
+    for (const item of discarded) {
+      await Promise.all(
+        [
+          serviceFor(uid, item.mutationId),
+          legacyServiceFor(uid, item.mutationId),
+        ].map(removeService),
+      );
+    }
+    this.discardedCounts.set(
+      uid,
+      (this.discardedCounts.get(uid) ?? 0) + discarded.length,
+    );
   }
 
   async list(uid: string): Promise<readonly OfflineMutation[]> {

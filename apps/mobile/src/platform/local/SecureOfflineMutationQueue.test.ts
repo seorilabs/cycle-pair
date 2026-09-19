@@ -24,6 +24,7 @@ import {
   type PrivateSetupOfflineMutation,
   type ShareSettingsOfflineMutation,
   type UpsertPairEventOfflineMutation,
+  OFFLINE_MUTATION_QUEUE_LIMIT,
   secureOfflineMutationQueue,
 } from './SecureOfflineMutationQueue';
 import { SENSITIVE_HEALTH_CONSENT_VERSION } from '../../domain/privacy/SensitiveHealthConsent';
@@ -566,6 +567,7 @@ describe('secureOfflineMutationQueue', () => {
 
   it('같은 timestamp의 upsert 다음 delete도 실제 enqueue 순서를 보존한다', async () => {
     const createdAt = '2026-07-14T02:00:00.000Z';
+    // 서로 다른 이벤트다. 같은 이벤트는 이제 접힌다.
     const upsert = upsertPairEventMutation({
       mutationId: 'z-upsert',
       createdAt,
@@ -573,6 +575,7 @@ describe('secureOfflineMutationQueue', () => {
     const remove = deletePairEventMutation({
       mutationId: 'a-delete',
       createdAt,
+      eventId: 'event-2',
     });
 
     await secureOfflineMutationQueue.enqueue(upsert);
@@ -585,9 +588,15 @@ describe('secureOfflineMutationQueue', () => {
   });
 
   it('오프라인 일일 기록 저장 다음 삭제 순서를 보존한다', async () => {
+    // 서로 다른 날짜다. 같은 날짜는 접히므로 순서 보존은 다른 대상 사이에서
+    // 확인해야 한다.
     const createdAt = '2026-07-14T02:00:00.000Z';
     const save = dailyMutation({mutationId: 'z-save', createdAt});
-    const remove = deleteDailyLogMutation({mutationId: 'a-delete', createdAt});
+    const remove = deleteDailyLogMutation({
+      mutationId: 'a-delete',
+      createdAt,
+      localDate: '2026-07-15',
+    });
 
     await secureOfflineMutationQueue.enqueue(save);
     await secureOfflineMutationQueue.enqueue(remove);
@@ -600,7 +609,10 @@ describe('secureOfflineMutationQueue', () => {
 
   it('손상되거나 소유자가 맞지 않는 항목은 반환하지 않고 제거한다', async () => {
     const malformedJson = dailyMutation({ mutationId: 'malformed-json' });
-    const wrongOwner = dailyMutation({ mutationId: 'wrong-owner' });
+    const wrongOwner = dailyMutation({
+      mutationId: 'wrong-owner',
+      localDate: '2026-07-15',
+    });
     await secureOfflineMutationQueue.enqueue(malformedJson);
     await secureOfflineMutationQueue.enqueue(wrongOwner);
 
@@ -776,3 +788,146 @@ describe('secureOfflineMutationQueue', () => {
     ).rejects.toThrow('Invalid offline mutation.');
   });
 });
+
+describe('같은 대상을 가리키는 변경을 접는다', () => {
+  const uid = 'user-a';
+
+  it('같은 날짜를 N번 저장해도 항목은 1건이고 내용은 마지막 값이다', async () => {
+    for (let index = 0; index < 5; index += 1) {
+      await secureOfflineMutationQueue.enqueue(
+        dailyMutation({
+          mutationId: `daily-${index}`,
+          record: {moodTag: 'neutral', energyLevel: ((index % 5) + 1) as 1 | 2 | 3 | 4 | 5},
+        }),
+      );
+    }
+
+    const queued = await secureOfflineMutationQueue.list(uid);
+    expect(queued).toHaveLength(1);
+    expect(queued[0]).toMatchObject({
+      mutationId: 'daily-4',
+      record: {energyLevel: 5},
+    });
+    // 고아 Keychain 항목이 남지 않는다.
+    expect(storedCredentials.size).toBe(1);
+  });
+
+  it('저장 다음 삭제는 삭제만, 삭제 다음 저장은 저장만 남는다', async () => {
+    await secureOfflineMutationQueue.enqueue(
+      dailyMutation({mutationId: 'save-first'}),
+    );
+    await secureOfflineMutationQueue.enqueue(
+      deleteDailyLogMutation({mutationId: 'delete-second'}),
+    );
+
+    let queued = await secureOfflineMutationQueue.list(uid);
+    expect(queued).toHaveLength(1);
+    expect(queued[0]).toMatchObject({
+      type: 'delete-daily-log',
+      mutationId: 'delete-second',
+    });
+
+    await secureOfflineMutationQueue.enqueue(
+      dailyMutation({mutationId: 'save-third'}),
+    );
+    queued = await secureOfflineMutationQueue.list(uid);
+    expect(queued).toHaveLength(1);
+    expect(queued[0]).toMatchObject({
+      type: 'daily-log',
+      mutationId: 'save-third',
+    });
+  });
+
+  it('접힌 항목의 순번이 유지돼 다른 대상과의 재생 순서가 바뀌지 않는다', async () => {
+    await secureOfflineMutationQueue.enqueue(
+      dailyMutation({mutationId: 'first-date', localDate: '2026-07-14'}),
+    );
+    await secureOfflineMutationQueue.enqueue(
+      dailyMutation({mutationId: 'second-date', localDate: '2026-07-15'}),
+    );
+    // 첫 번째 날짜를 다시 저장한다. 순번이 새로 매겨지면 뒤로 밀린다.
+    await secureOfflineMutationQueue.enqueue(
+      dailyMutation({mutationId: 'first-date-again', localDate: '2026-07-14'}),
+    );
+
+    const queued = await secureOfflineMutationQueue.list(uid);
+    expect(queued.map(mutation => mutation.mutationId)).toEqual([
+      'first-date-again',
+      'second-date',
+    ]);
+  });
+
+  it('share-settings 는 pairId 단위로, 페어 이벤트는 (pairId, eventId) 단위로 접힌다', async () => {
+    await secureOfflineMutationQueue.enqueue(
+      shareSettingsMutation({mutationId: 'share-1'}),
+    );
+    await secureOfflineMutationQueue.enqueue(
+      shareSettingsMutation({mutationId: 'share-2'}),
+    );
+    await secureOfflineMutationQueue.enqueue(
+      upsertPairEventMutation({mutationId: 'event-1'}),
+    );
+    await secureOfflineMutationQueue.enqueue(
+      upsertPairEventMutation({mutationId: 'event-2'}),
+    );
+    await secureOfflineMutationQueue.enqueue(
+      upsertPairEventMutation({
+        mutationId: 'other-event',
+        event: {id: 'event-9', title: '다른 일정', date: '2026-07-21'},
+      }),
+    );
+
+    const queued = await secureOfflineMutationQueue.list(uid);
+    expect(queued.map(mutation => mutation.mutationId)).toEqual([
+      'share-2',
+      'event-2',
+      'other-event',
+    ]);
+  });
+
+  it('격리된 항목은 접기 대상이 아니다', async () => {
+    const failed = dailyMutation({mutationId: 'quarantined-daily'});
+    await secureOfflineMutationQueue.enqueue(failed);
+    await secureOfflineMutationQueue.quarantine(
+      uid,
+      failed.mutationId,
+      'invalid-argument',
+    );
+
+    await secureOfflineMutationQueue.enqueue(
+      dailyMutation({mutationId: 'fresh-daily'}),
+    );
+
+    // 격리 항목은 진단 이력이므로 남고, 새 항목은 접히지 않고 따로 들어간다.
+    await expect(secureOfflineMutationQueue.countFailed(uid)).resolves.toBe(1);
+    const replayable = await secureOfflineMutationQueue.listForReplay(uid);
+    expect(replayable.map(mutation => mutation.mutationId)).toEqual([
+      'fresh-daily',
+    ]);
+  });
+
+  it('상한을 넘으면 가장 오래된 미격리 항목부터 버리고 그 수를 알린다', async () => {
+    const overflow = 3;
+    for (let index = 0; index < OFFLINE_MUTATION_QUEUE_LIMIT + overflow; index += 1) {
+      await secureOfflineMutationQueue.enqueue(
+        dailyMutation({
+          mutationId: `daily-${index}`,
+          localDate: localDateForIndex(index),
+        }),
+      );
+    }
+
+    const queued = await secureOfflineMutationQueue.list(uid);
+    expect(queued).toHaveLength(OFFLINE_MUTATION_QUEUE_LIMIT);
+    // 가장 오래된 것부터 버린다.
+    expect(queued[0]).toMatchObject({mutationId: `daily-${overflow}`});
+    expect(secureOfflineMutationQueue.takeDiscardedCount(uid)).toBe(overflow);
+    // 한 번 보고하면 0 으로 돌아간다.
+    expect(secureOfflineMutationQueue.takeDiscardedCount(uid)).toBe(0);
+  });
+});
+
+function localDateForIndex(index: number): string {
+  const base = Date.parse('2026-01-01T12:00:00.000Z');
+  return new Date(base + index * 86_400_000).toISOString().slice(0, 10);
+}
