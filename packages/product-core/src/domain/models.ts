@@ -207,10 +207,6 @@ export interface SubscriptionSnapshot {
   readonly expiresAt?: IsoTimestamp;
   readonly gracePeriodExpiresAt?: IsoTimestamp;
   readonly verifiedAt?: IsoTimestamp;
-  /** @deprecated Migration-only day-granular expiry. */
-  readonly currentPeriodEnd?: LocalDate;
-  /** @deprecated Migration-only day-granular grace expiry. */
-  readonly gracePeriodEnd?: LocalDate;
 }
 
 export interface Entitlement {
