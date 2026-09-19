@@ -1,6 +1,6 @@
 import { compareIsoTimestamps } from "./iso-timestamp.js";
 import type { IsoTimestamp } from "./iso-timestamp.js";
-import { compareLocalDates, parseLocalDate } from "./local-date.js";
+import { parseLocalDate } from "./local-date.js";
 import type { LocalDate } from "./local-date.js";
 import type {
   Entitlement,
@@ -33,24 +33,6 @@ function premium(reason: Entitlement["reason"], validUntil: LocalDate): Entitlem
     reason,
     validUntil,
   });
-}
-
-function isValidThrough(date: LocalDate | undefined, today: LocalDate): date is LocalDate {
-  return date !== undefined && compareLocalDates(date, today) >= 0;
-}
-
-function expirationDate(subscription: SubscriptionSnapshot): LocalDate | undefined {
-  if (subscription.expiresAt !== undefined) {
-    return parseLocalDate(subscription.expiresAt.slice(0, 10));
-  }
-  return subscription.currentPeriodEnd;
-}
-
-function graceExpirationDate(subscription: SubscriptionSnapshot): LocalDate | undefined {
-  if (subscription.gracePeriodExpiresAt !== undefined) {
-    return parseLocalDate(subscription.gracePeriodExpiresAt.slice(0, 10));
-  }
-  return subscription.gracePeriodEnd ?? expirationDate(subscription);
 }
 
 function usesExactSnapshot(subscription: SubscriptionSnapshot): boolean {
@@ -114,54 +96,12 @@ function isUsableSnapshot(subscription: SubscriptionSnapshot): boolean {
   );
 }
 
-export function determineEntitlement(
-  subscription: SubscriptionSnapshot,
-  today: LocalDate,
-): Entitlement {
-  if (!isUsableSnapshot(subscription)) {
-    return free("invalid-subscription-state");
-  }
-
-  const paidThrough = expirationDate(subscription);
-  const graceThrough = graceExpirationDate(subscription);
-
-  switch (subscription.status) {
-    case "trialing":
-      return isValidThrough(paidThrough, today)
-        ? premium("trial", paidThrough)
-        : free("expired");
-    case "active":
-      return isValidThrough(paidThrough, today)
-        ? premium("active-subscription", paidThrough)
-        : free("invalid-subscription-state");
-    case "canceled":
-      return isValidThrough(paidThrough, today)
-        ? premium("canceled-but-valid", paidThrough)
-        : free("expired");
-    case "grace-period":
-      return isValidThrough(graceThrough, today)
-        ? premium("grace-period", graceThrough)
-        : free("expired");
-    case "none":
-      return free("no-subscription");
-    case "pending":
-      return free("pending-payment");
-    case "on-hold":
-      return free("account-hold");
-    case "revoked":
-      return free("revoked");
-    case "refunded":
-      return free("refunded");
-    case "expired":
-      return free("expired");
-    case "unknown":
-      return free("invalid-subscription-state");
-  }
-}
-
 /**
- * Exact-instant entitlement evaluation for runtime access decisions.
- * The LocalDate overload above remains for migration and day-granular display code.
+ * 런타임 접근 판정의 유일한 진입점.
+ *
+ * 예전에는 날짜 단위 판정이 하나 더 있었지만 프로덕션 호출부가 없었고, 같은
+ * 스냅샷에 대해 다른 답을 냈다. 날짜 단위 표시가 필요하면 이 결과의
+ * `validUntil`(이미 `LocalDate`)을 쓴다. 판정 규칙을 다시 만들지 않는다.
  */
 export function determineEntitlementAt(
   subscription: SubscriptionSnapshot,

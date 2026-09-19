@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  determineEntitlement,
   determineEntitlementAt,
   hasEntitlement,
   parseIsoTimestamp,
@@ -46,61 +45,68 @@ describe("subscription entitlements", () => {
   });
 
   it("grants the free feature set when there is no subscription", () => {
-    const entitlement = determineEntitlement({ status: "none" }, today);
+    const entitlement = determineEntitlementAt({ status: "none" }, now);
     expect(entitlement.tier).toBe("free");
     expect(hasEntitlement(entitlement, "cycle-tracking")).toBe(true);
     expect(hasEntitlement(entitlement, "data-export")).toBe(true);
     expect(hasEntitlement(entitlement, "full-care-tips")).toBe(false);
   });
 
-  it("grants premium through the inclusive active period end", () => {
-    const entitlement = determineEntitlement(
-      { status: "active", currentPeriodEnd: date("2026-07-12") },
-      today,
+  it("grants the premium feature set through the paid period", () => {
+    const entitlement = determineEntitlementAt(
+      exactSnapshot("active", "paid", "will-renew"),
+      now,
     );
     expect(entitlement).toMatchObject({
       tier: "premium",
       reason: "active-subscription",
-      validUntil: "2026-07-12",
     });
     expect(hasEntitlement(entitlement, "full-care-tips")).toBe(true);
-  });
-
-  it("keeps a canceled subscription until its paid-through date", () => {
-    expect(
-      determineEntitlement(
-        { status: "canceled", currentPeriodEnd: date("2026-07-20") },
-        today,
-      ).tier,
-    ).toBe("premium");
-    expect(
-      determineEntitlement(
-        { status: "canceled", currentPeriodEnd: date("2026-07-11") },
-        today,
-      ).tier,
-    ).toBe("free");
-  });
-
-  it("honors a bounded grace period and fails closed on incomplete state", () => {
-    expect(
-      determineEntitlement(
-        { status: "grace-period", gracePeriodEnd: date("2026-07-13") },
-        today,
-      ).tier,
-    ).toBe("premium");
-    expect(determineEntitlement({ status: "active" }, today)).toMatchObject({
-      tier: "free",
-      reason: "invalid-subscription-state",
-    });
-    expect(determineEntitlement({ status: "unknown" }, today).tier).toBe("free");
+    expect(hasEntitlement(entitlement, "extended-history")).toBe(true);
+    expect(hasEntitlement(entitlement, "advanced-prediction")).toBe(true);
   });
 
   it("reserves multiple-connections without enabling it in the MVP", () => {
-    const premium = determineEntitlement(
-      { status: "active", currentPeriodEnd: date("2026-08-01") },
-      today,
+    const premium = determineEntitlementAt(
+      exactSnapshot("active", "paid", "will-renew"),
+      now,
     );
     expect(hasEntitlement(premium, "multiple-connections")).toBe(false);
+  });
+
+  it("keeps a trial premium until its exact expiry", () => {
+    const snapshot = exactSnapshot("trialing", "paid", "will-renew");
+    expect(determineEntitlementAt(snapshot, now)).toMatchObject({
+      tier: "premium",
+      reason: "trial",
+      validUntil: "2026-08-12",
+    });
+    expect(
+      determineEntitlementAt(snapshot, instant("2026-08-12T12:00:00.000Z")),
+    ).toMatchObject({ tier: "free", reason: "expired" });
+  });
+
+  it("fails closed on an unknown status", () => {
+    expect(determineEntitlementAt({ status: "unknown" }, now).tier).toBe("free");
+    expect(determineEntitlementAt({ status: "unknown" }, now)).toMatchObject({
+      reason: "invalid-subscription-state",
+    });
+  });
+
+  it("fails closed on a snapshot without exact store metadata", () => {
+    // 정밀 필드가 없는 스냅샷은 신뢰할 수 없다. 예전에는 날짜 단위 판정이
+    // 같은 입력을 premium 으로 읽어 화면과 런타임 접근이 갈렸다.
+    expect(determineEntitlementAt({ status: "active" }, now)).toMatchObject({
+      tier: "free",
+      reason: "invalid-subscription-state",
+    });
+    expect(determineEntitlementAt({ status: "canceled" }, now)).toMatchObject({
+      tier: "free",
+      reason: "invalid-subscription-state",
+    });
+    expect(
+      determineEntitlementAt({ status: "grace-period" }, now),
+    ).toMatchObject({ tier: "free", reason: "invalid-subscription-state" });
   });
 
   it("maps a pending store payment to free without finishing the entitlement", () => {
