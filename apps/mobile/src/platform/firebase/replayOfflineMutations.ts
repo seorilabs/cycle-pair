@@ -33,7 +33,6 @@ export async function replayOfflineMutations({
   readonly failureCode: (error: unknown) => string;
 }): Promise<OfflineSyncReport> {
   let flushed = 0;
-  let currentPrivateFailures = 0;
   let firstFailureCode: string | undefined;
 
   for (const mutation of mutations) {
@@ -51,20 +50,21 @@ export async function replayOfflineMutations({
       if (isRetryable(error)) break;
       const currentFailureCode = failureCode(error);
       firstFailureCode ??= currentFailureCode;
-      if (pairId) {
-        await queue.quarantine(uid, mutation.mutationId, currentFailureCode);
-      } else {
-        // Private health writes stay active for a future retry. Continue so a
-        // single invalid head item cannot starve later personal records.
-        currentPrivateFailures += 1;
-      }
+      // 여기 온 실패는 이미 재시도 불가로 판정됐다. 개인 기록과 페어 기록을
+      // 가리지 않고 격리한다. 상한을 두고 N회 더 시도하는 선택지도 있지만,
+      // 같은 요청을 다시 보내도 결과가 같으므로 시도 횟수만 늘어난다.
+      // 격리는 즉시 한 번이고, 그 뒤 항목은 재생 대상에서 빠진다.
+      await queue.quarantine(uid, mutation.mutationId, currentFailureCode);
+      // 하나가 격리됐다고 뒤 기록까지 굶기지 않는다. 다음 항목으로 넘어간다.
     }
   }
 
   return {
     flushed,
     remaining: await queue.count(uid),
-    failed: (await queue.countFailed(uid)) + currentPrivateFailures,
+    // countFailed 가 격리된 항목 전부를 세므로 별도 누적과 더하지 않는다.
+    // 예전에는 개인 기록 실패가 두 번 계산돼 경고가 과장됐다.
+    failed: await queue.countFailed(uid),
     ...(firstFailureCode ? {failureCode: firstFailureCode} : {}),
   };
 }

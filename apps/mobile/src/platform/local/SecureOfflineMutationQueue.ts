@@ -107,6 +107,12 @@ export interface SecureOfflineMutationQueue {
   list(uid: string): Promise<readonly OfflineMutation[]>;
   listForReplay(uid: string): Promise<readonly OfflineMutation[]>;
   remove(uid: string, mutationId: string): Promise<void>;
+  /**
+   * 재시도해도 결과가 달라지지 않는 변경을 종결 상태로 옮긴다.
+   *
+   * 개인 기록과 페어 기록 모두 받는다. 격리된 항목은 `listForReplay`에서
+   * 빠지므로 다음 동기화에서 같은 실패를 되풀이하지 않는다.
+   */
   quarantine(
     uid: string,
     mutationId: string,
@@ -625,8 +631,17 @@ class KeychainSecureOfflineMutationQueue implements SecureOfflineMutationQueue {
       );
   }
 
+  /**
+   * 재생 대상만 돌려준다.
+   *
+   * 격리된 항목은 제외한다. 격리는 "재시도해도 결과가 달라지지 않는다"는
+   * 종결 상태인데, 예전에는 이 목록에 남아 매 동기화마다 같은 실패를
+   * 되풀이했다. 진단 이력은 `countFailed`와 저장소에 그대로 남는다.
+   */
   async listForReplay(uid: string): Promise<readonly OfflineMutation[]> {
-    return (await this.listStored(uid, true)).map(
+    return (await this.listStored(uid, true))
+      .filter(mutation => mutation.queueState !== 'failed')
+      .map(
       ({
         queueSequence: _,
         queueState: _queueState,
@@ -670,10 +685,7 @@ class KeychainSecureOfflineMutationQueue implements SecureOfflineMutationQueue {
         );
         if (!stored) return;
         const pairId = pairIdForOfflineMutation(stored);
-        if (!pairId) {
-          throw new Error('Private offline mutations cannot be quarantined.');
-        }
-        await this.pairFence.runWrite(uid, pairId, async () => {
+        const writeQuarantined = async () => {
           const quarantined: StoredOfflineMutation = {
             ...stored,
             queueState: 'failed',
@@ -697,7 +709,13 @@ class KeychainSecureOfflineMutationQueue implements SecureOfflineMutationQueue {
             );
           }
           await removeService(legacyServiceFor(uid, mutationId));
-        });
+        };
+        // 개인 건강 기록은 페어 fence 를 타지 않는다. 그 fence 는 해지된
+        // 페어의 데이터를 막기 위한 것이고, 개인 기록은 페어에 속하지 않는다.
+        // 이미 `secureUserDataFence.runWrite` 안이라 사용자 경계는 지켜진다.
+        await (pairId
+          ? this.pairFence.runWrite(uid, pairId, writeQuarantined)
+          : writeQuarantined());
       });
     const previous = this.enqueueChains.get(uid) ?? Promise.resolve();
     const pending = previous.then(persist, persist);

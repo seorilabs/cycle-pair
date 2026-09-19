@@ -1,4 +1,5 @@
 import type {OfflineMutation} from '../local/SecureOfflineMutationQueue';
+import {secureOfflineMutationQueue} from '../local/SecureOfflineMutationQueue';
 import {replayOfflineMutations} from './replayOfflineMutations';
 
 function privateMutation(mutationId: string): OfflineMutation {
@@ -74,8 +75,15 @@ describe('replayOfflineMutations', () => {
       failed: 1,
       failureCode: 'invalid-argument',
     });
+    // 하나가 격리돼도 뒤 기록은 계속 동기화된다.
     expect(execute).toHaveBeenCalledTimes(2);
-    expect(input.queue.quarantine).not.toHaveBeenCalled();
+    // 개인 기록도 종결 상태로 옮긴다. 예전에는 큐에 그대로 남았다.
+    expect(input.queue.quarantine).toHaveBeenCalledTimes(1);
+    expect(input.queue.quarantine).toHaveBeenCalledWith(
+      'user-a',
+      failed.mutationId,
+      'invalid-argument',
+    );
     expect(input.remaining).toEqual(new Set([failed.mutationId]));
   });
 
@@ -133,5 +141,70 @@ describe('replayOfflineMutations', () => {
       }),
     ).resolves.toEqual({flushed: 0, remaining: 2, failed: 0});
     expect(execute).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('영구 실패한 개인 기록이 큐에서 나간다', () => {
+  const uid = 'user-a';
+
+  // Keychain mock 은 파일 안에서 상태를 공유한다. 앞 테스트가 남긴 격리
+  // 항목이 countFailed 에 섞이지 않게 비운다.
+  beforeEach(async () => {
+    await secureOfflineMutationQueue.clearUser(uid);
+  });
+
+  async function replayWith(
+    mutations: readonly OfflineMutation[],
+    execute: (mutation: OfflineMutation) => Promise<void>,
+  ) {
+    return replayOfflineMutations({
+      uid,
+      mutations,
+      queue: secureOfflineMutationQueue,
+      execute,
+      isPairInvalidated: () => false,
+      isRetryable: () => false,
+      failureCode: () => 'invalid-argument',
+    });
+  }
+
+  it('첫 동기화에서 격리되고 두 번째 동기화는 다시 시도하지 않는다', async () => {
+    const mutation = privateMutation('private-permanent-failure');
+    await secureOfflineMutationQueue.enqueue(mutation);
+
+    const execute = jest.fn(async () => {
+      throw {code: 'firestore/invalid-argument'};
+    });
+
+    const first = await replayWith(
+      await secureOfflineMutationQueue.listForReplay(uid),
+      execute,
+    );
+    expect(execute).toHaveBeenCalledTimes(1);
+    expect(first.failed).toBe(1);
+
+    // 두 번째 동기화. 격리된 항목은 재생 목록에 없다.
+    const replayable = await secureOfflineMutationQueue.listForReplay(uid);
+    expect(replayable).toEqual([]);
+
+    const second = await replayWith(replayable, execute);
+    expect(execute).toHaveBeenCalledTimes(1);
+    expect(second.failed).toBe(1);
+    expect(second.failed).toBeLessThanOrEqual(1);
+  });
+
+  it('report.failed 가 같은 항목을 두 번 세지 않는다', async () => {
+    const mutation = privateMutation('private-single-count');
+    await secureOfflineMutationQueue.enqueue(mutation);
+
+    const report = await replayWith(
+      await secureOfflineMutationQueue.listForReplay(uid),
+      async () => {
+        throw {code: 'firestore/invalid-argument'};
+      },
+    );
+
+    expect(report.failed).toBe(1);
+    await expect(secureOfflineMutationQueue.countFailed(uid)).resolves.toBe(1);
   });
 });
