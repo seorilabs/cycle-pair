@@ -126,10 +126,12 @@ jobs:
           set -euo pipefail
           observed="$(sha256sum "$VERIFIED_AIT_PATH" | cut -d ' ' -f 1)"
           test "$observed" = "$VERIFIED_AIT_DIGEST"
+          # pnpm --dir 로 cwd 가 apps/ait 로 바뀐다. 저장소 기준 경로를 그대로
+          # 넘기면 apps/ait/apps/ait/... 로 중복돼 ENOENT 가 난다.
           pnpm --dir apps/ait run deploy \
             --api-key "$APPS_IN_TOSS_API_KEY" \
             --memo "$DEPLOY_MEMO" \
-            --location "$VERIFIED_AIT_PATH"
+            --location "$GITHUB_WORKSPACE/$VERIFIED_AIT_PATH"
 
       - name: Summary
         shell: bash

@@ -33,9 +33,13 @@ on:
         required: false
         default: "Cycle Pair private upload"
 
+# 재사용 워크플로는 caller 보다 넓은 권한을 요구할 수 없다. 여기 permissions 는
+# 호출하는 deploy-google-play / deploy-apps-in-toss 가 선언한 것의 상위집합이어야
+# 하고, 아니면 job 이 아니라 run 전체가 startup_failure 로 죽는다.
 permissions:
   contents: read
   id-token: write
+  packages: read
 
 concurrency:
   group: cycle-pair-deploy-all-${{ inputs.release_tag || github.ref }}
