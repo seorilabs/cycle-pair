@@ -32,6 +32,14 @@ on:
         type: string
         required: false
         default: "Cycle Pair private upload"
+      app_store:
+        description: "App Store archive 실행"
+        type: boolean
+        default: false
+      app_store_upload:
+        description: "App Store Connect 업로드(TestFlight)"
+        type: boolean
+        default: false
 
 # 재사용 워크플로는 caller 보다 넓은 권한을 요구할 수 없다. 여기 permissions 는
 # 호출하는 deploy-google-play / deploy-apps-in-toss 가 선언한 것의 상위집합이어야
@@ -67,6 +75,24 @@ jobs:
       release_status: ${{ inputs.google_play_release_status }}
       changes_not_sent_for_review: false
 
+
+  app-store:
+    name: App Store
+    needs: resolve
+    if: ${{ inputs.app_store }}
+    uses: ./.github/workflows/deploy-app-store.yml
+    secrets:
+      APPLE_DISTRIBUTION_CERTIFICATE_BASE64: ${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE_BASE64 }}
+      APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD }}
+      APPLE_KEYCHAIN_PASSWORD: ${{ secrets.APPLE_KEYCHAIN_PASSWORD }}
+      APPLE_PROVISIONING_PROFILE_BASE64: ${{ secrets.APPLE_PROVISIONING_PROFILE_BASE64 }}
+      APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+      APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      APP_STORE_CONNECT_PRIVATE_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY_BASE64 }}
+      FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64: ${{ secrets.FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64 }}
+    with:
+      release_tag: ${{ needs.resolve.outputs.tag }}
+      upload: ${{ inputs.app_store_upload }}
 
   apps-in-toss:
     name: AppsInToss

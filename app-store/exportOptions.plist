@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>method</key>
+	<string>app-store-connect</string>
+	<key>destination</key>
+	<string>upload</string>
+	<key>teamID</key>
+	<string>HCDUXX4Z3X</string>
+	<key>signingStyle</key>
+	<string>automatic</string>
+	<key>uploadSymbols</key>
+	<true/>
+	<key>generateAppStoreInformation</key>
+	<true/>
+	<!-- 버전 정본은 릴리즈 태그 하나다. 이 값을 켜 두면 Xcode가 App Store Connect의
+	     최신 build number를 보고 CFBundleVersion을 임의로 올려, 중앙 워크플로가 archive에서
+	     검증한 태그 파생값과 업로드된 값이 갈린다. -->
+	<key>manageAppVersionAndBuildNumber</key>
+	<false/>
+</dict>
+</plist>
