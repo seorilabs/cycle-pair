@@ -311,6 +311,45 @@ describe("buildPartnerProjection", () => {
 
     expect(projection).toEqual(baseWithSchema());
   });
+  test("지연 상태는 cycleStatus 동의가 있을 때만 전달한다", () => {
+    const shared = buildPartnerProjection({
+      ...base,
+      privateCycle: {
+        asOfDate: "2026-07-12",
+        cyclePhase: "unknown",
+        cycleStatus: "period-late",
+      },
+      shareSettings: {cycleStatus: true},
+    }) as Record<string, unknown>;
+
+    expect(shared.cycleStatus).toBe("period-late");
+
+    const withheld = buildPartnerProjection({
+      ...base,
+      privateCycle: {
+        asOfDate: "2026-07-12",
+        cyclePhase: "unknown",
+        cycleStatus: "period-late",
+      },
+      shareSettings: {cyclePhase: true},
+    }) as Record<string, unknown>;
+
+    expect(Object.hasOwn(withheld, "cycleStatus")).toBe(false);
+  });
+
+  test("지연 상태는 가임 동의와 무관하게 전달된다", () => {
+    // period-late 는 가임 정보가 아니다. fertilityStatus 로 막히면 안 된다.
+    const projection = buildPartnerProjection({
+      ...base,
+      privateCycle: {
+        asOfDate: "2026-07-12",
+        cycleStatus: "period-late",
+      },
+      shareSettings: {cycleStatus: true, fertilityStatus: false},
+    }) as Record<string, unknown>;
+
+    expect(projection.cycleStatus).toBe("period-late");
+  });
 });
 
 function baseWithSchema() {

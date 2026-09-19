@@ -15,6 +15,8 @@ export type BackendCycleStatus =
   | 'fertile-window'
   | 'pre-period'
   | 'cycle-in-progress'
+  /** 예정일이 지났고 다음 시작 기록이 아직 없는 상태. */
+  | 'period-late'
   | 'unknown';
 
 export type BackendConditionCode =
