@@ -5,6 +5,7 @@ import {
   SEORILABS_PLATFORM_API_BASE_URL,
   SEORILABS_PLATFORM_APP_ID,
   SEORILABS_PLATFORM_APP_VERSION,
+  SEORILABS_PLATFORM_RUNTIME,
 } from '../seorilabsPlatform';
 import { noopPresenceClient, type PresenceClient } from './PresenceClient';
 
@@ -53,6 +54,12 @@ export function createPlatformPresenceClient(
       presenceEnabled: enabled,
       // 안정된 appId와 출시 버전만 보낸다. 사용자 ID·광고 ID·세션 ID 같은
       // 식별자는 Presence 경로에 올리지 않는다.
+      // 게스트 자격증명 경로와 같은 runtime을 선언해 Platform이 이 앱의
+      // 두 경로를 한 실행 환경으로 본다.
+      clientContext: () => ({
+        appVersion: SEORILABS_PLATFORM_APP_VERSION,
+        runtime: SEORILABS_PLATFORM_RUNTIME,
+      }),
       presenceContext: () => ({
         platform: presencePlatform(),
         appVersion: SEORILABS_PLATFORM_APP_VERSION,

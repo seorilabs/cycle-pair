@@ -3,6 +3,7 @@ import {
   SEORILABS_PLATFORM_API_BASE_URL,
   SEORILABS_PLATFORM_APP_ID,
   SEORILABS_PLATFORM_APP_VERSION,
+  SEORILABS_PLATFORM_RUNTIME,
 } from '../seorilabsPlatform';
 
 const APP_USER_ID_PATTERN = /^pb_[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
@@ -56,7 +57,7 @@ export function createPlatformFirebaseGuestClient(
               Accept: 'application/json',
               'Content-Type': 'application/json',
               'X-Seori-App': SEORILABS_PLATFORM_APP_ID,
-              'X-Seori-Runtime': 'rn-native',
+              'X-Seori-Runtime': SEORILABS_PLATFORM_RUNTIME,
               'X-Seori-Sdk': `${SEORILABS_PLATFORM_APP_ID}/${SEORILABS_PLATFORM_APP_VERSION}`,
             },
             body: JSON.stringify({ appId: SEORILABS_PLATFORM_APP_ID }),

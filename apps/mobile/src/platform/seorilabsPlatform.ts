@@ -15,3 +15,9 @@ export const SEORILABS_PLATFORM_APP_ID = 'cycle-pair';
  * 값을 쓴다. 번들러가 package.json을 읽지 않으므로 여기서 선언한다.
  */
 export const SEORILABS_PLATFORM_APP_VERSION = '1.0.4';
+
+/**
+ * Platform이 트래픽을 구분하는 실행 환경 축. `X-Seori-Runtime`으로 나간다.
+ * AIT 미니앱(`ait-rn`)과 달리 이 패키지는 네이티브 RN 빌드다.
+ */
+export const SEORILABS_PLATFORM_RUNTIME = 'rn-native';
