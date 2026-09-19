@@ -315,9 +315,11 @@ describe('secureOfflineMutationQueue', () => {
     await expect(secureOfflineMutationQueue.list(mutation.uid)).resolves.toEqual(
       [],
     );
+    // 이름이 말하던 "자동 재생에서 제외" 를 실제로 단언한다. 예전에는 격리
+    // 항목이 재생 목록에 남아 매 동기화마다 같은 실패를 되풀이했다.
     await expect(
       secureOfflineMutationQueue.listForReplay(mutation.uid),
-    ).resolves.toEqual([mutation]);
+    ).resolves.toEqual([]);
     await expect(secureOfflineMutationQueue.count(mutation.uid)).resolves.toBe(
       1,
     );
@@ -368,20 +370,34 @@ describe('secureOfflineMutationQueue', () => {
     await expect(secureOfflineMutationQueue.count(first.uid)).resolves.toBe(0);
   });
 
-  it('개인 건강 기록은 격리해 자동 재생에서 숨길 수 없다', async () => {
-    const mutation = dailyMutation({mutationId: 'private-never-quarantine'});
+  it('개인 건강 기록도 격리해 자동 재생에서 뺀다', async () => {
+    const mutation = dailyMutation({mutationId: 'private-quarantine'});
     await secureOfflineMutationQueue.enqueue(mutation);
 
-    await expect(
-      secureOfflineMutationQueue.quarantine(
-        mutation.uid,
-        mutation.mutationId,
-        'invalid-argument',
-      ),
-    ).rejects.toThrow('Private offline mutations cannot be quarantined.');
-    await expect(secureOfflineMutationQueue.list(mutation.uid)).resolves.toEqual(
-      [mutation],
+    await secureOfflineMutationQueue.quarantine(
+      mutation.uid,
+      mutation.mutationId,
+      'invalid-argument',
     );
+
+    await expect(secureOfflineMutationQueue.list(mutation.uid)).resolves.toEqual(
+      [],
+    );
+    await expect(
+      secureOfflineMutationQueue.listForReplay(mutation.uid),
+    ).resolves.toEqual([]);
+    // 진단 이력은 남는다. 조용히 지우지 않는다.
+    await expect(
+      secureOfflineMutationQueue.countFailed(mutation.uid),
+    ).resolves.toBe(1);
+    const stored = JSON.parse(
+      [...storedCredentials.values()][0].password,
+    ) as Record<string, unknown>;
+    expect(stored).toMatchObject({
+      queueState: 'failed',
+      failureCode: 'invalid-argument',
+    });
+    expect(stored.failedAt).toEqual(expect.any(String));
   });
 
   it('사용자별로 격리하고 clearUser는 해당 사용자의 항목만 지운다', async () => {
