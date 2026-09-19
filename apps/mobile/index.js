@@ -11,6 +11,7 @@ import { firebaseCyclePairBackend } from './src/platform/firebase/FirebaseCycleP
 import { FirebaseAppCheckGate } from './src/platform/firebase/FirebaseAppCheckGate';
 import { initializeFirebaseAppCheck } from './src/platform/firebase/FirebaseAppCheckBootstrap';
 import { firebaseNotificationClient } from './src/platform/notifications/FirebaseNotificationClient';
+import { platformPresenceClient } from './src/platform/presence/PlatformPresenceClient';
 import { productAnalytics } from './src/platform/observability/ProductAnalytics';
 import { safeCrashReporter } from './src/platform/observability/SafeCrashReporter';
 import {
@@ -40,6 +41,7 @@ function RuntimeApp() {
         backend={firebaseCyclePairBackend}
         crashReporter={safeCrashReporter}
         notificationClient={firebaseNotificationClient}
+        presenceClient={platformPresenceClient}
         purchaseClient={purchaseClient}
       />
     </FirebaseAppCheckGate>

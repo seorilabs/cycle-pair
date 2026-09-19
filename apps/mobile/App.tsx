@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { CyclePairProvider } from './src/app/CyclePairStore';
+import { usePresenceLifecycle } from './src/app/usePresenceLifecycle';
 import { AccountProvider, useAccount } from './src/app/account/AccountContext';
 import { SubscriptionProvider } from './src/app/subscription/SubscriptionContext';
 import { CyclePairApp } from './src/CyclePairApp';
@@ -19,6 +20,7 @@ import type { CyclePairBackend } from './src/platform/backend/CyclePairBackend';
 import { previewCyclePairBackend } from './src/platform/backend/PreviewCyclePairBackend';
 import type { NotificationClient } from './src/platform/notifications/NotificationClient';
 import { asyncStorageCyclePairStateStorage } from './src/platform/local/CyclePairStateStorage';
+import type { PresenceClient } from './src/platform/presence/PresenceClient';
 import type { ProductAnalytics } from './src/platform/observability/ProductAnalytics';
 import type { SafeCrashReporter } from './src/platform/observability/SafeCrashReporter';
 import type { CyclePairPurchaseAdapter } from './src/platform/purchases/CyclePairPurchaseAdapter';
@@ -112,6 +114,7 @@ function App({
   analytics,
   crashReporter,
   purchaseClient,
+  presenceClient,
 }: {
   backend?: CyclePairBackend;
   account?: AccountPort;
@@ -119,7 +122,9 @@ function App({
   analytics?: ProductAnalytics;
   crashReporter?: SafeCrashReporter;
   purchaseClient?: CyclePairPurchaseAdapter;
+  presenceClient?: PresenceClient;
 }) {
+  usePresenceLifecycle(presenceClient);
   const sessionCleanup = useMemo(
     () =>
       createAccountSessionCleanup({
