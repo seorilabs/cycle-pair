@@ -68,7 +68,6 @@ interface CycleIntervalSummary {
   readonly memberId: string;
   readonly starts: readonly LocalDate[];
   readonly validIntervals: readonly number[];
-  readonly truncatedIntervalCount: number;
   readonly excludedIntervalCount: number;
   readonly hasRecentExcludedInterval: boolean;
 }
@@ -128,18 +127,19 @@ function summarizeIntervals(
     memberId,
     starts,
     validIntervals: Object.freeze(recentValidIntervals),
-    truncatedIntervalCount: validIntervals.length - recentValidIntervals.length,
     excludedIntervalCount,
     hasRecentExcludedInterval,
   };
 }
 
+/**
+ * 최근 주기에 더 큰 가중치를 준다.
+ *
+ * 표본 수와 무관하게 같은 식을 쓴다. 예전에는 최근 창이 잘리지 않았을 때만
+ * 단순 평균을 썼는데, 그러면 주기를 하나 더 기록해 창이 차는 순간 식이 바뀌어
+ * 예상일이 튀었다.
+ */
 function averageCycleLengthFor(summary: CycleIntervalSummary): number {
-  if (summary.truncatedIntervalCount === 0) {
-    const total = summary.validIntervals.reduce((sum, value) => sum + value, 0);
-    return Math.round(total / summary.validIntervals.length);
-  }
-
   let weightedTotal = 0;
   let totalWeight = 0;
   summary.validIntervals.forEach((value, index) => {

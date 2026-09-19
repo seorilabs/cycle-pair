@@ -10,6 +10,11 @@ import React, {
   useState,
 } from 'react';
 import { addEventListener as addNetworkListener } from '@react-native-community/netinfo';
+import {
+  calculateAverageCycleLength,
+  createCycle,
+  parseLocalDate,
+} from '@cyclepair/product-core';
 import { AppState, Platform } from 'react-native';
 import {
   asyncStorageCyclePairStateStorage,
@@ -37,6 +42,7 @@ import {
   toPrivateDailyLogRecord,
 } from '../platform/backend/backendPayloads';
 import { previewCyclePairBackend } from '../platform/backend/PreviewCyclePairBackend';
+import { SELF_MEMBER_ID } from './memberIds';
 import type {
   NotificationClient,
   QuietHours,
@@ -218,12 +224,14 @@ function daysAgo(count: number): string {
   return toLocalDate(date);
 }
 
-function localDateDistance(from: string, to: string): number {
-  const start = Date.parse(`${from}T12:00:00.000Z`);
-  const end = Date.parse(`${to}T12:00:00.000Z`);
-  return Math.round((end - start) / 86_400_000);
-}
-
+/**
+ * 저장되는 seed의 평균 주기 길이.
+ *
+ * 홈 예측과 같은 도메인 식(`calculateAverageCycleLength`)을 쓴다. 다만 이 값은
+ * 파트너에게 전송되는 seed라서 무료 정책의 lookback 컷오프를 적용하지 않고
+ * 관측된 전체 기록을 넘긴다. 컷오프는 화면 표시 정책이지 저장 값의 정의가
+ * 아니다.
+ */
 function observedAverageCycleLength(
   state: Pick<CyclePairState, 'dailyHistory' | 'seed'>,
   nextStart?: string,
@@ -233,15 +241,14 @@ function observedAverageCycleLength(
     if (entry.checkIn.periodStarted) starts.add(entry.localDate);
   }
   if (nextStart) starts.add(nextStart);
-  const sorted = [...starts].sort();
-  const intervals = sorted
-    .slice(1)
-    .map((value, index) => localDateDistance(sorted[index]!, value))
-    .filter(value => value >= 15 && value <= 60);
-  if (intervals.length === 0) return state.seed.averageCycleLength;
-  return Math.round(
-    intervals.reduce((total, value) => total + value, 0) / intervals.length,
+  const cycles = [...starts].sort().map((start, index) =>
+    createCycle({
+      id: `seed-cycle-${index}-${start}`,
+      memberId: SELF_MEMBER_ID,
+      startedOn: parseLocalDate(start),
+    }),
   );
+  return calculateAverageCycleLength(cycles) ?? state.seed.averageCycleLength;
 }
 
 function seedFromDailyHistory(
