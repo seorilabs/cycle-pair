@@ -1,8 +1,11 @@
 import { AccountOperationError } from '../../domain/account/AccountPort';
+import {
+  SEORILABS_PLATFORM_API_BASE_URL,
+  SEORILABS_PLATFORM_APP_ID,
+  SEORILABS_PLATFORM_APP_VERSION,
+  SEORILABS_PLATFORM_RUNTIME,
+} from '../seorilabsPlatform';
 
-const PLATFORM_API_BASE_URL =
-  'https://platform-api-306278488979.asia-northeast3.run.app';
-const PLATFORM_APP_ID = 'cycle-pair';
 const APP_USER_ID_PATTERN = /^pb_[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
 
 type FetchLike = (
@@ -47,17 +50,17 @@ export function createPlatformFirebaseGuestClient(
       let response: Awaited<ReturnType<FetchLike>>;
       try {
         response = await fetchImpl(
-          `${PLATFORM_API_BASE_URL}/v1/auth/firebase-custom-token`,
+          `${SEORILABS_PLATFORM_API_BASE_URL}/v1/auth/firebase-custom-token`,
           {
             method: 'POST',
             headers: {
               Accept: 'application/json',
               'Content-Type': 'application/json',
-              'X-Seori-App': PLATFORM_APP_ID,
-              'X-Seori-Runtime': 'rn-native',
-              'X-Seori-Sdk': 'cycle-pair/1.0.4',
+              'X-Seori-App': SEORILABS_PLATFORM_APP_ID,
+              'X-Seori-Runtime': SEORILABS_PLATFORM_RUNTIME,
+              'X-Seori-Sdk': `${SEORILABS_PLATFORM_APP_ID}/${SEORILABS_PLATFORM_APP_VERSION}`,
             },
-            body: JSON.stringify({ appId: PLATFORM_APP_ID }),
+            body: JSON.stringify({ appId: SEORILABS_PLATFORM_APP_ID }),
           },
         );
       } catch {

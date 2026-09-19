@@ -7,6 +7,7 @@ import App from '../App';
 import { SENSITIVE_HEALTH_CONSENT_VERSION } from '../src/domain/privacy/SensitiveHealthConsent';
 import type { CyclePairBackend } from '../src/platform/backend/CyclePairBackend';
 import { previewCyclePairBackend } from '../src/platform/backend/PreviewCyclePairBackend';
+import { createPlatformPresenceClient } from '../src/platform/presence/PlatformPresenceClient';
 
 function installHardwareBackMock() {
   const handlers = new Set<
@@ -69,6 +70,33 @@ describe('CyclePair mobile app', () => {
       expect(view.getByText('건너뛰기')).toBeTruthy();
     });
     expect(addNetworkListener).toHaveBeenCalledTimes(1);
+  });
+
+  it('Presence Edge가 죽어 있어도 온보딩과 첫 진입이 그대로 뜬다', async () => {
+    const fetchImpl = jest.fn(async () => {
+      throw new Error('getaddrinfo ENOTFOUND edge.vzyx.xyz');
+    });
+    const presenceClient = createPlatformPresenceClient({
+      enabled: true,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+
+    const view = await render(
+      <App backend={previewCyclePairBackend} presenceClient={presenceClient} />,
+    );
+
+    await waitFor(() => {
+      expect(view.getByText('사이클 페어')).toBeTruthy();
+      expect(view.getByText('건너뛰기')).toBeTruthy();
+    });
+    fireEvent.press(view.getByText('건너뛰기'));
+    await waitFor(() => {
+      expect(view.queryByText('건너뛰기')).toBeNull();
+    });
+
+    // heartbeat는 시도됐고, 그 실패가 화면 흐름을 막지 않았다.
+    expect(fetchImpl).toHaveBeenCalled();
+    presenceClient.stop();
   });
 
   it('uses Android back to move through intro pages and cleans up listeners', async () => {

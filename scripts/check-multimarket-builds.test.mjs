@@ -119,6 +119,7 @@ test('Google Play build stays API 36, versioned, signed, and pnpm-safe for Herme
     mobilePackage,
     buildWrapper,
     platformGuestClient,
+    platformConstants,
     settingsScreen,
     gradleProperties,
   ] = await Promise.all([
@@ -130,6 +131,7 @@ test('Google Play build stays API 36, versioned, signed, and pnpm-safe for Herme
       'apps/mobile/src/platform/account/PlatformFirebaseGuestClient.ts',
       'utf8'
     ),
+    readFile('apps/mobile/src/platform/seorilabsPlatform.ts', 'utf8'),
     readFile('apps/mobile/src/screens/SettingsScreen.tsx', 'utf8'),
     readFile('apps/mobile/android/gradle.properties', 'utf8'),
   ]);
@@ -164,9 +166,21 @@ test('Google Play build stays API 36, versioned, signed, and pnpm-safe for Herme
     /process\.exit\(runGradle\(':app:bundleRelease'\)\)/
   );
 
+  // Platform에 알리는 버전 정본은 상수 하나다. 게스트 자격증명 헤더와
+  // Presence heartbeat가 같은 값을 쓴다.
+  assert.match(
+    platformConstants,
+    new RegExp(
+      `SEORILABS_PLATFORM_APP_VERSION = '${mobilePackage.version}'`
+    )
+  );
+  assert.match(
+    platformConstants,
+    /SEORILABS_PLATFORM_APP_ID = 'cycle-pair'/
+  );
   assert.match(
     platformGuestClient,
-    new RegExp(`X-Seori-Sdk': 'cycle-pair/${mobilePackage.version}`)
+    /'X-Seori-Sdk': `\$\{SEORILABS_PLATFORM_APP_ID\}\/\$\{SEORILABS_PLATFORM_APP_VERSION\}`/
   );
   assert.match(
     settingsScreen,
