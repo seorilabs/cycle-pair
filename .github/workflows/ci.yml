@@ -19,7 +19,8 @@ concurrency:
 jobs:
   quality:
     name: JS/TS 품질 검사
-    runs-on: seorilabs-rpi-arm64
+    # public repo는 ARC(seorilabs-rpi-arm64)에 접근할 수 없다(러너 그룹 allows_public_repositories=false).
+    runs-on: ${{ github.event.repository.private && 'seorilabs-rpi-arm64' || 'ubuntu-latest' }}
     timeout-minutes: 30
 
     steps:
@@ -80,7 +81,7 @@ jobs:
 
   mobile_bundles:
     name: iOS 및 Android 프로덕션 JS 번들 검사
-    runs-on: seorilabs-rpi-arm64
+    runs-on: ${{ github.event.repository.private && 'seorilabs-rpi-arm64' || 'ubuntu-latest' }}
     timeout-minutes: 20
 
     steps:
@@ -140,7 +141,7 @@ jobs:
     needs:
       - quality
       - mobile_bundles
-    runs-on: seorilabs-rpi-arm64
+    runs-on: ${{ github.event.repository.private && 'seorilabs-rpi-arm64' || 'ubuntu-latest' }}
     timeout-minutes: 5
 
     steps:
