@@ -4,6 +4,7 @@ import type {
   HelpPreference,
 } from '../../../packages/product-core/src/domain/models';
 import type { ShareSheetOutcome } from './open-share-sheet';
+import { CONDITION_OPTIONS, HELP_OPTIONS } from './share-draft';
 
 export type AitAnalyticsEvent =
   | {
@@ -45,18 +46,15 @@ export interface AitAnalytics {
   track(event: AitAnalyticsEvent): void;
 }
 
-const CONDITION_VALUES = new Set<ConditionCode>([
-  'comfortable',
-  'tired',
-  'low-energy',
-  'needs-space',
-]);
-const HELP_VALUES = new Set<HelpPreference>([
-  'quiet-space',
-  'warmth',
-  'listen',
-  'no-action',
-]);
+// 허용값 원장은 화면이 실제로 보여 주는 선택지 하나다. 손으로 다시 나열하면
+// 선택지를 추가할 때 한쪽만 고쳐도 아무도 잡지 못하고, 그 선택지를 고른
+// 순간에만 계측이 스키마 위반이 된다.
+const CONDITION_VALUES: ReadonlySet<ConditionCode> = new Set(
+  CONDITION_OPTIONS.map(option => option.value),
+);
+const HELP_VALUES: ReadonlySet<HelpPreference> = new Set(
+  HELP_OPTIONS.map(option => option.value),
+);
 const SHARE_OUTCOMES = new Set<ShareSheetOutcome>([
   'opened',
   'unsupported',
@@ -158,8 +156,11 @@ class SafeAitAnalytics implements AitAnalytics {
   constructor(private readonly delegate: AitAnalyticsDelegate) {}
 
   track(event: AitAnalyticsEvent): void {
-    const validated = validateAitAnalyticsEvent(event as unknown);
     try {
+      // 검증도 try 안이다. 예전에는 밖에 있어서 스키마 위반이 그대로
+      // 호출자로 올라갔고, 호출자는 전부 사용자 인터랙션 핸들러라
+      // 계측 하나가 컨디션 공유 플로우를 중단시켰다.
+      const validated = validateAitAnalyticsEvent(event as unknown);
       const pending = this.delegate.log(toPayload(validated));
       void pending?.catch(() => undefined);
     } catch {
