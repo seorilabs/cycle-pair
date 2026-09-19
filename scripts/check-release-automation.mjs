@@ -60,8 +60,9 @@ function assertOrgCanonicalRef(path, workflow, workflowFile) {
   if (!orgWorkflowNames.includes(workflowFile)) {
     throw new Error(`${workflowFile}은 조직 재사용 워크플로 목록에 없습니다.`);
   }
+  const escapedFile = workflowFile.replace(/\./gu, '\\.');
   const pattern = new RegExp(
-    `seorilabs/\\.github/\\.github/workflows/${workflowFile.replace('.', '\\.')}@main$`,
+    `^\\s*uses:\\s*seorilabs/\\.github/\\.github/workflows/${escapedFile}@main\\s*$`,
     'mu',
   );
   if (!pattern.test(workflow)) {
