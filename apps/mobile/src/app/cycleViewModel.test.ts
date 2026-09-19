@@ -210,8 +210,11 @@ describe('cycle view model roles', () => {
     const freeViewModel = buildCycleViewModel(state, freeFeaturePolicy);
     const premiumViewModel = buildCycleViewModel(state, premiumFeaturePolicy);
 
+    // 무료는 365일 창 안에 시작일이 하나뿐이라 간격이 없고 seed 값 28을 쓴다.
     expect(freeViewModel.predictedDate).toBe(addDays(latest, 28));
-    expect(premiumViewModel.predictedDate).toBe(addDays(latest, 40));
+    // 프리미엄은 창 밖 시작일까지 보므로 간격 [50, 30]이 생긴다. 최근 가중
+    // 평균이라 (50*1 + 30*2) / 3 = 36.67 -> 37 이다.
+    expect(premiumViewModel.predictedDate).toBe(addDays(latest, 37));
   });
 
   it('shows one care tip for free and multiple matching tips for premium', () => {

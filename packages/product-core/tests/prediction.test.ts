@@ -114,6 +114,35 @@ describe("cycle prediction", () => {
     expect(sixIntervalPrediction?.sampleSize).toBe(6);
   });
 
+  it("최근 창이 차는 경계에서 평균이 튀지 않는다", () => {
+    // 앞쪽 6개와 뒤쪽 6개가 크게 다른 이력이다. 예전에는 간격 12개까지
+    // 단순 평균, 13개째부터 최근 가중 평균으로 식이 바뀌어 주기를 하나 더
+    // 기록했을 뿐인데 평균이 30 -> 25 로 뛰었다.
+    const twelve = cyclesFromIntervals(date("2024-01-01"), [
+      ...Array(6).fill(40),
+      ...Array(6).fill(20),
+    ]);
+    const thirteen = cyclesFromIntervals(date("2024-01-01"), [
+      ...Array(7).fill(40),
+      ...Array(6).fill(20),
+    ]);
+
+    const averageAtTwelve = calculateAverageCycleLength(twelve);
+    const averageAtThirteen = calculateAverageCycleLength(thirteen);
+
+    expect(averageAtTwelve).toBe(25);
+    expect(averageAtThirteen).toBe(25);
+    expect(Math.abs((averageAtTwelve ?? 0) - (averageAtThirteen ?? 0))).toBeLessThan(1);
+  });
+
+  it("표본 수와 무관하게 같은 가중 평균 식을 쓴다", () => {
+    // 표본이 창보다 적어도 최근 간격에 더 큰 가중치가 걸린다.
+    const cycles = cyclesFromIntervals(date("2026-01-01"), [20, 20, 40]);
+
+    // 단순 평균이면 27이다. 가중 평균은 (20*1 + 20*2 + 40*3) / 6 = 30 이다.
+    expect(calculateAverageCycleLength(cycles)).toBe(30);
+  });
+
   it("keeps all intervals and the existing average below the configured window", () => {
     const cycles = cyclesFromIntervals(date("2026-01-01"), [28, 30, 29]);
     const prediction = predictNextPeriod(cycles, date("2026-04-01"), {

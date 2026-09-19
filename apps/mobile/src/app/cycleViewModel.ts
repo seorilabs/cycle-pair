@@ -22,15 +22,13 @@ import {
   type Prediction,
 } from '@cyclepair/product-core';
 import { DailyCheckIn, CyclePairState } from './CyclePairStore';
+import { PARTNER_MEMBER_ID, SELF_MEMBER_ID } from './memberIds';
 import { getSafePartnerProjectionForToday } from './partnerProjectionPresentation';
 import type {CycleFeaturePolicy} from './subscription/cycleFeaturePolicy';
 import {
   FREE_CARE_TIP_LIMIT,
   FREE_HISTORY_LOOKBACK_DAYS,
 } from './subscription/cycleFeaturePolicy';
-
-const SELF_MEMBER_ID = 'local-self';
-const PARTNER_MEMBER_ID = 'remote-partner';
 
 const moodToDomain: Record<NonNullable<DailyCheckIn['mood']>, Mood> = {
   힘들어요: 'very-low',
