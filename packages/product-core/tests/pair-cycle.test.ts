@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  CONDITION_CODES,
+  MAX_EMOTIONS_PER_LOG,
   createCycle,
   createCycleLog,
   createPair,
@@ -9,7 +11,7 @@ import {
   otherMemberId,
   parseLocalDate,
 } from "../src/index.js";
-import type { EnergyLevel } from "../src/index.js";
+import type { EmotionCode, EnergyLevel } from "../src/index.js";
 
 const date = parseLocalDate;
 
@@ -92,5 +94,55 @@ describe("Cycle and CycleLog", () => {
       cycleDay: null,
       estimated: true,
     });
+  });
+});
+
+describe("감정 축", () => {
+  const log = (emotions: readonly EmotionCode[]) =>
+    createCycleLog({
+      id: "log-emotion",
+      memberId: "member-a",
+      date: parseLocalDate("2026-09-20"),
+      emotions,
+    });
+
+  it("여러 감정을 동시에 담는다", () => {
+    // 불안하면서 서운할 수 있다. 단일 선택으로는 담기지 않던 상태다.
+    expect(log(["anxious", "hurt"]).emotions).toEqual(["anxious", "hurt"]);
+  });
+
+  it("상한까지는 받는다", () => {
+    expect(log(["calm", "happy", "affectionate"]).emotions).toHaveLength(
+      MAX_EMOTIONS_PER_LOG,
+    );
+  });
+
+  it("상한을 넘기면 거절한다", () => {
+    // 전부 고르면 아무 정보도 되지 않는다.
+    expect(() => log(["calm", "happy", "affectionate", "lonely"])).toThrow(
+      /at most 3/,
+    );
+  });
+
+  it("같은 감정을 두 번 담지 않는다", () => {
+    expect(() => log(["anxious", "anxious"])).toThrow(/must not repeat/);
+  });
+
+  it("기록을 바꿔도 원본 배열이 따라 바뀌지 않는다", () => {
+    const source: EmotionCode[] = ["calm"];
+    const created = log(source);
+    source.push("hurt");
+    expect(created.emotions).toEqual(["calm"]);
+  });
+
+  it("기력 축과 겹치던 몸 상태 값이 사라졌다", () => {
+    // tired, low-energy 는 EnergyLevel 이, sensitive 는 EmotionCode 가 담는다.
+    expect(CONDITION_CODES).toEqual([
+      "comfortable",
+      "cramps",
+      "headache",
+      "needs-space",
+      "other",
+    ]);
   });
 });

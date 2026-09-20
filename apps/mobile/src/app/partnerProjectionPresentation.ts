@@ -10,7 +10,7 @@ export type PartnerSharedFieldKey =
   | 'cycleStatus'
   | 'nextPeriodWindow'
   | 'periodDates'
-  | 'moodTag'
+  | 'emotionTags'
   | 'symptomTags'
   | 'energyLevel'
   | 'conditionCode'
@@ -37,7 +37,7 @@ export interface PartnerTodaySummary {
 }
 
 const hasDailyValues = (projection: RemotePartnerProjection): boolean =>
-  projection.moodTag !== undefined ||
+  projection.emotionTags !== undefined ||
   projection.symptomTags !== undefined ||
   projection.energyLevel !== undefined ||
   projection.conditionCode !== undefined ||
@@ -97,8 +97,8 @@ export function getSafePartnerProjectionForToday(
     ...(hasTodaysDailyLog && projection.symptomTags
       ? { symptomTags: projection.symptomTags }
       : {}),
-    ...(hasTodaysDailyLog && projection.moodTag
-      ? { moodTag: projection.moodTag }
+    ...(hasTodaysDailyLog && projection.emotionTags
+      ? { emotionTags: projection.emotionTags }
       : {}),
     ...(hasTodaysDailyLog && projection.energyLevel
       ? { energyLevel: projection.energyLevel }
@@ -168,12 +168,18 @@ const cycleStatusCopy: Record<
   },
 };
 
-const moodCopy: Readonly<Record<string, string>> = {
-  'very-low': '많이 힘들어요',
-  low: '조금 지쳐요',
-  neutral: '괜찮아요',
-  good: '기분이 좋아요',
-  'very-good': '아주 좋아요',
+// 감정은 여러 개가 함께 올 수 있다. 조합 문구를 만들지 않고 단문을 나열한다.
+// 진단이나 해석은 덧붙이지 않는다. ADR-0005 참조.
+const emotionCopy: Readonly<Record<string, string>> = {
+  calm: '평온',
+  happy: '기쁨',
+  affectionate: '애정',
+  anxious: '불안',
+  irritable: '예민',
+  hurt: '서운',
+  lonely: '외로움',
+  drained: '지침',
+  other: '그 외',
 };
 
 const symptomCopy: Readonly<Record<string, string>> = {
@@ -289,9 +295,11 @@ export function buildPartnerSharedFields(
     });
   }
 
-  const mood = projection.moodTag ? moodCopy[projection.moodTag] : undefined;
-  if (mood) {
-    fields.push({ key: 'moodTag', label: '기분', value: mood });
+  const emotions = (projection.emotionTags ?? [])
+    .map(tag => emotionCopy[tag])
+    .filter((label): label is string => Boolean(label));
+  if (emotions.length > 0) {
+    fields.push({ key: 'emotionTags', label: '지금 마음', value: emotions.join(' · ') });
   }
 
   const symptoms = knownValues(projection.symptomTags, symptomCopy);
@@ -360,11 +368,11 @@ export function buildPartnerTodaySummary(
       : undefined);
   const fields = buildPartnerSharedFields(safeProjection, now);
   const conditionFields = fields.filter(field =>
-    ['moodTag', 'symptomTags', 'energyLevel', 'conditionCode'].includes(
+    ['emotionTags', 'symptomTags', 'energyLevel', 'conditionCode'].includes(
       field.key,
     ),
   );
-  const mood = conditionFields.find(field => field.key === 'moodTag');
+  const emotion = conditionFields.find(field => field.key === 'emotionTags');
   const condition = conditionFields.find(
     field => field.key === 'conditionCode',
   );
@@ -380,11 +388,11 @@ export function buildPartnerTodaySummary(
     ...(cycleTitle ? { cycleTitle } : {}),
     ...(cycleDetail ? { cycleDetail } : {}),
     conditionTitle:
-      mood?.value ?? condition?.value ?? '오늘 컨디션을 기다리고 있어요',
+      emotion?.value ?? condition?.value ?? '오늘 컨디션을 기다리고 있어요',
     conditionDetail:
       conditionFields.length > 0
         ? '파트너가 오늘 직접 공유한 컨디션이에요.'
-        : '오늘 공유된 기분이나 컨디션이 아직 없어요.',
+        : '오늘 공유된 마음이나 컨디션이 아직 없어요.',
     conditionTags,
   };
 }

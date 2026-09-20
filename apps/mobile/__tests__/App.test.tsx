@@ -288,7 +288,7 @@ describe('CyclePair mobile app', () => {
         return [
           {
             localDate: deviceLocalDate(),
-            record: {moodTag: 'good', note: '캐시에서 즉시 복원'},
+            record: {emotionTags: ['anxious'], note: '캐시에서 즉시 복원'},
           },
         ];
       },
@@ -306,7 +306,7 @@ describe('CyclePair mobile app', () => {
       resolveDailyLogs?.([
         {
           localDate: deviceLocalDate(),
-          record: { moodTag: 'good', note: '원격 증분 복원' },
+          record: { emotionTags: ['anxious'], note: '원격 증분 복원' },
         },
       ]);
     });
@@ -684,7 +684,9 @@ describe('CyclePair mobile app', () => {
         '새 주기 시작일로 저장해요. 다음 생리 예상은 설정에서 켤 수 있어요',
       ),
     ).toBeTruthy();
-    await fireEvent.press(view.getByText('괜찮아요'));
+    // 감정은 다중 선택이다. 둘을 고르고 둘 다 남는지 확인한다.
+    await fireEvent.press(view.getByText('평온'));
+    await fireEvent.press(view.getByText('애정'));
     await fireEvent.press(view.getByText('피로'));
     await fireEvent.press(view.getByText('그냥 들어줘요'));
     await fireEvent.press(view.getByText('안전하게 저장하기'));
@@ -732,7 +734,7 @@ describe('CyclePair mobile app', () => {
         return [
           {
             localDate: today,
-            record: { moodTag: 'good', note: '삭제할 기록' },
+            record: { emotionTags: ['anxious'], note: '삭제할 기록' },
           },
         ];
       },
@@ -740,7 +742,7 @@ describe('CyclePair mobile app', () => {
         return [
           {
             localDate: today,
-            record: { moodTag: 'good', note: '삭제할 기록' },
+            record: { emotionTags: ['anxious'], note: '삭제할 기록' },
           },
         ];
       },
@@ -876,7 +878,7 @@ describe('CyclePair mobile app', () => {
       dailyLogDate: deviceLocalDate(),
       cyclePhase: 'ovulatory',
       cycleStatus: 'fertile-window',
-      moodTag: 'neutral',
+      emotionTags: ['anxious'],
     } as const;
     const backend: CyclePairBackend = {
       ...previewCyclePairBackend,
@@ -902,7 +904,7 @@ describe('CyclePair mobile app', () => {
           fertilityStatus: true,
           nextPeriodWindow: false,
           periodDates: false,
-          moodTag: true,
+          emotionTags: true,
           symptomTags: false,
           energyLevel: false,
           conditionCode: false,
@@ -1012,7 +1014,7 @@ describe('CyclePair mobile app', () => {
       emitProjection?.({
         ...initialProjection,
         generatedAt: '2026-08-24T00:01:00.000Z',
-        moodTag: 'good',
+        emotionTags: ['calm'],
       });
     });
 

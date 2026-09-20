@@ -17,6 +17,7 @@ import {
   TextButton,
 } from '../components/Ui';
 import { colors, spacing } from '../theme';
+import { emotionLabel } from '../app/emotions';
 import {
   PartnerNudgeActions,
   PartnerNudgeInbox,
@@ -28,7 +29,7 @@ export function HomeScreen({ onOpenRecord }: { onOpenRecord(): void }) {
   const featurePolicy = resolveCycleFeaturePolicy(hasFeature);
   const viewModel = buildCycleViewModel(state, featurePolicy);
   const hasCheckIn = Boolean(
-    state.checkIn.mood ||
+    state.checkIn.emotions?.length ||
       state.checkIn.symptoms.length ||
       state.checkIn.energy ||
       state.checkIn.condition ||
@@ -189,7 +190,7 @@ export function HomeScreen({ onOpenRecord }: { onOpenRecord(): void }) {
             <Text style={styles.checkBody}>
               {hasCheckIn
                 ? [
-                    state.checkIn.mood,
+                    ...(state.checkIn.emotions ?? []).map(emotionLabel),
                     ...state.checkIn.symptoms,
                     state.checkIn.carePreference,
                   ]

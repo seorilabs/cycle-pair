@@ -127,7 +127,7 @@ import { ConditionSharePage } from './index';
 import { createAitAnalytics, type AitAnalytics } from '../analytics';
 
 const COMPLETE_DRAFT = {
-  condition: 'tired' as const,
+  condition: 'cramps' as const,
   helpPreference: 'listen' as const,
 };
 
@@ -326,7 +326,7 @@ describe('AppsInToss TDS presentation', () => {
     const screen = render(<ConditionSharePage />);
     await waitFor(() => expect(screen.getByText('편안해요')).toBeTruthy());
 
-    expect(screen.getByRole('radio', { name: '피곤해요' }).props.accessibilityState).toEqual({
+    expect(screen.getByRole('radio', { name: '배가 아파요' }).props.accessibilityState).toEqual({
       selected: true,
     });
     expect(screen.getByRole('radio', { name: '편안해요' }).props.accessibilityState).toEqual({

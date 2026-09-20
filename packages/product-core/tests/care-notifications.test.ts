@@ -29,7 +29,7 @@ describe("care-tip selection", () => {
   it("prioritizes explicit help preference over condition and phase", () => {
     const tips = selectCareTips({
       helpPreferences: ["listen"],
-      condition: "low-energy",
+      energy: 2,
       phase: "luteal",
     });
     expect(tips[0]?.id).toBe("preference-listen");
@@ -101,5 +101,23 @@ describe("neutral notification schedule", () => {
     expect(schedule).toHaveLength(1);
     expect(schedule[0]?.deliverOn).toBe("2026-07-03");
     expect(schedule[0]?.body).toBe("함께 확인할 업데이트가 있어요.");
+  });
+});
+
+describe("기력 기반 돌봄 제안", () => {
+  it("기력이 낮으면 부담을 줄이라고 제안한다", () => {
+    // ADR-0005 이전에는 ConditionCode 의 tired, low-energy 가 이 규칙을 탔다.
+    const tips = selectCareTips({ energy: 2 });
+    expect(tips.map((tip) => tip.id)).toContain("energy-low");
+  });
+
+  it("기력이 보통이면 그 제안을 하지 않는다", () => {
+    const tips = selectCareTips({ energy: 3 });
+    expect(tips.map((tip) => tip.id)).not.toContain("energy-low");
+  });
+
+  it("직접 밝힌 돌봄 방식이 기력보다 앞선다", () => {
+    const tips = selectCareTips({ helpPreferences: ["listen"], energy: 1 });
+    expect(tips[0]?.id).toBe("preference-listen");
   });
 });

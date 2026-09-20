@@ -198,7 +198,7 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
       firebaseCyclePairBackend.saveDailyLog(
         uid,
         '2026-07-14',
-        { moodTag: 'neutral', energyLevel: 3 },
+        { emotionTags: ['anxious'], energyLevel: 3 },
         'daily-direct-write',
       ),
     ).rejects.toMatchObject({ code: 'firestore/permission-denied' });
@@ -253,7 +253,7 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
           id: '2026-07-14',
           data: () => ({
             localDate: '2026-07-14',
-            moodTag: 'good',
+            emotionTags: ['anxious'],
             lastMutationId: 'older-write',
             updatedAt: {
               toDate: () => new Date('2026-07-14T01:00:00.000Z'),
@@ -322,7 +322,7 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
             id: '2026-07-14',
             data: () => ({
               localDate: '2026-07-14',
-              moodTag: 'good',
+              emotionTags: ['anxious'],
               lastMutationId: 'first-write',
               updatedAt: {toDate: () => new Date(firstUpdatedAt)},
             }),
@@ -358,11 +358,43 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
     await expect(secureCyclePairCache.loadDailyLogs(uid)).resolves.toEqual([]);
   });
 
+  it('원격 문서의 감정 배열을 기록으로 되살린다', async () => {
+    // 저장 경로만 고치고 읽기 경로를 빠뜨리면 타입 검사가 잡지 못한다.
+    // 필드 이름을 바꿀 때 실제로 한 번 빠뜨렸던 자리다.
+    getDocsMock.mockResolvedValueOnce({
+      docs: [
+        {
+          id: '2026-07-14',
+          data: () => ({
+            schemaVersion: 3,
+            localDate: '2026-07-14',
+            lastMutationId: 'remote-write',
+            emotionTags: ['anxious', 'lonely'],
+            energyLevel: 2,
+            conditionCode: 'cramps',
+            updatedAt: {toDate: () => new Date('2026-07-14T01:00:00.000Z')},
+          }),
+        },
+      ],
+    } as Awaited<ReturnType<typeof getDocs>>);
+
+    await expect(firebaseCyclePairBackend.syncDailyLogs(uid)).resolves.toEqual([
+      expect.objectContaining({
+        localDate: '2026-07-14',
+        record: expect.objectContaining({
+          emotionTags: ['anxious', 'lonely'],
+          energyLevel: 2,
+          conditionCode: 'cramps',
+        }),
+      }),
+    ]);
+  });
+
   it('저장과 삭제를 기록 문서와 삭제 표식의 원자적 배치로 반영한다', async () => {
     await firebaseCyclePairBackend.saveDailyLog(
       uid,
       '2026-07-14',
-      {moodTag: 'good'},
+      {emotionTags: ['anxious']},
       'atomic-save',
     );
     await firebaseCyclePairBackend.deleteDailyLog(

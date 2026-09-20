@@ -15,7 +15,7 @@ const SHAREABLE_FIELDS: readonly ShareableField[] = Object.freeze([
   "fertilityStatus",
   "prediction",
   "symptoms",
-  "mood",
+  "emotions",
   "energy",
   "condition",
   "helpPreferences",
@@ -124,7 +124,9 @@ export function projectForPartner(
     ...(settings.fields.symptoms && log?.symptoms !== undefined
       ? { symptoms: Object.freeze([...log.symptoms]) }
       : {}),
-    ...(settings.fields.mood && log?.mood !== undefined ? { mood: log.mood } : {}),
+    ...(settings.fields.emotions && log?.emotions !== undefined
+      ? { emotions: Object.freeze([...log.emotions]) }
+      : {}),
     ...(settings.fields.energy && log?.energy !== undefined ? { energy: log.energy } : {}),
     ...(settings.fields.condition && log?.condition !== undefined
       ? { condition: log.condition }

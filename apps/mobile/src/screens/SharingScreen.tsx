@@ -10,10 +10,10 @@ const fields: Array<{ key: ShareField; title: string; description: string }> = [
   { key: 'fertilityStatus', title: '가임 가능 시기', description: '예측 기반 참고 정보이며 피임 판단에는 사용할 수 없어요' },
   { key: 'predictedPeriod', title: '다음 생리 예정 범위', description: '참고용 예상 범위만 공유해요' },
   { key: 'periodDates', title: '실제 생리 날짜', description: '시작·종료 기록을 공유해요' },
-  { key: 'mood', title: '오늘의 기분', description: '내가 직접 고른 기분만 보여줘요' },
+  { key: 'emotions', title: '지금 마음', description: '내가 직접 고른 감정만 보여줘요' },
   { key: 'symptoms', title: '증상', description: '민감할 수 있어 기본값은 꺼져 있어요' },
   { key: 'energy', title: '에너지 정도', description: '1–5 단계 중 오늘 고른 값만 보여줘요' },
-  { key: 'condition', title: '오늘의 컨디션', description: '편안함·피곤함처럼 직접 고른 상태만 보여줘요' },
+  { key: 'condition', title: '오늘의 컨디션', description: '편안함·복통처럼 직접 고른 몸 상태만 보여줘요' },
   { key: 'carePreference', title: '원하는 도움', description: '추측 대신 내가 선택한 배려 방식을 알려줘요' },
   { key: 'note', title: '오늘의 메모', description: '자유 입력이라 특히 민감할 수 있어 기본값은 꺼져 있어요' },
 ];

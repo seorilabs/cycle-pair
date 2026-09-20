@@ -80,7 +80,7 @@ describe('secureCyclePairCache', () => {
     };
     const daily = {
       localDate: '2026-07-14',
-      record: { moodTag: 'good', note: '민감한 기록' },
+      record: { emotionTags: ['anxious'], note: '민감한 기록' },
       mutationId: 'daily-1',
       updatedAt: '2026-07-14T01:00:00.000Z',
     };
@@ -112,11 +112,11 @@ describe('secureCyclePairCache', () => {
   it('선택한 일일 기록만 암호화 캐시에서 삭제한다', async () => {
     await secureCyclePairCache.saveDailyLog('user-a', {
       localDate: '2026-07-13',
-      record: {moodTag: 'low'},
+      record: {emotionTags: ['anxious']},
     });
     await secureCyclePairCache.saveDailyLog('user-a', {
       localDate: '2026-07-14',
-      record: {moodTag: 'good'},
+      record: {emotionTags: ['anxious']},
     });
 
     await secureCyclePairCache.deleteDailyLog('user-a', '2026-07-14');
@@ -124,7 +124,7 @@ describe('secureCyclePairCache', () => {
     await expect(
       secureCyclePairCache.loadDailyLogs('user-a'),
     ).resolves.toEqual([
-      {localDate: '2026-07-13', record: {moodTag: 'low'}},
+      {localDate: '2026-07-13', record: {emotionTags: ['anxious']}},
     ]);
   });
 
@@ -401,7 +401,7 @@ describe('secureCyclePairCache', () => {
     await expect(
       secureCyclePairCache.saveDailyLog('user-a', {
         localDate: '2026-07-14',
-        record: { moodTag: 'good' },
+        record: { emotionTags: ['anxious'] },
         updatedAt: '2026-02-30T00:00:00.000Z',
       }),
     ).rejects.toThrow('Invalid private cache entry.');

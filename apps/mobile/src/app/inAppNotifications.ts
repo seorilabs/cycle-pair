@@ -20,7 +20,7 @@ const projectionContentFields = [
   'cycleStatus',
   'nextPeriodWindow',
   'symptomTags',
-  'moodTag',
+  'emotionTags',
   'energyLevel',
   'conditionCode',
   'carePreferences',

@@ -10,7 +10,7 @@ function privateMutation(mutationId: string): OfflineMutation {
     mutationId,
     createdAt: '2026-07-14T00:00:00.000Z',
     localDate: '2026-07-14',
-    record: {moodTag: 'neutral'},
+    record: {emotionTags: ['anxious']},
   };
 }
 

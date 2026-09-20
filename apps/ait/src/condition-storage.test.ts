@@ -12,7 +12,7 @@ import {
 import { EMPTY_SHARE_DRAFT, type ConditionShareDraft } from './share-draft';
 
 const COMPLETE_DRAFT: ConditionShareDraft = {
-  condition: 'tired',
+  condition: 'cramps',
   helpPreference: 'listen',
 };
 

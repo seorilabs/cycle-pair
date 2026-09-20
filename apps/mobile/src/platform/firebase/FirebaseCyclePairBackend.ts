@@ -57,9 +57,10 @@ import { SENSITIVE_HEALTH_CONSENT_VERSION } from '../../domain/privacy/Sensitive
 const FUNCTIONS_REGION = 'asia-northeast3';
 const CONDITION_CODES = new Set<BackendConditionCode>([
   'comfortable',
-  'tired',
-  'low-energy',
+  'cramps',
+  'headache',
   'needs-space',
+  'other',
 ]);
 const DAILY_NOTE_MAX_LENGTH = 500;
 const DAILY_LOG_SYNC_EPOCH = '1970-01-01T00:00:00.000Z';
@@ -235,7 +236,9 @@ function parseDailyLog(
 ): PrivateDailyLogSnapshot {
   const data = asRecord(value);
   const record: PrivateDailyLogRecord = {
-    ...(asString(data?.moodTag) ? { moodTag: asString(data?.moodTag) } : {}),
+    ...(asStringArray(data?.emotionTags)
+      ? { emotionTags: asStringArray(data?.emotionTags) }
+      : {}),
     ...(asStringArray(data?.symptomTags)
       ? { symptomTags: asStringArray(data?.symptomTags) }
       : {}),
@@ -604,7 +607,7 @@ function parseShareSettings(value: unknown): BackendShareSettings {
     fertilityStatus: data?.fertilityStatus === true,
     nextPeriodWindow: data?.nextPeriodWindow === true,
     periodDates: data?.periodDates === true,
-    moodTag: data?.moodTag === true,
+    emotionTags: data?.emotionTags === true,
     symptomTags: data?.symptomTags === true,
     energyLevel: data?.energyLevel === true,
     conditionCode: data?.conditionCode === true,
@@ -679,7 +682,9 @@ function parseProjection(value: unknown): RemotePartnerProjection | null {
     ...(asStringArray(data.symptomTags)
       ? { symptomTags: asStringArray(data.symptomTags) }
       : {}),
-    ...(asString(data.moodTag) ? { moodTag: asString(data.moodTag) } : {}),
+    ...(asStringArray(data.emotionTags)
+      ? { emotionTags: asStringArray(data.emotionTags) }
+      : {}),
     ...(isEnergyLevel(data.energyLevel)
       ? { energyLevel: data.energyLevel }
       : {}),

@@ -3,6 +3,7 @@ import type {
   CareTipRule,
   ConditionCode,
   CyclePhase,
+  EnergyLevel,
   HelpPreference,
 } from "./models.js";
 
@@ -63,12 +64,12 @@ export const DEFAULT_CARE_TIP_RULES: readonly CareTipRule[] = Object.freeze([
   },
   {
     tip: {
-      id: "condition-low-energy",
+      id: "energy-low",
       title: "오늘의 부담을 줄여 보세요",
-      body: "에너지가 낮다고 직접 공유했어요. 일정을 조정할지 물어보세요.",
+      body: "기력이 낮다고 직접 공유했어요. 일정을 조정할지 물어보세요.",
     },
     priority: 70,
-    match: { conditions: ["tired", "low-energy"] },
+    match: { maxEnergy: 2 },
   },
   {
     tip: {
@@ -97,6 +98,7 @@ export const DEFAULT_CARE_TIPS: readonly CareTip[] = Object.freeze(
 export interface SelectCareTipsInput {
   readonly helpPreferences?: readonly HelpPreference[];
   readonly condition?: ConditionCode;
+  readonly energy?: EnergyLevel;
   readonly phase?: CyclePhase;
   readonly limit?: number;
 }
@@ -116,6 +118,13 @@ function matchTier(rule: CareTipRule, input: SelectCareTipsInput): number {
     return 3;
   }
   if (input.condition && rule.match.conditions?.includes(input.condition)) {
+    return 2;
+  }
+  if (
+    input.energy !== undefined &&
+    rule.match.maxEnergy !== undefined &&
+    input.energy <= rule.match.maxEnergy
+  ) {
     return 2;
   }
   if (input.phase && input.phase !== "unknown" && rule.match.phases?.includes(input.phase)) {

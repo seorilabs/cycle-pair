@@ -47,7 +47,7 @@ describe("cycle reminder domain", () => {
     for (const today of ["2026-07-26", "2026-07-29"]) {
       expect(
         shouldDeliverCycleReminderOn(
-          baseInput(today, {shareSettings: {moodTag: true}}),
+          baseInput(today, {shareSettings: {emotionTags: true}}),
         ),
       ).toBe(false);
       expect(
@@ -229,7 +229,7 @@ describe("cycle reminder delivery", () => {
   test("공유 동의가 없는 페어에는 리마인더를 만들지 않는다", async () => {
     const {db} = fakeFirestore(
       seedForPair({
-        [`users/${OWNER}/shareSettings/${PAIR_ID}`]: {moodTag: true},
+        [`users/${OWNER}/shareSettings/${PAIR_ID}`]: {emotionTags: true},
       }),
     );
     const delivered: string[] = [];

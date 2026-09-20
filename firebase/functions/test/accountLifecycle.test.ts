@@ -65,7 +65,7 @@ describe("account export policy", () => {
     expect(enabledConsentFields({
       schemaVersion: 1,
       periodDates: true,
-      moodTag: false,
+      emotionTags: false,
       carePreferences: true,
     })).toEqual(["carePreferences", "periodDates"]);
     expect(ACCOUNT_EXPORT_SCHEMA_VERSION).toBe(1);

@@ -61,7 +61,7 @@ Owner client가 쓰는 `privateCycles/current`와 `privateDailyLogs/{localDate}`
 건강 필드는 기본적으로 모두 비공개다. 현재 active Pair 전용 `/users/{uid}/shareSettings/{pairId}` 문서에서 `<key> === true`인 경우에만 다음 allowlist가 projection에 들어간다.
 
 - Cycle record: `periodDates`, `cyclePhase`, `nextPeriodWindow`
-- Daily log: `symptomTags`, `moodTag`, `energyLevel`, `conditionCode`, `carePreferences`, `note`
+- Daily log: `symptomTags`, `emotionTags`, `energyLevel`, `conditionCode`, `carePreferences`, `note`
 
 OFF/누락/유효하지 않은 값은 `null`로 남기지 않고 문서에서 제거한다. `energyLevel`은 1~5 정수, `conditionCode`는 고정 allowlist, `note`는 500자 이하일 때만 별도 동의에 따라 공유한다. raw 생리일 목록과 allowlist 밖의 값은 projection helper가 복사하지 않는다. Analytics에는 raw 값과 `cyclePhase`를 보내지 않는다.
 

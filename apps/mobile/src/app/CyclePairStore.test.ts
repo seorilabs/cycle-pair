@@ -145,7 +145,7 @@ describe('CyclePair pair privacy state', () => {
       {
         ...base,
         checkIn: {
-          mood: '좋아요',
+          emotions: ['anxious'],
           symptoms: ['두통'],
           periodStarted: false,
           periodEnded: false,
@@ -157,7 +157,7 @@ describe('CyclePair pair privacy state', () => {
           {
             localDate: localDateDaysAgo(1),
             checkIn: {
-              mood: '좋아요',
+              emotions: ['anxious'],
               symptoms: ['두통'],
               periodStarted: false,
               periodEnded: false,
@@ -179,7 +179,7 @@ describe('CyclePair pair privacy state', () => {
     const state = {
       ...base,
       checkIn: {
-        mood: '좋아요' as const,
+        emotions: ['anxious'] as const,
         symptoms: [],
         periodStarted: false,
         periodEnded: false,
@@ -188,7 +188,7 @@ describe('CyclePair pair privacy state', () => {
         {
           localDate: '2026-07-14',
           checkIn: {
-            mood: '좋아요' as const,
+            emotions: ['anxious'] as const,
             symptoms: [],
             periodStarted: false,
             periodEnded: false,
@@ -420,7 +420,7 @@ describe('CyclePair pair privacy state', () => {
     });
     const toggled = reduceCyclePairState(state, {
       type: 'SET_SHARE_SETTINGS',
-      payload: { ...state.shareSettings, mood: true },
+      payload: { ...state.shareSettings, emotions: true },
     });
 
     expect(recommended).toBe(state);
@@ -530,7 +530,7 @@ describe('CyclePair pair privacy state', () => {
           fertilityStatus: false,
           predictedPeriod: false,
           periodDates: false,
-          mood: false,
+          emotions: false,
           symptoms: false,
           energy: false,
           condition: false,

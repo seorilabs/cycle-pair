@@ -12,7 +12,7 @@ const initialProjection: RemotePartnerProjection = {
   pairId: 'pair-a',
   generatedAt: '2026-08-24T00:00:00.000Z',
   dailyLogDate: '2026-08-24',
-  moodTag: 'neutral',
+  emotionTags: ['anxious'],
 };
 
 const ownEvent: PairEvent = {
@@ -36,7 +36,21 @@ describe('in-app partner notifications', () => {
     expect(
       hasMeaningfulPartnerProjectionChange(initialProjection, {
         ...initialProjection,
-        moodTag: 'good',
+        emotionTags: ['calm'],
+      }),
+    ).toBe(true);
+    // 배열이라 같은 값이면 알리지 않아야 한다.
+    expect(
+      hasMeaningfulPartnerProjectionChange(initialProjection, {
+        ...initialProjection,
+        emotionTags: ['anxious'],
+      }),
+    ).toBe(false);
+    // 감정이 하나 늘어난 것도 변화다.
+    expect(
+      hasMeaningfulPartnerProjectionChange(initialProjection, {
+        ...initialProjection,
+        emotionTags: ['anxious', 'lonely'],
       }),
     ).toBe(true);
   });

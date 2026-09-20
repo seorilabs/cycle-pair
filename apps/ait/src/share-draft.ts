@@ -15,8 +15,8 @@ export interface ConditionShareDraft {
 
 export const CONDITION_OPTIONS: readonly ShareOption<ConditionCode>[] = [
   { value: 'comfortable', label: '편안해요' },
-  { value: 'tired', label: '피곤해요' },
-  { value: 'low-energy', label: '기운이 없어요' },
+  { value: 'cramps', label: '배가 아파요' },
+  { value: 'headache', label: '머리가 아파요' },
   { value: 'needs-space', label: '공간이 필요해요' },
 ];
 

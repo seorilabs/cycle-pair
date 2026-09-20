@@ -129,7 +129,7 @@ describe("neutral notification privacy boundary", () => {
       pairId: "pair-1",
       schemaVersion: 1,
       generatedAt: "2026-07-14T00:00:00.000Z",
-      moodTag: "neutral",
+      emotionTags: ["calm"],
     };
     expect(hasMeaningfulProjectionChange(before, {
       ...before,
@@ -137,7 +137,7 @@ describe("neutral notification privacy boundary", () => {
     })).toBe(false);
     expect(hasMeaningfulProjectionChange(before, {
       ...before,
-      moodTag: "good",
+      emotionTags: ["happy"],
     })).toBe(true);
     expect(hasMeaningfulProjectionChange(before, {
       ...before,

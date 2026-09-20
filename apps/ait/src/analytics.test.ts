@@ -18,14 +18,14 @@ describe('AppsInToss analytics', () => {
 
     analytics.track({
       name: 'cp_ait_condition_select',
-      params: { group: 'condition', value: 'tired' },
+      params: { group: 'condition', value: 'cramps' },
     });
     analytics.track({ name: 'cp_ait_draft_restored' });
 
     expect(delegate.log).toHaveBeenNthCalledWith(1, {
       log_name: 'cp_ait_condition_select',
       log_type: 'click',
-      params: { group: 'condition', value: 'tired' },
+      params: { group: 'condition', value: 'cramps' },
     });
     expect(delegate.log).toHaveBeenNthCalledWith(2, {
       log_name: 'cp_ait_draft_restored',
@@ -47,7 +47,7 @@ describe('AppsInToss analytics', () => {
     expect(() =>
       validateAitAnalyticsEvent({
         name: 'cp_ait_condition_select',
-        params: { group: 'help', value: 'tired' },
+        params: { group: 'help', value: 'cramps' },
       }),
     ).toThrow('allowlisted schema');
   });

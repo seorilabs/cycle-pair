@@ -29,16 +29,16 @@ describe("partner projection", () => {
     memberId: "member-a",
     date: date("2026-06-01"),
     symptoms: ["fatigue"],
-    mood: "low",
+    emotions: ["anxious", "hurt"],
     energy: 2,
-    condition: "low-energy",
+    condition: "cramps",
     helpPreferences: ["listen"],
     note: "private note",
   });
 
   it("includes only explicitly shared fields", () => {
     const settings = createShareSettings("member-a", date("2026-06-01"), {
-      mood: true,
+      emotions: true,
       condition: true,
     });
     const projection = projectForPartner(
@@ -52,7 +52,10 @@ describe("partner projection", () => {
       settings,
     );
 
-    expect(projection).toMatchObject({ mood: "low", condition: "low-energy" });
+    expect(projection).toMatchObject({
+      emotions: ["anxious", "hurt"],
+      condition: "cramps",
+    });
     for (const privateField of [
       "cyclePhase",
       "periodDates",
@@ -168,7 +171,7 @@ describe("partner projection", () => {
 
   it("두 동의가 모두 없으면 어떤 국면에서도 필드가 부재한다", () => {
     const settings = createShareSettings("member-a", date("2026-06-01"), {
-      mood: true,
+      emotions: true,
     });
     const phases = ["menstrual", "follicular", "ovulatory", "luteal", "unknown"] as const;
 
@@ -215,12 +218,49 @@ describe("partner projection", () => {
   });
 
   it("rejects data that belongs to another member", () => {
-    const settings = createShareSettings("member-a", date("2026-06-01"), { mood: true });
+    const settings = createShareSettings("member-a", date("2026-06-01"), { emotions: true });
     expect(() =>
       projectForPartner(
         { subjectMemberId: "member-b", asOf: date("2026-06-01"), latestLog },
         settings,
       ),
     ).toThrow("do not belong");
+  });
+});
+
+describe("감정 공유", () => {
+  const logWithEmotions = createCycleLog({
+    id: "log-emotion",
+    memberId: "member-a",
+    date: parseLocalDate("2026-06-01"),
+    emotions: ["anxious", "lonely"],
+  });
+
+  it("켜야만 파트너에게 전해진다", () => {
+    const settings = createShareSettings("member-a", parseLocalDate("2026-06-01"), {
+      emotions: true,
+    });
+    const projection = projectForPartner(
+      {
+        subjectMemberId: "member-a",
+        asOf: parseLocalDate("2026-06-01"),
+        latestLog: logWithEmotions,
+      },
+      settings,
+    );
+    expect(projection.emotions).toEqual(["anxious", "lonely"]);
+  });
+
+  it("기본값은 꺼져 있어 필드가 아예 없다", () => {
+    const settings = createShareSettings("member-a", parseLocalDate("2026-06-01"));
+    const projection = projectForPartner(
+      {
+        subjectMemberId: "member-a",
+        asOf: parseLocalDate("2026-06-01"),
+        latestLog: logWithEmotions,
+      },
+      settings,
+    );
+    expect(Object.hasOwn(projection, "emotions")).toBe(false);
   });
 });

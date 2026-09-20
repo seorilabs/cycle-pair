@@ -34,7 +34,7 @@ describe('partner projection presentation', () => {
           startDate: '2026-07-01',
           endDate: '2026-07-05',
         },
-        moodTag: 'good',
+        emotionTags: ['anxious'],
         symptomTags: ['headache', 'fatigue'],
         energyLevel: 4,
         conditionCode: 'comfortable',
@@ -49,7 +49,7 @@ describe('partner projection presentation', () => {
       'cyclePhase',
       'nextPeriodWindow',
       'periodDates',
-      'moodTag',
+      'emotionTags',
       'symptomTags',
       'energyLevel',
       'conditionCode',
@@ -72,7 +72,7 @@ describe('partner projection presentation', () => {
     const fields = buildPartnerSharedFields(
       {
         ...metadata,
-        moodTag: '<unexpected>',
+        emotionTags: ['<unexpected>'],
         symptomTags: ['unknown-symptom'],
         carePreferences: ['unknown-care'],
         periodDates: { startDate: '2026-02-30' },
@@ -124,7 +124,7 @@ describe('partner projection presentation', () => {
         startDate: '2026-07-28',
         endDate: '2026-08-03',
       },
-      moodTag: 'very-low',
+      emotionTags: ['anxious'],
       conditionCode: 'needs-space',
       carePreferences: ['quiet-space'],
       note: '어제 기록',
@@ -153,7 +153,7 @@ describe('partner projection presentation', () => {
       ownerUid: 'partner-a',
       pairId: 'pair-a',
       generatedAt: '2026-07-14T11:59:00.000Z',
-      moodTag: 'good',
+      emotionTags: ['anxious'],
     };
 
     expect(
@@ -182,14 +182,14 @@ describe('partner projection presentation', () => {
           cyclePhase:
             cycleStatus === 'fertile-window' ? 'ovulatory' : 'follicular',
           cycleStatus,
-          moodTag: 'good',
+          emotionTags: ['anxious'],
           conditionCode: 'comfortable',
         },
         metadataDate,
       ),
     ).toMatchObject({
       cycleTitle: title,
-      conditionTitle: '기분이 좋아요',
+      conditionTitle: '불안',
       conditionTags: ['편안해요'],
     });
   });

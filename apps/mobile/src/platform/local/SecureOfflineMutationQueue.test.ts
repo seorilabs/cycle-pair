@@ -64,7 +64,7 @@ function dailyMutation(
     createdAt: '2026-07-14T01:00:00.000Z',
     localDate: '2026-07-14',
     record: {
-      moodTag: 'neutral',
+      emotionTags: ['anxious'],
       symptomTags: ['cramps'],
       energyLevel: 3,
       carePreferences: ['quiet-space'],
@@ -151,7 +151,7 @@ function shareSettingsMutation(
       cyclePhase: false,
       nextPeriodWindow: false,
       periodDates: false,
-      moodTag: true,
+      emotionTags: true,
       symptomTags: false,
       energyLevel: false,
       conditionCode: true,
@@ -288,7 +288,7 @@ describe('secureOfflineMutationQueue', () => {
   it('같은 uid와 mutationId를 다시 넣으면 하나의 service를 덮어쓴다', async () => {
     const first = dailyMutation();
     const latest = dailyMutation({
-      record: { moodTag: 'good', energyLevel: 5 },
+      record: { emotionTags: ['anxious'], energyLevel: 5 },
     });
 
     await secureOfflineMutationQueue.enqueue(first);
@@ -704,7 +704,7 @@ describe('secureOfflineMutationQueue', () => {
     ).rejects.toThrow('Invalid offline mutation.');
     await expect(
       secureOfflineMutationQueue.enqueue(
-        dailyMutation({ record: { moodTag: 'free-form-health-text' } }),
+        dailyMutation({ record: { emotionTags: ['free-form-health-text'] } }),
       ),
     ).rejects.toThrow('Invalid offline mutation.');
     await expect(
@@ -771,7 +771,7 @@ describe('secureOfflineMutationQueue', () => {
     const first = shareSettingsMutation();
     const latest = shareSettingsMutation({
       createdAt: '2026-07-14T05:00:00.000Z',
-      settings: { ...first.settings, moodTag: false, note: true },
+      settings: { ...first.settings, emotionTags: false, note: true },
     });
 
     await secureOfflineMutationQueue.enqueue(first);
@@ -783,7 +783,7 @@ describe('secureOfflineMutationQueue', () => {
     await expect(
       secureOfflineMutationQueue.enqueue({
         ...first,
-        settings: { moodTag: true },
+        settings: { emotionTags: true },
       } as ShareSettingsOfflineMutation),
     ).rejects.toThrow('Invalid offline mutation.');
   });
@@ -797,7 +797,7 @@ describe('같은 대상을 가리키는 변경을 접는다', () => {
       await secureOfflineMutationQueue.enqueue(
         dailyMutation({
           mutationId: `daily-${index}`,
-          record: {moodTag: 'neutral', energyLevel: ((index % 5) + 1) as 1 | 2 | 3 | 4 | 5},
+          record: {emotionTags: ['anxious'], energyLevel: ((index % 5) + 1) as 1 | 2 | 3 | 4 | 5},
         }),
       );
     }
