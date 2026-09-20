@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { DailyCheckIn, useCyclePair } from '../app/CyclePairStore';
 import { Body, Card, Chip, PrimaryButton, Screen, SectionHeader, TextButton, Title } from '../components/Ui';
 import { colors, radius, spacing } from '../theme';
+import { BrandMotif } from '../components/BrandMotif';
 import {
   EMOTION_CODES,
   EMOTION_LABELS,
@@ -78,8 +79,15 @@ export function RecordScreen({ onDone, onCancel }: { onDone(): void; onCancel():
         <Text style={styles.date}>오늘 기록</Text>
         <View style={styles.placeholder} />
       </View>
-      <Title>지금 내 상태를{`\n`}짧게 남겨볼까요?</Title>
-      <Body muted style={styles.intro}>선택하지 않은 항목은 저장하지 않아요. 공유 설정도 그대로 유지돼요.</Body>
+      <View style={styles.hero}>
+        <View style={styles.heroText}>
+          <Title>지금 내 상태를{`\n`}짧게 남겨볼까요?</Title>
+          <Body muted style={styles.intro}>
+            선택하지 않은 항목은 저장하지 않아요. 공유 설정도 그대로 유지돼요.
+          </Body>
+        </View>
+        <BrandMotif size={76} />
+      </View>
 
       <SectionHeader title="지금 마음" />
       <Body muted style={styles.intro}>
@@ -93,6 +101,8 @@ export function RecordScreen({ onDone, onCancel }: { onDone(): void; onCancel():
           return (
             <Pressable
               accessibilityRole="checkbox"
+              // 이모지가 함께 읽히지 않도록 이름을 직접 준다.
+              accessibilityLabel={EMOTION_LABELS[code]}
               accessibilityState={{ checked: selected, disabled: atLimit }}
               disabled={atLimit}
               key={code}
@@ -269,11 +279,24 @@ const styles = StyleSheet.create({
   close: { color: colors.text, fontSize: 34, lineHeight: 38, fontWeight: '300' },
   date: { color: colors.textMuted, fontSize: 14, fontWeight: '800' },
   placeholder: { width: 30 },
+  hero: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  heroText: { flex: 1 },
   intro: { marginTop: spacing.md },
-  moodGrid: { flexDirection: 'row', gap: spacing.sm },
+  moodGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
   moodCard: {
-    flex: 1,
-    minHeight: 90,
+    // 감정 9종을 한 줄에 넣으면 카드가 못 읽을 만큼 좁아진다. 한 줄에 3개.
+    flexBasis: '31%',
+    flexGrow: 1,
+    minHeight: 84,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
@@ -286,8 +309,8 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   moodCardSelected: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
-  moodEmoji: { fontSize: 28 },
-  moodLabel: { color: colors.textMuted, fontSize: 11, fontWeight: '700' },
+  moodEmoji: { fontSize: 26 },
+  moodLabel: { color: colors.textMuted, fontSize: 12, fontWeight: '700' },
   moodLabelSelected: { color: colors.primaryDark, fontWeight: '900' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   energyRow: { flexDirection: 'row', gap: spacing.sm },

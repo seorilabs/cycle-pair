@@ -684,9 +684,26 @@ describe('CyclePair mobile app', () => {
         '새 주기 시작일로 저장해요. 다음 생리 예상은 설정에서 켤 수 있어요',
       ),
     ).toBeTruthy();
-    // 감정은 다중 선택이다. 둘을 고르고 둘 다 남는지 확인한다.
+    // 감정은 다중 선택이고 상한은 3개다. 상한에 닿으면 나머지가 잠긴다.
     await fireEvent.press(view.getByText('평온'));
     await fireEvent.press(view.getByText('애정'));
+    await fireEvent.press(view.getByText('불안'));
+    // 넷째를 눌러도 담기지 않아야 한다. 표시만 잠그고 동작이 열려 있으면
+    // 상한이 지켜지지 않으므로 눌러 본 결과로 확인한다.
+    await fireEvent.press(view.getByText('외로움'));
+    expect(
+      view.getByRole('checkbox', {name: '외로움'}).props.accessibilityState,
+    ).toMatchObject({checked: false});
+    // 이미 고른 것은 눌러서 뺄 수 있어야 한다.
+    await fireEvent.press(view.getByText('불안'));
+    expect(
+      view.getByRole('checkbox', {name: '불안'}).props.accessibilityState,
+    ).toMatchObject({checked: false});
+    // 자리가 나면 다시 담긴다.
+    await fireEvent.press(view.getByText('외로움'));
+    expect(
+      view.getByRole('checkbox', {name: '외로움'}).props.accessibilityState,
+    ).toMatchObject({checked: true});
     await fireEvent.press(view.getByText('피로'));
     await fireEvent.press(view.getByText('그냥 들어줘요'));
     await fireEvent.press(view.getByText('안전하게 저장하기'));
