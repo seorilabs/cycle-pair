@@ -13,7 +13,18 @@ import { secureUserDataFence } from './SecureUserDataFence';
 
 const SCHEMA_VERSION = 1 as const;
 const SERVICE_PREFIX = 'com.seorilabs.cyclepair.offline.v1.';
-const MOOD_TAGS = new Set(['very-low', 'low', 'neutral', 'good', 'very-good']);
+const EMOTION_TAGS = new Set([
+  'calm',
+  'happy',
+  'affectionate',
+  'anxious',
+  'irritable',
+  'hurt',
+  'lonely',
+  'drained',
+  'other',
+]);
+const MAX_EMOTION_TAGS = 3;
 const SYMPTOM_TAGS = new Set([
   'cramps',
   'headache',
@@ -24,9 +35,10 @@ const SYMPTOM_TAGS = new Set([
 ]);
 const CONDITION_CODES = new Set([
   'comfortable',
-  'tired',
-  'low-energy',
+  'cramps',
+  'headache',
   'needs-space',
+  'other',
 ]);
 const CARE_PREFERENCES = new Set([
   'quiet-space',
@@ -314,13 +326,16 @@ function isPrivateDailyLogRecord(
   }
 
   const energyLevel = value.energyLevel;
-  const moodTag = value.moodTag;
+  const emotionTags = value.emotionTags;
   const symptomTags = value.symptomTags;
   const conditionCode = value.conditionCode;
   const carePreferences = value.carePreferences;
   return (
-    isOptionalBoundedString(moodTag, 32) &&
-    (moodTag === undefined || MOOD_TAGS.has(moodTag)) &&
+    isOptionalStringArray(emotionTags) &&
+    (emotionTags === undefined ||
+      (emotionTags.length <= MAX_EMOTION_TAGS &&
+        new Set(emotionTags).size === emotionTags.length &&
+        emotionTags.every(tag => EMOTION_TAGS.has(tag)))) &&
     isOptionalStringArray(symptomTags) &&
     (symptomTags === undefined ||
       (symptomTags.length <= 12 &&
@@ -374,7 +389,7 @@ const SHARE_SETTING_KEYS = [
   'fertilityStatus',
   'nextPeriodWindow',
   'periodDates',
-  'moodTag',
+  'emotionTags',
   'symptomTags',
   'energyLevel',
   'conditionCode',

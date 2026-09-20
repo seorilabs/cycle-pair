@@ -36,6 +36,7 @@ import {
   TextButton,
 } from '../components/Ui';
 import { colors, radius, spacing } from '../theme';
+import { emotionLabel } from '../app/emotions';
 
 const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -654,7 +655,7 @@ export function CalendarScreen() {
                   </View>
                   <Text style={styles.agendaBody}>
                     {[
-                      selectedHistory.checkIn.mood,
+                      ...(selectedHistory.checkIn.emotions ?? []).map(emotionLabel),
                       ...selectedHistory.checkIn.symptoms,
                       selectedHistory.checkIn.energy
                         ? `에너지 ${selectedHistory.checkIn.energy}`

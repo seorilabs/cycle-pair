@@ -63,7 +63,7 @@ function shareSettings(
       | "fertilityStatus"
       | "nextPeriodWindow"
       | "periodDates"
-      | "moodTag"
+      | "emotionTags"
       | "symptomTags"
       | "energyLevel"
       | "conditionCode"
@@ -81,7 +81,7 @@ function shareSettings(
     fertilityStatus: false,
     nextPeriodWindow: false,
     periodDates: false,
-    moodTag: false,
+    emotionTags: false,
     symptomTags: false,
     energyLevel: false,
     conditionCode: false,
@@ -471,7 +471,7 @@ describe("pair lifecycle callables", () => {
       projection.data()?.generatedAt as Timestamp
     ).toMillis();
     await expect(
-      updateDoc(doc(bob.firestore, projectionPath), {moodTag: "forged"}),
+      updateDoc(doc(bob.firestore, projectionPath), {emotionTags: ["forged"]}),
     ).rejects.toMatchObject({code: "permission-denied"});
 
     const upsertEvent = httpsCallable(alice.functions, "upsertPairEvent");
@@ -748,7 +748,7 @@ describe("pair lifecycle callables", () => {
     await setDoc(
       doc(alice.firestore, `users/${aliceUid}/privateDailyLogs/2026-07-14`),
       {
-        schemaVersion: 2,
+        schemaVersion: 3,
         localDate: "2026-07-14",
         lastMutationId: "daily-latest",
         symptomTags: ["headache"],
@@ -775,7 +775,7 @@ describe("pair lifecycle callables", () => {
     await setDoc(
       doc(alice.firestore, `users/${aliceUid}/privateDailyLogs/2026-07-01`),
       {
-        schemaVersion: 2,
+        schemaVersion: 3,
         localDate: "2026-07-01",
         lastMutationId: "daily-historical",
         symptomTags: ["cramps"],
@@ -820,7 +820,7 @@ describe("pair lifecycle callables", () => {
     await setDoc(
       doc(alice.firestore, `users/${aliceUid}/privateDailyLogs/2026-07-14`),
       {
-        schemaVersion: 2,
+        schemaVersion: 3,
         localDate: "2026-07-14",
         lastMutationId: "daily-recreated",
         symptomTags: ["bloating"],
@@ -1105,7 +1105,7 @@ describe("pair lifecycle callables", () => {
     await setDoc(
       doc(owner.firestore, `users/${ownerUid}/privateDailyLogs/2026-07-14`),
       {
-        schemaVersion: 2,
+        schemaVersion: 3,
         localDate: "2026-07-14",
         lastMutationId: "delete-owner-daily",
         note: "삭제되어야 하는 본인 메모",
@@ -1384,7 +1384,7 @@ describe("pair lifecycle callables", () => {
       setDoc(
         doc(owner.firestore, `users/${ownerUid}/privateDailyLogs/2026-07-15`),
         {
-          schemaVersion: 2,
+          schemaVersion: 3,
           localDate: "2026-07-15",
           lastMutationId: "stale-token-recreate",
           updatedAt: serverTimestamp(),

@@ -59,7 +59,7 @@ const PROJECTION_CONTENT_FIELDS = [
   "cycleStatus",
   "nextPeriodWindow",
   "symptomTags",
-  "moodTag",
+  "emotionTags",
   "energyLevel",
   "conditionCode",
   "carePreferences",

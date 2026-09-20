@@ -19,13 +19,7 @@ import type {
   PrivateDailyLogRecord,
   PrivateDailyLogSnapshot,
 } from './CyclePairBackend';
-
-const moodTags: Record<NonNullable<DailyCheckIn['mood']>, string> = {
-  '힘들어요': 'very-low',
-  '지쳐요': 'low',
-  '괜찮아요': 'neutral',
-  '좋아요': 'good',
-};
+import { isEmotionCode } from '../../app/emotions';
 
 const symptomTags: Record<string, string> = {
   '복통': 'cramps',
@@ -43,10 +37,6 @@ const carePreferenceTags: Record<NonNullable<DailyCheckIn['carePreference']>, st
   '평소처럼 대해줘요': 'no-action',
 };
 
-const moodByTag = Object.fromEntries(
-  Object.entries(moodTags).map(([label, tag]) => [tag, label]),
-) as Record<string, NonNullable<DailyCheckIn['mood']>>;
-
 const symptomByTag = Object.fromEntries(
   Object.entries(symptomTags).map(([label, tag]) => [tag, label]),
 ) as Record<string, string>;
@@ -60,8 +50,8 @@ const conditionTags: Record<
   BackendConditionCode
 > = {
   '편안해요': 'comfortable',
-  '피곤해요': 'tired',
-  '기운이 없어요': 'low-energy',
+  '배가 아파요': 'cramps',
+  '머리가 아파요': 'headache',
   '공간이 필요해요': 'needs-space',
 };
 
@@ -234,7 +224,7 @@ export function fromBackendShareSettings(
     fertilityStatus: settings.fertilityStatus === true,
     predictedPeriod: settings.nextPeriodWindow,
     periodDates: settings.periodDates,
-    mood: settings.moodTag,
+    emotions: settings.emotionTags,
     symptoms: settings.symptomTags,
     energy: settings.energyLevel,
     condition: settings.conditionCode,
@@ -252,7 +242,9 @@ export function toDeviceLocalDate(date = new Date()): string {
 
 export function toPrivateDailyLogRecord(checkIn: DailyCheckIn): PrivateDailyLogRecord {
   return {
-    ...(checkIn.mood ? { moodTag: moodTags[checkIn.mood] } : {}),
+    ...(checkIn.emotions && checkIn.emotions.length > 0
+      ? { emotionTags: [...checkIn.emotions] }
+      : {}),
     ...(checkIn.symptoms.length > 0
       ? {
           symptomTags: checkIn.symptoms
@@ -276,8 +268,8 @@ export function fromPrivateDailyLogRecord(
 ): DailyCheckIn {
   const careTag = record.carePreferences?.[0];
   return {
-    ...(record.moodTag && moodByTag[record.moodTag]
-      ? { mood: moodByTag[record.moodTag] }
+    ...(record.emotionTags && record.emotionTags.length > 0
+      ? { emotions: record.emotionTags.filter(isEmotionCode) }
       : {}),
     symptoms: (record.symptomTags ?? [])
       .map(tag => symptomByTag[tag])
@@ -314,7 +306,7 @@ export function toBackendShareSettings(
     fertilityStatus: settings.fertilityStatus,
     nextPeriodWindow: settings.predictedPeriod,
     periodDates: settings.periodDates,
-    moodTag: settings.mood,
+    emotionTags: settings.emotions,
     symptomTags: settings.symptoms,
     energyLevel: settings.energy,
     conditionCode: settings.condition,

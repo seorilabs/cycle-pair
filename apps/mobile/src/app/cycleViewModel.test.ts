@@ -8,23 +8,23 @@ const premiumFeaturePolicy = resolveCycleFeaturePolicy(() => true);
 
 describe('cycle view model roles', () => {
   it.each([
-    ['힘들어요', 'very-low'],
-    ['지쳐요', 'low'],
-    ['괜찮아요', 'neutral'],
-    ['좋아요', 'good'],
+    ['anxious'],
+    ['drained'],
+    ['calm'],
+    ['happy'],
   ] as const)(
-    'does not infer a condition from the mood %s',
-    (mood, expectedMood) => {
+    'does not infer a body condition from the emotion %s',
+    emotion => {
       const initialState = createInitialState();
       const state = {
         ...initialState,
         shareSettings: {
           ...initialState.shareSettings,
-          mood: true,
+          emotions: true,
           condition: true,
         },
         checkIn: {
-          mood,
+          emotions: [emotion],
           symptoms: [],
           periodStarted: false,
           periodEnded: false,
@@ -33,12 +33,12 @@ describe('cycle view model roles', () => {
 
       const viewModel = buildCycleViewModel(state);
 
-      expect(viewModel.selfProjection.mood).toBe(expectedMood);
+      expect(viewModel.selfProjection.emotions).toEqual([emotion]);
       expect(viewModel.selfProjection.condition).toBeUndefined();
     },
   );
 
-  it('keeps explicit symptom-based condition mapping when a condition is not selected', () => {
+  it('maps a body symptom to a body condition when none is selected', () => {
     const initialState = createInitialState();
     const state = {
       ...initialState,
@@ -47,14 +47,14 @@ describe('cycle view model roles', () => {
         condition: true,
       },
       checkIn: {
-        mood: '힘들어요' as const,
-        symptoms: ['피로'],
+        emotions: ['anxious'] as const,
+        symptoms: ['복통'],
         periodStarted: false,
         periodEnded: false,
       },
     };
 
-    expect(buildCycleViewModel(state).selfProjection.condition).toBe('tired');
+    expect(buildCycleViewModel(state).selfProjection.condition).toBe('cramps');
   });
 
   it('keeps a partner mood-only projection conditionless and uses safe care fallback', () => {
@@ -70,13 +70,13 @@ describe('cycle view model roles', () => {
         ownerUid: 'partner',
         pairId: 'pair-1',
         dailyLogDate,
-        moodTag: 'very-low' as const,
+        emotionTags: ['anxious'] as const,
       },
     };
 
     const viewModel = buildCycleViewModel(state);
 
-    expect(viewModel.partnerProjection.mood).toBe('very-low');
+    expect(viewModel.partnerProjection.emotions).toEqual(['anxious']);
     expect(viewModel.partnerProjection.condition).toBeUndefined();
     expect(viewModel.careTips[0]?.id).toBe('general-respect');
   });
@@ -288,7 +288,7 @@ describe('cycle view model roles', () => {
     const state = {
       ...createInitialState(),
       checkIn: {
-        mood: '괜찮아요' as const,
+        emotions: ['anxious'] as const,
         symptoms: [],
         energy: 2 as const,
         condition: '공간이 필요해요' as const,

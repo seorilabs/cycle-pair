@@ -1,5 +1,6 @@
 import { compareLocalDates, daysBetween } from "./local-date.js";
 import type { LocalDate } from "./local-date.js";
+import { MAX_EMOTIONS_PER_LOG } from "./models.js";
 import type {
   Cycle,
   CycleLog,
@@ -45,6 +46,16 @@ export function createCycleLog(input: CycleLog): CycleLog {
   if (input.energy !== undefined && !isEnergyLevel(input.energy)) {
     throw new CycleInvariantError("energy must be an integer between 1 and 5");
   }
+  if (input.emotions !== undefined) {
+    if (input.emotions.length > MAX_EMOTIONS_PER_LOG) {
+      throw new CycleInvariantError(
+        `emotions must hold at most ${MAX_EMOTIONS_PER_LOG} entries`,
+      );
+    }
+    if (new Set(input.emotions).size !== input.emotions.length) {
+      throw new CycleInvariantError("emotions must not repeat a value");
+    }
+  }
 
   return Object.freeze({
     id: input.id,
@@ -52,7 +63,9 @@ export function createCycleLog(input: CycleLog): CycleLog {
     date: input.date,
     ...(input.bleeding !== undefined ? { bleeding: input.bleeding } : {}),
     ...(input.symptoms !== undefined ? { symptoms: Object.freeze([...input.symptoms]) } : {}),
-    ...(input.mood !== undefined ? { mood: input.mood } : {}),
+    ...(input.emotions !== undefined
+      ? { emotions: Object.freeze([...input.emotions]) }
+      : {}),
     ...(input.energy !== undefined ? { energy: input.energy } : {}),
     ...(input.condition !== undefined ? { condition: input.condition } : {}),
     ...(input.helpPreferences !== undefined

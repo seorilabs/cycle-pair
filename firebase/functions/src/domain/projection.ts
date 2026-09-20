@@ -2,8 +2,8 @@ type JsonRecord = Record<string, unknown>;
 type EnergyLevel = 1 | 2 | 3 | 4 | 5;
 type ConditionCode =
   | "comfortable"
-  | "tired"
-  | "low-energy"
+  | "cramps"
+  | "headache"
   | "needs-space";
 
 const CYCLE_PHASES = new Set([
@@ -26,8 +26,8 @@ const CYCLE_STATUSES = new Set([
 ]);
 const CONDITION_CODES = new Set<ConditionCode>([
   "comfortable",
-  "tired",
-  "low-energy",
+  "cramps",
+  "headache",
   "needs-space",
 ]);
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -59,7 +59,7 @@ export interface PartnerProjection {
   readonly cycleStatus?: string;
   readonly nextPeriodWindow?: DateWindow;
   readonly symptomTags?: readonly string[];
-  readonly moodTag?: string;
+  readonly emotionTags?: readonly string[];
   readonly energyLevel?: EnergyLevel;
   readonly conditionCode?: ConditionCode;
   readonly carePreferences?: readonly string[];
@@ -209,6 +209,33 @@ function safeEnergy(value: unknown): EnergyLevel | undefined {
     : undefined;
 }
 
+const EMOTION_CODES = new Set([
+  "calm",
+  "happy",
+  "affectionate",
+  "anxious",
+  "irritable",
+  "hurt",
+  "lonely",
+  "drained",
+  "other",
+]);
+const MAX_EMOTIONS = 3;
+
+/** 감정은 알려진 코드만, 중복 없이, 상한까지만 내보낸다. */
+function safeEmotions(value: unknown): readonly string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const codes = [
+    ...new Set(
+      value.filter(
+        (entry): entry is string =>
+          typeof entry === "string" && EMOTION_CODES.has(entry),
+      ),
+    ),
+  ].slice(0, MAX_EMOTIONS);
+  return codes.length > 0 ? codes : undefined;
+}
+
 function safeCondition(value: unknown): ConditionCode | undefined {
   return typeof value === "string" &&
     CONDITION_CODES.has(value as ConditionCode)
@@ -276,10 +303,10 @@ export function buildPartnerProjection(
       ? undefined
       : safeTags(dailyLog?.symptomTags)
     : undefined;
-  const moodTag = isShared(shareSettings, "moodTag")
+  const emotionTags = isShared(shareSettings, "emotionTags")
     ? dailyLogDate === undefined
       ? undefined
-      : safeTag(dailyLog?.moodTag)
+      : safeEmotions(dailyLog?.emotionTags)
     : undefined;
   const energyLevel = isShared(shareSettings, "energyLevel")
     ? dailyLogDate === undefined
@@ -309,7 +336,7 @@ export function buildPartnerProjection(
     nextPeriodWindow !== undefined;
   const hasDailyValue =
     symptomTags !== undefined ||
-    moodTag !== undefined ||
+    emotionTags !== undefined ||
     energyLevel !== undefined ||
     conditionCode !== undefined ||
     carePreferences !== undefined ||
@@ -324,7 +351,7 @@ export function buildPartnerProjection(
     ...(cycleStatus === undefined ? {} : {cycleStatus}),
     ...(nextPeriodWindow === undefined ? {} : {nextPeriodWindow}),
     ...(symptomTags === undefined ? {} : {symptomTags}),
-    ...(moodTag === undefined ? {} : {moodTag}),
+    ...(emotionTags === undefined ? {} : {emotionTags}),
     ...(energyLevel === undefined ? {} : {energyLevel}),
     ...(conditionCode === undefined ? {} : {conditionCode}),
     ...(carePreferences === undefined ? {} : {carePreferences}),

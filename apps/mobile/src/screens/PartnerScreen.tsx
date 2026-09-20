@@ -83,7 +83,7 @@ export function PartnerScreen() {
   );
   const sharedFields = buildPartnerSharedFields(remote);
   const freshness = getPartnerProjectionFreshness(rawRemote);
-  const mood = sharedFields.find(field => field.key === 'moodTag');
+  const emotion = sharedFields.find(field => field.key === 'emotionTags');
   const hasSharedValues = sharedFields.length > 0;
   return (
     <Screen contentStyle={styles.content}>
@@ -109,8 +109,8 @@ export function PartnerScreen() {
 
       <Card tone="accent" style={styles.statusCard}>
         <Text style={styles.statusTitle}>
-          {mood
-            ? `오늘은 ${mood.value}`
+          {emotion
+            ? `오늘은 ${emotion.value}`
             : hasSharedValues
             ? '직접 공유한 정보가 있어요'
             : '아직 공유된 오늘 정보가 없어요'}

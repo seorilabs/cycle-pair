@@ -83,9 +83,9 @@ describe('private daily log query', () => {
 
   it('keeps the public newest-first result contract without mutating input', () => {
     const logs = [
-      { localDate: '2026-07-01', record: { moodTag: 'good' } },
-      { localDate: '2026-07-31', record: { moodTag: 'neutral' } },
-      { localDate: '2026-07-14', record: { moodTag: 'low' } },
+      { localDate: '2026-07-01', record: { emotionTags: ['anxious'] } },
+      { localDate: '2026-07-31', record: { emotionTags: ['anxious'] } },
+      { localDate: '2026-07-14', record: { emotionTags: ['anxious'] } },
     ] as const;
 
     expect(sortDailyLogsNewestFirst(logs).map(log => log.localDate)).toEqual([

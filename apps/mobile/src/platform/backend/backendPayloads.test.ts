@@ -16,14 +16,14 @@ describe('Firebase backend payload mapping', () => {
   it('maps localized health values to stable allowlisted tags', () => {
     expect(
       toPrivateDailyLogRecord({
-        mood: '지쳐요',
+        emotions: ['anxious'],
         symptoms: ['피로', '복통', '알 수 없는 값'],
         carePreference: '그냥 들어줘요',
         periodStarted: false,
         periodEnded: false,
       }),
     ).toEqual({
-      moodTag: 'low',
+      emotionTags: ['anxious'],
       symptomTags: ['fatigue', 'cramps'],
       carePreferences: ['listen'],
     });
@@ -37,7 +37,7 @@ describe('Firebase backend payload mapping', () => {
         fertilityStatus: false,
         predictedPeriod: false,
         periodDates: false,
-        mood: true,
+        emotions: true,
         symptoms: false,
         energy: false,
         condition: false,
@@ -50,7 +50,7 @@ describe('Firebase backend payload mapping', () => {
       fertilityStatus: false,
       nextPeriodWindow: false,
       periodDates: false,
-      moodTag: true,
+      emotionTags: true,
       symptomTags: false,
       energyLevel: false,
       conditionCode: false,
@@ -146,7 +146,7 @@ describe('Firebase backend payload mapping', () => {
         cyclePhase: true,
         nextPeriodWindow: false,
         periodDates: false,
-        moodTag: true,
+        emotionTags: true,
         symptomTags: false,
         energyLevel: true,
         conditionCode: true,
@@ -159,7 +159,7 @@ describe('Firebase backend payload mapping', () => {
       fertilityStatus: false,
       predictedPeriod: false,
       periodDates: false,
-      mood: true,
+      emotions: true,
       symptoms: false,
       energy: true,
       condition: true,
@@ -184,7 +184,7 @@ describe('Firebase backend payload mapping', () => {
 
   it('round-trips the complete private daily record without localized values in Firestore', () => {
     const record = toPrivateDailyLogRecord({
-      mood: '좋아요',
+      emotions: ['anxious'],
       symptoms: ['두통'],
       energy: 4,
       condition: '편안해요',
@@ -195,7 +195,7 @@ describe('Firebase backend payload mapping', () => {
     });
 
     expect(record).toEqual({
-      moodTag: 'good',
+      emotionTags: ['anxious'],
       symptomTags: ['headache'],
       energyLevel: 4,
       conditionCode: 'comfortable',
@@ -204,7 +204,7 @@ describe('Firebase backend payload mapping', () => {
       periodEnded: true,
     });
     expect(fromPrivateDailyLogRecord(record)).toEqual({
-      mood: '좋아요',
+      emotions: ['anxious'],
       symptoms: ['두통'],
       energy: 4,
       condition: '편안해요',

@@ -3,19 +3,31 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { DailyCheckIn, useCyclePair } from '../app/CyclePairStore';
 import { Body, Card, Chip, PrimaryButton, Screen, SectionHeader, TextButton, Title } from '../components/Ui';
 import { colors, radius, spacing } from '../theme';
+import {
+  EMOTION_CODES,
+  EMOTION_LABELS,
+  MAX_EMOTIONS_PER_LOG,
+  toggleEmotion,
+  type EmotionCode,
+} from '../app/emotions';
 
-const moods: Array<{ label: NonNullable<DailyCheckIn['mood']>; emoji: string }> = [
-  { label: '힘들어요', emoji: '😣' },
-  { label: '지쳐요', emoji: '😴' },
-  { label: '괜찮아요', emoji: '🙂' },
-  { label: '좋아요', emoji: '😊' },
-];
+const emotionEmoji: Readonly<Record<EmotionCode, string>> = {
+  calm: '🙂',
+  happy: '😊',
+  affectionate: '🥰',
+  anxious: '😟',
+  irritable: '😤',
+  hurt: '🥺',
+  lonely: '🌙',
+  drained: '😮‍💨',
+  other: '💬',
+};
 const symptoms = ['복통', '두통', '피로', '부종', '예민함', '허리 불편'];
 const energyLevels: Array<NonNullable<DailyCheckIn['energy']>> = [1, 2, 3, 4, 5];
 const conditions: Array<NonNullable<DailyCheckIn['condition']>> = [
   '편안해요',
-  '피곤해요',
-  '기운이 없어요',
+  '배가 아파요',
+  '머리가 아파요',
   '공간이 필요해요',
 ];
 const preferences: NonNullable<DailyCheckIn['carePreference']>[] = [
@@ -69,19 +81,36 @@ export function RecordScreen({ onDone, onCancel }: { onDone(): void; onCancel():
       <Title>지금 내 상태를{`\n`}짧게 남겨볼까요?</Title>
       <Body muted style={styles.intro}>선택하지 않은 항목은 저장하지 않아요. 공유 설정도 그대로 유지돼요.</Body>
 
-      <SectionHeader title="기분" />
+      <SectionHeader title="지금 마음" />
+      <Body muted style={styles.intro}>
+        여러 개를 골라도 돼요. 최대 {MAX_EMOTIONS_PER_LOG}개까지 담겨요.
+      </Body>
       <View style={styles.moodGrid}>
-        {moods.map(item => {
-          const selected = draft.mood === item.label;
+        {EMOTION_CODES.map(code => {
+          const selected = (draft.emotions ?? []).includes(code);
+          const atLimit =
+            !selected && (draft.emotions ?? []).length >= MAX_EMOTIONS_PER_LOG;
           return (
             <Pressable
-              accessibilityRole="radio"
-              accessibilityState={{ checked: selected }}
-              key={item.label}
-              onPress={() => setDraft(current => ({ ...current, mood: selected ? undefined : item.label }))}
-              style={[styles.moodCard, selected && styles.moodCardSelected]}>
-              <Text style={styles.moodEmoji}>{item.emoji}</Text>
-              <Text style={[styles.moodLabel, selected && styles.moodLabelSelected]}>{item.label}</Text>
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: selected, disabled: atLimit }}
+              disabled={atLimit}
+              key={code}
+              onPress={() =>
+                setDraft(current => ({
+                  ...current,
+                  emotions: toggleEmotion(current.emotions, code),
+                }))
+              }
+              style={[
+                styles.moodCard,
+                selected && styles.moodCardSelected,
+                atLimit && styles.moodCardDisabled,
+              ]}>
+              <Text style={styles.moodEmoji}>{emotionEmoji[code]}</Text>
+              <Text style={[styles.moodLabel, selected && styles.moodLabelSelected]}>
+                {EMOTION_LABELS[code]}
+              </Text>
             </Pressable>
           );
         })}
@@ -252,6 +281,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
+  },
+  moodCardDisabled: {
+    opacity: 0.4,
   },
   moodCardSelected: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
   moodEmoji: { fontSize: 28 },

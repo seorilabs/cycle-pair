@@ -200,7 +200,10 @@ function isDailyLog(value: unknown): value is PrivateDailyLogSnapshot {
   }
   const record = value.record;
   return (
-    isOptionalString(record.moodTag, 32) &&
+    (record.emotionTags === undefined ||
+      (Array.isArray(record.emotionTags) &&
+        record.emotionTags.length <= 3 &&
+        record.emotionTags.every(item => isOptionalString(item, 32)))) &&
     (record.symptomTags === undefined ||
       (Array.isArray(record.symptomTags) &&
         record.symptomTags.length <= 12 &&

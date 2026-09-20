@@ -8,11 +8,11 @@ import {
 describe('AppsInToss condition share draft', () => {
   test('builds a neutral message from explicit selections only', () => {
     const message = buildConditionShareMessage({
-      condition: 'tired',
+      condition: 'cramps',
       helpPreference: 'listen',
     });
 
-    expect(message).toContain('피곤해요');
+    expect(message).toContain('배가 아파요');
     expect(message).toContain('그냥 들어줘요');
     expect(message).not.toMatch(/생리|주기|날짜|증상/);
   });

@@ -115,11 +115,11 @@ describe("owner-only raw records", () => {
     );
     await assertSucceeds(
       setDoc(dailyRef, {
-        schemaVersion: 2,
+        schemaVersion: 3,
         localDate: "2026-07-12",
         lastMutationId: "daily-1",
         updatedAt: serverTimestamp(),
-        moodTag: "neutral",
+        emotionTags: ["calm", "affectionate"],
         energyLevel: 5,
         conditionCode: "comfortable",
         note: "x".repeat(500),
@@ -208,7 +208,7 @@ describe("owner-only raw records", () => {
       "users/alice/privateDailyLogs/2026-07-14",
     );
     const dailyLog = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       localDate: "2026-07-14",
       lastMutationId: "legacy-consent-blocked",
       updatedAt: serverTimestamp(),
@@ -373,7 +373,7 @@ describe("owner-only raw records", () => {
         fertilityStatus: true,
         nextPeriodWindow: false,
         periodDates: false,
-        moodTag: false,
+        emotionTags: false,
         symptomTags: false,
         energyLevel: false,
         conditionCode: false,
@@ -429,7 +429,7 @@ describe("owner-only raw records", () => {
         cyclePhase: false,
         nextPeriodWindow: false,
         periodDates: false,
-        moodTag: false,
+        emotionTags: false,
         symptomTags: false,
         energyLevel: false,
         conditionCode: false,
@@ -448,7 +448,7 @@ describe("owner-only raw records", () => {
       cyclePhase: false,
       nextPeriodWindow: false,
       periodDates: false,
-      moodTag: false,
+      emotionTags: false,
       symptomTags: false,
       energyLevel: false,
       conditionCode: false,

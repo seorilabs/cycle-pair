@@ -155,7 +155,7 @@ service cloud.firestore {
           'localDate',
           'lastMutationId',
           'updatedAt',
-          'moodTag',
+          'emotionTags',
           'symptomTags',
           'energyLevel',
           'conditionCode',
@@ -170,7 +170,7 @@ service cloud.firestore {
           'lastMutationId',
           'updatedAt'
         ])
-        && data.schemaVersion == 2
+        && data.schemaVersion == 3
         && data.localDate == logId
         && isReasonableRecordedLocalDate(data.localDate)
         && data.lastMutationId is string
@@ -178,10 +178,14 @@ service cloud.firestore {
         && data.lastMutationId.size() <= 128
         && data.updatedAt is timestamp
         && data.updatedAt == request.time
-        && isOptionalString(data, 'moodTag', 32)
-        && (!('moodTag' in data) || data.moodTag in [
-          'very-low', 'low', 'neutral', 'good', 'very-good'
-        ])
+        && (!('emotionTags' in data)
+          || (data.emotionTags is list
+            && data.emotionTags.size() <= 3
+            && data.emotionTags.toSet().size() == data.emotionTags.size()
+            && data.emotionTags.hasOnly([
+              'calm', 'happy', 'affectionate', 'anxious', 'irritable',
+              'hurt', 'lonely', 'drained', 'other'
+            ])))
         && (!('symptomTags' in data)
           || (data.symptomTags is list
             && data.symptomTags.size() <= 12
@@ -195,7 +199,7 @@ service cloud.firestore {
             && data.energyLevel <= 5))
         && isOptionalString(data, 'conditionCode', 32)
         && (!('conditionCode' in data) || data.conditionCode in [
-          'comfortable', 'tired', 'low-energy', 'needs-space'
+          'comfortable', 'cramps', 'headache', 'needs-space', 'other'
         ])
         && (!('carePreferences' in data)
           || (data.carePreferences is list
@@ -234,12 +238,12 @@ service cloud.firestore {
           'schemaVersion', 'updatedAt', 'cyclePhase', 'cycleStatus',
           'fertilityStatus',
           'nextPeriodWindow',
-          'periodDates', 'moodTag', 'symptomTags', 'energyLevel',
+          'periodDates', 'emotionTags', 'symptomTags', 'energyLevel',
           'conditionCode', 'carePreferences', 'note'
         ])
         && data.keys().hasAll([
           'schemaVersion', 'updatedAt', 'cyclePhase', 'nextPeriodWindow',
-          'periodDates', 'moodTag', 'symptomTags', 'energyLevel',
+          'periodDates', 'emotionTags', 'symptomTags', 'energyLevel',
           'conditionCode', 'carePreferences', 'note'
         ])
         && data.schemaVersion == 1
@@ -249,7 +253,7 @@ service cloud.firestore {
         && isOptionalBoolean(data, 'fertilityStatus')
         && data.nextPeriodWindow is bool
         && data.periodDates is bool
-        && data.moodTag is bool
+        && data.emotionTags is bool
         && data.symptomTags is bool
         && data.energyLevel is bool
         && data.conditionCode is bool

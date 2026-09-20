@@ -33,7 +33,7 @@ const shareRows: Array<{ key: ShareField; label: string }> = [
   { key: 'fertilityStatus', label: '가임 가능 시기' },
   { key: 'predictedPeriod', label: '다음 생리 예상 범위' },
   { key: 'periodDates', label: '실제 생리 날짜' },
-  { key: 'mood', label: '오늘의 기분' },
+  { key: 'emotions', label: '지금 마음' },
   { key: 'symptoms', label: '증상' },
   { key: 'energy', label: '에너지 정도' },
   { key: 'condition', label: '오늘의 컨디션' },

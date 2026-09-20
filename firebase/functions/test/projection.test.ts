@@ -21,7 +21,7 @@ describe("buildPartnerProjection", () => {
       },
       privateDailyLog: {
         symptomTags: ["cramps"],
-        moodTag: "tired",
+        emotionTags: ["anxious"],
         energyLevel: 3,
         conditionCode: "comfortable",
         note: "never copy this note",
@@ -46,7 +46,7 @@ describe("buildPartnerProjection", () => {
       privateDailyLog: {
         localDate: "2026-07-12",
         symptomTags: ["cramps", "headache"],
-        moodTag: "calm",
+        emotionTags: ["calm"],
         energyLevel: 4,
         conditionCode: "needs-space",
         carePreferences: ["warm-tea", "quiet-time"],
@@ -58,7 +58,7 @@ describe("buildPartnerProjection", () => {
         cyclePhase: true,
         nextPeriodWindow: false,
         symptomTags: true,
-        moodTag: false,
+        emotionTags: false,
         energyLevel: true,
         conditionCode: true,
         carePreferences: true,
@@ -79,7 +79,7 @@ describe("buildPartnerProjection", () => {
       note: "오늘은 조용히 쉬고 싶어요.",
     });
     expect(projection).not.toHaveProperty("nextPeriodWindow");
-    expect(projection).not.toHaveProperty("moodTag");
+    expect(projection).not.toHaveProperty("emotionTags");
     expect(projection).not.toHaveProperty("privateNote");
   });
 
@@ -95,7 +95,7 @@ describe("buildPartnerProjection", () => {
       privateDailyLog: {
         localDate: "2026-07-12",
         symptomTags: ["valid-tag", "contains private prose"],
-        moodTag: "contains private prose",
+        emotionTags: ["contains private prose"],
         energyLevel: 6,
         conditionCode: "arbitrary-private-state",
         note: "x".repeat(501),
@@ -105,7 +105,7 @@ describe("buildPartnerProjection", () => {
         cyclePhase: true,
         nextPeriodWindow: true,
         symptomTags: true,
-        moodTag: true,
+        emotionTags: true,
         energyLevel: true,
         conditionCode: true,
         note: true,
@@ -191,7 +191,7 @@ describe("buildPartnerProjection", () => {
       const projection = buildPartnerProjection({
         ...base,
         privateCycle: {asOfDate: "2026-07-12", cyclePhase},
-        shareSettings: {moodTag: true},
+        shareSettings: {emotionTags: true},
       }) as Record<string, unknown>;
 
       expect(Object.hasOwn(projection, "cyclePhase")).toBe(false);
@@ -289,15 +289,15 @@ describe("buildPartnerProjection", () => {
       ...base,
       privateDailyLog: {
         localDate: "2026-07-10",
-        moodTag: "good",
+        emotionTags: ["happy"],
       },
-      shareSettings: {moodTag: true},
+      shareSettings: {emotionTags: true},
     });
 
     expect(projection).toEqual({
       ...baseWithSchema(),
       dailyLogDate: "2026-07-10",
-      moodTag: "good",
+      emotionTags: ["happy"],
     });
   });
 
@@ -305,8 +305,8 @@ describe("buildPartnerProjection", () => {
     const projection = buildPartnerProjection({
       ...base,
       privateCycle: {cyclePhase: "luteal"},
-      privateDailyLog: {moodTag: "good", note: "오래된 상태"},
-      shareSettings: {cyclePhase: true, moodTag: true, note: true},
+      privateDailyLog: {emotionTags: ["happy"], note: "오래된 상태"},
+      shareSettings: {cyclePhase: true, emotionTags: true, note: true},
     });
 
     expect(projection).toEqual(baseWithSchema());

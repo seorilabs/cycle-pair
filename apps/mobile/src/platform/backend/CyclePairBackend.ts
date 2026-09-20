@@ -21,9 +21,10 @@ export type BackendCycleStatus =
 
 export type BackendConditionCode =
   | 'comfortable'
-  | 'tired'
-  | 'low-energy'
-  | 'needs-space';
+  | 'cramps'
+  | 'headache'
+  | 'needs-space'
+  | 'other';
 
 export interface BackendSession {
   readonly uid: string;
@@ -66,7 +67,7 @@ export interface PrivateSetupSnapshot {
 }
 
 export interface PrivateDailyLogRecord {
-  readonly moodTag?: string;
+  readonly emotionTags?: readonly string[];
   readonly symptomTags?: readonly string[];
   readonly energyLevel?: 1 | 2 | 3 | 4 | 5;
   readonly conditionCode?: BackendConditionCode;
@@ -155,7 +156,7 @@ export interface BackendShareSettings {
   readonly fertilityStatus?: boolean;
   readonly nextPeriodWindow: boolean;
   readonly periodDates: boolean;
-  readonly moodTag: boolean;
+  readonly emotionTags: boolean;
   readonly symptomTags: boolean;
   readonly energyLevel: boolean;
   readonly conditionCode: boolean;
@@ -183,7 +184,7 @@ export interface RemotePartnerProjection {
     readonly endDate: string;
   };
   readonly symptomTags?: readonly string[];
-  readonly moodTag?: string;
+  readonly emotionTags?: readonly string[];
   readonly energyLevel?: 1 | 2 | 3 | 4 | 5;
   readonly conditionCode?: BackendConditionCode;
   readonly carePreferences?: readonly string[];

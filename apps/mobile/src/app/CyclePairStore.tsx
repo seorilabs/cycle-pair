@@ -15,6 +15,7 @@ import {
   createCycle,
   parseLocalDate,
 } from '@cyclepair/product-core';
+import type { EmotionCode } from '@cyclepair/product-core';
 import { AppState, Platform } from 'react-native';
 import {
   asyncStorageCyclePairStateStorage,
@@ -78,7 +79,7 @@ export type ShareField =
   | 'fertilityStatus'
   | 'predictedPeriod'
   | 'periodDates'
-  | 'mood'
+  | 'emotions'
   | 'symptoms'
   | 'energy'
   | 'condition'
@@ -93,10 +94,10 @@ export interface CycleSeed {
 }
 
 export interface DailyCheckIn {
-  mood?: '힘들어요' | '지쳐요' | '괜찮아요' | '좋아요';
+  emotions?: readonly EmotionCode[];
   symptoms: string[];
   energy?: 1 | 2 | 3 | 4 | 5;
-  condition?: '편안해요' | '피곤해요' | '기운이 없어요' | '공간이 필요해요';
+  condition?: '편안해요' | '배가 아파요' | '머리가 아파요' | '공간이 필요해요';
   carePreference?:
     | '쉬고 싶어요'
     | '따뜻하게 챙겨줘요'
@@ -328,7 +329,7 @@ function privateByDefault(): Record<ShareField, boolean> {
     fertilityStatus: false,
     predictedPeriod: false,
     periodDates: false,
-    mood: false,
+    emotions: false,
     symptoms: false,
     energy: false,
     condition: false,
@@ -621,7 +622,7 @@ export function reduceCyclePairState(
           fertilityStatus: true,
           predictedPeriod: true,
           periodDates: false,
-          mood: true,
+          emotions: true,
           symptoms: false,
           energy: false,
           condition: true,
@@ -1738,7 +1739,7 @@ export function CyclePairProvider({
       fertilityStatus: true,
       predictedPeriod: true,
       periodDates: false,
-      mood: true,
+      emotions: true,
       symptoms: false,
       energy: false,
       condition: true,

@@ -17,25 +17,28 @@ import {
   type CyclePhase,
   type HelpPreference,
   type LocalDate,
-  type Mood,
   type PartnerProjection,
   type Prediction,
 } from '@cyclepair/product-core';
 import { DailyCheckIn, CyclePairState } from './CyclePairStore';
+
+function isConditionCode(value: unknown): value is ConditionCode {
+  return (
+    value === 'comfortable' ||
+    value === 'cramps' ||
+    value === 'headache' ||
+    value === 'needs-space' ||
+    value === 'other'
+  );
+}
 import { PARTNER_MEMBER_ID, SELF_MEMBER_ID } from './memberIds';
+import { isEmotionCode } from './emotions';
 import { getSafePartnerProjectionForToday } from './partnerProjectionPresentation';
 import type {CycleFeaturePolicy} from './subscription/cycleFeaturePolicy';
 import {
   FREE_CARE_TIP_LIMIT,
   FREE_HISTORY_LOOKBACK_DAYS,
 } from './subscription/cycleFeaturePolicy';
-
-const moodToDomain: Record<NonNullable<DailyCheckIn['mood']>, Mood> = {
-  힘들어요: 'very-low',
-  지쳐요: 'low',
-  괜찮아요: 'neutral',
-  좋아요: 'good',
-};
 
 const preferenceToDomain: Record<
   NonNullable<DailyCheckIn['carePreference']>,
@@ -162,15 +165,14 @@ const conditionToDomain: Record<
   ConditionCode
 > = {
   편안해요: 'comfortable',
-  피곤해요: 'tired',
-  '기운이 없어요': 'low-energy',
+  '배가 아파요': 'cramps',
+  '머리가 아파요': 'headache',
   '공간이 필요해요': 'needs-space',
 };
 
 function mapCondition(checkIn: DailyCheckIn): ConditionCode | undefined {
   if (checkIn.condition) return conditionToDomain[checkIn.condition];
-  if (checkIn.symptoms.includes('피로')) return 'tired';
-  if (checkIn.symptoms.includes('예민함')) return 'sensitive';
+  // 기력과 마음은 각자의 축이 담는다. 여기서는 몸 상태만 추론한다.
   if (checkIn.symptoms.includes('복통')) return 'cramps';
   if (checkIn.symptoms.includes('두통')) return 'headache';
   return undefined;
@@ -181,8 +183,6 @@ function conditionFromSymptoms(
 ): ConditionCode | undefined {
   if (symptoms.includes('cramps')) return 'cramps';
   if (symptoms.includes('headache')) return 'headache';
-  if (symptoms.includes('fatigue')) return 'tired';
-  if (symptoms.includes('sensitive')) return 'sensitive';
   return undefined;
 }
 
@@ -234,7 +234,9 @@ export function buildCycleViewModel(
     id: `check-in-${today}`,
     memberId: SELF_MEMBER_ID,
     date: today,
-    ...(state.checkIn.mood ? { mood: moodToDomain[state.checkIn.mood] } : {}),
+    ...(state.checkIn.emotions && state.checkIn.emotions.length > 0
+      ? { emotions: state.checkIn.emotions }
+      : {}),
     ...(state.checkIn.symptoms.length > 0
       ? { symptoms: state.checkIn.symptoms }
       : {}),
@@ -251,7 +253,7 @@ export function buildCycleViewModel(
     fertilityStatus: state.shareSettings.fertilityStatus,
     periodDates: state.shareSettings.periodDates,
     prediction: state.shareSettings.predictedPeriod,
-    mood: state.shareSettings.mood,
+    emotions: state.shareSettings.emotions,
     symptoms: state.shareSettings.symptoms,
     energy: state.shareSettings.energy,
     condition: state.shareSettings.condition,
@@ -271,14 +273,7 @@ export function buildCycleViewModel(
   );
 
   const remote = getSafePartnerProjectionForToday(state.partnerProjection);
-  const remoteMood =
-    remote?.moodTag === 'very-low' ||
-    remote?.moodTag === 'low' ||
-    remote?.moodTag === 'neutral' ||
-    remote?.moodTag === 'good' ||
-    remote?.moodTag === 'very-good'
-      ? remote.moodTag
-      : undefined;
+  const remoteEmotions = (remote?.emotionTags ?? []).filter(isEmotionCode);
   const remotePreferences = (remote?.carePreferences ?? []).filter(
     (value): value is HelpPreference =>
       value === 'listen' ||
@@ -292,7 +287,8 @@ export function buildCycleViewModel(
   );
   const remoteSymptoms = remote?.symptomTags ?? [];
   const remoteCondition: ConditionCode | undefined =
-    remote?.conditionCode ?? conditionFromSymptoms(remoteSymptoms);
+    (isConditionCode(remote?.conditionCode) ? remote?.conditionCode : undefined) ??
+    conditionFromSymptoms(remoteSymptoms);
   const remotePeriodStart = isLocalDate(remote?.periodDates?.startDate)
     ? remote.periodDates.startDate
     : undefined;
@@ -314,7 +310,7 @@ export function buildCycleViewModel(
   const partnerProjection: PartnerProjection = {
     subjectMemberId: remote?.ownerUid ?? PARTNER_MEMBER_ID,
     asOf: partnerAsOf,
-    ...(remoteMood ? { mood: remoteMood } : {}),
+    ...(remoteEmotions.length > 0 ? { emotions: remoteEmotions } : {}),
     ...(remote?.energyLevel ? { energy: remote.energyLevel } : {}),
     ...(remoteCondition ? { condition: remoteCondition } : {}),
     ...(remotePreferences.length > 0
