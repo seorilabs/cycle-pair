@@ -1,11 +1,52 @@
+# 평시 릴리즈 경로는 중앙 GitHub Actions(rn-deploy-google-play.yml)다. 이 파일은
+# Actions 로 갈 수 없을 때 되돌아올 폴백이다.
+#
+# 자격증명은 Secret Manager 가 아니라 일회성 GCS 객체로 들어온다. 폴백이라 워크플로가
+# 올려주지 않고, 되돌릴 때 사람이 로컬 카탈로그에서 직접 올린다. 로컬 원본이
+# source of truth 이고 ~/.config/seorilabs 아래에 있다.
+#
+# 되돌리는 방법:
+#   B="gs://seorilabs-ci-build-credentials/seorilabs/cycle-pair/manual-$(date +%s)"
+#   C="$HOME/.config/seorilabs"; D="$(mktemp -d)"; umask 077
+#   base64 -i "$C/firebase/cycle-pair-google-services.json" | tr -d '\n' > "$D/firebase-android-config.b64"
+#   base64 -i "$C/play-store/cycle-pair-upload.jks"         | tr -d '\n' > "$D/play-keystore.b64"
+#   grep '^GOOGLE_PLAY_UPLOAD_KEYSTORE_PASSWORD=' "$C/play-store/cycle-pair-keystore.env" | cut -d= -f2- | tr -d '\n' > "$D/play-keystore-password"
+#   grep '^GOOGLE_PLAY_UPLOAD_KEY_PASSWORD='      "$C/play-store/cycle-pair-keystore.env" | cut -d= -f2- | tr -d '\n' > "$D/play-key-password"
+#   for f in "$D"/*; do gcloud storage cp "$f" "$B/$(basename "$f")"; done
+#   gcloud builds submit . --project=seorilabs-ci --config=cloudbuild-android.yaml \
+#     --substitutions="_RELEASE_TAG=...,_ANDROID_VERSION_CODE=...,_CREDENTIAL_BUCKET=$B"
+#   rm -rf "$D"
+#
 substitutions:
   _RELEASE_TAG: "v1.0.4"
   _ANDROID_VERSION_NAME: "1.0.4"
   _ANDROID_VERSION_CODE: "1000103"
   _GOOGLE_PLAY_UPLOAD_KEY_ALIAS: "upload"
   _ARTIFACT_BUCKET: "gs://seorilabs-ci-build-artifacts/seorilabs/cycle-pair/manual"
+  _CREDENTIAL_BUCKET: ""
 
 steps:
+  # rm 에 `|| true` 를 붙이지 않는다. prefix 는 제출 직전에 사람이 만든 것이라 반드시
+  # 존재하고, 삭제 실패는 키스토어가 GCS 에 남았다는 뜻이다. 빌드 맨 앞 단계라
+  # 세워도 긴 AAB 빌드를 낭비하지 않는다.
+  - id: fetch-ephemeral-credentials
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        install -d -m 0700 /workspace/.ci-secrets
+        for name in \
+          firebase-android-config.b64 \
+          play-keystore.b64 \
+          play-keystore-password \
+          play-key-password; do
+          gcloud storage cp "${_CREDENTIAL_BUCKET}/$$name" "/workspace/.ci-secrets/$$name"
+          chmod 0600 "/workspace/.ci-secrets/$$name"
+        done
+        gcloud storage rm --recursive "${_CREDENTIAL_BUCKET}"
+
   - id: build-signed-aab
     name: asia-northeast3-docker.pkg.dev/seorilabs-ci/builders/rn-android-builder:node24-jdk17-android36
     entrypoint: bash
@@ -16,22 +57,7 @@ steps:
       - ANDROID_VERSION_NAME=${_ANDROID_VERSION_NAME}
       - ANDROID_VERSION_CODE=${_ANDROID_VERSION_CODE}
       - GOOGLE_PLAY_UPLOAD_KEY_ALIAS=${_GOOGLE_PLAY_UPLOAD_KEY_ALIAS}
-    secretEnv:
-      - FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64
-      - GOOGLE_PLAY_UPLOAD_KEYSTORE_BASE64
-      - GOOGLE_PLAY_UPLOAD_KEYSTORE_PASSWORD
-      - GOOGLE_PLAY_UPLOAD_KEY_PASSWORD
-
-availableSecrets:
-  secretManager:
-    - versionName: projects/seorilabs-ci/secrets/cycle-pair-firebase-google-services/versions/latest
-      env: FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64
-    - versionName: projects/seorilabs-ci/secrets/cycle-pair-play-keystore/versions/latest
-      env: GOOGLE_PLAY_UPLOAD_KEYSTORE_BASE64
-    - versionName: projects/seorilabs-ci/secrets/cycle-pair-play-keystore-password/versions/latest
-      env: GOOGLE_PLAY_UPLOAD_KEYSTORE_PASSWORD
-    - versionName: projects/seorilabs-ci/secrets/cycle-pair-play-key-password/versions/latest
-      env: GOOGLE_PLAY_UPLOAD_KEY_PASSWORD
+      - BUILD_CREDENTIAL_DIR=/workspace/.ci-secrets
 
 artifacts:
   objects:
