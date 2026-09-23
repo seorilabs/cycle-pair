@@ -14,13 +14,18 @@
 #   grep '^GOOGLE_PLAY_UPLOAD_KEY_PASSWORD='      "$C/play-store/cycle-pair-keystore.env" | cut -d= -f2- | tr -d '\n' > "$D/play-key-password"
 #   for f in "$D"/*; do gcloud storage cp "$f" "$B/$(basename "$f")"; done
 #   gcloud builds submit . --project=seorilabs-ci --config=cloudbuild-android.yaml \
-#     --substitutions="_RELEASE_TAG=...,_ANDROID_VERSION_CODE=...,_CREDENTIAL_BUCKET=$B"
+#     --substitutions="_RELEASE_TAG=v1.2.3,_RELEASE_VERSION_NAME=1.2.3,_RELEASE_VERSION_CODE=...,_ARTIFACT_BUCKET=gs://...,_CREDENTIAL_BUCKET=$B"
 #   rm -rf "$D"
 #
+# 입력은 scripts/build-android.sh 의 required_environment 를 그대로 따른다. 2026-09-01(#60)에
+# 스크립트가 SEORI_RELEASE_* 를 요구하도록 바뀌었는데 이 파일이 따라가지 않아 폴백이
+# 첫 필수값 검사에서 멈추는 상태였다. check-multimarket-builds.test.mjs 가 이제 스크립트의
+# 목록을 직접 읽어 이 파일과 대조한다.
+#
 substitutions:
-  _RELEASE_TAG: "v1.0.4"
-  _ANDROID_VERSION_NAME: "1.0.4"
-  _ANDROID_VERSION_CODE: "1000103"
+  _RELEASE_TAG: ""
+  _RELEASE_VERSION_NAME: ""
+  _RELEASE_VERSION_CODE: ""
   _GOOGLE_PLAY_UPLOAD_KEY_ALIAS: "upload"
   _ARTIFACT_BUCKET: "gs://seorilabs-ci-build-artifacts/seorilabs/cycle-pair/manual"
   _CREDENTIAL_BUCKET: ""
@@ -47,15 +52,17 @@ steps:
         done
         gcloud storage rm --recursive "${_CREDENTIAL_BUCKET}"
 
+  # builder 이미지는 US 사본을 쓴다. default pool 은 미국에서 실행되므로 서울 사본을 당기면
+  # 빌드마다 수 GB 가 대륙간 egress 로 붙는다. 두 사본의 digest 는 같다.
   - id: build-signed-aab
-    name: asia-northeast3-docker.pkg.dev/seorilabs-ci/builders/rn-android-builder:node24-jdk17-android36
+    name: us-docker.pkg.dev/seorilabs-ci/builders/rn-android-builder:node24-jdk17-android36
     entrypoint: bash
     args:
       - scripts/build-android.sh
     env:
-      - RELEASE_TAG=${_RELEASE_TAG}
-      - ANDROID_VERSION_NAME=${_ANDROID_VERSION_NAME}
-      - ANDROID_VERSION_CODE=${_ANDROID_VERSION_CODE}
+      - SEORI_RELEASE_TAG=${_RELEASE_TAG}
+      - SEORI_RELEASE_VERSION_NAME=${_RELEASE_VERSION_NAME}
+      - SEORI_RELEASE_VERSION_CODE=${_RELEASE_VERSION_CODE}
       - GOOGLE_PLAY_UPLOAD_KEY_ALIAS=${_GOOGLE_PLAY_UPLOAD_KEY_ALIAS}
       - BUILD_CREDENTIAL_DIR=/workspace/.ci-secrets
 
@@ -66,7 +73,9 @@ artifacts:
       - dist/android/cycle-pair.aab
 
 options:
-  machineType: E2_STANDARD_2
+  # machineType 은 적지 않는다. default pool 기본 머신이 e2-standard-2 로 같은 사양이고,
+  # 적어두면 제출하는 gcloud 버전에 따라 `.options.machineType: unused` 로 거절된다.
+  # 폴백은 사람이 로컬 gcloud 로 제출하므로 버전을 고정할 수 없다.
   logging: CLOUD_LOGGING_ONLY
 
 timeout: 7200s
