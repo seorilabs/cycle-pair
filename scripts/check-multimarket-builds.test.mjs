@@ -305,3 +305,45 @@ test('Google Play deployment binds the exact stable tag to the central workflow'
   );
   assert.doesNotMatch(workflow, /\bproduction\b/);
 });
+
+// Cloud Build 폴백은 사람이 급할 때 로컬에서 제출하는 경로라 평소에는 아무도 돌리지 않는다.
+// 2026-09-01 스크립트가 SEORI_RELEASE_* 를 요구하도록 바뀐 뒤 cloudbuild-android.yaml 이
+// 옛 RELEASE_TAG·ANDROID_VERSION_* 를 그대로 넘겨, 폴백이 첫 필수값 검사에서 멈추는 채로
+// 3주가 지났다. 필수값 목록을 여기 다시 적지 않고 스크립트에서 직접 읽어 대조한다.
+test('Cloud Build fallback passes every environment variable the build script requires', async () => {
+  const [buildScript, cloudBuild] = await Promise.all([
+    readFile('scripts/build-android.sh', 'utf8'),
+    readFile('cloudbuild-android.yaml', 'utf8'),
+  ]);
+
+  const requiredBlock = buildScript.match(/^required_environment=\(\n([\s\S]*?)^\)/m);
+  assert.ok(requiredBlock, 'build-android.sh에 required_environment 목록이 필요합니다.');
+  const required = requiredBlock[1]
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean);
+  assert.ok(required.length > 0);
+
+  const step = cloudBuild.match(/- id: build-signed-aab\n([\s\S]*?)(?=\n {2}- id: |\n\S)/);
+  assert.ok(step, 'cloudbuild-android.yaml에 build-signed-aab 단계가 필요합니다.');
+  const env = Object.fromEntries(
+    [...step[1].matchAll(/^ {6}- ([A-Z0-9_]+)=(.*)$/gm)].map(match => [match[1], match[2]]),
+  );
+
+  for (const name of required) {
+    assert.ok(name in env, `폴백이 스크립트 필수값 ${name}을 넘기지 않습니다.`);
+  }
+
+  const declared = new Set(
+    [...cloudBuild.matchAll(/^ {2}(_[A-Z0-9_]+):/gm)].map(match => match[1]),
+  );
+  for (const [name, value] of Object.entries(env)) {
+    for (const [, substitution] of value.matchAll(/\$\{(_[A-Z0-9_]+)\}/g)) {
+      assert.ok(declared.has(substitution), `${name}이 선언되지 않은 ${substitution}을 씁니다.`);
+    }
+  }
+
+  assert.doesNotMatch(cloudBuild, /availableSecrets|secretEnv|secretManager/);
+  // 적어두면 제출하는 gcloud 버전에 따라 거절된다. 폴백은 로컬 gcloud 로 제출한다.
+  assert.doesNotMatch(cloudBuild, /^\s+machineType:/m);
+});
