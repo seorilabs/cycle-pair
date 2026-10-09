@@ -2038,3 +2038,17 @@ test("운영 Firebase smoke는 현재 Rules 문서 계약을 사용한다", asyn
   assert.match(source, /carePreferences:\s*enabled/);
   assert.doesNotMatch(source, /privateDailyLogs\/live-smoke/);
 });
+
+test("운영 smoke의 Platform 요청은 모두 개발용 빌드로 표시한다", async () => {
+  const source = await readFile(
+    new URL("./smoke-live-firebase.mjs", import.meta.url),
+    "utf8"
+  );
+
+  // smoke가 만드는 게스트는 실사용자가 아니다. 표시가 빠진 요청이 하나라도
+  // 있으면 실행마다 신규 가입 알림과 사용자 수에 섞인다.
+  const platformRequests = source.match(/`\$\{platformBase\}\/v1\//g) ?? [];
+  const debugBuildMarks = source.match(/'x-seori-build': 'debug'/g) ?? [];
+  assert.ok(platformRequests.length > 0);
+  assert.equal(debugBuildMarks.length, platformRequests.length);
+});

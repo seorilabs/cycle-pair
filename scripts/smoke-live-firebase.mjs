@@ -178,6 +178,9 @@ async function createPlatformGuestAccount(label) {
         'content-type': 'application/json',
         'x-seori-app': 'cycle-pair',
         'x-seori-runtime': 'live-smoke',
+        // smoke 게스트는 실사용자가 아니다. 실행마다 신규 가입 알림과 사용자
+        // 수에 섞이지 않게 모든 Platform 요청을 개발용 빌드로 표시한다.
+        'x-seori-build': 'debug',
       },
       body: JSON.stringify({appId: 'cycle-pair'}),
     },
@@ -215,6 +218,7 @@ async function createPlatformGuestAccount(label) {
       headers: {
         'content-type': 'application/json',
         'x-seori-app': 'cycle-pair',
+        'x-seori-build': 'debug',
       },
       body: JSON.stringify({
         appId: 'cycle-pair',
@@ -297,6 +301,7 @@ async function deletePlatformGuestAccount(account) {
     headers: {
       authorization: `Bearer ${account.platformToken}`,
       'x-seori-app': 'cycle-pair',
+      'x-seori-build': 'debug',
     },
   });
 }
