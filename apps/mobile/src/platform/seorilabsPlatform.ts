@@ -21,3 +21,15 @@ export const SEORILABS_PLATFORM_APP_VERSION = '1.0.4';
  * AIT 미니앱(`ait-rn`)과 달리 이 패키지는 네이티브 RN 빌드다.
  */
 export const SEORILABS_PLATFORM_RUNTIME = 'rn-native';
+
+/**
+ * 개발용 빌드인지. true면 `X-Seori-Build: debug`가 나간다.
+ *
+ * Platform은 요청을 그대로 처리하되 신규 가입 알림·버전 최초 관측·이벤트
+ * 수집·presence·사용자 수에서 뺀다. QA 기기가 운영 Platform에 붙어도 운영
+ * 지표가 오염되지 않게 하는 신호다. QA마다 누군가 켜야 하는 값이면 결국
+ * 빠지므로 번들러가 정한 `__DEV__`만 따른다. 마켓 배포용 release 번들은
+ * `__DEV__`가 false라 보내지 않는다.
+ */
+export const SEORILABS_PLATFORM_DEBUG_BUILD =
+  typeof __DEV__ !== 'undefined' && __DEV__ === true;

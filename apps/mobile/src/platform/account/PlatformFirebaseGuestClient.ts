@@ -3,6 +3,7 @@ import {
   SEORILABS_PLATFORM_API_BASE_URL,
   SEORILABS_PLATFORM_APP_ID,
   SEORILABS_PLATFORM_APP_VERSION,
+  SEORILABS_PLATFORM_DEBUG_BUILD,
   SEORILABS_PLATFORM_RUNTIME,
 } from '../seorilabsPlatform';
 
@@ -20,6 +21,11 @@ export interface PlatformFirebaseGuestCredential {
 
 export interface PlatformFirebaseGuestClient {
   createCredential(): Promise<PlatformFirebaseGuestCredential>;
+}
+
+export interface PlatformFirebaseGuestClientOptions {
+  /** 생략하면 번들의 `__DEV__`를 따른다. */
+  readonly debugBuild?: boolean;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -44,7 +50,9 @@ function parseCredential(value: unknown): PlatformFirebaseGuestCredential {
 
 export function createPlatformFirebaseGuestClient(
   fetchImpl: FetchLike = fetch,
+  options: PlatformFirebaseGuestClientOptions = {},
 ): PlatformFirebaseGuestClient {
+  const debugBuild = options.debugBuild ?? SEORILABS_PLATFORM_DEBUG_BUILD;
   return {
     async createCredential() {
       let response: Awaited<ReturnType<FetchLike>>;
@@ -59,6 +67,8 @@ export function createPlatformFirebaseGuestClient(
               'X-Seori-App': SEORILABS_PLATFORM_APP_ID,
               'X-Seori-Runtime': SEORILABS_PLATFORM_RUNTIME,
               'X-Seori-Sdk': `${SEORILABS_PLATFORM_APP_ID}/${SEORILABS_PLATFORM_APP_VERSION}`,
+              // 출시 빌드에는 헤더 자체를 싣지 않는다. 정의된 값은 `debug` 하나다.
+              ...(debugBuild ? { 'X-Seori-Build': 'debug' } : {}),
             },
             body: JSON.stringify({ appId: SEORILABS_PLATFORM_APP_ID }),
           },
