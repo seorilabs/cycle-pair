@@ -24,8 +24,8 @@ importers:
         specifier: 1.0.45
         version: 1.0.45(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@granite-js/native@1.0.45(@babel/runtime@7.28.4)(react-native@0.84.0(@babel/core@7.28.5)(@react-native-community/cli@20.1.0(typescript@5.9.3))(@react-native/metro-config@0.86.0(@babel/core@7.28.5))(@types/react@19.2.0)(react@19.2.3))(react@19.2.3))(@swc/helpers@0.5.23)(@types/node@22.20.1)(@types/react@19.2.0)(brick-module@0.5.1(react-native@0.84.0(@babel/core@7.28.5)(@react-native-community/cli@20.1.0(typescript@5.9.3))(@react-native/metro-config@0.86.0(@babel/core@7.28.5))(@types/react@19.2.0)(react@19.2.3))(react@19.2.3))(jiti@2.7.0)(postcss@8.5.16)(react-native@0.84.0(@babel/core@7.28.5)(@react-native-community/cli@20.1.0(typescript@5.9.3))(@react-native/metro-config@0.86.0(@babel/core@7.28.5))(@types/react@19.2.0)(react@19.2.3))(react@19.2.3)(typescript@5.9.3)(yaml@2.9.0)
       '@seorilabs/platform-sdk':
-        specifier: 0.5.0
-        version: 0.5.0
+        specifier: 0.6.0
+        version: 0.6.0
       '@toss/tds-react-native':
         specifier: 2.0.5
         version: 2.0.5(5110c1f2421de4666a2039aa9ce00b9f)
@@ -145,8 +145,8 @@ importers:
         specifier: 25.1.0
         version: 25.1.0(@react-native-firebase/app@25.1.0(@react-native-async-storage/async-storage@3.1.1(react-native@0.86.0(@babel/core@7.29.7)(@react-native-community/cli@20.1.0(typescript@5.9.3))(@react-native/jest-preset@0.86.0(@babel/core@7.29.7)(react@19.2.3))(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.3))(react@19.2.3))(react-native@0.86.0(@babel/core@7.29.7)(@react-native-community/cli@20.1.0(typescript@5.9.3))(@react-native/jest-preset@0.86.0(@babel/core@7.29.7)(react@19.2.3))(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.3))(react@19.2.3))
       '@seorilabs/platform-sdk':
-        specifier: 0.5.0
-        version: 0.5.0
+        specifier: 0.6.0
+        version: 0.6.0
       react:
         specifier: 19.2.3
         version: 19.2.3
@@ -3455,8 +3455,8 @@ packages:
     engines: {node: '>= 10'}
     hasBin: true
 
-  '@seorilabs/platform-sdk@0.5.0':
-    resolution: {integrity: sha512-Ujf0q59jXoKbLn2/yDkpJXL8jwomZSkqN8ru4zxtBM53j847MjIvbr1pQ70MhDc5hUCEYQCsIiSnEf0brEBzUw==}
+  '@seorilabs/platform-sdk@0.6.0':
+    resolution: {integrity: sha512-/sI+c3JPOWo6CRceFqvpmUGV8fTSOuyKFfezohPDT9Qk1HVlHl4q5IwC89wy+1cB3Relpex/GAwVNQ6D8uVLKw==}
     engines: {node: '>=20'}
 
   '@shopify/flash-list@1.6.2':
@@ -13898,7 +13898,7 @@ snapshots:
       - encoding
       - supports-color
 
-  '@seorilabs/platform-sdk@0.5.0': {}
+  '@seorilabs/platform-sdk@0.6.0': {}
 
   '@shopify/flash-list@1.6.2(@babel/runtime@7.28.4)(react-native@0.84.0(@babel/core@7.28.5)(@react-native-community/cli@20.1.0(typescript@5.9.3))(@react-native/metro-config@0.86.0(@babel/core@7.28.5))(@types/react@19.2.0)(react@19.2.3))(react@19.2.3)':
     dependencies:
