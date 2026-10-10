@@ -137,3 +137,34 @@ describe('PlatformPresenceClient', () => {
     expect(() => presence.stop()).not.toThrow();
   });
 });
+
+describe('PlatformPresenceClient 개발용 빌드 표시', () => {
+  const runtime = globalThis as { __DEV__?: boolean };
+  const previous = runtime.__DEV__;
+
+  afterEach(() => {
+    runtime.__DEV__ = previous;
+  });
+
+  // SDK가 debugBuild 생략 시 번들의 __DEV__를 따른다. 조립 지점이 값을 고정하면
+  // 한쪽 경우가 실패한다.
+  it.each([
+    [true, 'debug'],
+    [false, undefined],
+  ])('__DEV__=%s 번들의 presence token 요청 X-Seori-Build는 %s', async (developmentBundle, expected) => {
+    runtime.__DEV__ = developmentBundle;
+    const fetchImpl = jest.fn(async () => bootstrap);
+    const presence = createPlatformPresenceClient({
+      enabled: true,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+
+    presence.start();
+    await settle();
+    presence.stop();
+
+    const [url, init] = calls(fetchImpl)[0]!;
+    expect(url).toMatch(/\/v1\/presence\/token$/);
+    expect((init.headers as Record<string, string>)['X-Seori-Build']).toBe(expected);
+  });
+});

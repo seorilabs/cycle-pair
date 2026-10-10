@@ -48,6 +48,8 @@ export function createPlatformPresenceClient(
   const enabled = options.enabled ?? PRESENCE_ENABLED_BY_DEFAULT;
   let platform: ReturnType<typeof createPlatform>;
   try {
+    // debugBuild는 넘기지 않는다. SDK가 SEORILABS_PLATFORM_DEBUG_BUILD와 같은 규칙으로
+    // 번들의 `__DEV__`를 따른다. 마켓 배포용 release 번들은 false다.
     platform = createPlatform({
       baseUrl: SEORILABS_PLATFORM_API_BASE_URL,
       appId: SEORILABS_PLATFORM_APP_ID,
