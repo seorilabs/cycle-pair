@@ -39,7 +39,7 @@ export function Screen({
   return (
     <KeyboardAvoidingView
       style={styles.screen}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={[styles.screen, { paddingTop: insets.top }]}>
         {scroll ? (
