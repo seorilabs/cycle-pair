@@ -4,6 +4,21 @@ import { initializeRuntime as initializeService } from '../firebase/productionRu
 import { initializeRuntime as initializeEmulator } from '../development/emulatorRuntime';
 import { connectAuthEmulator } from '@react-native-firebase/auth';
 import { NativeModules } from 'react-native';
+import { runtimeServices as emulatorServices } from '../development/emulatorRuntime';
+import { isolatedServices } from '../development/isolatedServices';
+
+jest.mock('../observability/ProductAnalytics', () => ({
+  productAnalytics: {},
+}));
+jest.mock('../observability/SafeCrashReporter', () => ({
+  safeCrashReporter: {},
+}));
+jest.mock('../notifications/FirebaseNotificationClient', () => ({
+  firebaseNotificationClient: {},
+}));
+jest.mock('../presence/PlatformPresenceClient', () => ({
+  platformPresenceClient: {},
+}));
 
 jest.mock('./migrateDeviceOnlyStorage', () => ({
   migrateDeviceOnlyStorage: jest.fn(),
@@ -34,6 +49,10 @@ jest.mock('@react-native-firebase/functions', () => ({
 }));
 
 const migration = jest.mocked(migrateDeviceOnlyStorage);
+
+it('selects isolated external services for local Firebase', () => {
+  expect(emulatorServices).toBe(isolatedServices);
+});
 
 beforeEach(() => {
   jest.clearAllMocks();

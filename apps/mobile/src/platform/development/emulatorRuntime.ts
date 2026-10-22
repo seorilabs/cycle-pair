@@ -16,6 +16,7 @@ import {
 } from '@react-native-firebase/functions';
 import { createFirebaseAccountAdapter } from '../account/FirebaseAccountAdapter';
 import { migrateDeviceOnlyStorage } from '../local/migrateDeviceOnlyStorage';
+export { isolatedServices as runtimeServices } from './isolatedServices';
 // Metro selects this module only for a development bundle with an explicit
 // emulator backend. Production has a separate dependency graph.
 // Physical Android devices reach these loopback ports through adb reverse.
