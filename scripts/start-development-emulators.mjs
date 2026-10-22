@@ -71,7 +71,10 @@ const files = [
 const owned = [];
 let child;
 let closeForwarders;
+let forwardingInitialization;
+let forwardingFailure;
 async function cleanup() {
+  await forwardingInitialization;
   await closeForwarders?.();
   for (let i = 0; i < localFiles.length; i++) {
     if (
@@ -83,7 +86,6 @@ async function cleanup() {
   await rm(temporary, { recursive: true, force: true });
 }
 try {
-  if (deviceHost) closeForwarders = await openDeviceForwarders(deviceHost);
   await writeFile(
     credentials,
     '{"type":"cyclepair-emulator-no-credentials"}\n',
@@ -129,6 +131,26 @@ try {
       const lines = pending.split("\n");
       pending = lines.pop();
       for (const line of lines) {
+        // Firebase CLI on macOS checks every listener on a port before starting.
+        // Open the separate interface only after its loopback servers are ready.
+        if (
+          deviceHost &&
+          !forwardingInitialization &&
+          line.includes("All emulators ready")
+        ) {
+          forwardingInitialization = openDeviceForwarders(deviceHost)
+            .then((close) => {
+              closeForwarders = close;
+              console.log("Physical device forwarding ready");
+            })
+            .catch((error) => {
+              forwardingFailure = error;
+              console.error(
+                "Physical device forwarding failed; stopping the owned local servers."
+              );
+              child.kill("SIGINT");
+            });
+        }
         if (/oobCode|verifyEmail\?|resetPassword\?/i.test(line)) {
           console.log("[email action link omitted]");
           continue;
@@ -152,4 +174,5 @@ try {
   });
 } finally {
   await cleanup();
+  if (forwardingFailure) process.exitCode = 1;
 }
