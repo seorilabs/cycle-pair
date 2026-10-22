@@ -39,7 +39,7 @@ describe('privacy-safe observability', () => {
     });
   });
 
-  it('accepts all nine sharing fields but rejects impossible counts', async () => {
+  it.each([9, 10, 11])('sends %i selected sharing fields after opt-in', async enabledCount => {
     const delegate: AnalyticsDelegate = {
       setEnabled: jest.fn(async () => undefined),
       log: jest.fn(async () => undefined),
@@ -49,14 +49,27 @@ describe('privacy-safe observability', () => {
 
     await analytics.track({
       name: 'cp_share_setting_update',
-      params: {enabled_count: 9},
+      params: {enabled_count: enabledCount},
     });
+    expect(delegate.log).toHaveBeenCalledWith('cp_share_setting_update', {
+      enabled_count: enabledCount,
+    });
+  });
+
+  it('rejects a sharing count above all eleven available fields', async () => {
+    const delegate: AnalyticsDelegate = {
+      setEnabled: jest.fn(async () => undefined),
+      log: jest.fn(async () => undefined),
+    };
+    const analytics = createProductAnalytics(delegate);
+    await analytics.setEnabled(true);
     await expect(
       analytics.track({
         name: 'cp_share_setting_update',
-        params: {enabled_count: 10},
+        params: {enabled_count: 12},
       }),
     ).rejects.toThrow('allowlisted schema');
+    expect(delegate.log).not.toHaveBeenCalled();
   });
 
   it('drops events before explicit opt-in and rejects extra sensitive keys', async () => {
