@@ -100,7 +100,7 @@ function validateEvent(value: unknown): {
       !hasExactKeys(value.params, ['enabled_count']) ||
       !Number.isInteger(value.params.enabled_count) ||
       (value.params.enabled_count as number) < 0 ||
-      (value.params.enabled_count as number) > 9
+      (value.params.enabled_count as number) > 11
     ) {
       throw new Error('Analytics event must match the allowlisted schema.');
     }
