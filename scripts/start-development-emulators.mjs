@@ -10,11 +10,20 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import {
+  openDeviceForwarders,
+  validateDeviceHost,
+} from "./device-emulator-forwarding.mjs";
 const root = process.cwd();
 const project = JSON.parse(
   await readFile("apps/mobile/firebase-environments.json", "utf8")
 ).projectId;
-const { values } = parseArgs({ options: { import: { type: "string" } } });
+const { values } = parseArgs({
+  options: { import: { type: "string" }, "device-host": { type: "string" } },
+});
+const deviceHost = values["device-host"]
+  ? validateDeviceHost(values["device-host"])
+  : undefined;
 let importDirectory;
 if (values.import) {
   importDirectory = path.resolve(values.import);
@@ -56,11 +65,17 @@ const temporary = await mkdtemp(
 const credentials = path.join(temporary, "no-credentials.json");
 const files = [
   'APPLE_IAP_PRIVATE_KEY_BASE64=ZHVtbXk=\nAPPLE_IAP_KEY_ID=emulator-test-key\nAPPLE_IAP_ISSUER_ID=00000000-0000-0000-0000-000000000000\nAPPLE_APP_ID=1\nAPPLE_IAP_ROOT_CERTIFICATES_BASE64_JSON=["ZHVtbXk="]\n',
-  "ENFORCE_APP_CHECK=false\nHTTP_PROXY=http://127.0.0.1:9\nHTTPS_PROXY=http://127.0.0.1:9\nALL_PROXY=http://127.0.0.1:9\nNO_PROXY=127.0.0.1,localhost,::1\n",
+  "ENFORCE_APP_CHECK=false\nHTTP_PROXY=http://127.0.0.1:9\nHTTPS_PROXY=http://127.0.0.1:9\nALL_PROXY=http://127.0.0.1:9\nNO_PROXY=127.0.0.1,localhost,::1\n" +
+    (deviceHost ? `CYCLEPAIR_EMULATOR_DEVICE_HOST=${deviceHost}\n` : ""),
 ];
 const owned = [];
 let child;
+let closeForwarders;
+let forwardingInitialization;
+let forwardingFailure;
 async function cleanup() {
+  await forwardingInitialization;
+  await closeForwarders?.();
   for (let i = 0; i < localFiles.length; i++) {
     if (
       owned.includes(i) &&
@@ -116,6 +131,26 @@ try {
       const lines = pending.split("\n");
       pending = lines.pop();
       for (const line of lines) {
+        // Firebase CLI on macOS checks every listener on a port before starting.
+        // Open the separate interface only after its loopback servers are ready.
+        if (
+          deviceHost &&
+          !forwardingInitialization &&
+          line.includes("All emulators ready")
+        ) {
+          forwardingInitialization = openDeviceForwarders(deviceHost)
+            .then((close) => {
+              closeForwarders = close;
+              console.log("Physical device forwarding ready");
+            })
+            .catch((error) => {
+              forwardingFailure = error;
+              console.error(
+                "Physical device forwarding failed; stopping the owned local servers."
+              );
+              child.kill("SIGINT");
+            });
+        }
         if (/oobCode|verifyEmail\?|resetPassword\?/i.test(line)) {
           console.log("[email action link omitted]");
           continue;
@@ -139,4 +174,5 @@ try {
   });
 } finally {
   await cleanup();
+  if (forwardingFailure) process.exitCode = 1;
 }

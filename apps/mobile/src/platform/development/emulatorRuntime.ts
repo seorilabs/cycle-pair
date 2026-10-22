@@ -16,11 +16,18 @@ import {
 } from '@react-native-firebase/functions';
 import { createFirebaseAccountAdapter } from '../account/FirebaseAccountAdapter';
 import { migrateDeviceOnlyStorage } from '../local/migrateDeviceOnlyStorage';
+import { NativeModules, Platform } from 'react-native';
+import { emulatorHost } from './emulatorHost';
 export { isolatedServices as runtimeServices } from './isolatedServices';
 // Metro selects this module only for a development bundle with an explicit
 // emulator backend. Production has a separate dependency graph.
-// Physical Android devices reach these loopback ports through adb reverse.
-const host = '127.0.0.1';
+// Android uses adb reverse. A physical iPhone uses the same local Mac that
+// supplied its development bundle, with explicitly opened local forwarders.
+const sourceCode = NativeModules.SourceCode;
+const host = emulatorHost(
+  Platform.OS,
+  sourceCode?.getConstants?.().scriptURL ?? sourceCode?.scriptURL,
+);
 export const runtimeAccount = createFirebaseAccountAdapter(undefined, {
   createGuestSession: async () => {
     const { user } = await signInAnonymously(getAuth());

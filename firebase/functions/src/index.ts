@@ -1468,6 +1468,7 @@ function accountExportDownloadBaseUrl(requestHost: string | undefined): string {
       region: FUNCTIONS_REGION,
       emulator: process.env.FUNCTIONS_EMULATOR === "true",
       requestHost,
+      emulatorDeviceHost: process.env.CYCLEPAIR_EMULATOR_DEVICE_HOST,
     });
   } catch {
     throw new HttpsError("internal", "내보내기 다운로드 주소를 확인할 수 없습니다.");

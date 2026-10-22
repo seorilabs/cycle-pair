@@ -14,3 +14,11 @@ test('emulator mode rejects external hosts and cannot accept production configur
   expect(() => accountExportEndpoint({...production, emulator: true, requestHost: 'evil.example'})).toThrow();
   expect(() => accountExportEndpoint({...production, emulator: true, requestHost: 'localhost:5301', configured: 'https://example.org/export'})).toThrow();
 });
+test('a physical device export accepts only the explicitly selected local interface', () => {
+  const environment = {...production, emulator: true, emulatorDeviceHost: '192.168.1.24'};
+  expect(accountExportEndpoint({...environment, requestHost: '192.168.1.24:5301'})).toBe('http://192.168.1.24:5301/cyclepair-test/asia-northeast3/downloadAccountDataExport');
+  for (const requestHost of ['192.168.1.25:5301', 'evil.example:5301', '192.168.1.24:80', '192.168.1.24:5301@evil.example']) {
+    expect(() => accountExportEndpoint({...environment, requestHost})).toThrow();
+  }
+  expect(() => accountExportEndpoint({...environment, emulatorDeviceHost: 'evil.example', requestHost: 'evil.example:5301'})).toThrow();
+});

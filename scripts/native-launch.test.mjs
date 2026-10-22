@@ -23,3 +23,27 @@ test('release bundles reject an emulator selection and resolve only the service 
   assert.match(selection.selectNativeRuntime({development: false}), /productionRuntime\.ts$/);
   assert.match(selection.selectNativeRuntime({development: true, backend: 'emulator'}), /emulatorRuntime\.ts$/);
 });
+
+test("the local network purpose is included only in generated Debug app metadata", async () => {
+  const project = await readFile(
+    "apps/mobile/ios/CyclePair.xcodeproj/project.pbxproj",
+    "utf8"
+  );
+  const configuration = (name) =>
+    project.match(
+      new RegExp(
+        `13B07F9[45]1A680F5B00A75B9A /\\* ${name} \\*/ = \\{[\\s\\S]*?buildSettings = \\{([\\s\\S]*?)\\n\\t\\t\\t\\};`
+      )
+    )?.[1] ?? "";
+  assert.match(configuration("Debug"), /GENERATE_INFOPLIST_FILE = YES;/);
+  assert.match(
+    configuration("Debug"),
+    /INFOPLIST_KEY_NSLocalNetworkUsageDescription/
+  );
+  assert.doesNotMatch(
+    configuration("Release"),
+    /INFOPLIST_KEY_NSLocalNetworkUsageDescription|GENERATE_INFOPLIST_FILE/
+  );
+  const plist = await readFile("apps/mobile/ios/CyclePair/Info.plist", "utf8");
+  assert.doesNotMatch(plist, /NSLocalNetworkUsageDescription/);
+});

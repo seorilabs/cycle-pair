@@ -26,6 +26,7 @@ import {
 } from '../../domain/account/AccountPort';
 import { localPrivateDataCleaner } from '../local/LocalPrivateDataCleaner';
 import { isFirebaseGuestUser } from './FirebaseGuestIdentity';
+import { isLocalDevelopmentHost } from '../firebase/isLocalDevelopmentHost';
 import {
   platformFirebaseGuestClient,
   type PlatformFirebaseGuestClient,
@@ -73,7 +74,7 @@ function parseDataExportTicket(
       (localExportOrigin
         ? __DEV__ &&
           url.protocol === 'http:' &&
-          ['127.0.0.1', 'localhost', '10.0.2.2'].includes(url.hostname) &&
+          isLocalDevelopmentHost(url.hostname) &&
           url.origin === localExportOrigin
         : url.protocol === 'https:') &&
       url.username.length === 0 &&
