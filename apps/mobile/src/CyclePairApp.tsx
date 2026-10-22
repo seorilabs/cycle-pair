@@ -1,3 +1,4 @@
+import {useI18n} from './i18n/I18nProvider';
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useCyclePair } from './app/CyclePairStore';
@@ -17,10 +18,11 @@ import { SharingScreen } from './screens/SharingScreen';
 import { colors, spacing } from './theme';
 
 function LoadingScreen() {
+  const {l} = useI18n();
   return (
     <View style={styles.loading}>
       <Text style={styles.loadingMark}>∞</Text>
-      <Text style={styles.loadingTitle}>사이클 페어</Text>
+      <Text style={styles.loadingTitle}>{l("사이클 페어")}</Text>
       <ActivityIndicator color={colors.primary} style={styles.spinner} />
     </View>
   );
@@ -38,6 +40,7 @@ export function CyclePairApp() {
     openInAppNotice,
   } = useCyclePair();
   const [recordOpen, setRecordOpen] = useState(false);
+  const [recordDraft, setRecordDraft] = useState<{date: string; value: import('./app/CyclePairStore').DailyCheckIn} | null>(null);
   const keyboardVisible = useKeyboardVisibility();
   const latestNotice = inAppNotices[0];
   const handleHardwareBack = useCallback(() => {
@@ -57,7 +60,7 @@ export function CyclePairApp() {
   if (state.stage === 'sharing') return <SharingScreen />;
 
   if (recordOpen) {
-    return <RecordScreen onDone={() => setRecordOpen(false)} onCancel={() => setRecordOpen(false)} />;
+    return <RecordScreen initialDraft={recordDraft?.date === state.currentLocalDate ? recordDraft.value : undefined} onDraftChange={value => setRecordDraft({date: state.currentLocalDate, value})} onDone={() => {setRecordOpen(false); setRecordDraft(null);}} onCancel={() => setRecordOpen(false)} />;
   }
 
   return (

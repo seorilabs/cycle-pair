@@ -1,0 +1,9 @@
+appId: ${APP_ID}
+---
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: home-record
+    timeout: 60000
+- takeScreenshot: safe/home-cold

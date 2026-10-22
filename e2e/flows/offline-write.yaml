@@ -1,0 +1,52 @@
+appId: ${APP_ID}
+---
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: home-record
+    timeout: 60000
+- tapOn:
+    id: home-record
+- tapOn:
+    id: record-details
+- scrollUntilVisible:
+    element:
+      id: record-note
+    direction: DOWN
+- longPressOn:
+    id: record-note
+- tapOn: 'Select All|Select all|전체 선택|모두 선택'
+- eraseText: 1
+- inputText: ${SYNTHETIC_NOTE}-offline
+- runFlow: dismiss-keyboard.yaml
+- scrollUntilVisible:
+    element:
+      id: record-save
+    direction: DOWN
+- tapOn:
+    id: record-save
+- takeScreenshot: safe/offline-after-save
+- extendedWaitUntil:
+    visible: 'Saved offline|오프라인 저장'
+    timeout: 30000
+- takeScreenshot: safe/offline-saved
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: home-record
+    timeout: 30000
+- tapOn:
+    id: tab-calendar
+- scrollUntilVisible:
+    element:
+      text: 'View record|기록 보기'
+    direction: DOWN
+    centerElement: true
+- tapOn: 'View record|기록 보기'
+- assertVisible: ${SYNTHETIC_NOTE}-offline
+- takeScreenshot: safe/offline-restored
+- tapOn: 'Back|뒤로'
+- tapOn:
+    id: tab-home

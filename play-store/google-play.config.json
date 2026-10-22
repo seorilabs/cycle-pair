@@ -84,7 +84,7 @@
     ]
   },
   "monetization": {
-    "model": "premium-subscription",
+    "model": "free",
     "downloadPrice": "free",
     "subscriptionProducts": [
       {
@@ -111,7 +111,8 @@
         "freeTrial": "P7D",
         "benefit": "상세 예측·전체 케어 콘텐츠·확장 이력(연간 ~38% 절약)"
       }
-    ]
+    ],
+    "salesEnabled": false
   },
   "assets": {
     "playIcon": "play-store/assets/icon-512.png",

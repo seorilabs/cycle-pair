@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nProvider';
 import React, { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { useAccount } from '../app/account/AccountContext';
@@ -15,13 +16,9 @@ export function AccountGateScreen({
 }: {
   deletionRecovery?: boolean;
 }) {
-  const {
-    state,
-    clearFeedback,
-    startGuest,
-    signIn,
-    requestPasswordReset,
-  } = useAccount();
+  const { l } = useI18n();
+  const { state, clearFeedback, startGuest, signIn, requestPasswordReset } =
+    useAccount();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [resetMode, setResetMode] = useState(false);
@@ -43,27 +40,31 @@ export function AccountGateScreen({
   return (
     <Screen contentStyle={styles.content}>
       <View style={styles.brandBlock}>
-        <Text style={styles.brand}>∞ 사이클 페어</Text>
+        <Text style={styles.brand}>{l('∞ 사이클 페어')}</Text>
         <Text style={styles.title}>
           {resetMode
-            ? '비밀번호 다시 설정하기'
+            ? l('비밀번호 다시 설정하기')
             : deletionRecovery
-              ? '삭제를 요청한 계정 확인'
-              : '내 기록으로 돌아가기'}
+            ? l('삭제를 요청한 계정 확인')
+            : l('내 기록으로 돌아가기')}
         </Text>
         <Text style={styles.body}>
           {resetMode
-            ? '계정에 등록한 이메일로 재설정 링크를 보내드려요.'
+            ? l('계정에 등록한 이메일로 재설정 링크를 보내드려요.')
             : deletionRecovery
-              ? '삭제를 요청한 동일한 이메일 계정으로 로그인하면 중단된 서버 삭제를 안전하게 다시 시도할 수 있어요.'
-              : '로그아웃 상태입니다. 이메일 계정으로 로그인해야 기존 기록을 다시 불러올 수 있어요.'}
+            ? l(
+                '삭제를 요청한 동일한 이메일 계정으로 로그인하면 중단된 서버 삭제를 안전하게 다시 시도할 수 있어요.',
+              )
+            : l(
+                '로그아웃 상태입니다. 이메일 계정으로 로그인해야 기존 기록을 다시 불러올 수 있어요.',
+              )}
         </Text>
       </View>
 
       <Card style={styles.form}>
-        <Text style={styles.label}>이메일</Text>
+        <Text style={styles.label}>{l('이메일')}</Text>
         <TextInput
-          accessibilityLabel="로그인 이메일"
+          accessibilityLabel={l('로그인 이메일')}
           autoCapitalize="none"
           autoComplete="email"
           autoCorrect={false}
@@ -78,16 +79,16 @@ export function AccountGateScreen({
         />
         {!resetMode ? (
           <>
-            <Text style={styles.label}>비밀번호</Text>
+            <Text style={styles.label}>{l('비밀번호')}</Text>
             <TextInput
-              accessibilityLabel="로그인 비밀번호"
+              accessibilityLabel={l('로그인 비밀번호')}
               autoCapitalize="none"
               autoComplete="current-password"
               autoCorrect={false}
               editable={!state.busy}
               onChangeText={setPassword}
               onSubmitEditing={() => submitLogin().catch(() => undefined)}
-              placeholder="비밀번호"
+              placeholder={l('비밀번호')}
               placeholderTextColor={colors.textSubtle}
               secureTextEntry
               style={styles.input}
@@ -99,21 +100,21 @@ export function AccountGateScreen({
 
         {state.error ? (
           <Text accessibilityRole="alert" style={styles.error}>
-            {state.error}
+            {l(state.error)}
           </Text>
         ) : null}
         {state.notice ? (
-          <Text style={styles.notice}>{state.notice}</Text>
+          <Text style={styles.notice}>{l(state.notice)}</Text>
         ) : null}
 
         <PrimaryButton
           disabled={state.busy}
           label={
             state.busy
-              ? '처리 중…'
+              ? l('처리 중…')
               : resetMode
-              ? '재설정 메일 보내기'
-              : '로그인'
+              ? l('재설정 메일 보내기')
+              : l('로그인')
           }
           onPress={() =>
             (resetMode ? submitReset() : submitLogin()).catch(() => undefined)
@@ -122,19 +123,21 @@ export function AccountGateScreen({
         />
         <TextButton
           disabled={state.busy}
-          label={resetMode ? '로그인으로 돌아가기' : '비밀번호를 잊었어요'}
+          label={
+            resetMode ? l('로그인으로 돌아가기') : l('비밀번호를 잊었어요')
+          }
           onPress={switchMode}
         />
 
         {!resetMode && !deletionRecovery ? (
           <View style={styles.guestBlock}>
             <Text style={styles.guestCopy}>
-              이전 계정과 분리된 빈 기록으로 다시 시작할 수도 있어요.
+              {l('이전 계정과 분리된 빈 기록으로 다시 시작할 수도 있어요.')}
             </Text>
             <SecondaryButton
               compact
               disabled={state.busy}
-              label={state.busy ? '게스트 준비 중…' : '새 게스트로 시작'}
+              label={state.busy ? l('게스트 준비 중…') : l('새 게스트로 시작')}
               onPress={() => startGuest().catch(() => undefined)}
             />
           </View>
@@ -142,7 +145,7 @@ export function AccountGateScreen({
       </Card>
 
       <Text style={styles.privacy}>
-        비밀번호는 기기에 별도로 저장하지 않고 Firebase Auth에만 전달합니다.
+        {l('비밀번호는 이 기기에 저장하지 않아요.')}
       </Text>
     </Screen>
   );

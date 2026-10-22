@@ -1,39 +1,36 @@
 {
   "name": "cyclepair",
-  "version": "1.0.4",
+  "version": "1.1.0",
   "private": true,
   "description": "함께 준비하는 주기·컨디션 커뮤니케이션 앱",
   "packageManager": "pnpm@11.3.0",
   "engines": {
     "node": "^24.3.0"
   },
-  "devDependencies": {
-    "@apps-in-toss/ait-format": "1.0.0"
-  },
   "scripts": {
     "lint": "pnpm -r --if-present lint",
     "typecheck": "pnpm -r --if-present typecheck",
-    "test": "pnpm check:platform-sdk && pnpm test:core && pnpm test:mobile && pnpm test:ait && pnpm test:firebase && pnpm test:release",
+    "test": "pnpm check:platform-sdk && pnpm test:core && pnpm test:mobile && pnpm test:firebase && pnpm test:release",
     "check:platform-sdk": "node scripts/check-platform-sdk-lock.mjs && node --test scripts/check-platform-sdk-lock.test.mjs",
     "test:core": "pnpm --filter @cyclepair/product-core test",
     "test:mobile": "pnpm --filter @cyclepair/mobile test",
-    "test:ait": "pnpm --filter @cyclepair/ait test",
     "test:firebase": "pnpm --dir firebase check",
-    "test:release": "node --test scripts/check-release.test.mjs scripts/check-app-store-setup.test.mjs scripts/check-multimarket-builds.test.mjs scripts/check-functions-deploy-unit.test.mjs scripts/generate-google-play-data-safety.test.mjs",
+    "test:release": "node --test scripts/check-release.test.mjs scripts/check-app-store-setup.test.mjs scripts/check-multimarket-builds.test.mjs scripts/check-functions-deploy-unit.test.mjs scripts/generate-google-play-data-safety.test.mjs scripts/native-launch.test.mjs scripts/physical-e2e-runtime.test.mjs scripts/physical-e2e-cleanup.test.mjs",
     "test:firebase:live": "node scripts/smoke-live-firebase.mjs",
     "check:architecture": "node scripts/check-architecture.mjs",
     "check:native-firebase-config": "node scripts/check-native-firebase-config.mjs",
     "check:mobile": "pnpm check:native-firebase-config && pnpm --filter @cyclepair/mobile lint && pnpm --filter @cyclepair/mobile typecheck && pnpm --filter @cyclepair/mobile test && pnpm --filter @cyclepair/mobile bundle:ios && pnpm --filter @cyclepair/mobile bundle:android",
-    "check:ait": "pnpm --filter @cyclepair/ait check",
     "check:firebase": "pnpm --dir firebase check",
     "check:release": "node scripts/check-release.mjs",
     "check:release-automation": "node scripts/check-release-automation.mjs",
     "build:android": "pnpm build:google-play",
+    "build:android:synthetic": "node scripts/build-android-synthetic.mjs",
     "build:google-play": "node scripts/build-google-play.mjs",
-    "build:ait": "pnpm --filter @cyclepair/ait build",
     "start:mobile": "pnpm --filter @cyclepair/mobile start",
-    "start:ait": "pnpm --filter @cyclepair/ait dev",
     "android": "pnpm --filter @cyclepair/mobile android",
-    "ios": "pnpm --filter @cyclepair/mobile ios"
+    "ios": "pnpm --filter @cyclepair/mobile ios",
+    "test:e2e:dev": "node scripts/run-native-e2e.mjs --backend emulator",
+    "test:e2e:live": "node scripts/run-native-e2e.mjs --backend service",
+    "start:emulators": "node scripts/start-development-emulators.mjs"
   }
 }

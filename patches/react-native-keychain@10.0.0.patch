@@ -1,0 +1,18 @@
+diff --git a/ios/RNKeychainManager/RNKeychainManager.m b/ios/RNKeychainManager/RNKeychainManager.m
+--- a/ios/RNKeychainManager/RNKeychainManager.m
++++ b/ios/RNKeychainManager/RNKeychainManager.m
+@@ -22 +22,6 @@
+-RCT_EXPORT_MODULE();
++RCT_EXPORT_MODULE();
++
++- (NSDictionary *)constantsToExport
++{
++  return @{@"cyclePairDeviceOnlyStorageVersion": @1};
++}
+@@ -140 +145 @@
+-  if (options && options[@"cloudSync"]) {
++  if (options && [options[@"cloudSync"] boolValue]) {
+@@ -353 +358,2 @@
+-                                (__bridge id)kSecMatchLimitAll, (__bridge id)kSecMatchLimit,
++                                (__bridge id)kSecMatchLimitAll, (__bridge id)kSecMatchLimit,
++                                (__bridge id)kSecAttrSynchronizableAny, (__bridge id)kSecAttrSynchronizable,

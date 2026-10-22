@@ -1,0 +1,10 @@
+appId: ${APP_ID}
+---
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: home-record
+    timeout: 60000
+- runFlow: record.yaml
+- runFlow: language.yaml

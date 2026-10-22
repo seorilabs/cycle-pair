@@ -1,4 +1,5 @@
 import {createHash, randomBytes, timingSafeEqual} from "node:crypto";
+import {accountExportEndpoint} from "./services/accountExportEndpoint.js";
 
 import {initializeApp} from "firebase-admin/app";
 import {getAuth} from "firebase-admin/auth";
@@ -481,7 +482,7 @@ async function deliverNeutralNotificationToUser(
     }
     return isWithinQuietHours(device.quietHours, now)
       ? []
-      : [{reference: snapshot.ref, token: device.token}];
+      : [{reference: snapshot.ref, token: device.token, locale: device.locale}];
   });
 
   if (deliverable.length === 0) {
@@ -489,14 +490,16 @@ async function deliverNeutralNotificationToUser(
     return;
   }
 
-  const content = neutralNotificationContent(type);
   try {
-    const response = await messaging.sendEachForMulticast({
-      tokens: deliverable.map(device => device.token),
-      notification: content.notification,
-      data: {...content.data},
-      android: {notification: {channelId: "cyclepair_updates"}},
-    });
+    const response = await messaging.sendEach(deliverable.map(device => {
+      const content = neutralNotificationContent(type, device.locale);
+      return {
+        token: device.token,
+        notification: content.notification,
+        data: {...content.data},
+        android: {notification: {channelId: "cyclepair_updates"}},
+      };
+    }));
     response.responses.forEach((sendResponse, index) => {
       if (
         !sendResponse.success &&
@@ -1457,40 +1460,18 @@ export const deletePairEvent = onCall(callableOptions, async request => {
   return {pairId, eventId, mutationId, ...result};
 });
 
-function accountExportDownloadBaseUrl(): string {
-  const configured = process.env.ACCOUNT_EXPORT_DOWNLOAD_BASE_URL;
-  if (configured !== undefined) {
-    try {
-      const url = new URL(configured);
-      if (
-        url.protocol !== "https:" ||
-        url.username.length > 0 ||
-        url.password.length > 0 ||
-        url.search.length > 0 ||
-        url.hash.length > 0
-      ) {
-        throw new Error("invalid download URL");
-      }
-      return url.toString().replace(/\/$/, "");
-    } catch {
-      throw new HttpsError(
-        "internal",
-        "내보내기 다운로드 주소가 올바르게 설정되지 않았습니다.",
-      );
-    }
+function accountExportDownloadBaseUrl(requestHost: string | undefined): string {
+  try {
+    return accountExportEndpoint({
+      configured: process.env.ACCOUNT_EXPORT_DOWNLOAD_BASE_URL,
+      projectId: process.env.GCLOUD_PROJECT ?? process.env.GOOGLE_CLOUD_PROJECT,
+      region: FUNCTIONS_REGION,
+      emulator: process.env.FUNCTIONS_EMULATOR === "true",
+      requestHost,
+    });
+  } catch {
+    throw new HttpsError("internal", "내보내기 다운로드 주소를 확인할 수 없습니다.");
   }
-
-  const projectId = process.env.GCLOUD_PROJECT ?? process.env.GOOGLE_CLOUD_PROJECT;
-  if (
-    typeof projectId !== "string" ||
-    !/^[a-z0-9][a-z0-9-]{3,61}[a-z0-9]$/.test(projectId)
-  ) {
-    throw new HttpsError(
-      "internal",
-      "내보내기 다운로드 주소를 확인할 수 없습니다.",
-    );
-  }
-  return `https://${FUNCTIONS_REGION}-${projectId}.cloudfunctions.net/downloadAccountDataExport`;
 }
 
 export const requestAccountDataExport = onCall(
@@ -1558,7 +1539,7 @@ export const requestAccountDataExport = onCall(
       // The token stays in the fragment: browsers do not send it in the GET
       // request URL or Referer. The bootstrap moves it into a same-origin
       // Authorization header for the one download POST.
-      downloadUrl: `${accountExportDownloadBaseUrl()}#token=${encodeURIComponent(token)}`,
+      downloadUrl: `${accountExportDownloadBaseUrl(request.rawRequest.get("host"))}#token=${encodeURIComponent(token)}`,
     };
   },
 );

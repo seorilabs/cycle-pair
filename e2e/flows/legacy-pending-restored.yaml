@@ -1,0 +1,25 @@
+appId: ${APP_ID}
+---
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: home-record
+    timeout: 120000
+- tapOn:
+    id: tab-calendar
+- tapOn: '${PENDING_DATE},.*'
+- extendedWaitUntil:
+    visible: 'View record|기록 보기'
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      text: 'View record|기록 보기'
+    direction: DOWN
+    centerElement: true
+- tapOn: 'View record|기록 보기'
+- assertVisible: ${SYNTHETIC_NOTE}
+- takeScreenshot: safe/legacy-pending-restored
+- tapOn: 'Back|뒤로'
+- tapOn:
+    id: tab-home

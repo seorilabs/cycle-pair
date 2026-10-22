@@ -6,8 +6,6 @@ const files = {
   all: '.github/workflows/deploy-all.yml',
   google: '.github/workflows/deploy-google-play.yml',
   androidCandidate: '.github/workflows/build-android.yml',
-  ait: '.github/workflows/deploy-apps-in-toss.yml',
-  aitCandidate: '.github/workflows/build-ait.yml',
   xcodePostClone: 'apps/mobile/ios/ci_scripts/ci_post_clone.sh',
   xcodePreBuild: 'apps/mobile/ios/ci_scripts/ci_pre_xcodebuild.sh',
   tag: '.github/workflows/release-tag.yml',
@@ -25,7 +23,6 @@ const files = {
 // 외부 저장소 스크립트를 실행하는 authority 체크아웃은 이 검사 대상이 아니고 SHA 고정을
 // 유지한다.
 const orgWorkflowNames = [
-  'rn-build-ait.yml',
   'rn-deploy-google-play.yml',
   'release-tag.yml',
   'cleanup-actions-storage.yml',
@@ -159,37 +156,6 @@ try {
     }
   }
 
-  // AppsInToss: 비공개 업로드까지만 자동화한다.
-  const ait = read(files.ait);
-  assertNoPushTrigger(files.ait, ait);
-  assertSafeConcurrency(files.ait, ait);
-  assertIncludes(
-    ait,
-    'runs-on: ubuntu-latest',
-    'AppsInToss Hermes 컴파일러는 x86-64라 ARM64 ARC runner를 쓰면 안 됩니다.',
-  );
-  assertIncludes(
-    ait,
-    'APPS_IN_TOSS_API_KEY',
-    'AppsInToss 업로드 자격증명 검증이 없습니다.',
-  );
-  assertIncludes(
-    ait,
-    'public release: false',
-    'AppsInToss 자동화는 비공개 업로드로 제한해야 합니다.',
-  );
-  assertOrgCanonicalRef(files.ait, ait, 'resolve-release-version.yml');
-  assertIncludes(ait, 'verify-release-artifact.mjs', 'AppsInToss artifact provenance 검증이 없습니다.');
-  if (/snapshot_candidate|validate-release-candidate\.mjs/u.test(ait)) {
-    throw new Error('AppsInToss release 경로에 legacy snapshot authority가 남아 있습니다.');
-  }
-
-  const aitCandidate = read(files.aitCandidate);
-  assertOrgCanonicalRef(files.aitCandidate, aitCandidate, 'rn-build-ait.yml');
-  if (aitCandidate.includes('git tag --list')) {
-    throw new Error('AIT candidate의 빈 release_tag를 최신 stable 태그로 바꾸면 안 됩니다.');
-  }
-
   const postClone = read(files.xcodePostClone);
   assertIncludes(
     postClone,
@@ -222,7 +188,7 @@ try {
   assertSafeConcurrency(files.all, deployAll);
   for (const caller of [
     './.github/workflows/deploy-google-play.yml',
-    './.github/workflows/deploy-apps-in-toss.yml',
+    './.github/workflows/deploy-app-store.yml',
   ]) {
     assertIncludes(
       deployAll,
@@ -232,7 +198,7 @@ try {
   }
   for (const uploadInput of [
     'google_play_upload',
-    'apps_in_toss',
+    'app_store_upload',
   ]) {
     assertIncludes(
       deployAll,
@@ -318,7 +284,7 @@ try {
   }
 
   const readiness = JSON.parse(read(files.readiness));
-  for (const market of ['googlePlay', 'appStore', 'appsInToss']) {
+  for (const market of ['googlePlay', 'appStore']) {
     if (readiness?.targetMarkets?.[market]?.included !== true) {
       throw new Error(
         `${market} 배포 자동화가 있는데 release readiness의 target market 포함 결정과 다릅니다.`,
@@ -335,7 +301,6 @@ try {
   console.log('Release automation contract: PASS');
   console.log('- Google Play: exact stable tag + 중앙 정본 @main workflow, internal upload opt-in');
   console.log('- App Store: GitHub-hosted macOS archive/TestFlight, 중앙 정본 @main workflow, upload opt-in');
-  console.log('- AppsInToss: ubuntu 빌드, 비공개 업로드 opt-in');
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
   process.exit(1);

@@ -192,3 +192,10 @@ describe("neutral notification privacy boundary", () => {
     );
   });
 });
+
+
+test("notification copy follows device locale and stays neutral", () => {
+  expect(neutralNotificationContent("pair-update", "en-US").notification).toEqual({title: "Cycle Pair", body: "There is an update to check together."});
+  expect(neutralNotificationContent("partner-nudge", "fr-FR").notification.title).toBe("Cycle Pair");
+  expect(neutralNotificationContent("shared-event-update", "ko-KR").notification.title).toBe("사이클 페어");
+});

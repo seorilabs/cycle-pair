@@ -1,36 +1,48 @@
-import React, {type PropsWithChildren, useEffect, useState} from 'react';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
+import { useI18n } from '../../i18n/I18nProvider';
+import React, { type PropsWithChildren, useEffect, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import {initializeFirebaseAppCheck} from './FirebaseAppCheckBootstrap';
+import { initializeFirebaseAppCheck } from './FirebaseAppCheckBootstrap';
 
 type BootstrapState = 'pending' | 'ready' | 'failed';
 
 export interface FirebaseAppCheckGateProps extends PropsWithChildren {
   readonly initialInitialization: Promise<boolean>;
+  readonly retryInitialization?: () => Promise<boolean>;
 }
 
 export function FirebaseAppCheckGate({
   children,
   initialInitialization,
+  retryInitialization,
 }: FirebaseAppCheckGateProps) {
+  const { l } = useI18n();
   const [state, setState] = useState<BootstrapState>('pending');
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let active = true;
-    const initialization = attempt === 0
-      ? initialInitialization
-      : initializeFirebaseAppCheck().then(
-        () => true,
-        () => false,
-      );
-    initialization.then(succeeded => {
-      if (active) setState(succeeded ? 'ready' : 'failed');
-    });
+    const initialization =
+      attempt === 0
+        ? initialInitialization
+        : retryInitialization
+        ? Promise.resolve().then(retryInitialization)
+        : initializeFirebaseAppCheck().then(
+            () => true,
+            () => false,
+          );
+    initialization.then(
+      succeeded => {
+        if (active) setState(succeeded ? 'ready' : 'failed');
+      },
+      () => {
+        if (active) setState('failed');
+      },
+    );
     return () => {
       active = false;
     };
-  }, [attempt, initialInitialization]);
+  }, [attempt, initialInitialization, retryInitialization]);
 
   const retry = () => {
     setState('pending');
@@ -41,14 +53,22 @@ export function FirebaseAppCheckGate({
 
   return (
     <View style={styles.container} testID="app-check-bootstrap">
-      <Text style={styles.title}>사이클 페어를 안전하게 시작하는 중이에요</Text>
+      <Text style={styles.title}>
+        {l('사이클 페어를 안전하게 시작하는 중이에요')}
+      </Text>
       {state === 'failed' ? (
         <>
           <Text style={styles.body}>
-            기기 보안 확인을 완료하지 못했어요. 네트워크 연결을 확인해 주세요.
+            {l(
+              '기기 보안 확인을 완료하지 못했어요. 네트워크 연결을 확인해 주세요.',
+            )}
           </Text>
-          <Pressable accessibilityRole="button" onPress={retry} style={styles.button}>
-            <Text style={styles.buttonLabel}>다시 시도</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={retry}
+            style={styles.button}
+          >
+            <Text style={styles.buttonLabel}>{l('다시 시도')}</Text>
           </Pressable>
         </>
       ) : null}

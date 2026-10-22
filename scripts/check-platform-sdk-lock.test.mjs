@@ -170,6 +170,6 @@ test('이 저장소의 실제 선언과 lockfile이 고정 버전으로 해석�
   assert.deepEqual(result.problems, []);
   assert.deepEqual(
     result.resolved.map((entry) => `${entry.directory}@${entry.version}`).sort(),
-    [`apps/ait@${PINNED_SDK_VERSION}`, `apps/mobile@${PINNED_SDK_VERSION}`],
+    [`apps/mobile@${PINNED_SDK_VERSION}`],
   );
 });

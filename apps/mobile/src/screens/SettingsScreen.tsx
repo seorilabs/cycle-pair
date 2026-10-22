@@ -1,23 +1,21 @@
+import { SEORILABS_PLATFORM_APP_VERSION } from '../platform/seorilabsPlatform';
+import { formatDate, useI18n } from '../i18n/I18nProvider';
 import { isLocalDate, parseLocalDate } from '@cyclepair/product-core';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
+  Modal,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
-import { CycleSeed, ShareField, useCyclePair } from '../app/CyclePairStore';
-import { formatPickerLocalDate } from '../app/localDatePicker';
+import { CycleSeed, useCyclePair } from '../app/CyclePairStore';
 import { AccountSettingsCard } from '../components/AccountSettingsCard';
 import { PrivacyCenterModal } from '../components/PrivacyCenterModal';
-import { SubscriptionSettingsCard } from '../components/SubscriptionSettingsCard';
-import { useSubscription } from '../app/subscription/SubscriptionContext';
-import { shouldShowSubscriptionEntry } from '../app/subscription/subscriptionVisibility';
 import {
   Card,
-  Chip,
   PrimaryButton,
   Screen,
   SecondaryButton,
@@ -27,26 +25,12 @@ import {
 } from '../components/Ui';
 import { colors, spacing } from '../theme';
 
-const shareRows: Array<{ key: ShareField; label: string }> = [
-  { key: 'cyclePhase', label: '현재 주기 국면' },
-  { key: 'cycleStatus', label: '세부 생리 상태' },
-  { key: 'fertilityStatus', label: '가임 가능 시기' },
-  { key: 'predictedPeriod', label: '다음 생리 예상 범위' },
-  { key: 'periodDates', label: '실제 생리 날짜' },
-  { key: 'emotions', label: '지금 마음' },
-  { key: 'symptoms', label: '증상' },
-  { key: 'energy', label: '에너지 정도' },
-  { key: 'condition', label: '오늘의 컨디션' },
-  { key: 'carePreference', label: '원하는 도움' },
-  { key: 'note', label: '오늘의 메모' },
-];
-
 type SettingsSectionKey =
   | 'account'
   | 'cycle'
   | 'sharing'
   | 'notifications'
-  | 'subscription'
+  | 'language'
   | 'connection'
   | 'about';
 
@@ -63,6 +47,7 @@ function SettingsAccordionSection({
   onPress(): void;
   children: React.ReactNode;
 }) {
+  const { l } = useI18n();
   return (
     <View style={styles.accordionSection}>
       <Pressable
@@ -79,7 +64,18 @@ function SettingsAccordionSection({
         </View>
         <Text style={styles.accordionChevron}>{expanded ? '⌃' : '⌄'}</Text>
       </Pressable>
-      {expanded ? <View style={styles.accordionBody}>{children}</View> : null}
+      <Modal visible={expanded} animationType="slide" onRequestClose={onPress}>
+        <Screen>
+          <TextButton label={l('뒤로')} onPress={onPress} />
+          <Text
+            accessibilityRole="header"
+            style={[styles.accordionTitle, { marginVertical: spacing.lg }]}
+          >
+            {title}
+          </Text>
+          {children}
+        </Screen>
+      </Modal>
     </View>
   );
 }
@@ -87,12 +83,14 @@ function SettingsAccordionSection({
 function SettingLink({
   title,
   description,
+  testID,
   onPress,
   danger = false,
   disabled = false,
 }: {
   title: string;
   description?: string;
+  testID?: string;
   onPress(): void;
   danger?: boolean;
   disabled?: boolean;
@@ -101,6 +99,7 @@ function SettingLink({
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ disabled }}
+      testID={testID}
       disabled={disabled}
       onPress={onPress}
       style={[styles.linkRow, disabled && styles.disabled]}
@@ -126,7 +125,8 @@ function localToday(): string {
 }
 
 export function SettingsScreen() {
-  const { state: subscriptionState } = useSubscription();
+  const { l, locale } = useI18n();
+  const { t, choice, setLanguage } = useI18n();
   const {
     state,
     backendKind,
@@ -137,7 +137,6 @@ export function SettingsScreen() {
     backendError,
     openPairing,
     continueToSharing,
-    toggleShare,
     updatePrivateSetup,
     toggleNotifications,
     updateNotificationQuietHours,
@@ -149,6 +148,7 @@ export function SettingsScreen() {
     state.notificationQuietHours.start,
   );
   const [quietEnd, setQuietEnd] = useState(state.notificationQuietHours.end);
+  const [languageError, setLanguageError] = useState(false);
   const [privacyVisible, setPrivacyVisible] = useState(false);
   const [openSection, setOpenSection] = useState<SettingsSectionKey | null>(
     null,
@@ -167,7 +167,6 @@ export function SettingsScreen() {
   const selectedCount = Object.values(state.shareSettings).filter(
     Boolean,
   ).length;
-  const showSubscription = shouldShowSubscriptionEntry(subscriptionState);
 
   function resetCycleDraft() {
     setCycleRecords(state.isLogger);
@@ -218,12 +217,14 @@ export function SettingsScreen() {
 
   function confirmDisconnect() {
     Alert.alert(
-      '파트너 연결을 해제할까요?',
-      '서버 접근은 즉시 차단되고, 상대 기기의 공유 캐시는 다음 온라인 동기화에서 삭제됩니다.',
+      l('파트너 연결을 해제할까요?'),
+      l(
+        '서버 접근은 즉시 차단되고, 상대 기기의 공유 캐시는 다음 온라인 동기화에서 삭제됩니다.',
+      ),
       [
-        { text: '취소', style: 'cancel' },
+        { text: l('취소'), style: 'cancel' },
         {
-          text: '연결 해제',
+          text: l('연결 해제'),
           style: 'destructive',
           onPress: () => disconnectPair().catch(() => undefined),
         },
@@ -233,44 +234,38 @@ export function SettingsScreen() {
 
   function confirmReset() {
     Alert.alert(
-      '개발 데이터를 초기화할까요?',
-      '이 기기의 온보딩과 로컬 미리보기 기록이 삭제됩니다.',
+      l('개발 데이터를 초기화할까요?'),
+      l('이 기기의 온보딩과 로컬 미리보기 기록이 삭제됩니다.'),
       [
-        { text: '취소', style: 'cancel' },
-        { text: '초기화', style: 'destructive', onPress: resetApp },
+        { text: l('취소'), style: 'cancel' },
+        { text: l('초기화'), style: 'destructive', onPress: resetApp },
       ],
     );
   }
 
   return (
     <Screen contentStyle={styles.content}>
-      <Text style={styles.title}>설정</Text>
+      <Text style={styles.title}>{l('설정')}</Text>
       <Card style={styles.profileCard}>
         <View style={styles.profileAvatar}>
-          <Text style={styles.profileAvatarText}>나</Text>
+          <Text style={styles.profileAvatarText}>{l('나')}</Text>
         </View>
         <View style={styles.profileCopy}>
-          <Text style={styles.profileTitle}>내 사이클 페어</Text>
+          <Text style={styles.profileTitle}>{l('내 사이클 페어')}</Text>
           <Text style={styles.profileBody}>
-            {state.paired ? `${state.partnerName} 님과 연결됨` : '혼자 기록 중'}{' '}
-            ·{' '}
-            {backendKind === 'firebase' ? 'Firebase 동기화' : '테스트 미리보기'}
+            {state.paired
+              ? l('{v0} 님과 연결됨', { v0: state.partnerName })
+              : l('혼자 기록 중')}{' '}
+            · {backendKind === 'firebase' ? l('동기화') : l('테스트 미리보기')}
           </Text>
         </View>
-        {showSubscription ? (
-          <Chip
-            label={
-              subscriptionState.entitlement.tier === 'premium' ? 'Plus' : 'Free'
-            }
-          />
-        ) : null}
       </Card>
 
       <View style={styles.accordionList}>
         <SettingsAccordionSection
-          title="계정과 복구"
+          title={l('계정과 복구')}
           summary={
-            backendSession ? '로그인됨 · 복구와 내보내기' : '로그인 필요'
+            backendSession ? l('로그인됨 · 복구와 내보내기') : l('로그인 필요')
           }
           expanded={openSection === 'account'}
           onPress={() => toggleSection('account')}
@@ -279,21 +274,21 @@ export function SettingsScreen() {
         </SettingsAccordionSection>
 
         <SettingsAccordionSection
-          title="내 주기"
+          title={l('내 주기')}
           summary={
             state.isLogger
               ? state.hasCycleSeed
-                ? '주기 기록 · 다음 생리 예상 켜짐'
-                : '주기 기록 · 다음 생리 예상 꺼짐'
-              : '주기 기록 사용 안 함'
+                ? l('주기 기록 · 다음 생리 예상 켜짐')
+                : l('주기 기록 · 다음 생리 예상 꺼짐')
+              : l('주기 기록 사용 안 함')
           }
           expanded={openSection === 'cycle'}
           onPress={() => toggleSection('cycle')}
         >
           <View style={styles.sectionActionHeader}>
-            <Text style={styles.sectionBodyTitle}>내 주기 기록</Text>
+            <Text style={styles.sectionBodyTitle}>{l('내 주기 기록')}</Text>
             <TextButton
-              label={cycleEditing ? '취소' : '수정'}
+              label={cycleEditing ? l('취소') : l('수정')}
               disabled={backendBusy}
               onPress={() => {
                 if (cycleEditing) resetCycleDraft();
@@ -304,8 +299,10 @@ export function SettingsScreen() {
           {cycleEditing ? (
             <Card style={styles.cycleCard}>
               <ToggleRow
-                title="주기 관련 기록 사용"
-                description="끄면 기존 원본은 삭제하지 않지만 새 생리 시작·종료 기록을 멈춰요."
+                title={l('주기 관련 기록 사용')}
+                description={l(
+                  '끄면 기존 원본은 삭제하지 않지만 새 생리 시작·종료 기록을 멈춰요.',
+                )}
                 value={cycleRecords}
                 disabled={backendBusy}
                 onValueChange={setCycleRecords}
@@ -313,17 +310,21 @@ export function SettingsScreen() {
               {cycleRecords ? (
                 <>
                   <ToggleRow
-                    title="다음 생리일 미리 보기"
-                    description="최근 생리일과 평소 주기를 바탕으로 다음 예상 범위를 보여드려요."
+                    title={l('다음 생리일 미리 보기')}
+                    description={l(
+                      '최근 생리일과 평소 주기를 바탕으로 다음 예상 범위를 보여드려요.',
+                    )}
                     value={hasCycleSeed}
                     disabled={backendBusy}
                     onValueChange={setHasCycleSeed}
                   />
                   {hasCycleSeed ? (
                     <>
-                      <Text style={styles.fieldLabel}>최근 생리 시작일</Text>
+                      <Text style={styles.fieldLabel}>
+                        {l('최근 생리 시작일')}
+                      </Text>
                       <TextInput
-                        accessibilityLabel="최근 생리 시작일"
+                        accessibilityLabel={l('최근 생리 시작일')}
                         autoCapitalize="none"
                         editable={!backendBusy}
                         maxLength={10}
@@ -344,14 +345,15 @@ export function SettingsScreen() {
                       />
                       {!cycleDateValid ? (
                         <Text style={styles.inputError}>
-                          오늘까지의 실제 날짜를 YYYY-MM-DD 형식으로 입력해
-                          주세요.
+                          {l(
+                            '오늘까지의 실제 날짜를 YYYY-MM-DD 형식으로 입력해 주세요.',
+                          )}
                         </Text>
                       ) : null}
                       <Stepper
-                        label="다음 생리까지 보통"
+                        label={l('다음 생리까지 보통')}
                         value={cycleSeed.averageCycleLength}
-                        suffix="일"
+                        suffix={l('일')}
                         min={21}
                         max={45}
                         disabled={backendBusy}
@@ -363,9 +365,9 @@ export function SettingsScreen() {
                         }
                       />
                       <Stepper
-                        label="생리가 보통"
+                        label={l('생리가 보통')}
                         value={cycleSeed.averagePeriodLength}
-                        suffix="일"
+                        suffix={l('일')}
                         min={2}
                         max={10}
                         disabled={backendBusy}
@@ -379,19 +381,19 @@ export function SettingsScreen() {
                     </>
                   ) : (
                     <Text style={styles.cycleSummaryBody}>
-                      예측 없이 실제 기록과 오늘의 컨디션만 관리합니다.
+                      {l('예측 없이 실제 기록과 오늘의 컨디션만 관리합니다.')}
                     </Text>
                   )}
                 </>
               ) : null}
               <View style={styles.cycleActions}>
                 <SecondaryButton
-                  label="취소"
+                  label={l('취소')}
                   disabled={backendBusy}
                   onPress={resetCycleDraft}
                 />
                 <PrimaryButton
-                  label={backendBusy ? '저장 중…' : '변경사항 저장'}
+                  label={backendBusy ? l('저장 중…') : l('변경사항 저장')}
                   disabled={backendBusy || !cycleDateValid}
                   onPress={() => {
                     saveCycleSetup().catch(() => undefined);
@@ -404,91 +406,71 @@ export function SettingsScreen() {
               <Text style={styles.cycleSummaryTitle}>
                 {state.isLogger
                   ? state.hasCycleSeed
-                    ? '주기와 다음 생리 예상 사용 중'
-                    : '주기 기록 중 · 다음 생리 예상 꺼짐'
-                  : '주기 기록 사용 안 함'}
+                    ? l('주기와 다음 생리 예상 사용 중')
+                    : l('주기 기록 중 · 다음 생리 예상 꺼짐')
+                  : l('주기 기록 사용 안 함')}
               </Text>
               <Text style={styles.cycleSummaryBody}>
                 {state.isLogger
                   ? state.hasCycleSeed
-                    ? `최근 시작일 ${formatPickerLocalDate(
-                        parseLocalDate(state.seed.lastPeriodStart),
-                      )} · 주기 ${state.seed.averageCycleLength}일 · 기간 ${
-                        state.seed.averagePeriodLength
-                      }일`
-                    : '실제 생리일과 컨디션만 기록해요.'
-                  : '기분·증상·컨디션 기록은 주기 예측 없이 계속 사용할 수 있어요.'}
+                    ? l('최근 시작일 {v0} · 주기 {v1}일 · 기간 {v2}일', {
+                        v0: formatDate(
+                          parseLocalDate(state.seed.lastPeriodStart),
+                          locale,
+                        ),
+                        v1: state.seed.averageCycleLength,
+                        v2: state.seed.averagePeriodLength,
+                      })
+                    : l('실제 생리일과 컨디션만 기록해요.')
+                  : l(
+                      '기분·증상·컨디션 기록은 주기 예측 없이 계속 사용할 수 있어요.',
+                    )}
               </Text>
             </Card>
           )}
         </SettingsAccordionSection>
 
         <SettingsAccordionSection
-          title="공유 범위"
+          title={l('공유 범위')}
           summary={
             state.paired && state.sharingCompleted
-              ? `${selectedCount}개 공유 중`
+              ? l('{v0}개 공유 중', { v0: selectedCount })
               : state.paired
-              ? '공유 설정 필요'
-              : '공유 없음'
+              ? l('공유 설정 필요')
+              : l('공유 없음')
           }
           expanded={openSection === 'sharing'}
           onPress={() => toggleSection('sharing')}
         >
-          {state.paired && state.sharingCompleted ? (
-            <Card style={styles.rowsCard}>
-              {shareRows.map(row => (
-                <ToggleRow
-                  key={row.key}
-                  title={row.label}
-                  value={state.shareSettings[row.key]}
-                  disabled={backendBusy}
-                  onValueChange={() => toggleShare(row.key)}
-                />
-              ))}
-            </Card>
-          ) : state.paired ? (
-            <Card tone="primary" style={styles.soloShareCard}>
-              <Text style={styles.soloShareTitle}>
-                공유 설정을 완료해 주세요
-              </Text>
-              <Text style={styles.soloShareBody}>
-                Pair는 연결됐지만 아직 공유 중인 건강 정보는 없습니다.
-              </Text>
-              <PrimaryButton
-                label="공유 설정 계속하기"
-                disabled={backendBusy}
-                onPress={continueToSharing}
-              />
-            </Card>
-          ) : (
-            <Card tone="primary" style={styles.soloShareCard}>
-              <Text style={styles.soloShareTitle}>
-                현재 공유 중인 정보가 없어요
-              </Text>
-              <Text style={styles.soloShareBody}>
-                파트너를 연결한 뒤에도 직접 켠 항목만 별도 projection으로
-                공유됩니다.
-              </Text>
-            </Card>
-          )}
+          <Card style={styles.soloShareCard}>
+            <Text style={styles.soloShareBody}>
+              {t('Nothing is shared until you choose.')}
+            </Text>
+            <PrimaryButton
+              label={t(
+                state.paired ? 'Choose what to share' : 'Connect a partner',
+              )}
+              disabled={backendBusy}
+              onPress={state.paired ? continueToSharing : openPairing}
+            />
+          </Card>
         </SettingsAccordionSection>
 
         <SettingsAccordionSection
-          title="알림과 개인정보"
+          title={l('알림과 개인정보')}
           summary={`${
-            state.neutralNotifications ? '알림 켜짐' : '알림 꺼짐'
-          } · ${state.diagnosticsEnabled ? '진단 허용' : '진단 안 함'}`}
+            state.neutralNotifications ? l('알림 켜짐') : l('알림 꺼짐')
+          } · ${state.diagnosticsEnabled ? l('진단 허용') : l('진단 안 함')}`}
           expanded={openSection === 'notifications'}
           onPress={() => toggleSection('notifications')}
         >
           <Card style={styles.rowsCard}>
             <ToggleRow
-              title="중립적인 잠금화면 알림"
+              title={l('중립적인 잠금화면 알림')}
               description={
                 notificationBusy
-                  ? '기기 권한과 안전한 알림 등록을 확인하고 있어요.'
-                  : '건강정보·이름·날짜 없이 중립 문구로만 표시'
+                  ? l('기기 권한과 안전한 알림 등록을 확인하고 있어요.')
+                  : l('건강정보·이름·날짜 없이 중립 문구로만 표시')
               }
               value={state.neutralNotifications}
               disabled={notificationBusy}
@@ -501,14 +483,14 @@ export function SettingsScreen() {
               <View style={styles.quietHours}>
                 <View style={styles.quietHeader}>
                   <View style={styles.linkCopy}>
-                    <Text style={styles.linkTitle}>조용한 시간</Text>
+                    <Text style={styles.linkTitle}>{l('조용한 시간')}</Text>
                     <Text style={styles.linkDescription}>
-                      기기 시간대 기준 · 이 시간에는 발송하지 않아요
+                      {l('기기 시간대 기준 · 이 시간에는 발송하지 않아요')}
                     </Text>
                   </View>
                   <TextButton
                     disabled={notificationBusy}
-                    label="저장"
+                    label={l('저장')}
                     onPress={() => {
                       updateNotificationQuietHours(quietStart, quietEnd).catch(
                         () => undefined,
@@ -518,7 +500,7 @@ export function SettingsScreen() {
                 </View>
                 <View style={styles.timeInputs}>
                   <TextInput
-                    accessibilityLabel="조용한 시간 시작"
+                    accessibilityLabel={l('조용한 시간 시작')}
                     autoCapitalize="none"
                     editable={!notificationBusy}
                     keyboardType="numbers-and-punctuation"
@@ -531,7 +513,7 @@ export function SettingsScreen() {
                   />
                   <Text style={styles.timeSeparator}>–</Text>
                   <TextInput
-                    accessibilityLabel="조용한 시간 종료"
+                    accessibilityLabel={l('조용한 시간 종료')}
                     autoCapitalize="none"
                     editable={!notificationBusy}
                     keyboardType="numbers-and-punctuation"
@@ -546,11 +528,11 @@ export function SettingsScreen() {
               </View>
             ) : null}
             <ToggleRow
-              title="익명 진단 데이터"
+              title={l('익명 진단 데이터')}
               description={
                 diagnosticsBusy
-                  ? '진단 수집 설정을 적용하고 있어요.'
-                  : '민감정보 없이 허용된 이벤트와 고정 오류 코드만 전송'
+                  ? l('진단 수집 설정을 적용하고 있어요.')
+                  : l('민감정보 없이 허용된 이벤트와 고정 오류 코드만 전송')
               }
               value={state.diagnosticsEnabled}
               disabled={diagnosticsBusy}
@@ -560,40 +542,58 @@ export function SettingsScreen() {
               }}
             />
             <SettingLink
-              title="개인정보와 데이터 관리 안내"
-              description="수집·공유·알림·진단·내보내기·삭제 동작 확인"
+              title={l('개인정보와 데이터 관리 안내')}
+              description={l('수집·공유·알림·진단·내보내기·삭제 동작 확인')}
               onPress={() => setPrivacyVisible(true)}
             />
           </Card>
         </SettingsAccordionSection>
 
         <SettingsAccordionSection
-          title="구독"
-          summary={
-            subscriptionState.entitlement.tier === 'premium'
-              ? 'Plus 이용 중'
-              : showSubscription
-              ? 'Free 이용 중'
-              : '현재 구독 상품 없음'
-          }
-          expanded={openSection === 'subscription'}
-          onPress={() => toggleSection('subscription')}
-        >
-          {showSubscription ? (
-            <SubscriptionSettingsCard />
-          ) : (
-            <Card>
-              <Text style={styles.cycleSummaryBody}>
-                이 환경에서는 별도 구독 상품을 제공하지 않아요.
-              </Text>
-            </Card>
+          title={t('Language')}
+          summary={t(
+            choice === 'system'
+              ? 'System'
+              : choice === 'ko'
+              ? 'Korean'
+              : 'English',
           )}
+          expanded={openSection === 'language'}
+          onPress={() => toggleSection('language')}
+        >
+          {languageError ? (
+            <Text accessibilityRole="alert" style={styles.danger}>
+              {t('Could not save your language. Try again.')}
+            </Text>
+          ) : null}
+          <Card>
+            {(['system', 'ko', 'en'] as const).map(value => (
+              <SettingLink
+                key={value}
+                testID={`language-${value}`}
+                title={`${choice === value ? '✓ ' : ''}${t(
+                  value === 'system'
+                    ? 'System'
+                    : value === 'ko'
+                    ? 'Korean'
+                    : 'English',
+                )}`}
+                onPress={() => {
+                  setLanguage(value)
+                    .then(() => setLanguageError(false))
+                    .catch(() => setLanguageError(true));
+                }}
+              />
+            ))}
+          </Card>
         </SettingsAccordionSection>
 
         <SettingsAccordionSection
-          title="연결과 데이터"
+          title={l('연결과 데이터')}
           summary={
-            state.paired ? `${state.partnerName} 님과 연결됨` : '연결 안 됨'
+            state.paired
+              ? l('{v0} 님과 연결됨', { v0: state.partnerName })
+              : l('연결 안 됨')
           }
           expanded={openSection === 'connection'}
           onPress={() => toggleSection('connection')}
@@ -601,23 +601,27 @@ export function SettingsScreen() {
           <Card style={styles.rowsCard}>
             {state.paired ? (
               <SettingLink
-                title={backendBusy ? '연결 해제 처리 중…' : '파트너 연결 해제'}
-                description="접근권 즉시 회수 · 캐시 tombstone 동기화"
+                title={
+                  backendBusy ? l('연결 해제 처리 중…') : l('파트너 연결 해제')
+                }
+                description={l(
+                  '공유 접근을 끄고 상대의 저장된 공유 정보도 정리해요.',
+                )}
                 onPress={confirmDisconnect}
                 disabled={backendBusy}
                 danger
               />
             ) : (
               <SettingLink
-                title="파트너 연결하기"
-                description="필요할 때 한 사람만 선택적으로 연결"
+                title={l('파트너 연결하기')}
+                description={l('필요할 때 한 사람만 선택적으로 연결')}
                 onPress={openPairing}
                 disabled={backendBusy}
               />
             )}
             {backendKind === 'preview' ? (
               <SettingLink
-                title="개발 데이터 초기화"
+                title={l('개발 데이터 초기화')}
                 onPress={confirmReset}
                 danger
               />
@@ -626,34 +630,35 @@ export function SettingsScreen() {
         </SettingsAccordionSection>
 
         <SettingsAccordionSection
-          title="앱 안내"
-          summary="개인정보 · 비의료 고지"
+          title={l('앱 안내')}
+          summary={l('개인정보 · 비의료 고지')}
           expanded={openSection === 'about'}
           onPress={() => toggleSection('about')}
         >
           <Card style={styles.aboutCard}>
-            <Text style={styles.aboutTitle}>건강 정보 이용 안내</Text>
+            <Text style={styles.aboutTitle}>{l('건강 정보 이용 안내')}</Text>
             <Text style={styles.aboutBody}>
-              사이클 페어는 의료기기가 아닙니다. 제공되는 기록과 예상 정보는
-              질환을 진단·치료·치유·예방하기 위한 것이 아니며, 피임 또는 임신
-              가능성 판단에 사용할 수 없습니다. 건강에 관한 결정은 의료 전문가와
-              상의해 주세요.
+              {l(
+                '사이클 페어는 의료기기가 아닙니다. 제공되는 기록과 예상 정보는 질환을 진단·치료·치유·예방하기 위한 것이 아니며, 피임 또는 임신 가능성 판단에 사용할 수 없습니다. 건강에 관한 결정은 의료 전문가와 상의해 주세요.',
+              )}
             </Text>
             <SettingLink
-              title="개인정보 안내 보기"
-              description="수집·공유·보관·삭제 기준 확인"
+              title={l('개인정보 안내 보기')}
+              description={l('수집·공유·보관·삭제 기준 확인')}
               onPress={() => setPrivacyVisible(true)}
             />
             <View style={styles.appIdentity}>
-              <Text style={styles.brand}>∞ 사이클 페어</Text>
-              <Text style={styles.version}>버전 1.0.4</Text>
+              <Text style={styles.brand}>{l('∞ 사이클 페어')}</Text>
+              <Text style={styles.version}>
+                {l('버전 {v0}', { v0: SEORILABS_PLATFORM_APP_VERSION })}
+              </Text>
             </View>
           </Card>
         </SettingsAccordionSection>
       </View>
 
       {backendError ? (
-        <Text style={styles.syncError}>{backendError}</Text>
+        <Text style={styles.syncError}>{l(backendError)}</Text>
       ) : null}
 
       <PrivacyCenterModal

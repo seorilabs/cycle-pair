@@ -1,6 +1,11 @@
+import { useKeyboardVisibility } from '../app/useKeyboardVisibility';
+import { useI18n } from '../i18n/I18nProvider';
 import React, { PropsWithChildren, ReactNode } from 'react';
 import {
   Pressable,
+  Modal,
+  KeyboardAvoidingView,
+  Keyboard,
   Platform,
   ScrollView,
   StyleProp,
@@ -19,23 +24,54 @@ export function Screen({
   children,
   scroll = true,
   contentStyle,
-}: PropsWithChildren<{ scroll?: boolean; contentStyle?: StyleProp<ViewStyle> }>) {
+}: PropsWithChildren<{
+  scroll?: boolean;
+  contentStyle?: StyleProp<ViewStyle>;
+}>) {
   const insets = useSafeAreaInsets();
-  const style = [styles.screenContent, { paddingTop: insets.top + spacing.sm }, contentStyle];
-
-  return scroll ? (
-    <ScrollView
-      automaticallyAdjustKeyboardInsets
+  const { t } = useI18n();
+  const keyboardVisible = useKeyboardVisibility();
+  const content = [
+    styles.screenContent,
+    { paddingTop: spacing.sm },
+    contentStyle,
+  ];
+  return (
+    <KeyboardAvoidingView
       style={styles.screen}
-      contentContainerStyle={style}
-      keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
-      keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}
-      testID="screen-scroll">
-      {children}
-    </ScrollView>
-  ) : (
-    <View style={[styles.screen, style]}>{children}</View>
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <View style={[styles.screen, { paddingTop: insets.top }]}>
+        {scroll ? (
+          <ScrollView
+            style={styles.screen}
+            contentContainerStyle={content}
+            keyboardDismissMode={
+              Platform.OS === 'ios' ? 'interactive' : 'on-drag'
+            }
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            testID="screen-scroll"
+          >
+            {children}
+          </ScrollView>
+        ) : (
+          <View style={[styles.screen, content]}>{children}</View>
+        )}
+        {Platform.OS === 'ios' && keyboardVisible ? (
+          <View style={styles.keyboardBar}>
+            <Pressable
+              accessibilityRole="button"
+              testID="keyboard-done"
+              onPress={Keyboard.dismiss}
+              style={styles.keyboardButton}
+            >
+              <Text style={styles.textButton}>{t('Dismiss keyboard')}</Text>
+            </Pressable>
+          </View>
+        ) : null}
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -43,7 +79,10 @@ export function Card({
   children,
   style,
   tone = 'default',
-}: PropsWithChildren<{ style?: StyleProp<ViewStyle>; tone?: 'default' | 'primary' | 'accent' | 'mint' }>) {
+}: PropsWithChildren<{
+  style?: StyleProp<ViewStyle>;
+  tone?: 'default' | 'primary' | 'accent' | 'mint';
+}>) {
   return <View style={[styles.card, cardTones[tone], style]}>{children}</View>;
 }
 
@@ -69,7 +108,8 @@ export function PrimaryButton({
         styles.primaryButton,
         pressed && styles.buttonPressed,
         disabled && styles.buttonDisabled,
-      ]}>
+      ]}
+    >
       <Text style={styles.primaryButtonText}>{label}</Text>
     </Pressable>
   );
@@ -100,8 +140,11 @@ export function SecondaryButton({
         danger && styles.dangerButton,
         pressed && styles.buttonPressed,
         disabled && styles.buttonDisabled,
-      ]}>
-      <Text style={[styles.secondaryButtonText, danger && styles.dangerText]}>{label}</Text>
+      ]}
+    >
+      <Text style={[styles.secondaryButtonText, danger && styles.dangerText]}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -121,8 +164,11 @@ export function TextButton({
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
-      hitSlop={10}>
-      <Text style={[styles.textButton, disabled && styles.textButtonDisabled]}>{label}</Text>
+      hitSlop={10}
+    >
+      <Text style={[styles.textButton, disabled && styles.textButtonDisabled]}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -131,7 +177,10 @@ export function Eyebrow({ children }: PropsWithChildren) {
   return <Text style={styles.eyebrow}>{children}</Text>;
 }
 
-export function Title({ children, style }: PropsWithChildren<{ style?: StyleProp<TextStyle> }>) {
+export function Title({
+  children,
+  style,
+}: PropsWithChildren<{ style?: StyleProp<TextStyle> }>) {
   return <Text style={[styles.title, style]}>{children}</Text>;
 }
 
@@ -140,10 +189,20 @@ export function Body({
   muted = false,
   style,
 }: PropsWithChildren<{ muted?: boolean; style?: StyleProp<TextStyle> }>) {
-  return <Text style={[styles.body, muted && styles.bodyMuted, style]}>{children}</Text>;
+  return (
+    <Text style={[styles.body, muted && styles.bodyMuted, style]}>
+      {children}
+    </Text>
+  );
 }
 
-export function SectionHeader({ title, action }: { title: string; action?: ReactNode }) {
+export function SectionHeader({
+  title,
+  action,
+}: {
+  title: string;
+  action?: ReactNode;
+}) {
   return (
     <View style={styles.sectionHeader}>
       <Text style={styles.sectionTitle}>{title}</Text>
@@ -154,29 +213,53 @@ export function SectionHeader({ title, action }: { title: string; action?: React
 
 export function Chip({
   label,
+  testID,
   selected = false,
   onPress,
   emoji,
+  selectionRole = 'button',
+  disabled = false,
 }: {
   label: string;
+  testID?: string;
   selected?: boolean;
   onPress?(): void;
   emoji?: string;
+  selectionRole?: 'button' | 'checkbox' | 'radio';
+  disabled?: boolean;
 }) {
   const content = (
     <>
       {emoji ? <Text style={styles.chipEmoji}>{emoji}</Text> : null}
-      <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{label}</Text>
+      <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
+        {label}
+      </Text>
     </>
   );
 
-  if (!onPress) return <View style={[styles.chip, selected && styles.chipSelected]}>{content}</View>;
+  if (!onPress)
+    return (
+      <View style={[styles.chip, selected && styles.chipSelected]}>
+        {content}
+      </View>
+    );
   return (
     <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected }}
+      testID={testID}
+      accessibilityRole={selectionRole}
+      accessibilityState={{
+        selected,
+        ...(selectionRole !== 'button' ? { checked: selected } : {}),
+        disabled,
+      }}
+      disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [styles.chip, selected && styles.chipSelected, pressed && styles.buttonPressed]}>
+      style={({ pressed }) => [
+        styles.chip,
+        selected && styles.chipSelected,
+        pressed && styles.buttonPressed,
+      ]}
+    >
       {content}
     </Pressable>
   );
@@ -184,12 +267,14 @@ export function Chip({
 
 export function ToggleRow({
   title,
+  testID,
   description,
   value,
   onValueChange,
   disabled = false,
 }: {
   title: string;
+  testID?: string;
   description?: string;
   value: boolean;
   onValueChange(value: boolean): void;
@@ -199,9 +284,12 @@ export function ToggleRow({
     <View style={styles.toggleRow}>
       <View style={styles.toggleCopy}>
         <Text style={styles.toggleTitle}>{title}</Text>
-        {description ? <Text style={styles.toggleDescription}>{description}</Text> : null}
+        {description ? (
+          <Text style={styles.toggleDescription}>{description}</Text>
+        ) : null}
       </View>
       <Switch
+        testID={testID}
         accessibilityLabel={title}
         accessibilityHint={description}
         accessibilityState={{ checked: value, disabled }}
@@ -243,11 +331,13 @@ export function Stepper({
           accessibilityState={{ disabled: disabled || value <= min }}
           disabled={disabled || value <= min}
           onPress={() => onChange(value - 1)}
-          style={[styles.stepperButton, disabled && styles.buttonDisabled]}>
+          style={[styles.stepperButton, disabled && styles.buttonDisabled]}
+        >
           <Text style={styles.stepperSymbol}>−</Text>
         </Pressable>
         <Text style={styles.stepperValue}>
-          {value}{suffix}
+          {value}
+          {suffix}
         </Text>
         <Pressable
           accessibilityRole="button"
@@ -255,7 +345,8 @@ export function Stepper({
           accessibilityState={{ disabled: disabled || value >= max }}
           disabled={disabled || value >= max}
           onPress={() => onChange(value + 1)}
-          style={[styles.stepperButton, disabled && styles.buttonDisabled]}>
+          style={[styles.stepperButton, disabled && styles.buttonDisabled]}
+        >
           <Text style={styles.stepperSymbol}>＋</Text>
         </Pressable>
       </View>
@@ -263,29 +354,51 @@ export function Stepper({
   );
 }
 
-const tabs: Array<{ key: MainTab; label: string; icon: string }> = [
-  { key: 'home', label: '오늘', icon: '∞' },
-  { key: 'calendar', label: '달력', icon: '◫' },
-  { key: 'partner', label: '함께', icon: '♡' },
-  { key: 'settings', label: '설정', icon: '⋯' },
+const tabs: Array<{
+  key: MainTab;
+  label: import('../i18n/language').MessageKey;
+  icon: string;
+}> = [
+  { key: 'home', label: 'Today', icon: '∞' },
+  { key: 'calendar', label: 'Calendar', icon: '◫' },
+  { key: 'partner', label: 'Partner', icon: '♡' },
+  { key: 'settings', label: 'Settings', icon: '⋯' },
 ];
 
-export function BottomTabs({ value, onChange }: { value: MainTab; onChange(tab: MainTab): void }) {
+export function BottomTabs({
+  value,
+  onChange,
+}: {
+  value: MainTab;
+  onChange(tab: MainTab): void;
+}) {
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   return (
-    <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, spacing.sm) }]}>
+    <View
+      style={[
+        styles.tabBar,
+        { paddingBottom: Math.max(insets.bottom, spacing.sm) },
+      ]}
+    >
       {tabs.map(tab => {
         const selected = tab.key === value;
         return (
           <Pressable
+            testID={`tab-${tab.key}`}
             accessibilityRole="tab"
-            accessibilityLabel={tab.label}
+            accessibilityLabel={t(tab.label)}
             accessibilityState={{ selected }}
             key={tab.key}
             onPress={() => onChange(tab.key)}
-            style={styles.tabItem}>
-            <Text style={[styles.tabIcon, selected && styles.tabSelected]}>{tab.icon}</Text>
-            <Text style={[styles.tabLabel, selected && styles.tabSelected]}>{tab.label}</Text>
+            style={styles.tabItem}
+          >
+            <Text style={[styles.tabIcon, selected && styles.tabSelected]}>
+              {tab.icon}
+            </Text>
+            <Text style={[styles.tabLabel, selected && styles.tabSelected]}>
+              {t(tab.label)}
+            </Text>
           </Pressable>
         );
       })}
@@ -301,6 +414,37 @@ const cardTones = StyleSheet.create({
 });
 
 const styles = StyleSheet.create({
+  keyboardBar: {
+    alignItems: 'flex-end',
+    backgroundColor: colors.surface,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+  },
+  keyboardButton: {
+    minHeight: 44,
+    paddingHorizontal: spacing.lg,
+    justifyContent: 'center',
+  },
+  flex: { flex: 1 },
+  sheetBackdrop: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(25,20,40,0.35)',
+  },
+  sheetContainer: {
+    maxHeight: '85%',
+    backgroundColor: colors.background,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: spacing.lg,
+  },
+  sheetHeading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+    marginBottom: spacing.lg,
+  },
   screen: { flex: 1, backgroundColor: colors.background },
   screenContent: {
     flexGrow: 1,
@@ -338,8 +482,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
   secondaryButtonCompact: { minHeight: 40, paddingHorizontal: spacing.lg },
-  secondaryButtonText: { color: colors.primaryDark, fontSize: 16, fontWeight: '700' },
-  dangerButton: { borderColor: colors.dangerSoft, backgroundColor: colors.dangerSoft },
+  secondaryButtonText: {
+    color: colors.primaryDark,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  dangerButton: {
+    borderColor: colors.dangerSoft,
+    backgroundColor: colors.dangerSoft,
+  },
   dangerText: { color: colors.danger },
   buttonPressed: { opacity: 0.72, transform: [{ scale: 0.99 }] },
   buttonDisabled: { opacity: 0.45 },
@@ -352,7 +503,13 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
-  title: { color: colors.text, fontSize: 32, lineHeight: 40, fontWeight: '800', letterSpacing: -0.6 },
+  title: {
+    color: colors.text,
+    fontSize: 32,
+    lineHeight: 40,
+    fontWeight: '800',
+    letterSpacing: -0.6,
+  },
   body: { color: colors.text, fontSize: 16, lineHeight: 24 },
   bodyMuted: { color: colors.textMuted },
   sectionHeader: {
@@ -362,7 +519,12 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
     marginBottom: spacing.md,
   },
-  sectionTitle: { color: colors.text, fontSize: 19, fontWeight: '800', letterSpacing: -0.2 },
+  sectionTitle: {
+    color: colors.text,
+    fontSize: 19,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+  },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -374,7 +536,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     paddingHorizontal: spacing.lg,
   },
-  chipSelected: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
+  chipSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primarySoft,
+  },
   chipText: { color: colors.textMuted, fontSize: 15, fontWeight: '600' },
   chipTextSelected: { color: colors.primaryDark, fontWeight: '800' },
   chipEmoji: { fontSize: 18 },
@@ -397,7 +562,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
-  stepperControls: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  stepperControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   stepperButton: {
     width: 38,
     height: 38,
@@ -407,7 +576,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   stepperSymbol: { color: colors.primaryDark, fontSize: 20, fontWeight: '700' },
-  stepperValue: { minWidth: 54, color: colors.text, fontSize: 16, textAlign: 'center', fontWeight: '800' },
+  stepperValue: {
+    minWidth: 54,
+    color: colors.text,
+    fontSize: 16,
+    textAlign: 'center',
+    fontWeight: '800',
+  },
   tabBar: {
     flexDirection: 'row',
     backgroundColor: colors.surface,
@@ -415,8 +590,65 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
     paddingTop: spacing.sm,
   },
-  tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2, minHeight: 52 },
+  tabItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+    minHeight: 52,
+  },
   tabIcon: { color: colors.textSubtle, fontSize: 23, fontWeight: '600' },
   tabLabel: { color: colors.textSubtle, fontSize: 11, fontWeight: '700' },
   tabSelected: { color: colors.primaryDark },
 });
+
+/** One modal owns focus and scrolling while the underlying screen stays mounted. */
+export function SelectionSheet({
+  title,
+  visible,
+  onClose,
+  children,
+}: PropsWithChildren<{ title: string; visible: boolean; onClose(): void }>) {
+  const { t } = useI18n();
+  const insets = useSafeAreaInsets();
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <View style={styles.sheetBackdrop}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('Close')}
+          onPress={onClose}
+          style={styles.flex}
+        />
+        <View
+          accessibilityViewIsModal
+          style={[
+            styles.sheetContainer,
+            { paddingBottom: insets.bottom + spacing.lg },
+          ]}
+        >
+          <View style={styles.sheetHeading}>
+            <Text
+              accessibilityRole="header"
+              style={[styles.sectionTitle, styles.flex]}
+            >
+              {title}
+            </Text>
+            <TextButton label={t('Done')} onPress={onClose} />
+          </View>
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            automaticallyAdjustKeyboardInsets
+          >
+            {children}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}

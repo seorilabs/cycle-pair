@@ -12,6 +12,7 @@
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		7E5A229203C3E92BD3C063FC /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		9C0000000000000000000001 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 9C0000000000000000000002 /* InfoPlist.strings */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -25,6 +26,8 @@
 		5709B34CF0A7D63546082F79 /* Pods-CyclePair.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-CyclePair.release.xcconfig"; path = "Target Support Files/Pods-CyclePair/Pods-CyclePair.release.xcconfig"; sourceTree = "<group>"; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = CyclePair/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = CyclePair/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		9C0000000000000000000003 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = CyclePair/en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		9C0000000000000000000004 /* ko */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ko; path = CyclePair/ko.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		EA2962259BB2115066094058 /* Pods_CyclePair.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_CyclePair.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
@@ -51,6 +54,7 @@
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
+				9C0000000000000000000002 /* InfoPlist.strings */,
 			);
 			name = CyclePair;
 			sourceTree = "<group>";
@@ -141,9 +145,6 @@
 					13B07F861A680F5B00A75B9A = {
 						LastSwiftMigration = 1120;
 						SystemCapabilities = {
-							com.apple.InAppPurchase = {
-								enabled = 1;
-							};
 						};
 					};
 				};
@@ -153,6 +154,7 @@
 			developmentRegion = ko;
 			hasScannedForEncodings = 0;
 			knownRegions = (
+				en,
 				ko,
 				Base,
 			);
@@ -172,6 +174,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
+				9C0000000000000000000001 /* InfoPlist.strings in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				7E5A229203C3E92BD3C063FC /* PrivacyInfo.xcprivacy in Resources */,
 			);
@@ -325,6 +328,18 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXVariantGroup section */
+		9C0000000000000000000002 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				9C0000000000000000000003 /* en */,
+				9C0000000000000000000004 /* ko */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -336,7 +351,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = CyclePair/CyclePair.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1000103;
+				CURRENT_PROJECT_VERSION = 1001000;
 				DEVELOPMENT_TEAM = HCDUXX4Z3X;
 				ENABLE_BITCODE = NO;
 				FIREBASE_CONFIG_PATH = "Firebase/GoogleService-Info.plist";
@@ -347,7 +362,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.4;
+				MARKETING_VERSION = 1.1.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -373,7 +388,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = CyclePair/CyclePair.entitlements;
-				CURRENT_PROJECT_VERSION = 1000103;
+				CURRENT_PROJECT_VERSION = 1001000;
 				DEVELOPMENT_TEAM = HCDUXX4Z3X;
 				FIREBASE_CONFIG_PATH = "Firebase/GoogleService-Info.plist";
 				FIREBASE_EXPECTED_PROJECT_ID = "seorilabs-cyclepair-prod";
@@ -383,7 +398,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.4;
+				MARKETING_VERSION = 1.1.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",

@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nProvider';
 import React, {
   createContext,
   PropsWithChildren,
@@ -546,6 +547,8 @@ export function reduceCyclePairState(
           state.stage === 'setup' ||
           (state.stage === 'invite' && state.paired)
             ? state.stage
+            : state.stage === 'sharing' && state.sharingCompleted
+            ? 'sharing'
             : 'main',
       };
     case 'SET_PARTNER_PROJECTION':
@@ -773,7 +776,10 @@ function failureCode(error: unknown): SafeFailureCode {
   return 'unknown-failure';
 }
 
-function currentNotificationEnvironment(quietHours: NotificationQuietHours): {
+function currentNotificationEnvironment(
+  quietHours: NotificationQuietHours,
+  locale: string,
+): {
   readonly platform: 'android' | 'ios';
   readonly locale: string;
   readonly quietHours: QuietHours;
@@ -781,7 +787,7 @@ function currentNotificationEnvironment(quietHours: NotificationQuietHours): {
   const resolved = Intl.DateTimeFormat().resolvedOptions();
   return {
     platform: Platform.OS === 'ios' ? 'ios' : 'android',
-    locale: resolved.locale || 'ko-KR',
+    locale,
     quietHours: {
       ...quietHours,
       timeZone: resolved.timeZone || 'Etc/UTC',
@@ -820,6 +826,8 @@ interface CyclePairContextValue {
   backendSession: BackendSession | null;
   activePair: ActivePairMembership | null;
   invite: PairInvite | null;
+  dailyHistoryStatus: 'loading' | 'ready' | 'error';
+  retryDailyHistory(): Promise<void>;
   backendBusy: boolean;
   notificationBusy: boolean;
   diagnosticsBusy: boolean;
@@ -882,6 +890,7 @@ export function CyclePairProvider({
   analytics?: ProductAnalytics;
   crashReporter?: SafeCrashReporter;
 }>) {
+  const { locale } = useI18n();
   const [state, dispatch] = useReducer(
     reduceCyclePairState,
     undefined,
@@ -889,6 +898,9 @@ export function CyclePairProvider({
   );
   const [localHydrating, setLocalHydrating] = useState(true);
   const [backendHydrating, setBackendHydrating] = useState(true);
+  const [dailyHistoryStatus, setDailyHistoryStatus] = useState<
+    'loading' | 'ready' | 'error'
+  >('loading');
   const [backendSession, setBackendSession] = useState<BackendSession | null>(
     null,
   );
@@ -1191,6 +1203,8 @@ export function CyclePairProvider({
               type: 'MERGE_DAILY_HISTORY',
               payload: dailyLogs.map(fromPrivateDailyLogSnapshot),
             });
+            if (dailyLogs.some(log => log.localDate === toDeviceLocalDate()))
+              setDailyHistoryStatus('ready');
           })
           .catch(error => {
             if (active) reportBackendError(error);
@@ -1202,9 +1216,15 @@ export function CyclePairProvider({
               type: 'RESTORE_DAILY_HISTORY',
               payload: dailyLogs.map(fromPrivateDailyLogSnapshot),
             });
+            setDailyHistoryStatus('ready');
           })
           .catch(error => {
-            if (active) reportBackendError(error);
+            if (active) {
+              setDailyHistoryStatus(current =>
+                current === 'ready' ? current : 'error',
+              );
+              reportBackendError(error);
+            }
           });
         initialDailyHistoryLoad.current = dailyHistoryLoad;
         dailyHistoryLoad.then(() => {
@@ -1437,7 +1457,10 @@ export function CyclePairProvider({
     if (localHydrating || !state.neutralNotifications) return;
     let active = true;
     let stopRefresh: () => void = () => undefined;
-    const input = currentNotificationEnvironment(state.notificationQuietHours);
+    const input = currentNotificationEnvironment(
+      state.notificationQuietHours,
+      locale === 'ko' ? 'ko-KR' : 'en-US',
+    );
     setNotificationBusy(true);
     notificationClient
       .enable(input)
@@ -1481,6 +1504,7 @@ export function CyclePairProvider({
     };
   }, [
     localHydrating,
+    locale,
     notificationClient,
     reportFailure,
     state.neutralNotifications,
@@ -1808,6 +1832,22 @@ export function CyclePairProvider({
     state.sharingPairId,
     state.stage,
   ]);
+  const retryDailyHistory = useCallback(async () => {
+    if (!backendSession) return;
+    setDailyHistoryStatus('loading');
+    setBackendError(null);
+    try {
+      const logs = await backend.syncDailyLogs(backendSession.uid);
+      dispatch({
+        type: 'RESTORE_DAILY_HISTORY',
+        payload: logs.map(fromPrivateDailyLogSnapshot),
+      });
+      setDailyHistoryStatus('ready');
+    } catch (error) {
+      setDailyHistoryStatus('error');
+      reportBackendError(error);
+    }
+  }, [backend, backendSession, reportBackendError]);
   const setTab = useCallback(
     (payload: MainTab) => {
       dispatch({ type: 'SET_TAB', payload });
@@ -1820,6 +1860,7 @@ export function CyclePairProvider({
   const saveCheckIn = useCallback(
     async (payload: DailyCheckIn) => {
       if (
+        dailyHistoryStatus !== 'ready' ||
         !backendSession ||
         !hasCurrentSensitiveHealthConsent(
           state.sensitiveDataConsentAcceptedAt,
@@ -1909,6 +1950,7 @@ export function CyclePairProvider({
     [
       backend,
       backendSession,
+      dailyHistoryStatus,
       analytics,
       reportBackendError,
       state.dailyHistory,
@@ -2174,6 +2216,7 @@ export function CyclePairProvider({
             type: 'RESTORE_DAILY_HISTORY',
             payload: dailyHistory,
           });
+          setDailyHistoryStatus('ready');
         }
         const currentState = latestState.current;
         const restoredSeed = seedFromDailyHistory(
@@ -2329,6 +2372,8 @@ export function CyclePairProvider({
       backendSession,
       activePair,
       invite,
+      dailyHistoryStatus,
+      retryDailyHistory,
       backendBusy,
       notificationBusy,
       diagnosticsBusy,
@@ -2374,6 +2419,8 @@ export function CyclePairProvider({
       backendSession,
       activePair,
       invite,
+      dailyHistoryStatus,
+      retryDailyHistory,
       backendBusy,
       notificationBusy,
       diagnosticsBusy,

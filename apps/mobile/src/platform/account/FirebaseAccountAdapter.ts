@@ -57,6 +57,7 @@ async function callAccountFunction<Request, Response>(
 function parseDataExportTicket(
   value: unknown,
   expectedUid: string,
+  localExportOrigin?: string,
 ): AccountExportDownloadTicket {
   const data = asRecord(value);
   const expiresAt =
@@ -69,7 +70,12 @@ function parseDataExportTicket(
   try {
     const url = new URL(downloadUrl);
     validDownloadUrl =
-      url.protocol === 'https:' &&
+      (localExportOrigin
+        ? __DEV__ &&
+          url.protocol === 'http:' &&
+          ['127.0.0.1', 'localhost', '10.0.2.2'].includes(url.hostname) &&
+          url.origin === localExportOrigin
+        : url.protocol === 'https:') &&
       url.username.length === 0 &&
       url.password.length === 0 &&
       url.search.length === 0 &&
@@ -162,8 +168,17 @@ function requireCurrentUser(): User {
 
 export function createFirebaseAccountAdapter(
   guestClient: PlatformFirebaseGuestClient = platformFirebaseGuestClient,
+  development?: {
+    createGuestSession(): Promise<AccountSession>;
+    exportOrigin: string;
+  },
 ): AccountPort {
+  if (development && !__DEV__)
+    throw new Error(
+      'Development account runtime requires a development bundle',
+    );
   async function createGuest(): Promise<AccountSession> {
+    if (development) return development.createGuestSession();
     const auth = getAuth();
     const credential = await guestClient.createCredential();
     const signedIn = await signInWithCustomToken(
@@ -268,6 +283,7 @@ export function createFirebaseAccountAdapter(
           { uid },
         ),
         uid,
+        development?.exportOrigin,
       );
     },
 

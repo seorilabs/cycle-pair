@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nProvider';
 import { parseLocalDate } from '@cyclepair/product-core';
 import React, { useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -30,6 +31,7 @@ function localToday(): string {
 }
 
 export function SetupScreen() {
+  const { l } = useI18n();
   const { state, backendBusy, backendError, completeSetup, goBack } =
     useCyclePair();
   const [isLogger, setLogger] = useState(state.isLogger);
@@ -77,15 +79,19 @@ export function SetupScreen() {
   return (
     <Screen contentStyle={styles.content}>
       <View style={styles.header}>
-        <TextButton label="이전" onPress={goBack} />
-        <Text style={styles.step}>시작 설정</Text>
+        <TextButton label={l('이전')} onPress={goBack} />
+        <Text style={styles.step}>{l('시작 설정')}</Text>
       </View>
-      <Title>어떤 기록을{`\n`}남길까요?</Title>
+      <Title>
+        {l('어떤 기록을')}
+        {`\n`}
+        {l('남길까요?')}
+      </Title>
       <Body muted style={styles.intro}>
-        파트너 연결 없이 시작할 수 있고, 기록은 자동으로 공유되지 않아요.
+        {l('파트너 연결 없이 시작할 수 있고, 기록은 자동으로 공유되지 않아요.')}
       </Body>
 
-      <Text style={styles.label}>기록 방식</Text>
+      <Text style={styles.label}>{l('기록 방식')}</Text>
       <View style={styles.roleGrid}>
         <Pressable
           accessibilityRole="radio"
@@ -102,8 +108,10 @@ export function SetupScreen() {
           ]}
         >
           <Text style={styles.roleIcon}>∞</Text>
-          <Text style={styles.roleTitle}>주기와 컨디션 기록</Text>
-          <Text style={styles.roleBody}>생리 주기와 오늘의 상태를 기록해요</Text>
+          <Text style={styles.roleTitle}>{l('주기와 컨디션 기록')}</Text>
+          <Text style={styles.roleBody}>
+            {l('생리 주기와 오늘의 상태를 기록해요')}
+          </Text>
         </Pressable>
         <Pressable
           accessibilityRole="radio"
@@ -120,33 +128,39 @@ export function SetupScreen() {
           ]}
         >
           <Text style={styles.roleIcon}>♡</Text>
-          <Text style={styles.roleTitle}>컨디션만 기록</Text>
-          <Text style={styles.roleBody}>주기 없이 오늘의 상태만 기록해요</Text>
+          <Text style={styles.roleTitle}>{l('컨디션만 기록')}</Text>
+          <Text style={styles.roleBody}>
+            {l('주기 없이 오늘의 상태만 기록해요')}
+          </Text>
         </Pressable>
       </View>
       {roleLocked ? (
         <Text style={styles.roleLockNote}>
-          기존 기록을 보호하기 위해 이 화면에서는 기록 방식을 바꿀 수 없어요.
+          {l(
+            '기존 기록을 보호하기 위해 이 화면에서는 기록 방식을 바꿀 수 없어요.',
+          )}
         </Text>
       ) : null}
 
       {isLogger ? (
         <>
-          <Text style={styles.label}>다음 생리 예상</Text>
+          <Text style={styles.label}>{l('다음 생리 예상')}</Text>
           <Card>
             <ToggleRow
-              title="다음 생리일 미리 보기"
-              description="최근 생리일과 평소 주기를 바탕으로 다음 예상 범위를 보여드려요."
+              title={l('다음 생리일 미리 보기')}
+              description={l(
+                '최근 생리일과 평소 주기를 바탕으로 다음 예상 범위를 보여드려요.',
+              )}
               value={hasCycleSeed}
               disabled={backendBusy}
               onValueChange={setHasCycleSeed}
             />
             {hasCycleSeed ? (
               <>
-                <Text style={styles.cardLabel}>최근 생리 시작일</Text>
+                <Text style={styles.cardLabel}>{l('최근 생리 시작일')}</Text>
                 <View style={styles.datePicker}>
                   <LocalDatePickerField
-                    accessibilityLabel="최근 생리 시작일"
+                    accessibilityLabel={l('최근 생리 시작일')}
                     disabled={backendBusy}
                     maximumDate={parseLocalDate(today)}
                     onChange={lastPeriodStart =>
@@ -158,13 +172,13 @@ export function SetupScreen() {
                 </View>
                 {hasFutureStartDate ? (
                   <Text style={styles.errorText}>
-                    최근 생리 시작일은 오늘 이후로 설정할 수 없어요.
+                    {l('최근 생리 시작일은 오늘 이후로 설정할 수 없어요.')}
                   </Text>
                 ) : null}
                 <Stepper
-                  label="다음 생리까지 보통"
+                  label={l('다음 생리까지 보통')}
                   value={seed.averageCycleLength}
-                  suffix="일"
+                  suffix={l('일')}
                   min={21}
                   max={45}
                   disabled={backendBusy}
@@ -173,9 +187,9 @@ export function SetupScreen() {
                   }
                 />
                 <Stepper
-                  label="생리가 보통"
+                  label={l('생리가 보통')}
                   value={seed.averagePeriodLength}
-                  suffix="일"
+                  suffix={l('일')}
                   min={2}
                   max={10}
                   disabled={backendBusy}
@@ -186,29 +200,34 @@ export function SetupScreen() {
               </>
             ) : (
               <Body muted>
-                지금은 건너뛰어도 돼요. 실제 생리일은 언제든 기록할 수 있어요.
+                {l(
+                  '지금은 건너뛰어도 돼요. 실제 생리일은 언제든 기록할 수 있어요.',
+                )}
               </Body>
             )}
           </Card>
           <View style={styles.notice}>
             <Text style={styles.noticeIcon}>i</Text>
             <Text style={styles.noticeText}>
-              예상일은 참고용이에요. 피임이나 의료 판단에는 사용하지 마세요.
+              {l(
+                '예상일은 참고용이에요. 피임이나 의료 판단에는 사용하지 마세요.',
+              )}
             </Text>
           </View>
         </>
       ) : (
         <Card tone="primary" style={styles.partnerOnlyCard}>
-          <Chip label="컨디션만 기록" selected />
+          <Chip label={l('컨디션만 기록')} selected />
           <Body style={styles.partnerOnlyBody}>
-            주기 정보 없이 기분, 증상, 필요한 도움을 기록해요.
+            {l('주기 정보 없이 기분, 증상, 필요한 도움을 기록해요.')}
           </Body>
         </Card>
       )}
 
       <Pressable
         accessibilityRole="checkbox"
-        accessibilityLabel="주기·컨디션 정보 이용 동의"
+        accessibilityLabel={l('주기·컨디션 정보 이용 동의')}
+        testID="setup-consent"
         accessibilityState={{ checked: consentAccepted, disabled: backendBusy }}
         disabled={backendBusy}
         onPress={() => setConsentAccepted(value => !value)}
@@ -224,20 +243,21 @@ export function SetupScreen() {
         </View>
         <View style={styles.consentCopy}>
           <Text style={styles.consentTitle}>
-            주기·컨디션 정보 이용에 동의해요
+            {l('주기·컨디션 정보 이용에 동의해요')}
           </Text>
           <Text style={styles.consentBody}>
-            입력한 정보는 기록과 예상에만 사용하고, 선택한 항목만 파트너에게
-            공유해요.
+            {l(
+              '입력한 정보는 기록과 예상에만 사용하고, 선택한 항목만 파트너에게 공유해요.',
+            )}
           </Text>
         </View>
       </Pressable>
 
       {backendError && saveAttempted ? (
         <View accessibilityRole="alert" style={styles.errorCard}>
-          <Text style={styles.errorText}>{backendError}</Text>
+          <Text style={styles.errorText}>{l(backendError)}</Text>
           <TextButton
-            label="다시 시도"
+            label={l('다시 시도')}
             disabled={backendBusy || !consentAccepted || hasFutureStartDate}
             onPress={() => {
               saveSetup().catch(() => undefined);
@@ -248,8 +268,9 @@ export function SetupScreen() {
 
       <View style={styles.footer}>
         <PrimaryButton
-          label={backendBusy ? '저장 중…' : '저장하고 시작'}
+          label={backendBusy ? l('저장 중…') : l('저장하고 시작')}
           disabled={backendBusy || !consentAccepted || hasFutureStartDate}
+          testID="setup-save"
           onPress={() => {
             saveSetup().catch(() => undefined);
           }}

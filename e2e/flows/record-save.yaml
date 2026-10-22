@@ -1,0 +1,12 @@
+appId: ${APP_ID}
+---
+- scrollUntilVisible:
+    element:
+      id: record-save
+    direction: DOWN
+- tapOn:
+    id: record-save
+- extendedWaitUntil:
+    visible: '✓ Recorded|✓ 기록 완료'
+    timeout: 30000
+- runFlow: record-restored.yaml

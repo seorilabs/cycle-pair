@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "level": "L3",
+  "baseline": null,
+  "changedFeatures": [
+    "onboarding",
+    "records",
+    "home",
+    "pairing-sharing",
+    "calendar",
+    "account",
+    "notifications",
+    "settings-language",
+    "privacy",
+    "observability"
+  ],
+  "environments": [
+    "dev",
+    "android",
+    "ios"
+  ],
+  "redesign": true,
+  "foundationRerun": true,
+  "floorOverrides": [],
+  "release": {
+    "markets": [
+      "google-play",
+      "app-store"
+    ],
+    "until": "public",
+    "rollout": 1
+  }
+}

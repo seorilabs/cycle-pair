@@ -1,0 +1,22 @@
+appId: ${APP_ID}
+---
+- tapOn:
+    id: home-record
+- tapOn:
+    id: record-details
+- scrollUntilVisible:
+    element:
+      id: record-note
+    direction: DOWN
+- tapOn:
+    id: record-note
+- assertVisible: ${SYNTHETIC_NOTE}
+- takeScreenshot: safe/record-note-keyboard
+- runFlow: dismiss-keyboard.yaml
+- scrollUntilVisible:
+    element:
+      text: 'Cancel|취소'
+    direction: UP
+- tapOn: 'Cancel|취소'
+- assertVisible:
+    id: home-record

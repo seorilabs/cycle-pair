@@ -1,23 +1,47 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { ShareField, useCyclePair } from '../app/CyclePairStore';
-import { Body, Card, PrimaryButton, Screen, SecondaryButton, TextButton, Title, ToggleRow } from '../components/Ui';
+import { type ShareField, useCyclePair } from '../app/CyclePairStore';
+import { sharingPreview } from '../app/sharingPreview';
+import { sharedFields } from '../app/sharedFieldPresentation';
+import {
+  Body,
+  Card,
+  PrimaryButton,
+  Screen,
+  SectionHeader,
+  TextButton,
+  Title,
+  ToggleRow,
+} from '../components/Ui';
+import { useI18n } from '../i18n/I18nProvider';
+import type { MessageKey } from '../i18n/language';
+import type { RemotePartnerProjection } from '../platform/backend/CyclePairBackend';
 import { colors, spacing } from '../theme';
-
-const fields: Array<{ key: ShareField; title: string; description: string }> = [
-  { key: 'cyclePhase', title: '현재 주기 국면', description: '월경 중·회복기·변화기처럼 큰 흐름을 공유해요' },
-  { key: 'cycleStatus', title: '세부 생리 상태', description: '시작·진행·마무리·직후처럼 더 자세한 상태를 공유해요' },
-  { key: 'fertilityStatus', title: '가임 가능 시기', description: '예측 기반 참고 정보이며 피임 판단에는 사용할 수 없어요' },
-  { key: 'predictedPeriod', title: '다음 생리 예정 범위', description: '참고용 예상 범위만 공유해요' },
-  { key: 'periodDates', title: '실제 생리 날짜', description: '시작·종료 기록을 공유해요' },
-  { key: 'emotions', title: '지금 마음', description: '내가 직접 고른 감정만 보여줘요' },
-  { key: 'symptoms', title: '증상', description: '민감할 수 있어 기본값은 꺼져 있어요' },
-  { key: 'energy', title: '에너지 정도', description: '1–5 단계 중 오늘 고른 값만 보여줘요' },
-  { key: 'condition', title: '오늘의 컨디션', description: '편안함·복통처럼 직접 고른 몸 상태만 보여줘요' },
-  { key: 'carePreference', title: '원하는 도움', description: '추측 대신 내가 선택한 배려 방식을 알려줘요' },
-  { key: 'note', title: '오늘의 메모', description: '자유 입력이라 특히 민감할 수 있어 기본값은 꺼져 있어요' },
+const fields: {
+  key: ShareField;
+  title: MessageKey;
+  projection?: keyof RemotePartnerProjection;
+}[] = [
+  { key: 'emotions', title: 'How I feel', projection: 'emotionTags' },
+  {
+    key: 'carePreference',
+    title: 'Help I want',
+    projection: 'carePreferences',
+  },
+  { key: 'cyclePhase', title: 'Cycle phase', projection: 'cyclePhase' },
+  { key: 'cycleStatus', title: 'Period status', projection: 'cycleStatus' },
+  { key: 'fertilityStatus', title: 'Fertility estimate' },
+  {
+    key: 'predictedPeriod',
+    title: 'Estimated next period',
+    projection: 'nextPeriodWindow',
+  },
+  { key: 'periodDates', title: 'Period dates', projection: 'periodDates' },
+  { key: 'symptoms', title: 'Symptoms', projection: 'symptomTags' },
+  { key: 'energy', title: 'Energy', projection: 'energyLevel' },
+  { key: 'condition', title: 'Condition', projection: 'conditionCode' },
+  { key: 'note', title: 'Note', projection: 'note' },
 ];
-
 export function SharingScreen() {
   const {
     state,
@@ -25,124 +49,103 @@ export function SharingScreen() {
     backendError,
     goBack,
     toggleShare,
-    useRecommendedSharing,
     completeSharing,
   } = useCyclePair();
-  const submittingRef = useRef(false);
-  const [saveAttempted, setSaveAttempted] = React.useState(false);
-  const selectedCount = Object.values(state.shareSettings).filter(Boolean).length;
-
-  async function saveSharing() {
-    if (submittingRef.current || backendBusy) return;
-    submittingRef.current = true;
-    setSaveAttempted(true);
+  const { l, t, locale } = useI18n();
+  const submitting = useRef(false);
+  const [attempted, setAttempted] = useState(false);
+  const values = sharedFields(sharingPreview(state), locale);
+  async function save() {
+    if (submitting.current || backendBusy) return;
+    submitting.current = true;
+    setAttempted(true);
     try {
       await completeSharing();
     } finally {
-      submittingRef.current = false;
+      submitting.current = false;
     }
   }
-
+  const selected = fields.filter(field => state.shareSettings[field.key]);
   return (
-    <Screen contentStyle={styles.content}>
-      <View style={styles.header}>
-        <TextButton label="이전" disabled={backendBusy} onPress={goBack} />
-        <Text style={styles.step}>연결 후 선택</Text>
+    <Screen>
+      <TextButton label={t('Back')} disabled={backendBusy} onPress={goBack} />
+      <View style={styles.heading}>
+        <Title>{t('Choose what to share')}</Title>
+        <Body muted>{t('Nothing is shared until you choose.')}</Body>
       </View>
-      <Title>{state.partnerName} 님에게{`\n`}무엇을 보여줄까요?</Title>
-      <Body muted style={styles.intro}>
-        처음에는 아무것도 공유하지 않아요. 지금 고르거나, 나중에 설정에서 바꿀 수 있어요.
-      </Body>
-
-      <View style={styles.summaryRow}>
-        <Text style={styles.summaryLabel}>현재 공유 항목</Text>
-        <Text style={styles.summaryCount}>{selectedCount}개</Text>
-      </View>
-
-      <Card style={styles.card}>
+      <Card>
         {fields.map(field => (
           <ToggleRow
             key={field.key}
-            title={field.title}
-            description={field.description}
+            testID={`sharing-${field.key}`}
+            title={t(field.title)}
             value={state.shareSettings[field.key]}
             disabled={backendBusy}
             onValueChange={() => toggleShare(field.key)}
           />
         ))}
       </Card>
-
-      <Card tone="mint" style={styles.privacyCard}>
-        <Text style={styles.privacyIcon}>◇</Text>
-        <View style={styles.privacyCopy}>
-          <Text style={styles.privacyTitle}>원본 기록은 나만 볼 수 있어요</Text>
-          <Text style={styles.privacyBody}>서버도 파트너용 공유본을 별도 문서로 만들고, 허용하지 않은 필드는 포함하지 않아요.</Text>
-        </View>
+      <SectionHeader title={t('Preview for your partner')} />
+      <Card tone="accent" style={styles.preview}>
+        {selected.length ? (
+          selected.map(field => (
+            <View key={field.key} style={styles.value}>
+              <Text style={styles.label}>{t(field.title)}</Text>
+              <Body>
+                {(field.key === 'fertilityStatus'
+                  ? values
+                      .filter(
+                        value =>
+                          value.key === 'cyclePhase' ||
+                          value.key === 'cycleStatus',
+                      )
+                      .map(value => value.value)
+                      .join(', ')
+                  : values.find(value => value.key === field.projection)
+                      ?.value) || t('No value recorded today')}
+              </Body>
+            </View>
+          ))
+        ) : (
+          <Body muted>{t('No items selected')}</Body>
+        )}
       </Card>
-
-      {backendError && saveAttempted ? (
-        <View accessibilityRole="alert" style={styles.errorCard}>
-          <Text style={styles.errorText}>{backendError}</Text>
-          <TextButton
-            label="다시 시도"
-            disabled={backendBusy}
-            onPress={() => {
-              saveSharing().catch(() => undefined);
-            }}
-          />
-        </View>
+      {selected.some(field =>
+        [
+          'cyclePhase',
+          'cycleStatus',
+          'fertilityStatus',
+          'predictedPeriod',
+        ].includes(field.key),
+      ) ? (
+        <Body muted style={styles.notice}>
+          {t(
+            'Estimates are for reference, not medical advice or contraception.',
+          )}
+        </Body>
       ) : null}
-
-      <View style={styles.buttons}>
-        <SecondaryButton
-          label="추천 설정 적용"
-          disabled={backendBusy}
-          onPress={useRecommendedSharing}
-        />
+      {attempted && backendError ? (
+        <Body style={styles.error}>{l(backendError)}</Body>
+      ) : null}
+      <View style={styles.save}>
         <PrimaryButton
-          label={
-            backendBusy
-              ? '공유 설정 저장 중…'
-              : selectedCount === 0
-                ? '공유 없이 시작'
-                : `${selectedCount}개 항목 공유하고 시작`
-          }
+          label={t(backendBusy ? 'Saving…' : 'Save sharing choices')}
           disabled={backendBusy}
+          testID="sharing-save"
           onPress={() => {
-            saveSharing().catch(() => undefined);
+            save().catch(() => undefined);
           }}
         />
       </View>
     </Screen>
   );
 }
-
 const styles = StyleSheet.create({
-  content: { paddingBottom: spacing.xl },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.lg,
-  },
-  step: { color: colors.primary, fontSize: 13, fontWeight: '800' },
-  intro: { marginTop: spacing.md, marginBottom: spacing.lg },
-  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: spacing.lg },
-  summaryLabel: { color: colors.text, fontSize: 16, fontWeight: '800' },
-  summaryCount: { color: colors.primary, fontSize: 16, fontWeight: '900' },
-  card: { paddingVertical: 0 },
-  privacyCard: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.lg, alignItems: 'flex-start' },
-  privacyIcon: { color: colors.mint, fontSize: 30, fontWeight: '800' },
-  privacyCopy: { flex: 1, gap: spacing.xs },
-  privacyTitle: { color: colors.text, fontSize: 14, fontWeight: '800' },
-  privacyBody: { color: colors.textMuted, fontSize: 12, lineHeight: 18 },
-  errorCard: {
-    gap: spacing.sm,
-    marginTop: spacing.lg,
-    padding: spacing.md,
-    borderRadius: 12,
-    backgroundColor: colors.dangerSoft,
-  },
-  errorText: { color: colors.danger, fontSize: 12, lineHeight: 18 },
-  buttons: { gap: spacing.md, marginTop: spacing.xl },
+  heading: { marginVertical: spacing.lg, gap: spacing.md },
+  preview: { gap: spacing.lg },
+  value: { gap: spacing.xs },
+  label: { color: colors.textMuted, fontSize: 13 },
+  notice: { marginTop: spacing.lg },
+  error: { color: colors.danger, marginTop: spacing.lg },
+  save: { marginTop: spacing.xl },
 });

@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nProvider';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
@@ -52,6 +53,7 @@ function AccountInput({
 }
 
 export function AccountSettingsCard() {
+  const { l, locale } = useI18n();
   const {
     state,
     clearFeedback,
@@ -86,7 +88,7 @@ export function AccountSettingsCard() {
     setLocalError(null);
     clearFeedback();
     if (password !== passwordConfirm) {
-      setLocalError('비밀번호 확인이 일치하지 않습니다.');
+      setLocalError(l('비밀번호 확인이 일치하지 않습니다.'));
       return;
     }
     if (await upgradeAnonymous(email, password)) {
@@ -104,7 +106,9 @@ export function AccountSettingsCard() {
       await Linking.openURL(downloadUrl);
     } catch {
       setLocalError(
-        '다운로드 화면을 열지 못했습니다. 만료 전에 링크를 다시 열어 주세요.',
+        l(
+          '다운로드 화면을 열지 못했습니다. 만료 전에 링크를 다시 열어 주세요.',
+        ),
       );
     }
   }
@@ -118,7 +122,9 @@ export function AccountSettingsCard() {
       !Number.isFinite(verifiedAt) ||
       Date.now() - verifiedAt > 5 * 60 * 1_000
     ) {
-      setLocalError('데이터 내보내기 전에 현재 비밀번호를 다시 확인해 주세요.');
+      setLocalError(
+        l('데이터 내보내기 전에 현재 비밀번호를 다시 확인해 주세요.'),
+      );
       return;
     }
     const ticket = await requestDataExport();
@@ -136,22 +142,24 @@ export function AccountSettingsCard() {
         !Number.isFinite(verifiedAt) ||
         Date.now() - verifiedAt > 5 * 60 * 1_000
       ) {
-        setLocalError('계정 삭제 전에 현재 비밀번호를 다시 확인해 주세요.');
+        setLocalError(l('계정 삭제 전에 현재 비밀번호를 다시 확인해 주세요.'));
         return;
       }
     }
     setLocalError(null);
     Alert.alert(
       session?.isAnonymous
-        ? '게스트 기록을 영구 삭제할까요?'
-        : '계정과 데이터를 영구 삭제할까요?',
+        ? l('게스트 기록을 영구 삭제할까요?')
+        : l('계정과 데이터를 영구 삭제할까요?'),
       session?.isAnonymous
-        ? '이 기기와 서버의 개인 기록, Pair 연결, 공유 설정, 게스트 계정이 삭제되며 되돌릴 수 없습니다.'
-        : '개인 기록, Pair 연결, 공유 설정과 Firebase Auth 계정이 삭제되며 되돌릴 수 없습니다.',
+        ? l(
+            '이 기기와 서버의 내 기록, 파트너 연결과 게스트 계정이 영구 삭제돼요. 되돌릴 수 없어요.',
+          )
+        : l('내 기록, 파트너 연결과 계정이 영구 삭제돼요. 되돌릴 수 없어요.'),
       [
-        { text: '취소', style: 'cancel' },
+        { text: l('취소'), style: 'cancel' },
         {
-          text: '영구 삭제',
+          text: l('영구 삭제'),
           style: 'destructive',
           onPress: () => deleteAccount().catch(() => undefined),
         },
@@ -161,12 +169,14 @@ export function AccountSettingsCard() {
 
   function confirmLogout() {
     Alert.alert(
-      '로그아웃할까요?',
-      '동기화되지 않은 기록이 있으면 로그아웃을 중단합니다. 완료 후에는 다시 로그인하기 전까지 기록을 볼 수 없습니다.',
+      l('로그아웃할까요?'),
+      l(
+        '동기화되지 않은 기록이 있으면 로그아웃을 중단합니다. 완료 후에는 다시 로그인하기 전까지 기록을 볼 수 없습니다.',
+      ),
       [
-        { text: '취소', style: 'cancel' },
+        { text: l('취소'), style: 'cancel' },
         {
-          text: '로그아웃',
+          text: l('로그아웃'),
           style: 'destructive',
           onPress: () => logout().catch(() => undefined),
         },
@@ -179,21 +189,21 @@ export function AccountSettingsCard() {
       <View style={styles.header}>
         <View style={styles.headerCopy}>
           <Text style={styles.title}>
-            {session.isAnonymous ? '게스트 기록' : session.email}
+            {session.isAnonymous ? l('게스트 기록') : session.email}
           </Text>
           <Text style={styles.description}>
             {session.isAnonymous
-              ? '지금 기기를 잃거나 로그아웃하면 기록을 복구할 수 없어요.'
-              : 'Firebase Auth가 로그인 상태를 안전하게 관리합니다.'}
+              ? l('지금 기기를 잃거나 로그아웃하면 기록을 복구할 수 없어요.')
+              : l('다시 로그인해 기록을 이어서 사용할 수 있어요.')}
           </Text>
         </View>
         <Chip
           label={
             session.isAnonymous
-              ? '게스트'
+              ? l('게스트')
               : session.emailVerified
-              ? '인증됨'
-              : '미인증'
+              ? l('인증됨')
+              : l('미인증')
           }
           selected={!session.isAnonymous && session.emailVerified}
         />
@@ -201,36 +211,40 @@ export function AccountSettingsCard() {
 
       {session.isAnonymous ? (
         <View style={styles.form}>
-          <Text style={styles.formTitle}>이메일 계정으로 안전하게 보관</Text>
+          <Text style={styles.formTitle}>
+            {l('이메일 계정으로 안전하게 보관')}
+          </Text>
           <AccountInput
-            accessibilityLabel="계정 전환 이메일"
+            accessibilityLabel={l('계정 전환 이메일')}
             email
             onChangeText={setEmail}
             placeholder="name@example.com"
             value={email}
           />
           <AccountInput
-            accessibilityLabel="계정 전환 비밀번호"
+            accessibilityLabel={l('계정 전환 비밀번호')}
             onChangeText={setPassword}
-            placeholder="비밀번호 8자 이상"
+            placeholder={l('비밀번호 8자 이상')}
             value={password}
           />
           <AccountInput
-            accessibilityLabel="계정 전환 비밀번호 확인"
+            accessibilityLabel={l('계정 전환 비밀번호 확인')}
             onChangeText={setPasswordConfirm}
-            placeholder="비밀번호 다시 입력"
+            placeholder={l('비밀번호 다시 입력')}
             value={passwordConfirm}
           />
           <PrimaryButton
             disabled={state.busy}
             label={
-              state.busy ? '계정 전환 중…' : '현재 기록 그대로 계정 만들기'
+              state.busy
+                ? l('계정 전환 중…')
+                : l('현재 기록 그대로 계정 만들기')
             }
             onPress={() => submitUpgrade().catch(() => undefined)}
             testID="account-upgrade-submit"
           />
           <Text style={styles.caption}>
-            현재 UID를 유지해 기존 기록과 Pair 연결이 그대로 보존됩니다.
+            {l('계정을 만들어도 기존 기록과 파트너 연결은 유지돼요.')}
           </Text>
         </View>
       ) : (
@@ -239,52 +253,58 @@ export function AccountSettingsCard() {
             <View style={styles.inlineActions}>
               <SecondaryButton
                 compact
-                label="인증 메일 다시 보내기"
+                label={l('인증 메일 다시 보내기')}
                 onPress={() => resendVerification().catch(() => undefined)}
               />
               <TextButton
                 disabled={state.busy}
-                label="인증 여부 새로고침"
+                label={l('인증 여부 새로고침')}
                 onPress={() => refreshVerification().catch(() => undefined)}
               />
             </View>
           ) : null}
 
-          <Text style={styles.formTitle}>민감한 작업 전 비밀번호 확인</Text>
+          <Text style={styles.formTitle}>
+            {l('민감한 작업 전 비밀번호 확인')}
+          </Text>
           <Text style={styles.description}>
-            데이터 내보내기와 계정 삭제 전에 다시 확인합니다.
+            {l('데이터 내보내기와 계정 삭제 전에 다시 확인합니다.')}
           </Text>
           <AccountInput
-            accessibilityLabel="재인증 비밀번호"
+            accessibilityLabel={l('재인증 비밀번호')}
             currentPassword
             onChangeText={setReauthPassword}
-            placeholder="현재 비밀번호"
+            placeholder={l('현재 비밀번호')}
             value={reauthPassword}
           />
           <SecondaryButton
             compact
-            label={state.busy ? '확인 중…' : '비밀번호 확인'}
+            label={state.busy ? l('확인 중…') : l('비밀번호 확인')}
             onPress={() => submitReauthentication().catch(() => undefined)}
           />
           {state.reauthenticatedAt ? (
             <Text style={styles.success}>
-              이 세션에서 본인 확인이 완료되었습니다.
+              {l('이 세션에서 본인 확인이 완료되었습니다.')}
             </Text>
           ) : null}
           <TextButton
             disabled={state.busy}
-            label="로그아웃"
+            label={l('로그아웃')}
             onPress={confirmLogout}
           />
         </View>
       )}
 
       <View style={styles.dataRights}>
-        <Text style={styles.formTitle}>내 데이터 권리</Text>
+        <Text style={styles.formTitle}>{l('내 데이터 권리')}</Text>
         <Text style={styles.description}>
           {session.isAnonymous
-            ? '게스트 기록도 언제든 영구 삭제할 수 있습니다. JSON 내보내기는 복구 가능한 이메일 계정으로 전환한 뒤 제공됩니다.'
-            : '최근 비밀번호 확인 후 5분짜리 단회 링크를 발급합니다. 다운로드할 때만 JSON을 메모리에서 만들고 서버에는 저장하지 않습니다.'}
+            ? l(
+                '게스트 기록도 언제든 영구 삭제할 수 있습니다. JSON 내보내기는 복구 가능한 이메일 계정으로 전환한 뒤 제공됩니다.',
+              )
+            : l(
+                '비밀번호를 확인하면 5분 동안 한 번만 사용할 수 있는 다운로드 링크를 만들어요. 내보낸 파일은 서버에 보관하지 않아요.',
+              )}
         </Text>
         {!session.isAnonymous ? (
           <>
@@ -292,24 +312,28 @@ export function AccountSettingsCard() {
               compact
               label={
                 state.busy
-                  ? '다운로드 링크 생성 중…'
-                  : '내 데이터 JSON 다운로드'
+                  ? l('다운로드 링크 생성 중…')
+                  : l('내 데이터 JSON 다운로드')
               }
               onPress={() => requestExportDownload().catch(() => undefined)}
             />
             {exportTicket ? (
               <View style={styles.exportTicket}>
                 <Text style={styles.caption}>
-                  {new Date(exportTicket.expiresAt).toLocaleTimeString('ko-KR', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                  까지 유효한 단회 링크입니다. JSON은 서버에 저장되지 않으며
-                  다운로드를 시작하면 링크가 폐기됩니다.
+                  {new Date(exportTicket.expiresAt).toLocaleTimeString(
+                    locale === 'ko' ? 'ko-KR' : 'en-US',
+                    {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    },
+                  )}
+                  {l(
+                    '까지 유효한 단회 링크입니다. JSON은 서버에 저장되지 않으며 다운로드를 시작하면 링크가 폐기됩니다.',
+                  )}
                 </Text>
                 <TextButton
                   disabled={state.busy}
-                  label="만료 전 다운로드 링크 다시 열기"
+                  label={l('만료 전 다운로드 링크 다시 열기')}
                   onPress={() =>
                     openExportDownload(exportTicket.downloadUrl).catch(
                       () => undefined,
@@ -321,19 +345,19 @@ export function AccountSettingsCard() {
             <SecondaryButton
               compact
               danger
-              label="계정과 서버 데이터 영구 삭제"
+              label={l('계정과 서버 데이터 영구 삭제')}
               onPress={confirmDeleteAccount}
             />
           </>
         ) : (
           <>
             <Text style={styles.caption}>
-              JSON 내보내기는 이메일 계정 전환 후 사용할 수 있습니다.
+              {l('JSON 내보내기는 이메일 계정 전환 후 사용할 수 있습니다.')}
             </Text>
             <SecondaryButton
               compact
               danger
-              label="게스트 기록과 서버 데이터 영구 삭제"
+              label={l('게스트 기록과 서버 데이터 영구 삭제')}
               onPress={confirmDeleteAccount}
             />
           </>
@@ -342,16 +366,17 @@ export function AccountSettingsCard() {
 
       {localError ? (
         <Text accessibilityRole="alert" style={styles.error}>
-          {localError}
+          {l(localError)}
         </Text>
       ) : null}
       {state.error ? (
         <Text accessibilityRole="alert" style={styles.error}>
-          {state.error}
+          {l(state.error)}
         </Text>
       ) : null}
-      {state.notice ? <Text style={styles.success}>{state.notice}</Text> : null}
-
+      {state.notice ? (
+        <Text style={styles.success}>{l(state.notice)}</Text>
+      ) : null}
     </Card>
   );
 }

@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nProvider';
 import React, { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,6 +14,7 @@ export function InAppToast({
   onDismiss(): void;
   onOpen(noticeId: string): void;
 }) {
+  const { l } = useI18n();
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
@@ -28,7 +30,7 @@ export function InAppToast({
       style={[styles.toastLayer, { top: insets.top + spacing.sm }]}
     >
       <Pressable
-        accessibilityLabel={`${notice.message} 확인하기`}
+        accessibilityLabel={l('{v0} 확인하기', { v0: l(notice.message) })}
         accessibilityLiveRegion="polite"
         accessibilityRole="button"
         onPress={() => onOpen(notice.id)}
@@ -38,10 +40,10 @@ export function InAppToast({
           <Text style={styles.icon}>♡</Text>
         </View>
         <View style={styles.copy}>
-          <Text style={styles.toastLabel}>새 소식</Text>
-          <Text style={styles.message}>{notice.message}</Text>
+          <Text style={styles.toastLabel}>{l('새 소식')}</Text>
+          <Text style={styles.message}>{l(notice.message)}</Text>
         </View>
-        <Text style={styles.openLabel}>열기</Text>
+        <Text style={styles.openLabel}>{l('열기')}</Text>
       </Pressable>
     </View>
   );
@@ -56,19 +58,27 @@ export function InAppMessageBox({
   count: number;
   onOpen(noticeId: string): void;
 }) {
+  const { l } = useI18n();
   return (
     <View style={styles.messageBoxShell}>
       <Pressable
-        accessibilityLabel={`새 소식 ${count}개. ${notice.message} 확인하기`}
+        accessibilityLabel={l('새 소식 {v0}개. {v1} 확인하기', {
+          v0: count,
+          v1: l(notice.message),
+        })}
         accessibilityRole="button"
         onPress={() => onOpen(notice.id)}
         style={({ pressed }) => [styles.messageBox, pressed && styles.pressed]}
       >
         <View style={styles.unreadDot} />
         <View style={styles.copy}>
-          <Text style={styles.boxLabel}>새 소식 {count}개</Text>
+          <Text style={styles.boxLabel}>
+            {l('새 소식 ')}
+            {count}
+            {l('개')}
+          </Text>
           <Text numberOfLines={1} style={styles.boxMessage}>
-            {notice.message}
+            {l(notice.message)}
           </Text>
         </View>
         <Text style={styles.chevron}>›</Text>

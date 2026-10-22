@@ -1,10 +1,28 @@
 import groovy.json.JsonSlurper
+import groovy.json.JsonOutput
 
 apply plugin: "com.android.application"
 apply plugin: "com.google.gms.google-services"
 apply plugin: "com.google.firebase.crashlytics"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
+
+def syntheticQa = providers.gradleProperty("cyclepairSyntheticQa").getOrElse("false") == "true"
+if (syntheticQa) layout.buildDirectory = file("build-synthetic")
+// Physical Debug installations use adb reverse, without rewriting loopback to
+// a virtual-device gateway. Release and the canonical firebase.json stay intact.
+def debugFirebaseFlags = new JsonSlurper().parse(new File(rootProject.projectDir, "../../../firebase.json"))["react-native"]
+debugFirebaseFlags.android_bypass_emulator_url_remap = true
+def debugFirebaseJson = JsonOutput.toJson(JsonOutput.toJson(debugFirebaseFlags))
+project(":react-native-firebase_app").plugins.withId("com.android.library") {
+    project(":react-native-firebase_app").extensions.getByName("android").buildTypes.getByName("debug")
+        .buildConfigField("String", "FIREBASE_JSON_RAW", debugFirebaseJson)
+}
+gradle.taskGraph.whenReady { graph ->
+    if (syntheticQa && graph.allTasks.any { it.project == project && it.name.toLowerCase().contains("release") }) {
+        throw new GradleException("Synthetic QA is a local Debug installation only")
+    }
+}
 
 def resolveNodePackageJson = { String expression ->
     def process = new ProcessBuilder("node", "--print", expression)
@@ -104,7 +122,7 @@ def releaseVersionName = (
     project.findProperty("versionNameOverride") ?:
         System.getenv("GOOGLE_PLAY_VERSION_NAME") ?:
         System.getenv("APP_VERSION_NAME") ?:
-        "1.0.4"
+        "1.1.0"
 ).toString()
 if (!(releaseVersionName ==~ /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/)) {
     throw new GradleException("Google Play versionName must use numeric SemVer: ${releaseVersionName}")
@@ -155,7 +173,10 @@ def firebaseConfigProblems = { String buildType ->
     def taskSuffix = buildType.substring(0, 1).toUpperCase() + buildType.substring(1)
     def problems = []
 
-    def legacyConfig = legacyFirebaseConfigFiles.find { it.isFile() }
+    def syntheticConfigFile = file("src/debug/google-services.json")
+    def legacyConfig = legacyFirebaseConfigFiles.find {
+        it.isFile() && !(syntheticQa && buildType == "debug" && it == syntheticConfigFile)
+    }
     if (legacyConfig != null) {
         problems.add(
             "Legacy variant google-services.json is not allowed; " +
@@ -205,6 +226,18 @@ def firebaseConfigProblems = { String buildType ->
             "Selected ${taskSuffix} Firebase config does not match the tracked " +
                 "Firebase project.",
         )
+    }
+    if (syntheticQa && buildType == "debug") {
+        try {
+            def expected = new JsonSlurper().parseText(JsonOutput.toJson(config))
+            expected.client = [new JsonSlurper().parseText(JsonOutput.toJson(matchingClient))]
+            expected.client[0].client_info.android_client_info.package_name = permanentApplicationId + ".qa"
+            if (!syntheticConfigFile.isFile() || new JsonSlurper().parse(syntheticConfigFile) != expected) {
+                problems.add("Synthetic Firebase metadata must be an exact execution copy with only the local package changed.")
+            }
+        } catch (Exception ignored) {
+            problems.add("Synthetic Firebase execution copy is missing or invalid.")
+        }
     }
     return problems
 }
@@ -341,6 +374,8 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode releaseVersionCode
         versionName releaseVersionName
+        buildConfigField "boolean", "IS_SYNTHETIC_QA", "false"
+        manifestPlaceholders.cyclePairAppName = "@string/app_name"
     }
     signingConfigs {
         debug {
@@ -361,6 +396,11 @@ android {
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
+            if (syntheticQa) {
+                applicationIdSuffix ".qa"
+                buildConfigField "boolean", "IS_SYNTHETIC_QA", "true"
+                manifestPlaceholders.cyclePairAppName = "Cycle Pair QA"
+            }
         }
         release {
             if (releaseSigningProblems.isEmpty()) {

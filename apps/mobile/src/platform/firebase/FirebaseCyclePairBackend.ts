@@ -461,7 +461,7 @@ async function writeDailyLog(
       localDate,
       lastMutationId: mutationId,
       updatedAt: serverTimestamp(),
-      schemaVersion: 2,
+      schemaVersion: 3,
     },
   );
   batch.delete(

@@ -6,7 +6,6 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { inflateRawSync } from "node:zlib";
 
-import { AITReader, PlatformType } from "@apps-in-toss/ait-format";
 
 import { assertNativeFirebaseSelectionStructure } from "./native-firebase-selection-lib.mjs";
 
@@ -432,7 +431,8 @@ function readXmlPlistString(xml, key) {
 async function nativeConfigBlockers(
   root,
   firebaseEnvironments,
-  expectedProjectId
+  expectedProjectId,
+  target
 ) {
   const blockers = [];
   const permanentAppId = firebaseEnvironments?.permanentAppId;
@@ -449,6 +449,7 @@ async function nativeConfigBlockers(
   }
 
   const androidPath = `apps/mobile/${expectedAndroidPath}`;
+  if (target !== "app-store") {
   if (!(await exists(root, androidPath))) {
     blockers.push("Android Firebase config 파일 없음");
   } else {
@@ -474,6 +475,8 @@ async function nativeConfigBlockers(
     }
   }
 
+  }
+  if (target !== "google-play") {
   const iosPath = `apps/mobile/${expectedIosPath}`;
   const iosConfig = await readText(root, iosPath);
   if (iosConfig === null) {
@@ -484,6 +487,7 @@ async function nativeConfigBlockers(
     !readXmlPlistString(iosConfig, "GOOGLE_APP_ID")
   ) {
     blockers.push("iOS Firebase config project/app ID 불일치");
+  }
   }
 
   return blockers;
@@ -810,92 +814,6 @@ async function baseArtifactBlockers(root, artifact, label, expectedSuffix) {
     blockers.push(`${label} SHA-256 evidence 없음`);
   } else if ((await sha256File(root, artifact.path)) !== artifact.sha256) {
     blockers.push(`${label} SHA-256 불일치`);
-  }
-  return blockers;
-}
-
-async function appsInTossArtifactBlockers(root, artifact, config) {
-  const label = "AppsInToss package";
-  const blockers = await baseArtifactBlockers(root, artifact, label, ".ait");
-  if (
-    typeof artifact?.path !== "string" ||
-    !(await exists(root, artifact.path))
-  ) {
-    return blockers;
-  }
-
-  let reader;
-  try {
-    reader = AITReader.fromBuffer(
-      await readFile(path.join(root, artifact.path))
-    );
-  } catch {
-    blockers.push(`${label} AIT 포맷 검증 실패`);
-    return blockers;
-  }
-
-  if (reader.formatVersion !== 1) {
-    blockers.push(`${label} format version 1 필요`);
-  }
-  if (!config?.appName || reader.appName !== config.appName) {
-    blockers.push(`${label} appName과 등록 설정 불일치`);
-  }
-  if (config?.buildTarget?.artifact !== artifact.path) {
-    blockers.push(`${label} 경로와 build target 불일치`);
-  }
-
-  const aitPackage = await readJson(root, "apps/ait/package.json");
-  const metadata = reader.metadata;
-  const embeddedDependencies = metadata?.packageJson?.dependencies;
-  const expectedRuntime = aitPackage?.dependencies?.["react-native"];
-  const expectedSdk = aitPackage?.dependencies?.["@apps-in-toss/framework"];
-  const expectedTds = aitPackage?.dependencies?.["@toss/tds-react-native"];
-  if (
-    metadata?.isGame !== false ||
-    metadata?.platform !== PlatformType.REACT_NATIVE ||
-    metadata?.runtimeVersion !== expectedRuntime ||
-    !/^0\.84\./.test(metadata?.runtimeVersion ?? "") ||
-    metadata?.sdkVersion !== expectedSdk ||
-    !/^2\./.test(metadata?.sdkVersion ?? "") ||
-    typeof expectedTds !== "string" ||
-    expectedTds.trim().length === 0 ||
-    embeddedDependencies?.["react-native"] !== expectedRuntime ||
-    embeddedDependencies?.["@apps-in-toss/framework"] !== expectedSdk ||
-    embeddedDependencies?.["@toss/tds-react-native"] !== expectedTds
-  ) {
-    blockers.push(`${label} SDK 2.x / RN 0.84 / TDS metadata 불일치`);
-  }
-
-  const entryNames = reader.listEntries();
-  const uniqueEntryNames = new Set(entryNames);
-  const runtimeSuffix = (expectedRuntime ?? "").replaceAll(".", "_");
-  const requiredEntries = [
-    `bundle.ios.${runtimeSuffix}.js`,
-    `bundle.android.${runtimeSuffix}.js`,
-  ];
-  if (
-    entryNames.length === 0 ||
-    entryNames.length !== uniqueEntryNames.size ||
-    requiredEntries.some((entry) => !uniqueEntryNames.has(entry)) ||
-    requiredEntries.some((entry) => !metadata?.bundleFiles?.includes(entry))
-  ) {
-    blockers.push(`${label} iOS/Android runtime bundle entry 불일치`);
-    return blockers;
-  }
-
-  try {
-    for (const entry of reader.bundle.index) {
-      const payload = await reader.readEntry(entry.name);
-      const payloadHash = createHash("sha256").update(payload).digest("hex");
-      if (
-        payload.length !== Number(entry.uncompressedSize) ||
-        payloadHash !== entry.sha256Hex
-      ) {
-        throw new Error("AIT entry integrity mismatch");
-      }
-    }
-  } catch {
-    blockers.push(`${label} bundle payload 무결성 검증 실패`);
   }
   return blockers;
 }
@@ -1254,6 +1172,7 @@ async function appCheckClientSourceBlockers(root, mobilePackage) {
   const [
     bootstrap,
     mobileIndex,
+    productionRuntime,
     mobileFirebaseConfig,
     appDelegate,
     bridgingHeader,
@@ -1267,6 +1186,7 @@ async function appCheckClientSourceBlockers(root, mobilePackage) {
       "apps/mobile/src/platform/firebase/FirebaseAppCheckBootstrap.ts"
     ),
     readText(root, "apps/mobile/index.js"),
+    readText(root, "apps/mobile/src/platform/firebase/productionRuntime.ts"),
     readJson(root, "apps/mobile/firebase.json"),
     readText(root, "apps/mobile/ios/CyclePair/AppDelegate.swift"),
     readText(root, "apps/mobile/ios/CyclePair/CyclePair-Bridging-Header.h"),
@@ -1300,8 +1220,13 @@ async function appCheckClientSourceBlockers(root, mobilePackage) {
   }
   if (
     mobileIndex === null ||
-    !mobileIndex.includes("initializeFirebaseAppCheck()") ||
-    !mobileIndex.includes("FirebaseAppCheckGate")
+    !mobileIndex.includes("@cyclepair/native-runtime") ||
+    !mobileIndex.includes("initializeRuntime()") ||
+    !mobileIndex.includes("initialInitialization={appCheckInitialization}") ||
+    !mobileIndex.includes("retryInitialization={initializeRuntime}") ||
+    !mobileIndex.includes("FirebaseAppCheckGate") ||
+    !productionRuntime?.includes("await initializeFirebaseAppCheck()") ||
+    !productionRuntime?.includes("return false")
   ) {
     blockers.push("App Check startup fail-closed gate 미검증");
   }
@@ -1499,13 +1424,16 @@ async function firebaseDeploymentBlockers({
   return blockers;
 }
 
-export async function evaluateReleaseReadiness(root) {
+export async function evaluateReleaseReadiness(root, {target, phase = "before-release"} = {}) {
+  if (target !== undefined && !["google-play", "app-store"].includes(target)) throw new Error("Unknown native release target");
+  if (!["before-build", "before-deploy", "before-release"].includes(phase)) throw new Error("Unknown release phase");
+  const building = phase === "before-build";
+  const releasing = phase === "before-release";
   const [
     rootPackage,
     mobilePackage,
     playConfig,
     appStoreConfig,
-    appsInTossConfig,
     releaseEvidence,
     firebaseReadiness,
     androidAppGradle,
@@ -1520,7 +1448,6 @@ export async function evaluateReleaseReadiness(root) {
     readJson(root, "apps/mobile/package.json"),
     readJson(root, "play-store/google-play.config.json"),
     readJson(root, "app-store/app-store.config.json"),
-    readJson(root, "apps-in-toss/apps-in-toss.config.json"),
     readJson(root, "release/readiness.json"),
     readJson(root, "firebase/release-readiness.json"),
     readText(root, "apps/mobile/android/app/build.gradle"),
@@ -1542,11 +1469,7 @@ export async function evaluateReleaseReadiness(root) {
     "appStore",
     "App Store"
   );
-  const appsInTossTarget = targetMarketDecision(
-    releaseEvidence,
-    "appsInToss",
-    "AppsInToss"
-  );
+  const subscriptionsOff = playConfig?.monetization?.model === "free" && appStoreConfig?.monetization?.model === "free";
   const subscriptionBlockers = subscriptionContractBlockers({
     playConfig,
     appStoreConfig,
@@ -1561,12 +1484,12 @@ export async function evaluateReleaseReadiness(root) {
   if (!rootPackage?.version || rootPackage.version !== mobilePackage?.version) {
     architectureBlockers.push("root/mobile package version 불일치");
   }
-  if (readAndroidVersionName(androidAppGradle) !== mobilePackage?.version) {
+  if (target !== "app-store" && readAndroidVersionName(androidAppGradle) !== mobilePackage?.version) {
     architectureBlockers.push(
       "Android versionName과 mobile package version 불일치"
     );
   }
-  if (!iosProject?.includes(`MARKETING_VERSION = ${mobilePackage?.version};`)) {
+  if (target !== "google-play" && !iosProject?.includes(`MARKETING_VERSION = ${mobilePackage?.version};`)) {
     architectureBlockers.push(
       "iOS MARKETING_VERSION과 mobile package version 불일치"
     );
@@ -1608,9 +1531,10 @@ export async function evaluateReleaseReadiness(root) {
   });
   firebaseBlockers.push(
     ...(await appCheckClientSourceBlockers(root, mobilePackage)),
-    ...(await nativeConfigBlockers(root, firebaseEnvironments, projectId)),
-    ...deploymentBlockers
+    ...(await nativeConfigBlockers(root, firebaseEnvironments, projectId, target)),
+    ...(building ? [] : deploymentBlockers)
   );
+  if (releasing) {
   firebaseBlockers.push(
     ...projectEvidenceBlocker(
       firebaseReadiness?.environment?.nativeAppsRegistered,
@@ -1665,11 +1589,11 @@ export async function evaluateReleaseReadiness(root) {
       expectedProjectId: projectId,
       label: "운영 APNs/FCM 수신",
       requiredChecks: [
-        ["androidFcmReceived", "운영 Android FCM 실제 수신 미검증"],
-        ["iosApnsReceived", "운영 iOS APNs 실제 수신 미검증"],
+        ...(target === "app-store" ? [] : [["androidFcmReceived", "운영 Android FCM 실제 수신 미검증"]]),
+        ...(target === "google-play" ? [] : [["iosApnsReceived", "운영 iOS APNs 실제 수신 미검증"]]),
       ],
     }),
-    ...productionCapabilityEvidenceBlockers({
+    ...(subscriptionsOff || target === "app-store" ? [] : productionCapabilityEvidenceBlockers({
       entry: firebaseReadiness?.environment?.productionGooglePlaySubscriptions,
       expectedProjectId: projectId,
       label: "운영 Google Play 구독 연동",
@@ -1677,8 +1601,8 @@ export async function evaluateReleaseReadiness(root) {
         ["developerApiVerified", "운영 Google Play Developer API 미검증"],
         ["rtdnVerified", "운영 Google Play RTDN 미검증"],
       ],
-    }),
-    ...productionCapabilityEvidenceBlockers({
+    })),
+    ...(subscriptionsOff || target === "google-play" ? [] : productionCapabilityEvidenceBlockers({
       entry: firebaseReadiness?.environment?.productionAppleSubscriptions,
       expectedProjectId: projectId,
       label: "운영 Apple 구독 연동",
@@ -1689,7 +1613,7 @@ export async function evaluateReleaseReadiness(root) {
           "운영 App Store Server Notifications V2 미검증",
         ],
       ],
-    }),
+    })),
     ...productionCapabilityEvidenceBlockers({
       entry: firebaseReadiness?.environment?.productionAccountExport,
       expectedProjectId: projectId,
@@ -1720,9 +1644,11 @@ export async function evaluateReleaseReadiness(root) {
     ...subscriptionBlockers.firebase
   );
 
+  }
+
   const googlePlayBlockers = [...googlePlayTarget.blockers];
-  if (googlePlayTarget.included) {
-    if (playConfig === null || containsUnknown(playConfig)) {
+  if (googlePlayTarget.included && target !== "app-store") {
+    if (releasing && (playConfig === null || containsUnknown(playConfig))) {
       googlePlayBlockers.push("Play 메타데이터에 미확정 값 존재");
     }
     const androidApplicationId = readAndroidApplicationId(
@@ -1753,7 +1679,7 @@ export async function evaluateReleaseReadiness(root) {
     }
     googlePlayBlockers.push(
       ...subscriptionBlockers.googlePlay,
-      ...(await androidArtifactBlockers(
+      ...(building ? [] : await androidArtifactBlockers(
         root,
         releaseEvidence?.artifacts?.googlePlaySignedAab,
         playConfig?.packageName,
@@ -1763,18 +1689,13 @@ export async function evaluateReleaseReadiness(root) {
         releaseEvidence?.console?.googlePlayApp,
         "Play Console 앱 생성 evidence 없음",
         { allowNotApplicable: false }
-      ),
-      ...evidenceBlocker(
-        releaseEvidence?.manualTests?.googlePlayTwoPerson,
-        "Google Play internal 2인 테스트 evidence 없음",
-        { allowNotApplicable: false }
       )
     );
   }
 
   const appStoreBlockers = [...appStoreTarget.blockers];
-  if (appStoreTarget.included) {
-    if (appStoreConfig === null || containsUnknown(appStoreConfig)) {
+  if (appStoreTarget.included && target !== "google-play") {
+    if (releasing && (appStoreConfig === null || containsUnknown(appStoreConfig))) {
       appStoreBlockers.push("App Store 메타데이터에 미확정 값 존재");
     }
     const iosBundleIdentifiers = readIosBundleIdentifiers(iosProject);
@@ -1791,10 +1712,10 @@ export async function evaluateReleaseReadiness(root) {
     }
     appStoreBlockers.push(
       ...subscriptionBlockers.appStore,
-      ...appReviewCredentialBlockers(appStoreConfig?.review)
+      ...(releasing ? appReviewCredentialBlockers(appStoreConfig?.review) : [])
     );
     appStoreBlockers.push(
-      ...(await appStoreArtifactBlockers(
+      ...(building ? [] : await appStoreArtifactBlockers(
         root,
         releaseEvidence?.artifacts?.appStoreArchive,
         appStoreConfig?.bundleId,
@@ -1804,64 +1725,6 @@ export async function evaluateReleaseReadiness(root) {
       ...evidenceBlocker(
         releaseEvidence?.console?.appStoreConnectApp,
         "App Store Connect 앱 생성 evidence 없음",
-        { allowNotApplicable: false }
-      ),
-      ...evidenceBlocker(
-        releaseEvidence?.manualTests?.testFlightTwoPerson,
-        "TestFlight 2인 테스트 evidence 없음",
-        { allowNotApplicable: false }
-      )
-    );
-  }
-
-  const appsInTossBlockers = [...appsInTossTarget.blockers];
-  if (appsInTossTarget.included) {
-    if (appsInTossConfig === null || containsUnknown(appsInTossConfig)) {
-      appsInTossBlockers.push("AppsInToss 설정에 미확정 값 존재");
-    }
-    const aitGraniteConfig = await readText(root, "apps/ait/granite.config.ts");
-    const graniteAppName = aitGraniteConfig?.match(
-      /^\s*appName:\s*["']([^"']+)["'],?\s*$/m
-    )?.[1];
-    if (
-      appsInTossConfig?.appNameStatus !== "confirmed-console-match" ||
-      graniteAppName !== appsInTossConfig?.appName
-    ) {
-      appsInTossBlockers.push(
-        "AppsInToss appName Console 대조 미확정 또는 불일치"
-      );
-    }
-    if (/placehold\.co/i.test(aitGraniteConfig ?? "")) {
-      appsInTossBlockers.push("AppsInToss 정식 icon 미설정");
-    }
-    const appsInTossConsoleEvidence = releaseEvidence?.console?.appsInTossApp;
-    if (
-      hasAuditEvidence(appsInTossConsoleEvidence, {
-        allowNotApplicable: false,
-      }) &&
-      appsInTossConsoleEvidence?.appName !== appsInTossConfig?.appName
-    ) {
-      appsInTossBlockers.push("AppsInToss Console appName evidence 불일치");
-    }
-    appsInTossBlockers.push(
-      ...(await appsInTossArtifactBlockers(
-        root,
-        releaseEvidence?.artifacts?.appsInTossPackage,
-        appsInTossConfig
-      )),
-      ...evidenceBlocker(
-        releaseEvidence?.console?.appsInTossApp,
-        "AppsInToss Console 앱 생성 evidence 없음",
-        { allowNotApplicable: false }
-      ),
-      ...evidenceBlocker(
-        releaseEvidence?.policy?.appsInTossCompatibility,
-        "AppsInToss 민감정보·계정·구독 정책 검토 evidence 없음",
-        { allowNotApplicable: false }
-      ),
-      ...evidenceBlocker(
-        releaseEvidence?.manualTests?.appsInTossSandboxTwoPerson,
-        "AppsInToss sandbox 2인 테스트 evidence 없음",
         { allowNotApplicable: false }
       )
     );
@@ -1884,7 +1747,7 @@ export async function evaluateReleaseReadiness(root) {
       { allowNotApplicable: false }
     ),
   ];
-  if (googlePlayTarget.included) {
+  if (googlePlayTarget.included && target !== "app-store") {
     privacyBlockers.push(
       ...evidenceBlocker(
         releaseEvidence?.policy?.googlePlayDataSafety,
@@ -1893,7 +1756,7 @@ export async function evaluateReleaseReadiness(root) {
       )
     );
   }
-  if (appStoreTarget.included) {
+  if (appStoreTarget.included && target !== "google-play") {
     privacyBlockers.push(
       ...evidenceBlocker(
         releaseEvidence?.policy?.appStorePrivacy,
@@ -1919,12 +1782,12 @@ export async function evaluateReleaseReadiness(root) {
     { market: "Firebase", blockers: firebaseBlockers },
     { market: "Google Play", blockers: googlePlayBlockers },
     { market: "App Store", blockers: appStoreBlockers },
-    { market: "AppsInToss", blockers: appsInTossBlockers },
-    { market: "Privacy", blockers: privacyBlockers },
-    { market: "Approval", blockers: approvalBlockers },
-  ];
+    ...(releasing ? [{market: "Privacy", blockers: privacyBlockers}, {market: "Approval", blockers: approvalBlockers}] : []),
+  ].filter(section => !target || (section.market !== "Google Play" || target === "google-play") && (section.market !== "App Store" || target === "app-store"));
 
   return {
+    target: target ?? null,
+    phase,
     ready: sections.every((section) => section.blockers.length === 0),
     sections,
     sourceFingerprints: { firebase: firebaseFingerprints },

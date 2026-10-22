@@ -1,59 +1,26 @@
-# 마켓 릴리스 자동화
+# 네이티브 릴리스 실행
 
-## Android와 AppsInToss
+현재 caller는 `deploy-google-play.yml`과 `deploy-app-store.yml`입니다. 둘 다 최신 중앙 RN 재사용 workflow를 호출합니다. 과거 Xcode Cloud 설정과 실행 기록은 아래에 보존하며 현재 경로와 구분합니다.
 
-- `Deploy Google Play`: 고정된 중앙 RN Google Play workflow가 exact stable SemVer
-  태그 commit을 checkout하고 태그 파생 versionName/versionCode를 Gradle에 주입한다.
-  명시적 `upload=true`일 때만 Google Play `internal` 트랙에 업로드한다.
-  같은 tag/versionCode가 이미 동일 상태로 존재하면 재업로드하지 않고 성공으로
-  수렴하며, 다른 이름이나 상태로 존재하면 drift로 중단한다.
-- `Deploy AppsInToss`: AppsInToss SDK의 x86-64 Hermes compiler에 맞춰
-  `ubuntu-latest`에서 `.ait`를 빌드하고 비공개 업로드한다.
-- 두 workflow 모두 `workflow_dispatch`와 `workflow_call`을 제공하며 Backoffice의
-  앱별 릴리스 배포 버튼에서 호출할 수 있다.
-- 마켓 artifact는 exact stable `vX.Y.Z` 태그에서만 만들며 package 파일과 실행 번호는
-  release version authority가 아니다.
-- production 승격, 심사 제출, 공개 출시는 이 자동화에 포함하지 않는다.
+- Google Play는 `release_tag`, `upload`, `release_status`를 받습니다. 테스트 배포는 `upload=true`, `release_status=completed`를 명시해 internal 트랙의 정확한 빌드를 다시 읽습니다.
+- App Store는 `release_tag`와 `upload`를 받으며 중앙 macOS 빌드에서 archive와 App Store Connect 업로드를 수행합니다. Xcode Cloud를 호출하는 workflow가 아닙니다.
+- AppsInToss caller와 전용 앱은 제거했습니다. 외부 콘솔 등록은 보존합니다.
+- main의 CI 성공은 마켓 업로드가 아닙니다. exact stable 태그, 중앙 버전 원장과 receipt를 확인한 뒤 후보 번호를 확정합니다. package 파일의 개발 기본값을 출시 번호의 정본으로 사용하지 않습니다.
+- 로컬 카탈로그의 기존 앱별 서명과 Firebase identity를 재사용합니다. 비밀값은 로그, 저장소와 artifact에 포함하지 않습니다.
 
-중앙 계약은 `major * 1,000,000 + minor * 1,000 + patch`를 encoded version으로
-계산하고 Android에는 `1,000,000,000 + encoded version`을 주입한다.
+## 단계별 검사
 
-Android 서명 키와 Firebase 설정은 로컬 자격증명 카탈로그가 source of truth다.
-Cloud Build에는 `seorilabs-ci` Secret Manager의 Cycle Pair 전용 실행 복제본만
-환경변수로 주입하며, 저장소·소스 업로드·GitHub artifact에는 포함하지 않는다.
+```sh
+pnpm check:release --target google-play --phase before-build --evidence <실제실행.json> --authority <최신중앙checkout>
+pnpm check:release --target google-play --phase before-deploy --evidence <실제실행.json> --authority <최신중앙checkout>
+pnpm check:release --target google-play --phase before-release --evidence <실제실행.json> --authority <최신중앙checkout>
+```
 
-## App Store
+App Store에서는 `--target app-store`로 실행합니다. 빌드 전에는 서명 산출물을 요구하지 않으며 업로드 전부터 정확한 서명 파일과 해시를 확인합니다. 제출 전에는 운영 연결, 정책과 저장된 마켓 문구를 검수합니다. 모든 단계는 승인 계획의 실제 실행 근거를 최신 중앙 검증기로 검사합니다. 미실행을 통과로 바꾸지 않습니다.
 
-App Store Archive와 TestFlight 배포는 Xcode Cloud에서 수행한다. GitHub
-Actions는 macOS runner를 사용하지 않고 App Store Connect API로
-`Cycle Pair Release` workflow를 호출한다.
+승인된 끝 지점은 두 마켓 공개입니다. 업로드와 처리 완료, 심사 접수, 승인, 공개 페이지와 버전 확인을 각각 기록합니다. [현재 설계](design/2026-10-22-native-launch/design.md)와 실제 caller 입력이 실행 기준입니다.
 
-- product: `D071BF40-979E-4D7D-A7C5-2202072488D5`
-- workflow: `6310D1DD-4A04-4E5C-8B17-B86D7A744D09`
-- repository: `seorilabs/cycle-pair`
-- workspace: `apps/mobile/ios/CyclePair.xcworkspace`
-- scheme: `CyclePair`
-- trigger: 수동 `v*` tag
-- Archive audience: `APP_STORE_ELIGIBLE`
-- signing: Team `HCDUXX4Z3X`, automatic
-
-`apps/mobile/ios/ci_scripts/ci_post_clone.sh`가 Node, pnpm, Firebase 설정,
-CocoaPods를 준비한다. 단일 prod `GoogleService-Info.plist`는 저장소에
-커밋하지 않고 Xcode Cloud secret에서 복원한다.
-
-`apps/mobile/ios/ci_scripts/ci_pre_xcodebuild.sh`는 checksum을 검증한 중앙 helper로
-`CI_TAG`의 marketing version과 deterministic build number를 반영한다.
-
-GitHub environment `app-store`에는 다음 secret이 필요하다.
-
-- `APP_STORE_CONNECT_API_KEY_ID`
-- `APP_STORE_CONNECT_ISSUER_ID`
-- `APP_STORE_CONNECT_PRIVATE_KEY_BASE64`
-
-`Deploy App Store via Xcode Cloud`의 기본값은 검증 전용이다.
-`upload_to_testflight=true`를 명시해야 실제 Xcode Cloud build run을 만든다.
-
-## 현재 검증 경계
+## 과거 실행 기록
 
 - Android global Cloud Build `c6d005cc-430c-4d1c-a8d3-54447d5cf26c`: 성공
   - 전체 12분 35초, Gradle release 7분 3초

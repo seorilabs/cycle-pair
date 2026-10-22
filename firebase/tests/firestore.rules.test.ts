@@ -51,7 +51,7 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
-  await testEnv.cleanup();
+  await testEnv?.cleanup();
 });
 
 async function seedActivePair(): Promise<void> {

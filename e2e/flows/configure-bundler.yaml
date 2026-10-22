@@ -1,0 +1,4 @@
+appId: ${APP_ID}
+---
+- tapOn: 'Change Bundle Location'
+- takeScreenshot: safe/development-bundle-location

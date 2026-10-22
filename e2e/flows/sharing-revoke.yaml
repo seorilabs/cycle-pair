@@ -1,0 +1,32 @@
+appId: ${APP_ID}
+---
+- launchApp
+- tapOn:
+    id: tab-partner
+- tapOn: 'Sharing|공유'
+- scrollUntilVisible:
+    element:
+      id: sharing-emotions
+    direction: UP
+- tapOn:
+    id: sharing-emotions
+    checked: true
+- assertVisible:
+    id: sharing-emotions
+    checked: false
+- scrollUntilVisible:
+    element:
+      id: sharing-carePreference
+    direction: UP
+- tapOn:
+    id: sharing-carePreference
+    checked: true
+- assertVisible:
+    id: sharing-carePreference
+    checked: false
+- scrollUntilVisible:
+    element:
+      id: sharing-save
+    direction: DOWN
+- tapOn:
+    id: sharing-save

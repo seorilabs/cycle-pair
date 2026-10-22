@@ -1,0 +1,15 @@
+appId: ${APP_ID}
+---
+- tapOn:
+    id: tab-settings
+- scrollUntilVisible:
+    element:
+      text: 'Connection and data|연결과 데이터'
+    direction: DOWN
+- tapOn: 'Connection and data|연결과 데이터'
+- tapOn: 'Disconnect partner|파트너 연결 해제'
+- tapOn: 'Disconnect|연결 해제'
+- tapOn: 'Back|뒤로'
+- tapOn:
+    id: tab-partner
+- assertVisible: 'Connect a partner|파트너 연결'

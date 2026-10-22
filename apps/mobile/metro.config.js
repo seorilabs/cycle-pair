@@ -1,4 +1,5 @@
 const path = require('node:path');
+const {selectNativeRuntime} = require('./runtime-selection.cjs');
 const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');
 
 /**
@@ -17,6 +18,9 @@ const config = {
     ],
     unstable_enableSymlinks: true,
     resolveRequest: (context, moduleName, platform) => {
+      if (moduleName === '@cyclepair/native-runtime') {
+        return {type: 'sourceFile', filePath: selectNativeRuntime({development: context.dev, backend: process.env.CYCLEPAIR_DEV_BACKEND || 'service'})};
+      }
       try {
         return context.resolveRequest(context, moduleName, platform);
       } catch (error) {

@@ -1,0 +1,11 @@
+appId: ${APP_ID}
+---
+- launchApp
+- tapOn:
+    id: tab-partner
+- extendedWaitUntil:
+    visible: 'Calm|평온'
+    timeout: 30000
+- assertVisible: 'Just listen|그냥 들어줘요'
+- assertNotVisible: ${SYNTHETIC_NOTE}
+- takeScreenshot: safe/partner-received

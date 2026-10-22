@@ -1,0 +1,28 @@
+appId: ${APP_ID}
+---
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: onboarding-next
+    timeout: 120000
+- assertVisible: 'Example|예시'
+- takeScreenshot: safe/onboarding
+- tapOn:
+    id: onboarding-next
+- scrollUntilVisible:
+    element:
+      id: setup-consent
+    direction: DOWN
+- tapOn:
+    id: setup-consent
+- scrollUntilVisible:
+    element:
+      id: setup-save
+    direction: DOWN
+- tapOn:
+    id: setup-save
+- extendedWaitUntil:
+    visible:
+      id: home-record
+    timeout: 30000
+- takeScreenshot: safe/home-empty

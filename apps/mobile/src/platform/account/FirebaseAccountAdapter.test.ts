@@ -327,4 +327,44 @@ describe('FirebaseAccountAdapter', () => {
       recoveryReceipt: 'r'.repeat(43),
     });
   });
+  it('keeps emulator exports local while the service adapter rejects HTTP', async () => {
+    mockAuthState.currentUser = user({
+      email: 'user@example.com',
+      isAnonymous: false,
+    });
+    const ticket = {
+      schemaVersion: 1,
+      exportSubjectUid: 'stable-uid',
+      expiresAt: '2026-07-14T00:05:00.000Z',
+      filename: 'cycle-pair-data-export-2026-07-14.json',
+      singleUse: true,
+      downloadUrl:
+        'http://127.0.0.1:5301/cyclepair-test/asia-northeast3/downloadAccountDataExport#token=' +
+        'a'.repeat(43),
+    };
+    const local = createFirebaseAccountAdapter(undefined, {
+      createGuestSession: async () => ({
+        uid: 'stable-uid',
+        email: null,
+        isAnonymous: true,
+        emailVerified: false,
+      }),
+      exportOrigin: 'http://127.0.0.1:5301',
+    });
+    mockCallableInvoke.mockResolvedValueOnce({ data: ticket });
+    await expect(local.requestDataExport()).resolves.toEqual(ticket);
+    mockCallableInvoke.mockResolvedValueOnce({ data: ticket });
+    await expect(
+      firebaseAccountAdapter.requestDataExport(),
+    ).rejects.toMatchObject({ code: 'account/invalid-export-response' });
+    mockCallableInvoke.mockResolvedValueOnce({
+      data: {
+        ...ticket,
+        downloadUrl: 'https://example.com/export#token=' + 'a'.repeat(43),
+      },
+    });
+    await expect(local.requestDataExport()).rejects.toMatchObject({
+      code: 'account/invalid-export-response',
+    });
+  });
 });

@@ -1,0 +1,17 @@
+appId: ${APP_ID}
+---
+- scrollUntilVisible:
+    element:
+      text: 'Preview for your partner|상대에게 보이는 모습'
+    direction: DOWN
+- assertVisible: 'No items selected|공유 항목을 선택하지 않았어요'
+- scrollUntilVisible:
+    element:
+      id: sharing-save
+    direction: DOWN
+- tapOn:
+    id: sharing-save
+- extendedWaitUntil:
+    visible:
+      id: tab-partner
+    timeout: 30000
