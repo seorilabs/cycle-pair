@@ -1,0 +1,4 @@
+appId: com.seorilabs.cyclepair
+---
+- tapOn: 'Change Bundle Location'
+- takeScreenshot: safe/development-bundle-location

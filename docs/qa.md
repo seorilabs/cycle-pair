@@ -1,5 +1,11 @@
 # Cycle Pair QA
 
+## 현재 승인 범위
+
+2026-10-22의 [설계](design/2026-10-22-native-launch/design.md)와 [테스트 계획](design/2026-10-22-native-launch/test-plan.json)이 현재 작업의 기준입니다. L3 전체 회귀와 독립 UI 검수 3회를 Android 16 가상 환경과 iOS Simulator에서 수행합니다. 물리 기기는 별도 승인 전 접근하지 않습니다. Plus 판매와 AppsInToss는 이번 출시에서 제외합니다.
+
+실제 화면 입력 명령과 결과의 한계는 [개발 실행 안내](qa/native-development.md)에 기록합니다. 아래 날짜별 스냅샷은 과거 결과이며 현재 후보의 통과 근거로 승계하지 않습니다.
+
 ## 게이트
 
 | 게이트 | 명령 | 증명 범위 |
@@ -7,11 +13,10 @@
 | core | pnpm test:core | 순수 도메인·예측·Pair·공유 필터 |
 | architecture | pnpm check:architecture | product-core 플랫폼 SDK import 금지 |
 | mobile | pnpm check:mobile | RN lint, typecheck, unit test, iOS/Android production JS bundle |
-| AppsInToss | pnpm check:ait && pnpm build:ait | SDK 2.x RN lint, typecheck, unit test, iOS/Android `.ait` bundle |
 | Firebase 전체 | pnpm test:firebase 또는 pnpm check:firebase | Functions build·unit test, Rules emulator, Auth/Firestore/Functions E2E |
 | Firebase 실제 prod | `CYCLEPAIR_ALLOW_PRODUCTION_SMOKE=true pnpm test:firebase:live` | 플랫폼 Custom Token·Auth·callable·3종 projection trigger·revoke·cleanup |
 | 전체 | pnpm lint && pnpm typecheck && pnpm test | repo 정적·자동 테스트 |
-| release inventory | pnpm check:release | 마켓·Firebase·privacy blocker 목록 |
+| release inventory | `pnpm check:release --target google-play --phase before-release --evidence <실행기록> --authority <최신중앙저장소>` | 해당 마켓의 현재 단계와 중앙 실행 근거 검사 |
 
 check:release는 현재 의도적으로 실패해야 한다. 정책 답변, 서명 빌드, 콘솔 입력과 deployment approval이 확정되지 않았기 때문이다.
 
@@ -115,7 +120,7 @@ Emulator에서 최소 다음을 자동 검증한다.
 - 최초 스냅샷에는 인앱 알림이 없고, 이후 상대가 공유한 새 기록에는 토스트와 새 소식 메시지 박스가 함께 표시된다.
 - 본인이 저장한 공동 일정 변경에는 상대 업데이트 토스트가 잘못 표시되지 않는다.
 
-## 2인 실제 기기 시나리오
+## 두 사용자 회귀 시나리오
 
 | 시나리오 | 기기 A | 기기 B | 합격 조건 |
 | --- | --- | --- | --- |
@@ -127,7 +132,6 @@ Emulator에서 최소 다음을 자동 검증한다.
 | 오프라인 해제 | Pair 해제 | 오프라인 유지 | 서버 접근 즉시 차단 |
 | tombstone | 해제 완료 | 다시 온라인 | 상대 캐시 삭제 후 ack |
 | 계정 삭제 | 삭제 요청 | 상대 화면 조회 | projection과 관계 제거 |
-| 구독 | sandbox 결제 | entitlement 재조회 | 서버 검증 상태만 반영 |
 
 ## 모바일·접근성
 
@@ -146,11 +150,10 @@ Emulator에서 최소 다음을 자동 검증한다.
 
 - Google Play: signed AAB, internal track 2인 테스트, Data safety와 실제 SDK 일치
 - App Store: archive, TestFlight 2인 테스트, App Privacy와 실제 SDK 일치
-- AppsInToss: 로컬 최소 slice의 lint·typecheck·unit test·`.ait` build를 수행. 영구 `appName`은 `cycle-pair`로 고정했으며 정책 적합성, 정식 icon URL, 실화면 자산, Console 등록, sandbox QA는 별도 미완료 gate
 
 ## 사람 승인
 
 - planning 승인: 완료
 - agent QA: Cycle Pair 앱 정체성·dev Firebase 전환 완료 (2026-07-13)
 - 2인 사람 테스트: 미완료
-- deployment 승인: 미완료
+- 2026-10-22 출시 승인: Google Play와 App Store의 전 세계 무료 공개까지 승인. 실행 근거와 마켓별 검사 통과는 별도로 필요

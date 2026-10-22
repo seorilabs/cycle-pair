@@ -23,15 +23,6 @@ on:
           - draft
           - completed
         default: draft
-      apps_in_toss:
-        description: "AppsInToss 비공개 업로드 실행"
-        type: boolean
-        default: false
-      apps_in_toss_memo:
-        description: "AppsInToss 비공개 배포 메모"
-        type: string
-        required: false
-        default: "Cycle Pair private upload"
       app_store:
         description: "App Store archive 실행"
         type: boolean
@@ -42,7 +33,7 @@ on:
         default: false
 
 # 재사용 워크플로는 caller 보다 넓은 권한을 요구할 수 없다. 여기 permissions 는
-# 호출하는 deploy-google-play / deploy-apps-in-toss 가 선언한 것의 상위집합이어야
+# 호출하는 deploy-google-play / deploy-app-store 가 선언한 것의 상위집합이어야
 # 하고, 아니면 job 이 아니라 run 전체가 startup_failure 로 죽는다.
 permissions:
   contents: read
@@ -93,14 +84,3 @@ jobs:
     with:
       release_tag: ${{ needs.resolve.outputs.tag }}
       upload: ${{ inputs.app_store_upload }}
-
-  apps-in-toss:
-    name: AppsInToss
-    needs: resolve
-    if: ${{ inputs.apps_in_toss }}
-    uses: ./.github/workflows/deploy-apps-in-toss.yml
-    secrets:
-      APPS_IN_TOSS_API_KEY: ${{ secrets.APPS_IN_TOSS_API_KEY }}
-    with:
-      release_tag: ${{ needs.resolve.outputs.tag }}
-      memo: ${{ inputs.apps_in_toss_memo }}

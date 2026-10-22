@@ -1170,7 +1170,7 @@ describe("pair lifecycle callables", () => {
       ticket.expiresAt,
     );
     expect(ticket.downloadUrl).toMatch(
-      /^https:\/\/asia-northeast3-demo-cyclepair\.cloudfunctions\.net\/downloadAccountDataExport#token=[A-Za-z0-9_-]{43}$/,
+      /^http:\/\/127\.0\.0\.1:5301\/demo-cyclepair\/asia-northeast3\/downloadAccountDataExport#token=[A-Za-z0-9_-]{43}$/,
     );
     const exportToken = exportTokenFromTicket(ticket);
     const exportTokenHash = createHash("sha256")

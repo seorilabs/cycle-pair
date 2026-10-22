@@ -34,8 +34,8 @@ export interface NeutralNotificationData {
 
 export interface NeutralNotificationContent {
   readonly notification: {
-    readonly title: "사이클 페어";
-    readonly body: "함께 확인할 업데이트가 있어요.";
+    readonly title: "사이클 페어" | "Cycle Pair";
+    readonly body: "함께 확인할 업데이트가 있어요." | "There is an update to check together.";
   };
   readonly data: NeutralNotificationData;
 }
@@ -250,11 +250,12 @@ export function neutralNotificationData(
 
 export function neutralNotificationContent(
   type: NeutralNotificationType,
+  locale = "ko-KR",
 ): NeutralNotificationContent {
   return {
     notification: {
-      title: "사이클 페어",
-      body: "함께 확인할 업데이트가 있어요.",
+      title: /^ko(?:-|_|$)/i.test(locale) ? "사이클 페어" : "Cycle Pair",
+      body: /^ko(?:-|_|$)/i.test(locale) ? "함께 확인할 업데이트가 있어요." : "There is an update to check together.",
     },
     data: neutralNotificationData(type),
   };

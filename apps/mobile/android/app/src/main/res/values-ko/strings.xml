@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">사이클 페어 : 내 기분, 주기, 컨디션을 알려요</string>
+    <string name="notification_channel_name">함께 확인할 업데이트</string>
+    <string name="notification_channel_description">건강정보 없이 사이클 페어 업데이트를 알려드려요.</string>
+</resources>

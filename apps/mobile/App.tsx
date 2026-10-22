@@ -1,3 +1,5 @@
+import { useI18n } from './src/i18n/I18nProvider';
+import { I18nProvider } from './src/i18n/I18nProvider';
 import React, { useMemo } from 'react';
 import {
   ActivityIndicator,
@@ -40,10 +42,11 @@ function AccountRuntime({
   crashReporter?: SafeCrashReporter;
   purchaseClient?: CyclePairPurchaseAdapter;
 }) {
+  const { l } = useI18n();
   const { state, deleteAccount } = useAccount();
   if (state.hydrating) {
     return (
-      <View accessibilityLabel="계정 확인 중" style={styles.loading}>
+      <View accessibilityLabel={l('계정 확인 중')} style={styles.loading}>
         <ActivityIndicator color={colors.primary} size="large" />
       </View>
     );
@@ -57,33 +60,46 @@ function AccountRuntime({
   }
   if (state.sessionQuiesced) {
     return (
-      <View accessibilityLabel="계정 삭제 복구" style={styles.recovery}>
-        <Text style={styles.recoveryTitle}>계정 동기화를 중지했습니다</Text>
+      <View accessibilityLabel={l('계정 삭제 복구')} style={styles.recovery}>
+        <Text style={styles.recoveryTitle}>
+          {l('계정 동기화를 중지했습니다')}
+        </Text>
         <Text style={styles.recoveryBody}>
           {state.deletionRecovery === 'local-cleanup-pending'
-            ? '서버 삭제는 확인했지만 기기 데이터 정리가 남았습니다. 정리를 완료할 때까지 저장과 동기화를 차단합니다.'
+            ? l(
+                '서버 삭제는 확인했지만 기기 데이터 정리가 남았습니다. 정리를 완료할 때까지 저장과 동기화를 차단합니다.',
+              )
             : state.deletionRecovery === 'intent-unreadable'
-              ? '보안 저장소의 계정 삭제 상태를 확인할 수 없습니다. 상태를 다시 읽을 때까지 로그인과 동기화를 차단합니다.'
-              : state.deletionRecovery === 'deletion-pending'
-                ? '서버가 삭제를 완료했는지 복구 영수증으로 확인할 때까지 이 계정의 저장과 동기화를 차단합니다.'
-              : '삭제 완료 여부를 확인하지 못했습니다. 데이터가 다시 생성되지 않도록 이 계정의 저장과 동기화를 차단했습니다.'}
+            ? l(
+                '보안 저장소의 계정 삭제 상태를 확인할 수 없습니다. 상태를 다시 읽을 때까지 로그인과 동기화를 차단합니다.',
+              )
+            : state.deletionRecovery === 'deletion-pending'
+            ? l(
+                '서버가 삭제를 완료했는지 복구 영수증으로 확인할 때까지 이 계정의 저장과 동기화를 차단합니다.',
+              )
+            : l(
+                '삭제 완료 여부를 확인하지 못했습니다. 데이터가 다시 생성되지 않도록 이 계정의 저장과 동기화를 차단했습니다.',
+              )}
         </Text>
-        {state.error ? <Text style={styles.recoveryError}>{state.error}</Text> : null}
+        {state.error ? (
+          <Text style={styles.recoveryError}>{l(state.error)}</Text>
+        ) : null}
         <Pressable
           accessibilityRole="button"
           disabled={state.busy}
           onPress={() => deleteAccount().catch(() => undefined)}
-          style={styles.recoveryPrimary}>
+          style={styles.recoveryPrimary}
+        >
           <Text style={styles.recoveryPrimaryText}>
             {state.busy
-              ? '처리 중…'
+              ? l('처리 중…')
               : state.deletionRecovery === 'intent-unreadable'
-                ? '삭제 상태 다시 확인'
-                : state.deletionRecovery === 'deletion-pending' && !state.session
-                  ? '삭제 상태 다시 확인'
-                : state.session
-                ? '계정 삭제 다시 시도'
-                : '기기 데이터 정리 다시 시도'}
+              ? l('삭제 상태 다시 확인')
+              : state.deletionRecovery === 'deletion-pending' && !state.session
+              ? l('삭제 상태 다시 확인')
+              : state.session
+              ? l('계정 삭제 다시 시도')
+              : l('기기 데이터 정리 다시 시도')}
           </Text>
         </Pressable>
       </View>
@@ -95,19 +111,21 @@ function AccountRuntime({
       analytics={analytics}
       key={state.session.uid}
       memberId={state.session.uid}
-      purchaseClient={purchaseClient}>
+      purchaseClient={purchaseClient}
+    >
       <CyclePairProvider
         analytics={analytics}
         backend={backend}
         crashReporter={crashReporter}
-        notificationClient={notificationClient}>
+        notificationClient={notificationClient}
+      >
         <CyclePairApp />
       </CyclePairProvider>
     </SubscriptionProvider>
   );
 }
 
-function App({
+export function AppContent({
   backend = previewCyclePairBackend,
   account = previewAccountAdapter,
   notificationClient,
@@ -142,7 +160,8 @@ function App({
       <AccountProvider
         account={account}
         crashReporter={crashReporter}
-        sessionCleanup={sessionCleanup}>
+        sessionCleanup={sessionCleanup}
+      >
         <AccountRuntime
           analytics={analytics}
           backend={backend}
@@ -208,5 +227,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
+
+function App(props: React.ComponentProps<typeof AppContent>) {
+  return (
+    <I18nProvider>
+      <AppContent {...props} />
+    </I18nProvider>
+  );
+}
 
 export default App;

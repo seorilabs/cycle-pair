@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nProvider';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { PartnerNudgeType } from '../platform/backend/CyclePairBackend';
@@ -19,6 +20,7 @@ function remainingMinutes(value: string | undefined, now: number): number {
 }
 
 export function PartnerNudgeInbox() {
+  const { l } = useI18n();
   const {
     partnerNudgeState,
     nudgeBusy,
@@ -33,11 +35,13 @@ export function PartnerNudgeInbox() {
       {received ? (
         <Card tone="mint" style={styles.inboxCard}>
           <View style={styles.inboxCopy}>
-            <Text style={styles.inboxEyebrow}>파트너의 넛지</Text>
-            <Text style={styles.inboxMessage}>{nudgeCopy[received.type]}</Text>
+            <Text style={styles.inboxEyebrow}>{l('파트너의 넛지')}</Text>
+            <Text style={styles.inboxMessage}>
+              {l(nudgeCopy[received.type])}
+            </Text>
           </View>
           <TextButton
-            label={nudgeBusy ? '처리 중…' : '확인'}
+            label={nudgeBusy ? l('처리 중…') : l('확인')}
             disabled={nudgeBusy}
             onPress={() => {
               acknowledgePartnerNudge().catch(() => undefined);
@@ -47,7 +51,7 @@ export function PartnerNudgeInbox() {
       ) : null}
       {nudgeFeedback ? (
         <Text accessibilityLiveRegion="polite" style={styles.feedback}>
-          {nudgeFeedback}
+          {l(nudgeFeedback)}
         </Text>
       ) : null}
     </View>
@@ -65,9 +69,11 @@ function NudgeButton({
   disabled: boolean;
   remaining: number;
 }) {
+  const { l } = useI18n();
   const { nudgeBusy, sendPartnerNudge } = useCyclePair();
   const buttonDisabled = disabled || nudgeBusy || remaining > 0;
-  const displayLabel = remaining > 0 ? `${remaining}분 후` : label;
+  const displayLabel =
+    remaining > 0 ? l('{v0}분 후', { v0: remaining }) : label;
   return (
     <Pressable
       accessibilityRole="button"
@@ -103,6 +109,7 @@ export function PartnerNudgeActions({
 }: {
   canAcknowledgeCare: boolean;
 }) {
+  const { l } = useI18n();
   const { partnerNudgeState } = useCyclePair();
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -125,18 +132,21 @@ export function PartnerNudgeActions({
 
   return (
     <View style={styles.actions}>
-      <NudgeButton
-        type="check-in-request"
-        label="오늘 어때요?"
-        disabled={false}
-        remaining={remaining.checkIn}
-      />
-      <NudgeButton
-        type="care-acknowledgement"
-        label="확인했어요, 챙겨볼게요"
-        disabled={!canAcknowledgeCare}
-        remaining={remaining.care}
-      />
+      {canAcknowledgeCare ? (
+        <NudgeButton
+          type="care-acknowledgement"
+          label={l('확인했어요, 챙겨볼게요')}
+          disabled={false}
+          remaining={remaining.care}
+        />
+      ) : (
+        <NudgeButton
+          type="check-in-request"
+          label={l('오늘 어때요?')}
+          disabled={false}
+          remaining={remaining.checkIn}
+        />
+      )}
     </View>
   );
 }

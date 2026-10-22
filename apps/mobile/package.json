@@ -1,6 +1,6 @@
 {
   "name": "@cyclepair/mobile",
-  "version": "1.0.4",
+  "version": "1.1.0",
   "private": true,
   "scripts": {
     "android": "react-native run-android",
@@ -32,9 +32,7 @@
     "@seorilabs/platform-sdk": "0.6.0",
     "react": "19.2.3",
     "react-native": "0.86.0",
-    "react-native-iap": "15.4.1",
     "react-native-keychain": "10.0.0",
-    "react-native-nitro-modules": "0.36.1",
     "react-native-safe-area-context": "^5.5.2"
   },
   "devDependencies": {

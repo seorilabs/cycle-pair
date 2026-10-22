@@ -1,3 +1,5 @@
+import { sharedFields } from '../app/sharedFieldPresentation';
+import { formatDate, useI18n } from '../i18n/I18nProvider';
 import {
   daysBetween,
   isLocalDate,
@@ -7,13 +9,14 @@ import {
 import React, { useMemo, useRef, useState } from 'react';
 import {
   Alert,
+  Modal,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
-import { buildCycleViewModel, formatKoreanDate } from '../app/cycleViewModel';
+import { buildCycleViewModel } from '../app/cycleViewModel';
 import { buildCalendarCycleRanges } from '../app/calendarCycleRanges';
 import {
   buildCalendarMonthRows,
@@ -36,9 +39,6 @@ import {
   TextButton,
 } from '../components/Ui';
 import { colors, radius, spacing } from '../theme';
-import { emotionLabel } from '../app/emotions';
-
-const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
 
 interface SelectedCycleAgendaItem {
   readonly id: string;
@@ -78,6 +78,13 @@ function isValidEventTimes(start?: string, end?: string): boolean {
 }
 
 export function CalendarScreen() {
+  const { l, t, label, locale } = useI18n();
+  const [recordOpen, setRecordOpen] = useState(false);
+  const weekdays = Array.from({ length: 7 }, (_, day) =>
+    new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(
+      new Date(2026, 9, 18 + day),
+    ),
+  );
   const {
     state,
     backendBusy,
@@ -151,8 +158,8 @@ export function CalendarScreen() {
   ) {
     selectedCycleAgenda.push({
       id: 'own-actual',
-      title: '내 생리 기록',
-      detail: '직접 기록한 생리 기간에 포함돼요.',
+      title: l('내 생리 기록'),
+      detail: l('직접 기록한 생리 기간에 포함돼요.'),
       owner: 'mine',
     });
   }
@@ -165,8 +172,8 @@ export function CalendarScreen() {
   ) {
     selectedCycleAgenda.push({
       id: 'own-inferred',
-      title: '내 생리 종료 예상 구간 · 참고용',
-      detail: '평균 생리 기간을 기준으로 계산한 참고 일정이에요.',
+      title: l('내 생리 종료 예상 구간 · 참고용'),
+      detail: l('평균 생리 기간을 기준으로 계산한 참고 일정이에요.'),
       owner: 'mine',
     });
   }
@@ -179,8 +186,8 @@ export function CalendarScreen() {
   ) {
     selectedCycleAgenda.push({
       id: 'own-prediction',
-      title: '내 다음 생리 예상 범위 · 참고용',
-      detail: '기록을 바탕으로 계산한 넓은 참고 범위예요.',
+      title: l('내 다음 생리 예상 범위 · 참고용'),
+      detail: l('기록을 바탕으로 계산한 넓은 참고 범위예요.'),
       owner: 'mine',
     });
   }
@@ -193,8 +200,8 @@ export function CalendarScreen() {
   ) {
     selectedCycleAgenda.push({
       id: 'partner-actual',
-      title: `${state.partnerName} 님의 생리 기록`,
-      detail: '파트너가 직접 공유한 생리 기간이에요.',
+      title: l('{v0} 님의 생리 기록', { v0: state.partnerName }),
+      detail: l('파트너가 직접 공유한 생리 기간이에요.'),
       owner: 'partner',
     });
   }
@@ -207,8 +214,10 @@ export function CalendarScreen() {
   ) {
     selectedCycleAgenda.push({
       id: 'partner-prediction',
-      title: `${state.partnerName} 님의 다음 생리 예상 범위 · 참고용`,
-      detail: '파트너가 공유한 참고용 예상 범위예요.',
+      title: l('{v0} 님의 다음 생리 예상 범위 · 참고용', {
+        v0: state.partnerName,
+      }),
+      detail: l('파트너가 공유한 참고용 예상 범위예요.'),
       owner: 'partner',
     });
   }
@@ -220,10 +229,17 @@ export function CalendarScreen() {
     selectedCycleAgenda.push({
       id: 'partner-today-status',
       title:
-        partnerTodaySummary.cycleTitle ??
-        `${state.partnerName} 님의 오늘 주기 상태`,
+        (locale === 'en'
+          ? sharedFields(safePartnerProjection, locale).find(
+              field => field.key === 'cycleStatus',
+            )?.value
+          : partnerTodaySummary.cycleTitle) ??
+        l('{v0} 님의 오늘 주기 상태', { v0: state.partnerName }),
       detail:
-        partnerTodaySummary.cycleDetail ?? '파트너가 공유한 오늘의 상태예요.',
+        locale === 'en'
+          ? l('파트너가 공유한 오늘의 상태예요.')
+          : partnerTodaySummary.cycleDetail ??
+            l('파트너가 공유한 오늘의 상태예요.'),
       owner: 'partner',
     });
   }
@@ -328,18 +344,17 @@ export function CalendarScreen() {
       selectedHistory.checkIn.periodStarted ||
       selectedHistory.checkIn.periodEnded;
     Alert.alert(
-      '기록 삭제',
-      `${formatKoreanDate(
-        parseLocalDate(selectedHistory.localDate),
-      )}의 컨디션 기록을 삭제할까요? 이 작업은 되돌릴 수 없어요.${
-        includesCycleBoundary
+      l('기록 삭제'),
+      l('{v0}의 컨디션 기록을 삭제할까요? 이 작업은 되돌릴 수 없어요.{v1}', {
+        v0: formatDate(selectedHistory.localDate, locale),
+        v1: includesCycleBoundary
           ? '\n\n설정에 저장된 주기 시작·종료 기준은 유지돼요.'
-          : ''
-      }`,
+          : '',
+      }),
       [
-        { text: '취소', style: 'cancel' },
+        { text: l('취소'), style: 'cancel' },
         {
-          text: '삭제',
+          text: l('삭제'),
           style: 'destructive',
           onPress: () => {
             removeDailyLog(selectedHistory.localDate).catch(() => undefined);
@@ -350,16 +365,20 @@ export function CalendarScreen() {
   }
 
   function confirmDeleteEvent(eventId: string, title: string) {
-    Alert.alert('공동 일정 삭제', `“${title}” 일정을 삭제할까요?`, [
-      { text: '취소', style: 'cancel' },
-      {
-        text: '삭제',
-        style: 'destructive',
-        onPress: () => {
-          removeEvent(eventId).catch(() => undefined);
+    Alert.alert(
+      l('공동 일정 삭제'),
+      l('“{v0}” 일정을 삭제할까요?', { v0: title }),
+      [
+        { text: l('취소'), style: 'cancel' },
+        {
+          text: l('삭제'),
+          style: 'destructive',
+          onPress: () => {
+            removeEvent(eventId).catch(() => undefined);
+          },
         },
-      },
-    ]);
+      ],
+    );
   }
 
   return (
@@ -367,12 +386,12 @@ export function CalendarScreen() {
       <View style={styles.header}>
         <View>
           <Text style={styles.eyebrow}>
-            {state.paired ? '함께 보는 일정' : '나만의 일정'}
+            {state.paired ? l('함께 보는 일정') : l('나만의 일정')}
           </Text>
-          <Text style={styles.title}>주기 캘린더</Text>
+          <Text style={styles.title}>{l('주기 캘린더')}</Text>
         </View>
         <View style={styles.privateBadge}>
-          <Text style={styles.privateBadgeText}>내 원본</Text>
+          <Text style={styles.privateBadgeText}>{l('내 원본')}</Text>
         </View>
       </View>
 
@@ -380,18 +399,21 @@ export function CalendarScreen() {
         <View style={styles.monthHeader}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="이전 달"
+            accessibilityLabel={l('이전 달')}
             onPress={() => shiftMonth(-1)}
             style={styles.monthButton}
           >
             <Text style={styles.monthArrow}>‹</Text>
           </Pressable>
           <Text style={styles.monthTitle}>
-            {cursor.year}년 {cursor.month}월
+            {new Intl.DateTimeFormat(locale, {
+              year: 'numeric',
+              month: 'long',
+            }).format(new Date(cursor.year, cursor.month - 1, 1))}
           </Text>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="다음 달"
+            accessibilityLabel={l('다음 달')}
             onPress={() => shiftMonth(1)}
             style={styles.monthButton}
           >
@@ -448,24 +470,25 @@ export function CalendarScreen() {
                 const hasRecord = recordDates.has(String(day));
                 const hasEvent = eventDates.has(String(day));
                 const rangeLabels = [
-                  isOwnActual ? '내 실제 기록' : undefined,
-                  isOwnInferred ? '내 종료일 추정 구간' : undefined,
-                  isOwnPredicted ? '내 다음 예상 범위' : undefined,
-                  isPartnerActual ? '파트너 실제 기록' : undefined,
-                  isPartnerPredicted ? '파트너 다음 예상 범위' : undefined,
+                  isOwnActual ? l('내 실제 기록') : undefined,
+                  isOwnInferred ? l('내 종료일 추정 구간') : undefined,
+                  isOwnPredicted ? l('내 다음 예상 범위') : undefined,
+                  isPartnerActual ? l('파트너 실제 기록') : undefined,
+                  isPartnerPredicted ? l('파트너 다음 예상 범위') : undefined,
                 ].filter((value): value is string => Boolean(value));
                 return (
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel={`${String(day)}, ${
-                      weekdays[weekdayIndex]
-                    }요일${
-                      rangeLabels.length > 0
-                        ? `, ${rangeLabels.join(', ')}`
-                        : ''
-                    }${hasRecord ? ', 기록 있음' : ''}${
-                      hasEvent ? ', 공동 일정 있음' : ''
-                    }`}
+                    accessibilityLabel={l('{v0}, {v1}요일{v2}{v3}{v4}', {
+                      v0: String(day),
+                      v1: weekdays[weekdayIndex],
+                      v2:
+                        rangeLabels.length > 0
+                          ? `, ${rangeLabels.join(', ')}`
+                          : '',
+                      v3: hasRecord ? ', 기록 있음' : '',
+                      v4: hasEvent ? ', 공동 일정 있음' : '',
+                    })}
                     accessibilityState={{ selected: isSelected }}
                     key={day}
                     onPress={() => setSelectedDate(String(day))}
@@ -518,19 +541,21 @@ export function CalendarScreen() {
           {cycleRanges.ownActual ? (
             <View style={styles.legendItem}>
               <View style={[styles.legendDot, styles.actualDot]} />
-              <Text style={styles.legendText}>내 실제 기록</Text>
+              <Text style={styles.legendText}>{l('내 실제 기록')}</Text>
             </View>
           ) : null}
           {cycleRanges.ownInferred ? (
             <View style={styles.legendItem}>
               <View style={[styles.legendDot, styles.inferredDot]} />
-              <Text style={styles.legendText}>내 종료일 추정</Text>
+              <Text style={styles.legendText}>{l('내 종료일 추정')}</Text>
             </View>
           ) : null}
           {viewModel.predictionStart ? (
             <View style={styles.legendItem}>
               <View style={[styles.legendDot, styles.predictedDot]} />
-              <Text style={styles.legendText}>내 예상 범위 · 참고용</Text>
+              <Text style={styles.legendText}>
+                {l('내 예상 범위 · 참고용')}
+              </Text>
             </View>
           ) : null}
           {cycleRanges.partnerActual ? (
@@ -538,7 +563,7 @@ export function CalendarScreen() {
               <View
                 style={[styles.partnerLegendMark, styles.partnerActualMarker]}
               />
-              <Text style={styles.legendText}>파트너 실제 기록</Text>
+              <Text style={styles.legendText}>{l('파트너 실제 기록')}</Text>
             </View>
           ) : null}
           {cycleRanges.partnerPrediction ? (
@@ -549,26 +574,28 @@ export function CalendarScreen() {
                   styles.partnerPredictedMarker,
                 ]}
               />
-              <Text style={styles.legendText}>파트너 예상 범위 · 참고용</Text>
+              <Text style={styles.legendText}>
+                {l('파트너 예상 범위 · 참고용')}
+              </Text>
             </View>
           ) : null}
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, styles.todayDot]} />
-            <Text style={styles.legendText}>오늘</Text>
+            <Text style={styles.legendText}>{l('오늘')}</Text>
           </View>
         </View>
 
         <View style={styles.selectedDaySection}>
           <View style={styles.selectedDayHeader}>
             <View style={styles.selectedDayCopy}>
-              <Text style={styles.selectedDayEyebrow}>선택한 날짜</Text>
+              <Text style={styles.selectedDayEyebrow}>{l('선택한 날짜')}</Text>
               <Text style={styles.selectedDayTitle}>
-                {formatKoreanDate(selectedLocalDate)}
+                {formatDate(selectedLocalDate, locale)}
               </Text>
             </View>
             {state.paired && !eventDraft ? (
               <TextButton
-                label="일정 추가"
+                label={l('일정 추가')}
                 onPress={beginCreateEvent}
                 disabled={backendBusy}
               />
@@ -601,12 +628,12 @@ export function CalendarScreen() {
                       <Text style={styles.agendaBody}>
                         {[event.startTime, event.endTime]
                           .filter(Boolean)
-                          .join(' – ') || '종일'}
+                          .join(' – ') || l('종일')}
                       </Text>
                     </View>
                     <View style={styles.compactActions}>
                       <TextButton
-                        label="수정"
+                        label={l('수정')}
                         disabled={backendBusy}
                         onPress={() =>
                           setEventDraft({
@@ -624,7 +651,7 @@ export function CalendarScreen() {
                         }
                       />
                       <TextButton
-                        label="삭제"
+                        label={l('삭제')}
                         disabled={backendBusy}
                         onPress={() =>
                           confirmDeleteEvent(event.id, event.title)
@@ -640,173 +667,230 @@ export function CalendarScreen() {
             ))}
 
             {selectedHistory ? (
-              <View style={styles.agendaRow}>
-                <View
-                  style={[styles.agendaMarker, styles.recordAgendaMarker]}
-                />
-                <View style={styles.agendaCopy}>
-                  <View style={styles.agendaTitleRow}>
-                    <Text style={styles.agendaTitle}>내 컨디션 기록</Text>
-                    <TextButton
-                      label={backendBusy ? '삭제 중…' : '기록 삭제'}
-                      disabled={backendBusy}
-                      onPress={confirmDeleteDailyLog}
-                    />
-                  </View>
-                  <Text style={styles.agendaBody}>
-                    {[
-                      ...(selectedHistory.checkIn.emotions ?? []).map(emotionLabel),
-                      ...selectedHistory.checkIn.symptoms,
-                      selectedHistory.checkIn.energy
-                        ? `에너지 ${selectedHistory.checkIn.energy}`
-                        : undefined,
-                      selectedHistory.checkIn.condition,
-                      selectedHistory.checkIn.carePreference,
-                      selectedHistory.checkIn.periodStarted
-                        ? '주기 시작'
-                        : undefined,
-                      selectedHistory.checkIn.periodEnded
-                        ? '주기 종료'
-                        : undefined,
-                    ]
-                      .filter(Boolean)
-                      .join(' · ') || '선택 항목 없이 기록했어요.'}
-                  </Text>
-                  {selectedHistory.checkIn.note ? (
-                    <Text style={styles.eventNote}>
-                      {selectedHistory.checkIn.note}
-                    </Text>
-                  ) : null}
-                </View>
-              </View>
+              <TextButton
+                label={t('View record')}
+                onPress={() => setRecordOpen(true)}
+              />
             ) : null}
 
             {selectedCycleAgenda.length === 0 &&
             selectedEvents.length === 0 &&
             !selectedHistory ? (
               <Text style={styles.emptyText}>
-                이 날짜에 표시할 주기 구간, 공동 일정, 컨디션 기록이 없어요.
+                {l(
+                  '이 날짜에 표시할 주기 구간, 공동 일정, 컨디션 기록이 없어요.',
+                )}
               </Text>
             ) : null}
           </View>
         </View>
       </Card>
 
-      {eventDraft ? (
-        <Card style={styles.editorCard}>
-          <Text style={styles.editorTitle}>
-            {state.sharedEvents.some(event => event.id === eventDraft.id)
-              ? '공동 일정 수정'
-              : '공동 일정 추가'}
-          </Text>
-          <Text style={styles.inputLabel}>제목</Text>
-          <TextInput
-            accessibilityLabel="공동 일정 제목"
-            editable={!backendBusy}
-            maxLength={80}
-            placeholder="예: 병원 예약, 기념일"
-            placeholderTextColor={colors.textSubtle}
-            value={eventDraft.title}
-            onChangeText={title =>
-              setEventDraft(current => (current ? { ...current, title } : null))
-            }
-            style={styles.input}
-          />
-          <Text style={styles.inputLabel}>날짜</Text>
-          <LocalDatePickerField
-            accessibilityLabel="공동 일정 날짜"
+      <Modal
+        visible={recordOpen}
+        onRequestClose={() => setRecordOpen(false)}
+        animationType="slide"
+      >
+        <Screen>
+          <TextButton label={t('Back')} onPress={() => setRecordOpen(false)} />
+          {selectedHistory ? (
+            <View style={styles.agendaRow}>
+              <View style={[styles.agendaMarker, styles.recordAgendaMarker]} />
+              <View style={styles.agendaCopy}>
+                <View style={styles.agendaTitleRow}>
+                  <Text style={styles.agendaTitle}>{l('내 컨디션 기록')}</Text>
+                  <TextButton
+                    label={backendBusy ? l('삭제 중…') : l('기록 삭제')}
+                    disabled={backendBusy}
+                    onPress={confirmDeleteDailyLog}
+                  />
+                </View>
+                <Text style={styles.agendaBody}>
+                  {[
+                    ...(selectedHistory.checkIn.emotions ?? []).map(label),
+                    ...selectedHistory.checkIn.symptoms.map(label),
+                    selectedHistory.checkIn.energy
+                      ? l('에너지 {v0}', { v0: selectedHistory.checkIn.energy })
+                      : undefined,
+                    selectedHistory.checkIn.condition
+                      ? label(selectedHistory.checkIn.condition)
+                      : undefined,
+                    selectedHistory.checkIn.carePreference
+                      ? label(selectedHistory.checkIn.carePreference)
+                      : undefined,
+                    selectedHistory.checkIn.periodStarted
+                      ? l('주기 시작')
+                      : undefined,
+                    selectedHistory.checkIn.periodEnded
+                      ? l('주기 종료')
+                      : undefined,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ') || l('선택 항목 없이 기록했어요.')}
+                </Text>
+                {selectedHistory.checkIn.note ? (
+                  <Text style={styles.eventNote}>
+                    {selectedHistory.checkIn.note}
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+          ) : null}
+        </Screen>
+      </Modal>
+
+      <Modal
+        visible={Boolean(eventDraft)}
+        animationType="slide"
+        onRequestClose={() => {
+          if (!backendBusy) setEventDraft(null);
+        }}
+      >
+        <Screen>
+          <TextButton
+            label={t('Back')}
             disabled={backendBusy}
-            value={parseLocalDate(eventDraft.date)}
-            onChange={date =>
-              setEventDraft(current => (current ? { ...current, date } : null))
-            }
-            testID="shared-event-date-picker"
+            onPress={() => setEventDraft(null)}
           />
-          <View style={styles.timeRow}>
-            <View style={styles.timeField}>
-              <Text style={styles.inputLabel}>시작 시간</Text>
+          {eventDraft ? (
+            <Card style={styles.editorCard}>
+              <Text style={styles.editorTitle}>
+                {state.sharedEvents.some(event => event.id === eventDraft.id)
+                  ? l('공동 일정 수정')
+                  : l('공동 일정 추가')}
+              </Text>
+              <Text style={styles.inputLabel}>{l('제목')}</Text>
               <TextInput
-                accessibilityLabel="공동 일정 시작 시간"
+                accessibilityLabel={l('공동 일정 제목')}
                 editable={!backendBusy}
-                maxLength={5}
-                placeholder="09:00"
+                maxLength={80}
+                placeholder={l('예: 병원 예약, 기념일')}
                 placeholderTextColor={colors.textSubtle}
-                value={eventDraft.startTime ?? ''}
-                onChangeText={startTime =>
+                value={eventDraft.title}
+                onChangeText={title =>
                   setEventDraft(current =>
-                    current ? { ...current, startTime } : null,
+                    current ? { ...current, title } : null,
                   )
                 }
                 style={styles.input}
               />
-            </View>
-            <View style={styles.timeField}>
-              <Text style={styles.inputLabel}>종료 시간</Text>
-              <TextInput
-                accessibilityLabel="공동 일정 종료 시간"
-                editable={!backendBusy}
-                maxLength={5}
-                placeholder="10:00"
-                placeholderTextColor={colors.textSubtle}
-                value={eventDraft.endTime ?? ''}
-                onChangeText={endTime =>
-                  setEventDraft(current =>
-                    current ? { ...current, endTime } : null,
-                  )
-                }
-                style={styles.input}
-              />
-            </View>
-          </View>
-          <Text style={styles.inputLabel}>메모</Text>
-          <TextInput
-            accessibilityLabel="공동 일정 메모"
-            editable={!backendBusy}
-            maxLength={500}
-            multiline
-            placeholder="두 사람에게 필요한 메모"
-            placeholderTextColor={colors.textSubtle}
-            value={eventDraft.note ?? ''}
-            onChangeText={note =>
-              setEventDraft(current => (current ? { ...current, note } : null))
-            }
-            style={[styles.input, styles.noteInput]}
-            textAlignVertical="top"
-          />
-          <View style={styles.editorActions}>
-            <View style={styles.editorAction}>
-              <SecondaryButton
-                label="취소"
+              <Text style={styles.inputLabel}>{l('날짜')}</Text>
+              <LocalDatePickerField
+                accessibilityLabel={l('공동 일정 날짜')}
                 disabled={backendBusy}
-                onPress={() => setEventDraft(null)}
-              />
-            </View>
-            <View style={styles.editorAction}>
-              <PrimaryButton
-                disabled={
-                  backendBusy ||
-                  !eventDraft.title.trim() ||
-                  !isLocalDate(eventDraft.date.trim()) ||
-                  !isValidEventTimes(eventDraft.startTime, eventDraft.endTime)
+                value={parseLocalDate(eventDraft.date)}
+                onChange={date =>
+                  setEventDraft(current =>
+                    current ? { ...current, date } : null,
+                  )
                 }
-                label={backendBusy ? '저장 중…' : '저장'}
+                testID="shared-event-date-picker"
+              />
+              <View style={styles.timeRow}>
+                <View style={styles.timeField}>
+                  <Text style={styles.inputLabel}>{l('시작 시간')}</Text>
+                  <TextInput
+                    accessibilityLabel={l('공동 일정 시작 시간')}
+                    editable={!backendBusy}
+                    maxLength={5}
+                    placeholder="09:00"
+                    placeholderTextColor={colors.textSubtle}
+                    value={eventDraft.startTime ?? ''}
+                    onChangeText={startTime =>
+                      setEventDraft(current =>
+                        current ? { ...current, startTime } : null,
+                      )
+                    }
+                    style={styles.input}
+                  />
+                </View>
+                <View style={styles.timeField}>
+                  <Text style={styles.inputLabel}>{l('종료 시간')}</Text>
+                  <TextInput
+                    accessibilityLabel={l('공동 일정 종료 시간')}
+                    editable={!backendBusy}
+                    maxLength={5}
+                    placeholder="10:00"
+                    placeholderTextColor={colors.textSubtle}
+                    value={eventDraft.endTime ?? ''}
+                    onChangeText={endTime =>
+                      setEventDraft(current =>
+                        current ? { ...current, endTime } : null,
+                      )
+                    }
+                    style={styles.input}
+                  />
+                </View>
+              </View>
+              <Text style={styles.inputLabel}>{l('메모')}</Text>
+              <TextInput
+                accessibilityLabel={l('공동 일정 메모')}
+                editable={!backendBusy}
+                maxLength={500}
+                multiline
+                placeholder={l('두 사람에게 필요한 메모')}
+                placeholderTextColor={colors.textSubtle}
+                value={eventDraft.note ?? ''}
+                onChangeText={note =>
+                  setEventDraft(current =>
+                    current ? { ...current, note } : null,
+                  )
+                }
+                style={[styles.input, styles.noteInput]}
+                textAlignVertical="top"
+              />
+              <View style={styles.editorActions}>
+                <View style={styles.editorAction}>
+                  <SecondaryButton
+                    label={l('취소')}
+                    disabled={backendBusy}
+                    onPress={() => setEventDraft(null)}
+                  />
+                </View>
+                <View style={styles.editorAction}>
+                  <PrimaryButton
+                    disabled={
+                      backendBusy ||
+                      !eventDraft.title.trim() ||
+                      !isLocalDate(eventDraft.date.trim()) ||
+                      !isValidEventTimes(
+                        eventDraft.startTime,
+                        eventDraft.endTime,
+                      )
+                    }
+                    label={backendBusy ? l('저장 중…') : l('저장')}
+                    onPress={() => {
+                      saveEvent().catch(() => undefined);
+                    }}
+                  />
+                </View>
+              </View>
+              <Text style={styles.editorPrivacy}>
+                {l('제목과 메모는 사용 통계와 잠금화면 알림에 넣지 않아요.')}
+              </Text>
+            </Card>
+          ) : null}
+
+          {backendError && retryOperation ? (
+            <View accessibilityRole="alert" style={styles.errorCard}>
+              <Text style={styles.errorText}>{l(backendError)}</Text>
+              <TextButton
+                label={l('다시 시도')}
+                disabled={backendBusy}
                 onPress={() => {
-                  saveEvent().catch(() => undefined);
+                  retryLastOperation().catch(() => undefined);
                 }}
               />
             </View>
-          </View>
-          <Text style={styles.editorPrivacy}>
-            제목과 메모는 Analytics·잠금화면 알림에 포함하지 않아요.
-          </Text>
-        </Card>
-      ) : null}
+          ) : null}
+        </Screen>
+      </Modal>
 
-      {backendError && retryOperation ? (
+      {backendError && retryOperation && !eventDraft ? (
         <View accessibilityRole="alert" style={styles.errorCard}>
-          <Text style={styles.errorText}>{backendError}</Text>
+          <Text style={styles.errorText}>{l(backendError)}</Text>
           <TextButton
-            label="다시 시도"
+            label={l('다시 시도')}
             disabled={backendBusy}
             onPress={() => {
               retryLastOperation().catch(() => undefined);

@@ -1,0 +1,25 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile, access} from 'node:fs/promises';
+
+test('native release has no AppsInToss install or deployment target', async () => {
+  const root = JSON.parse(await readFile('package.json', 'utf8'));
+  assert.equal(root.devDependencies?.['@apps-in-toss/ait-format'], undefined);
+  assert.equal(root.scripts['build:ait'], undefined);
+  await assert.rejects(access('apps/ait/package.json'));
+  const deploy = await readFile('.github/workflows/deploy-all.yml', 'utf8');
+  assert.doesNotMatch(deploy, /apps_in_toss|deploy-apps-in-toss/);
+});
+
+test('shipping entry point never starts the excluded purchase SDK', async () => {
+  const entry = await readFile('apps/mobile/index.js', 'utf8');
+  assert.doesNotMatch(entry, /ReactNativeIapClient|purchaseClient|platform\/purchases/);
+});
+
+test('release bundles reject an emulator selection and resolve only the service runtime', async () => {
+  const {default: selection} = await import('../apps/mobile/runtime-selection.cjs');
+  assert.throws(() => selection.selectNativeRuntime({development: false, backend: 'emulator'}), /Release bundles/);
+  assert.throws(() => selection.selectNativeRuntime({development: true, backend: 'unknown'}), /Unknown/);
+  assert.match(selection.selectNativeRuntime({development: false}), /productionRuntime\.ts$/);
+  assert.match(selection.selectNativeRuntime({development: true, backend: 'emulator'}), /emulatorRuntime\.ts$/);
+});

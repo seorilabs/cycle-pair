@@ -1,0 +1,12 @@
+appId: com.seorilabs.cyclepair
+---
+- stopApp
+- launchApp
+- tapOn:
+    id: tab-partner
+- extendedWaitUntil:
+    visible: 'No shared update today|오늘 공유된 정보 없음'
+    timeout: 30000
+- assertNotVisible: 'Calm|평온'
+- assertNotVisible: ${SYNTHETIC_NOTE}
+- takeScreenshot: safe/partner-revoked

@@ -1,0 +1,23 @@
+appId: com.seorilabs.cyclepair
+---
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: home-record
+    timeout: 30000
+- extendedWaitUntil:
+    visible: '.*(Calm|평온).*'
+    timeout: 30000
+- tapOn:
+    id: tab-calendar
+- scrollUntilVisible:
+    element:
+      text: 'View record|기록 보기'
+    direction: DOWN
+- tapOn: 'View record|기록 보기'
+- assertVisible: ${SYNTHETIC_NOTE}
+- takeScreenshot: safe/record-restored
+- tapOn: 'Back|뒤로'
+- tapOn:
+    id: tab-home

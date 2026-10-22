@@ -1,0 +1,38 @@
+appId: com.seorilabs.cyclepair
+---
+- tapOn:
+    id: tab-settings
+- scrollUntilVisible:
+    element:
+      text: 'Language|언어'
+    direction: DOWN
+- tapOn: 'Language|언어'
+- tapOn:
+    id: language-en
+- assertVisible: '✓ English'
+- takeScreenshot: safe/language-en
+- tapOn: 'Back'
+- tapOn:
+    id: tab-home
+- assertVisible: 'My day'
+- takeScreenshot: safe/home-en
+- tapOn:
+    id: tab-settings
+- scrollUntilVisible:
+    element:
+      text: 'Language'
+    direction: DOWN
+- tapOn: 'Language'
+- tapOn:
+    id: language-ko
+- assertVisible: '✓ 한국어'
+- tapOn: '뒤로'
+- tapOn:
+    id: tab-home
+- assertVisible: '나의 오늘'
+- takeScreenshot: safe/home-ko
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible: '나의 오늘'
+    timeout: 30000

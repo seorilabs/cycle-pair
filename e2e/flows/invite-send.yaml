@@ -1,0 +1,16 @@
+appId: com.seorilabs.cyclepair
+---
+- tapOn:
+    id: tab-partner
+- tapOn: 'Connect a partner|파트너 연결'
+- tapOn:
+    id: invite-send
+- tapOn:
+    id: invite-create
+- extendedWaitUntil:
+    visible:
+      id: invite-code
+    timeout: 30000
+- copyTextFrom:
+    id: invite-code
+- runScript: ../scripts/relay-invite.js

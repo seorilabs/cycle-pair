@@ -1,0 +1,56 @@
+appId: com.seorilabs.cyclepair
+---
+- launchApp
+- runFlow:
+    when:
+      visible:
+        id: tab-partner
+    commands:
+      - tapOn:
+          id: tab-partner
+      - tapOn: 'Sharing|공유'
+- scrollUntilVisible:
+    element:
+      id: sharing-emotions
+    direction: UP
+- runFlow:
+    when:
+      visible:
+        id: sharing-emotions
+        checked: false
+    commands:
+      - tapOn:
+          id: sharing-emotions
+          checked: false
+- assertVisible:
+    id: sharing-emotions
+    checked: true
+- scrollUntilVisible:
+    element:
+      id: sharing-carePreference
+    direction: UP
+- runFlow:
+    when:
+      visible:
+        id: sharing-carePreference
+        checked: false
+    commands:
+      - tapOn:
+          id: sharing-carePreference
+          checked: false
+- assertVisible:
+    id: sharing-carePreference
+    checked: true
+- scrollUntilVisible:
+    element:
+      text: 'Preview for your partner|상대에게 보이는 모습'
+    direction: DOWN
+- assertVisible: 'Calm|평온'
+- assertVisible: 'Just listen|그냥 들어줘요'
+- takeScreenshot: safe/sharing-preview
+- scrollUntilVisible:
+    element:
+      id: sharing-save
+    direction: DOWN
+- tapOn:
+    id: sharing-save

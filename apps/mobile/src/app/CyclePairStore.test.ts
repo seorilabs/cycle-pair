@@ -57,7 +57,9 @@ describe('CyclePair pair privacy state', () => {
   it('저장되는 seed 평균과 홈 예측의 평균이 같은 값이다', () => {
     // 간격 13개 이력이다. 예전에는 저장 쪽이 전체 단순 평균, 예측 쪽이 최근
     // 12개 가중 평균이라 같은 기록으로 두 값이 갈렸다.
-    const offsets = [400, 360, 320, 280, 240, 200, 160, 120, 100, 80, 60, 40, 20, 0];
+    const offsets = [
+      400, 360, 320, 280, 240, 200, 160, 120, 100, 80, 60, 40, 20, 0,
+    ];
     const starts = offsets.map(localDateDaysAgo);
     const base = createInitialState();
     const state = {
@@ -78,15 +80,13 @@ describe('CyclePair pair privacy state', () => {
       })),
     });
 
-    const cycles = [...starts]
-      .sort()
-      .map((start, index) =>
-        createCycle({
-          id: `cycle-${index}`,
-          memberId: SELF_MEMBER_ID,
-          startedOn: parseLocalDate(start),
-        }),
-      );
+    const cycles = [...starts].sort().map((start, index) =>
+      createCycle({
+        id: `cycle-${index}`,
+        memberId: SELF_MEMBER_ID,
+        startedOn: parseLocalDate(start),
+      }),
+    );
     const prediction = predictNextPeriod(
       cycles,
       parseLocalDate(localDateDaysAgo(0)),
@@ -666,4 +666,30 @@ describe('CyclePair pair privacy state', () => {
     ]);
     expect(state.stage).toBe('sharing');
   });
+});
+
+test('a live sharing update keeps an already opened settings screen open', () => {
+  const base = createInitialState();
+  const state = {
+    ...base,
+    stage: 'sharing' as const,
+    paired: true,
+    sharingPairId: 'synthetic-pair',
+    sharingCompleted: true,
+  };
+  const settings = { ...state.shareSettings, emotions: true };
+  const updated = reduceCyclePairState(state, {
+    type: 'RESTORE_SHARE_SETTINGS',
+    payload: { pairId: 'synthetic-pair', settings },
+  });
+  expect(updated.stage).toBe('sharing');
+  expect(updated.shareSettings.emotions).toBe(true);
+  const coldStart = reduceCyclePairState(
+    { ...state, sharingCompleted: false },
+    {
+      type: 'RESTORE_SHARE_SETTINGS',
+      payload: { pairId: 'synthetic-pair', settings },
+    },
+  );
+  expect(coldStart.stage).toBe('main');
 });

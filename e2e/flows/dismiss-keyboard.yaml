@@ -1,0 +1,13 @@
+appId: com.seorilabs.cyclepair
+---
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          id: keyboard-done
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard

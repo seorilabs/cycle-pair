@@ -1,0 +1,9 @@
+appId: com.seorilabs.cyclepair
+---
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: home-record
+    timeout: 60000
+- takeScreenshot: safe/home-cold

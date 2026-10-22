@@ -1,0 +1,7 @@
+appId: com.seorilabs.cyclepair
+---
+- extendedWaitUntil:
+    visible: 'Synced|동기화 완료'
+    timeout: 60000
+- assertNotVisible: 'Saved offline|오프라인 저장'
+- takeScreenshot: safe/offline-synced

@@ -4,47 +4,32 @@
 
 import { AppRegistry } from 'react-native';
 import React from 'react';
-import App from './App';
+import {AppContent} from './App';
+import {I18nProvider} from './src/i18n/I18nProvider';
 import { name as appName } from './app.json';
-import { firebaseAccountAdapter } from './src/platform/account/FirebaseAccountAdapter';
+import {runtimeAccount, initializeRuntime} from '@cyclepair/native-runtime';
 import { firebaseCyclePairBackend } from './src/platform/firebase/FirebaseCyclePairBackend';
 import { FirebaseAppCheckGate } from './src/platform/firebase/FirebaseAppCheckGate';
-import { initializeFirebaseAppCheck } from './src/platform/firebase/FirebaseAppCheckBootstrap';
 import { firebaseNotificationClient } from './src/platform/notifications/FirebaseNotificationClient';
 import { platformPresenceClient } from './src/platform/presence/PlatformPresenceClient';
 import { productAnalytics } from './src/platform/observability/ProductAnalytics';
 import { safeCrashReporter } from './src/platform/observability/SafeCrashReporter';
-import {
-  CyclePairPurchaseAdapter,
-  ReactNativeIapClient,
-  firebasePurchaseVerificationClient,
-} from './src/platform/purchases';
-
-const purchaseClient = new CyclePairPurchaseAdapter(
-  new ReactNativeIapClient(),
-  firebasePurchaseVerificationClient,
-);
-
 // Start attestation before React renders any Firebase-backed feature. The gate
 // below fails closed, so Auth/Firestore/Functions never run without App Check.
-const appCheckInitialization = initializeFirebaseAppCheck().then(
-  () => true,
-  () => false,
-);
+const appCheckInitialization = initializeRuntime();
 
 function RuntimeApp() {
   return (
-    <FirebaseAppCheckGate initialInitialization={appCheckInitialization}>
-      <App
-        account={firebaseAccountAdapter}
+    <I18nProvider><FirebaseAppCheckGate initialInitialization={appCheckInitialization} retryInitialization={initializeRuntime}>
+      <AppContent
+        account={runtimeAccount}
         analytics={productAnalytics}
         backend={firebaseCyclePairBackend}
         crashReporter={safeCrashReporter}
         notificationClient={firebaseNotificationClient}
         presenceClient={platformPresenceClient}
-        purchaseClient={purchaseClient}
       />
-    </FirebaseAppCheckGate>
+    </FirebaseAppCheckGate></I18nProvider>
   );
 }
 

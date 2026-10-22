@@ -1,3 +1,4 @@
+import {version} from '../../../package.json';
 import { createPlatformPresenceClient } from './PlatformPresenceClient';
 
 type FetchCall = [string, RequestInit];
@@ -78,13 +79,13 @@ describe('PlatformPresenceClient', () => {
       'platform',
       'sessionId',
     ]);
-    expect(body.appVersion).toBe('1.0.4');
+    expect(body.appVersion).toBe(version);
     expect(body.platform).toBe('ios');
     const headers = init.headers as Record<string, string>;
     expect(headers['X-Seori-App']).toBe('cycle-pair');
     // 게스트 자격증명 경로와 같은 실행 환경으로 보고한다.
     expect(headers['X-Seori-Runtime']).toBe('rn-native');
-    expect(headers['X-Seori-AppVer']).toBe('1.0.4');
+    expect(headers['X-Seori-AppVer']).toBe(version);
     expect(JSON.stringify({ url, init })).not.toMatch(
       /uid|userId|deviceId|advertisingId|email/i,
     );

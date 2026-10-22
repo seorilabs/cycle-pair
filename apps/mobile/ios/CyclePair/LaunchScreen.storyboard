@@ -22,12 +22,12 @@
                                     <constraint firstAttribute="height" constant="86" id="mark-height"/>
                                 </constraints>
                             </imageView>
-                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" text="사이클 페어" textAlignment="center" translatesAutoresizingMaskIntoConstraints="NO" id="app-title">
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" text="Cycle Pair" textAlignment="center" translatesAutoresizingMaskIntoConstraints="NO" id="app-title">
                                 <rect key="frame" x="98" y="389" width="197" height="43"/>
                                 <color key="textColor" red="0.176" green="0.157" blue="0.216" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                 <fontDescription key="fontDescription" type="system" weight="semibold" pointSize="34"/>
                             </label>
-                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" text="함께 준비하는 우리의 주기" textAlignment="center" translatesAutoresizingMaskIntoConstraints="NO" id="app-subtitle">
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" text="" textAlignment="center" translatesAutoresizingMaskIntoConstraints="NO" id="app-subtitle">
                                 <rect key="frame" x="91.5" y="444" width="210" height="22"/>
                                 <color key="textColor" red="0.431" green="0.400" blue="0.502" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                 <fontDescription key="fontDescription" type="system" pointSize="16"/>

@@ -45,14 +45,12 @@ test('release ABI parser tolerates shell whitespace and inline comments', () => 
   );
 });
 
-test('Korean market title and AppsInToss short brand stay within each market contract', async () => {
+test('native market titles stay within each market contract', async () => {
   const [
     rootPackage,
     mobileApp,
     playConfig,
     appStoreConfig,
-    aitConfig,
-    graniteConfig,
     androidStrings,
     iosInfoPlist,
   ] = await Promise.all([
@@ -60,9 +58,7 @@ test('Korean market title and AppsInToss short brand stay within each market con
     json('apps/mobile/app.json'),
     json('play-store/google-play.config.json'),
     json('app-store/app-store.config.json'),
-    json('apps-in-toss/apps-in-toss.config.json'),
-    readFile('apps/ait/granite.config.ts', 'utf8'),
-    readFile('apps/mobile/android/app/src/main/res/values/strings.xml', 'utf8'),
+    readFile('apps/mobile/android/app/src/main/res/values-ko/strings.xml', 'utf8'),
     readFile('apps/mobile/ios/CyclePair/Info.plist', 'utf8'),
   ]);
 
@@ -73,11 +69,6 @@ test('Korean market title and AppsInToss short brand stay within each market con
     OFFICIAL_KOREAN_NAME
   );
   assert.equal(mobileApp.displayName, OFFICIAL_KOREAN_NAME);
-  assert.equal(aitConfig.workingName['ko-KR'], '사이클 페어');
-  assert.match(
-    graniteConfig,
-    /displayName:\s*'사이클 페어'/
-  );
   assert.ok(
     androidStrings.includes(
       `<string name="app_name">${OFFICIAL_KOREAN_NAME}</string>`
@@ -92,13 +83,9 @@ test('Korean market title and AppsInToss short brand stay within each market con
     playConfig.release.aabPath,
     'apps/mobile/android/app/build/outputs/bundle/release/app-release.aab'
   );
-  assert.equal(
-    rootPackage.scripts['build:ait'],
-    'pnpm --filter @cyclepair/ait build'
-  );
 });
 
-test('iOS declares Korean localization for native date controls', async () => {
+test('iOS declares Korean and English localization for native date controls', async () => {
   const [iosInfoPlist, iosProject] = await Promise.all([
     readFile('apps/mobile/ios/CyclePair/Info.plist', 'utf8'),
     readFile('apps/mobile/ios/CyclePair.xcodeproj/project.pbxproj', 'utf8'),
@@ -109,7 +96,8 @@ test('iOS declares Korean localization for native date controls', async () => {
     /<key>CFBundleDevelopmentRegion<\/key>\s*<string>ko<\/string>/,
   );
   assert.match(iosProject, /developmentRegion = ko;/);
-  assert.match(iosProject, /knownRegions = \(\s*ko,\s*Base,\s*\);/);
+  const regions = iosProject.match(/knownRegions = \(([^)]*)\);/)[1].split(',').map(value => value.trim()).filter(Boolean);
+  assert.deepEqual(regions.sort(), ['Base', 'en', 'ko']);
 });
 
 test('Google Play build stays API 36, versioned, signed, and pnpm-safe for Hermes', async () => {
@@ -184,38 +172,13 @@ test('Google Play build stays API 36, versioned, signed, and pnpm-safe for Herme
   );
   assert.match(
     settingsScreen,
-    new RegExp(`>버전 ${mobilePackage.version}<`)
+    /SEORILABS_PLATFORM_APP_VERSION/
   );
   assert.match(settingsScreen, /사이클 페어는 의료기기가 아닙니다/);
   assert.match(settingsScreen, /질환을 진단·치료·치유·예방하기 위한 것이 아니며/);
   assert.match(settingsScreen, /피임 또는 임신/);
 });
 
-test('AppsInToss target uses supported SDK and a build-only candidate workflow', async () => {
-  const [aitPackage, ciWorkflow, buildWorkflow] = await Promise.all([
-    json('apps/ait/package.json'),
-    readFile('.github/workflows/ci.yml', 'utf8'),
-    readFile('.github/workflows/build-ait.yml', 'utf8'),
-  ]);
-  assert.match(aitPackage.dependencies['@apps-in-toss/framework'], /^2\./);
-  assert.equal(aitPackage.dependencies['react-native'], '0.84.0');
-  assert.ok(aitPackage.dependencies['@toss/tds-react-native']);
-  assert.equal(aitPackage.scripts.build, 'ait build');
-  assert.doesNotMatch(ciWorkflow, /\n  ait_build:/);
-  assert.match(buildWorkflow, /^name: Build Mini-app Candidate$/m);
-  assert.match(buildWorkflow, /workflow_dispatch:[\s\S]*?inputs:[\s\S]*?release_tag:/);
-  assert.doesNotMatch(buildWorkflow, /snapshot_candidate|validate-release-candidate\.mjs/);
-  assert.doesNotMatch(buildWorkflow, /git tag --list/);
-  assert.match(
-    buildWorkflow,
-    /^\s*uses: seorilabs\/\.github\/\.github\/workflows\/rn-build-ait\.yml@main$/m,
-  );
-  assert.match(buildWorkflow, /release_tag: \$\{\{ inputs\.release_tag \}\}/);
-  assert.match(buildWorkflow, /build_command: "pnpm build:ait"/);
-  assert.match(buildWorkflow, /artifact_path: "apps\/ait\/cycle-pair\.ait"/);
-  assert.match(buildWorkflow, /runs_on: ubuntu-latest/);
-  assert.doesNotMatch(buildWorkflow, /APPS_IN_TOSS_API_KEY|ait deploy|run deploy/i);
-});
 
 test('Android candidate workflow creates a signed AAB without Play upload', async () => {
   const workflow = await readFile('.github/workflows/build-android.yml', 'utf8');
@@ -241,7 +204,6 @@ test('Android candidate workflow creates a signed AAB without Play upload', asyn
 
 test('candidate workflow names are not classified as market deployment workflows', async () => {
   const workflows = await Promise.all([
-    readFile('.github/workflows/build-ait.yml', 'utf8'),
     readFile('.github/workflows/build-android.yml', 'utf8'),
   ]);
   const marketWorkflowName = /^(?:name:\s*).*(?:AIT|AppsInToss|Toss|Google|Play|App Store|iOS)/im;
@@ -251,29 +213,6 @@ test('candidate workflow names are not classified as market deployment workflows
   }
 });
 
-test('AppsInToss deployment workflow performs an x64 private upload only', async () => {
-  const workflow = await readFile(
-    '.github/workflows/deploy-apps-in-toss.yml',
-    'utf8'
-  );
-
-  assert.match(workflow, /^name: Deploy AppsInToss$/m);
-  assert.match(workflow, /workflow_dispatch:[\s\S]*?release_tag:/);
-  assert.match(workflow, /workflow_call:[\s\S]*?release_tag:/);
-  assert.doesNotMatch(workflow, /snapshot_candidate|validate-release-candidate\.mjs/);
-  assert.match(workflow, /^\s*uses: seorilabs\/\.github\/\.github\/workflows\/resolve-release-version\.yml@main$/m);
-  assert.match(workflow, /verify-release-artifact\.mjs/);
-  assert.match(workflow, /RELEASE_BINDING_BASE64/);
-  assert.match(workflow, /runs-on: ubuntu-latest/);
-  assert.doesNotMatch(workflow, /seorilabs-rpi-arm64/);
-  assert.match(workflow, /actions\/checkout@v7/);
-  assert.match(workflow, /actions\/setup-node@v7/);
-  assert.match(workflow, /actions\/upload-artifact@v7/);
-  assert.match(workflow, /pnpm build:ait/);
-  assert.match(workflow, /pnpm --dir apps\/ait run deploy/);
-  assert.match(workflow, /APPS_IN_TOSS_API_KEY/);
-  assert.match(workflow, /public release: false/);
-});
 
 test('Google Play deployment binds the exact stable tag to the central workflow', async () => {
   const workflow = await readFile(

@@ -1,0 +1,11 @@
+appId: com.seorilabs.cyclepair
+---
+- stopApp
+- launchApp
+- tapOn:
+    id: tab-partner
+- extendedWaitUntil:
+    visible: 'Connect a partner|파트너 연결'
+    timeout: 30000
+- assertNotVisible: ${SYNTHETIC_EVENT}
+- assertNotVisible: ${SYNTHETIC_NOTE}

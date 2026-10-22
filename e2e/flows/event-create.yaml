@@ -1,0 +1,21 @@
+appId: com.seorilabs.cyclepair
+---
+- runFlow: cold-home.yaml
+- tapOn:
+    id: tab-calendar
+- scrollUntilVisible:
+    element:
+      text: 'Add event|일정 추가'
+    direction: DOWN
+- tapOn: 'Add event|일정 추가'
+- tapOn: 'Event title|공동 일정 제목'
+- inputText: ${SYNTHETIC_EVENT}
+- scrollUntilVisible:
+    element:
+      text: 'Save|저장'
+    direction: DOWN
+- tapOn: 'Save|저장'
+- extendedWaitUntil:
+    visible: ${SYNTHETIC_EVENT}
+    timeout: 30000
+- takeScreenshot: safe/calendar-event

@@ -20,13 +20,13 @@ jest.mock('@react-native-firebase/firestore', () => ({
   limit: jest.fn((value: number) => ({ limit: value })),
   onSnapshot: jest.fn(),
   orderBy: jest.fn((field: unknown, direction: unknown) => ({
-    orderBy: {field, direction},
+    orderBy: { field, direction },
   })),
   query: jest.fn((...constraints: unknown[]) => constraints),
   serverTimestamp: jest.fn(),
   setDoc: jest.fn(),
   where: jest.fn((field: unknown, operator: unknown, value: unknown) => ({
-    where: {field, operator, value},
+    where: { field, operator, value },
   })),
   writeBatch: jest.fn(() => ({
     set: jest.fn(),
@@ -129,6 +129,30 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
     await secureCyclePairCache.clearUser(uid);
   });
 
+  it('현재 보안 규칙의 기록 schema v3로 직접 저장한다', async () => {
+    await expect(
+      firebaseCyclePairBackend.saveDailyLog(
+        uid,
+        '2026-07-14',
+        { emotionTags: ['calm'], carePreferences: ['listen'] },
+        'daily-schema-contract',
+      ),
+    ).resolves.toEqual({
+      status: 'synced',
+      mutationId: 'daily-schema-contract',
+    });
+    const batch = writeBatchMock.mock.results.at(-1)!.value;
+    expect(batch.set).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        schemaVersion: 3,
+        localDate: '2026-07-14',
+        emotionTags: ['calm'],
+        carePreferences: ['listen'],
+      }),
+    );
+  });
+
   it('현재 동의 버전만 schema v2 setup으로 저장한다', async () => {
     await expect(
       firebaseCyclePairBackend.savePrivateSetup(
@@ -190,7 +214,7 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
       set: jest.fn(),
       delete: jest.fn(),
       commit: jest.fn(async () => {
-        throw {code: 'firestore/permission-denied'};
+        throw { code: 'firestore/permission-denied' };
       }),
     } as unknown as ReturnType<typeof writeBatch>);
 
@@ -217,7 +241,7 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
       set: jest.fn(),
       delete: jest.fn(),
       commit: jest.fn(async () => {
-        throw {code: 'firestore/permission-denied'};
+        throw { code: 'firestore/permission-denied' };
       }),
     } as unknown as ReturnType<typeof writeBatch>);
 
@@ -244,7 +268,7 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
       set: jest.fn(),
       delete: jest.fn(),
       commit: jest.fn(async () => {
-        throw {code: 'firestore/unavailable'};
+        throw { code: 'firestore/unavailable' };
       }),
     } as unknown as ReturnType<typeof writeBatch>);
     getDocsMock.mockResolvedValueOnce({
@@ -262,7 +286,7 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
         },
       ],
     } as Awaited<ReturnType<typeof getDocs>>);
-    getDocsMock.mockResolvedValueOnce({docs: []} as unknown as Awaited<
+    getDocsMock.mockResolvedValueOnce({ docs: [] } as unknown as Awaited<
       ReturnType<typeof getDocs>
     >);
 
@@ -272,31 +296,33 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
       'daily-delete-pending',
     );
 
-    await expect(
-      firebaseCyclePairBackend.syncDailyLogs(uid),
-    ).resolves.toEqual([]);
+    await expect(firebaseCyclePairBackend.syncDailyLogs(uid)).resolves.toEqual(
+      [],
+    );
   });
 
   it('첫 동기화 뒤에는 전체 문서 ID 범위 대신 변경 시점 쿼리를 사용한다', async () => {
-    getDocsMock.mockResolvedValue({docs: []} as unknown as Awaited<
+    getDocsMock.mockResolvedValue({ docs: [] } as unknown as Awaited<
       ReturnType<typeof getDocs>
     >);
 
     await firebaseCyclePairBackend.syncDailyLogs(uid);
     await firebaseCyclePairBackend.syncDailyLogs(uid);
 
-    const firstLogQuery = getDocsMock.mock.calls[0]?.[0] as unknown as unknown[];
-    const secondLogQuery = getDocsMock.mock.calls[2]?.[0] as unknown as unknown[];
+    const firstLogQuery = getDocsMock.mock
+      .calls[0]?.[0] as unknown as unknown[];
+    const secondLogQuery = getDocsMock.mock
+      .calls[2]?.[0] as unknown as unknown[];
     expect(firstLogQuery).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          orderBy: expect.objectContaining({direction: 'asc'}),
+          orderBy: expect.objectContaining({ direction: 'asc' }),
         }),
       ]),
     );
     expect(firstLogQuery).not.toEqual(
       expect.arrayContaining([
-        expect.objectContaining({where: expect.anything()}),
+        expect.objectContaining({ where: expect.anything() }),
       ]),
     );
     expect(secondLogQuery).toEqual(
@@ -324,15 +350,15 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
               localDate: '2026-07-14',
               emotionTags: ['anxious'],
               lastMutationId: 'first-write',
-              updatedAt: {toDate: () => new Date(firstUpdatedAt)},
+              updatedAt: { toDate: () => new Date(firstUpdatedAt) },
             }),
           },
         ],
       } as Awaited<ReturnType<typeof getDocs>>)
-      .mockResolvedValueOnce({docs: []} as unknown as Awaited<
+      .mockResolvedValueOnce({ docs: [] } as unknown as Awaited<
         ReturnType<typeof getDocs>
       >)
-      .mockResolvedValueOnce({docs: []} as unknown as Awaited<
+      .mockResolvedValueOnce({ docs: [] } as unknown as Awaited<
         ReturnType<typeof getDocs>
       >)
       .mockResolvedValueOnce({
@@ -343,14 +369,14 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
               schemaVersion: 1,
               localDate: '2026-07-14',
               lastMutationId: 'remote-delete',
-              updatedAt: {toDate: () => new Date(deletedAt)},
+              updatedAt: { toDate: () => new Date(deletedAt) },
             }),
           },
         ],
       } as Awaited<ReturnType<typeof getDocs>>);
 
     await expect(firebaseCyclePairBackend.syncDailyLogs(uid)).resolves.toEqual([
-      expect.objectContaining({localDate: '2026-07-14'}),
+      expect.objectContaining({ localDate: '2026-07-14' }),
     ]);
     await expect(firebaseCyclePairBackend.syncDailyLogs(uid)).resolves.toEqual(
       [],
@@ -372,7 +398,7 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
             emotionTags: ['anxious', 'lonely'],
             energyLevel: 2,
             conditionCode: 'cramps',
-            updatedAt: {toDate: () => new Date('2026-07-14T01:00:00.000Z')},
+            updatedAt: { toDate: () => new Date('2026-07-14T01:00:00.000Z') },
           }),
         },
       ],
@@ -394,7 +420,7 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
     await firebaseCyclePairBackend.saveDailyLog(
       uid,
       '2026-07-14',
-      {emotionTags: ['anxious']},
+      { emotionTags: ['anxious'] },
       'atomic-save',
     );
     await firebaseCyclePairBackend.deleteDailyLog(

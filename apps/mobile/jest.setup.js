@@ -66,3 +66,6 @@ jest.mock(
   'react-native-safe-area-context',
   () => require('react-native-safe-area-context/jest/mock').default,
 );
+
+// 기존 한국어 화면 회귀는 한국어 OS를 명시해 실행한다.
+require('react-native').NativeModules.SettingsManager = {settings: {AppleLanguages: ['ko-KR']}};

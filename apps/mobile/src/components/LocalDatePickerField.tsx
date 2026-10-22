@@ -1,3 +1,4 @@
+import { formatDate, useI18n } from '../i18n/I18nProvider';
 import DateTimePicker, {
   DateTimePickerAndroid,
 } from '@react-native-community/datetimepicker';
@@ -5,7 +6,6 @@ import type { LocalDate } from '@cyclepair/product-core';
 import React from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import {
-  formatPickerLocalDate,
   localDateToPickerDate,
   pickerDateToLocalDate,
 } from '../app/localDatePicker';
@@ -30,6 +30,7 @@ export function LocalDatePickerField({
   maximumDate,
   testID,
 }: LocalDatePickerFieldProps) {
+  const { l, locale } = useI18n();
   const pickerValue = localDateToPickerDate(value);
   const pickerMinimum = minimumDate
     ? localDateToPickerDate(minimumDate)
@@ -42,8 +43,9 @@ export function LocalDatePickerField({
     return (
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${accessibilityLabel}, ${formatPickerLocalDate(
+        accessibilityLabel={`${accessibilityLabel}, ${formatDate(
           value,
+          locale,
         )}`}
         accessibilityState={{ disabled }}
         disabled={disabled}
@@ -61,8 +63,8 @@ export function LocalDatePickerField({
         style={[styles.field, disabled && styles.disabled]}
         testID={testID}
       >
-        <Text style={styles.value}>{formatPickerLocalDate(value)}</Text>
-        <Text style={styles.action}>날짜 선택</Text>
+        <Text style={styles.value}>{formatDate(value, locale)}</Text>
+        <Text style={styles.action}>{l('날짜 선택')}</Text>
       </Pressable>
     );
   }
@@ -74,11 +76,12 @@ export function LocalDatePickerField({
     >
       <DateTimePicker
         accessibilityLabel={accessibilityLabel}
-        accessibilityValue={{ text: formatPickerLocalDate(value) }}
+        accessibilityValue={{ text: formatDate(value, locale) }}
         accentColor={colors.primary}
         disabled={disabled}
         display="compact"
         mode="date"
+        locale={locale === 'ko' ? 'ko-KR' : 'en-US'}
         onValueChange={(_event, selectedDate) =>
           onChange(pickerDateToLocalDate(selectedDate))
         }

@@ -1,0 +1,20 @@
+appId: com.seorilabs.cyclepair
+---
+- longPressOn:
+    text: '10.0.2.2:8081'
+    index: 0
+- runFlow:
+    when:
+      visible: 'Select all|Select All|전체 선택|모두 선택'
+    commands:
+      - tapOn: 'Select all|Select All|전체 선택|모두 선택'
+- eraseText: 1
+- inputText: 'localhost:8081'
+- assertVisible: 'localhost:8081'
+- hideKeyboard
+- tapOn: 'APPLY CHANGES'
+- extendedWaitUntil:
+    visible:
+      id: home-record
+    timeout: 120000
+- takeScreenshot: safe/bundler-localhost-ready

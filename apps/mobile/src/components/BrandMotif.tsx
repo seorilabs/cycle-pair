@@ -27,7 +27,8 @@ export function BrandMotif({
     <View
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      style={[styles.root, { width: size, height: size }]}>
+      style={[styles.root, { width: size, height: size }]}
+    >
       <View
         style={[
           styles.moon,

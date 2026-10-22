@@ -1,0 +1,13 @@
+appId: com.seorilabs.cyclepair
+---
+- tapOn:
+    id: tab-partner
+- tapOn: 'Connect a partner|파트너 연결'
+- tapOn: 'Receive invitation|초대 받기'
+- tapOn:
+    id: invite-input
+- runScript: ../scripts/read-invite.js
+- inputText: ${output.invitation}
+- runFlow: dismiss-keyboard.yaml
+- tapOn: 'Connect|연결하기'
+- runFlow: sharing-private.yaml

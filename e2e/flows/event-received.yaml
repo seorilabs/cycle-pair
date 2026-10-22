@@ -1,0 +1,10 @@
+appId: com.seorilabs.cyclepair
+---
+- launchApp
+- tapOn:
+    id: tab-calendar
+- scrollUntilVisible:
+    element:
+      text: ${SYNTHETIC_EVENT}
+    direction: DOWN
+- assertVisible: ${SYNTHETIC_EVENT}

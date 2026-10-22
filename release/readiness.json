@@ -16,11 +16,11 @@
       "evidence": "Cycle Pair MVP iOS native target"
     },
     "appsInToss": {
-      "included": true,
+      "included": false,
       "status": "verified",
-      "verifiedAt": "2026-08-02",
-      "reference": "repo:apps/ait",
-      "evidence": "사용자 요청으로 AppsInToss build target을 포함. 로컬 컨디션 선택과 명시적 공유 slice부터 채택하며 전체 계정·Firebase·구독 parity는 정책 검토 후 별도 gate"
+      "verifiedAt": "2026-10-22",
+      "reference": "docs/design/2026-10-22-native-launch/design.md",
+      "evidence": "사용자 승인 계획에서 네이티브 두 마켓만 출시. 기존 외부 콘솔 등록은 변경하지 않음."
     }
   },
   "artifacts": {

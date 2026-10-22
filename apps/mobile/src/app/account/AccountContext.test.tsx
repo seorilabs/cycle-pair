@@ -574,7 +574,7 @@ describe('AccountProvider account flows', () => {
     );
     expect(alert).toHaveBeenLastCalledWith(
       '게스트 기록을 영구 삭제할까요?',
-      expect.stringContaining('게스트 계정이 삭제'),
+      expect.stringContaining('게스트 계정이 영구 삭제'),
       expect.any(Array),
     );
     const destructive = (alert.mock.calls.at(-1)?.[2] ?? []).find(

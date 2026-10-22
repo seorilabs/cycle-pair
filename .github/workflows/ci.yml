@@ -20,7 +20,7 @@ jobs:
   quality:
     name: JS/TS 품질 검사
     # public repo는 ARC(seorilabs-rpi-arm64)에 접근할 수 없다(러너 그룹 allows_public_repositories=false).
-    runs-on: ${{ github.event.repository.private && 'seorilabs-rpi-arm64' || 'ubuntu-latest' }}
+    runs-on: ${{ github.event.repository.private && 'seorilabs-x64' || 'ubuntu-latest' }}
     timeout-minutes: 30
 
     steps:
@@ -70,9 +70,6 @@ jobs:
       - name: 모바일 테스트
         run: pnpm test:mobile
 
-      - name: AppsInToss 테스트
-        run: pnpm test:ait
-
       - name: 릴리스 판정기 회귀 테스트
         run: pnpm test:release
 
@@ -81,7 +78,7 @@ jobs:
 
   mobile_bundles:
     name: iOS 및 Android 프로덕션 JS 번들 검사
-    runs-on: ${{ github.event.repository.private && 'seorilabs-rpi-arm64' || 'ubuntu-latest' }}
+    runs-on: ${{ github.event.repository.private && 'seorilabs-x64' || 'ubuntu-latest' }}
     timeout-minutes: 20
 
     steps:
@@ -141,7 +138,7 @@ jobs:
     needs:
       - quality
       - mobile_bundles
-    runs-on: ${{ github.event.repository.private && 'seorilabs-rpi-arm64' || 'ubuntu-latest' }}
+    runs-on: ${{ github.event.repository.private && 'seorilabs-x64' || 'ubuntu-latest' }}
     timeout-minutes: 5
 
     steps:

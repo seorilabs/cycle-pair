@@ -10,8 +10,7 @@ jest.mock('@react-native-community/datetimepicker', () => {
   const { View: NativeView } = require('react-native');
   return {
     __esModule: true,
-    default: (props: object) =>
-      ReactModule.createElement(NativeView, props),
+    default: (props: object) => ReactModule.createElement(NativeView, props),
     DateTimePickerAndroid: { open: jest.fn(), dismiss: jest.fn() },
   };
 });
