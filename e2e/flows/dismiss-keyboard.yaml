@@ -3,6 +3,8 @@ appId: com.seorilabs.cyclepair
 - runFlow:
     when:
       platform: iOS
+      visible:
+        id: keyboard-done
     commands:
       - tapOn:
           id: keyboard-done

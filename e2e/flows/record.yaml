@@ -7,31 +7,71 @@ appId: com.seorilabs.cyclepair
     id: record-emotions
 - runFlow:
     when:
-      visible:
-        id: record-emotion-calm
-        checked: false
+      platform: iOS
     commands:
-      - tapOn:
+      - runFlow:
+          when:
+            visible:
+              id: record-emotion-calm
+              selected: false
+          commands:
+            - tapOn:
+                id: record-emotion-calm
+                selected: false
+      - assertVisible:
           id: record-emotion-calm
-          checked: false
-- assertVisible:
-    id: record-emotion-calm
-    checked: true
+          selected: true
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - runFlow:
+          when:
+            visible:
+              id: record-emotion-calm
+              checked: false
+          commands:
+            - tapOn:
+                id: record-emotion-calm
+                checked: false
+      - assertVisible:
+          id: record-emotion-calm
+          checked: true
 - tapOn: 'Done|완료'
 - tapOn:
     id: record-help
 - runFlow:
     when:
-      visible:
-        id: record-help-2
-        checked: false
+      platform: iOS
     commands:
-      - tapOn:
+      - runFlow:
+          when:
+            visible:
+              id: record-help-2
+              selected: false
+          commands:
+            - tapOn:
+                id: record-help-2
+                selected: false
+      - assertVisible:
           id: record-help-2
-          checked: false
-- assertVisible:
-    id: record-help-2
-    checked: true
+          selected: true
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - runFlow:
+          when:
+            visible:
+              id: record-help-2
+              checked: false
+          commands:
+            - tapOn:
+                id: record-help-2
+                checked: false
+      - assertVisible:
+          id: record-help-2
+          checked: true
 - tapOn: 'Done|완료'
 - takeScreenshot: safe/record-summary
 - tapOn:

@@ -4,12 +4,13 @@ appId: com.seorilabs.cyclepair
     id: tab-settings
 - scrollUntilVisible:
     element:
-      text: 'Language|언어'
+      text: '.*(Language|언어).*'
     direction: DOWN
-- tapOn: 'Language|언어'
+    centerElement: true
+- tapOn: '.*(Language|언어).*'
 - tapOn:
     id: language-en
-- assertVisible: '✓ English'
+- assertVisible: '.*✓ English.*'
 - takeScreenshot: safe/language-en
 - tapOn: 'Back'
 - tapOn:
@@ -20,12 +21,13 @@ appId: com.seorilabs.cyclepair
     id: tab-settings
 - scrollUntilVisible:
     element:
-      text: 'Language'
+      text: '.*Language.*'
     direction: DOWN
-- tapOn: 'Language'
+    centerElement: true
+- tapOn: '.*Language.*'
 - tapOn:
     id: language-ko
-- assertVisible: '✓ 한국어'
+- assertVisible: '.*✓ 한국어.*'
 - tapOn: '뒤로'
 - tapOn:
     id: tab-home

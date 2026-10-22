@@ -43,6 +43,7 @@ appId: com.seorilabs.cyclepair
     element:
       text: 'View record|기록 보기'
     direction: DOWN
+    centerElement: true
 - tapOn: 'View record|기록 보기'
 - assertVisible: ${SYNTHETIC_NOTE}-offline
 - takeScreenshot: safe/offline-restored

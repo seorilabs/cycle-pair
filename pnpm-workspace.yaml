@@ -4,6 +4,9 @@ packages:
   - packages/*
   - firebase/functions
 
+patchedDependencies:
+  react-native-keychain@10.0.0: patches/react-native-keychain@10.0.0.patch
+
 allowBuilds:
   '@firebase/util': true
   '@sentry/cli': true

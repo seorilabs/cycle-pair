@@ -50,6 +50,6 @@ JAVA_HOME=<JDK17> pnpm test:e2e:live --ownership <서비스소유환경.json> --
 
 독립 UI 검수 회차는 작성자 점검과 구분해 원본 판정, 후보 SHA, 실행 환경과 시각을 남깁니다. 3회가 끝난 뒤 미해결이 있으면 추가 회차 전에 사용자에게 범위와 비용을 알립니다.
 
-최근 구현 중간 결과와 원본 실패, 마켓 재조회는 [2026-10-22 기록](2026-10-22-native-authoring-status.md)에 정리합니다. iOS 저장 라이브러리 패치는 사용자 확인 대기이며 독립 UI 검수는 시작하지 않았습니다.
+최근 구현 중간 결과와 원본 실패, 마켓 재조회는 [2026-10-22 기록](2026-10-22-native-authoring-status.md)에 정리합니다. 승인된 [iOS 저장 패치와 보존 이관](../design/2026-10-22-native-launch/keychain-repair.md)을 적용했고, 기존 설치를 지우지 않은 재실행과 원문 복원을 작성자가 확인했습니다. JavaScript만 갱신한 이전 네이티브 바이너리는 시작을 거부하므로 네이티브 앱도 재빌드해야 합니다. 독립 UI 검수는 시작하지 않았습니다.
 
 검수 대기 중에는 소유 Emulator 자료를 저장소 밖으로 내보내고 `cyclepair-qa-owned.json`에 `app: "cycle-pair"`, 해당 `projectId`, `syntheticOnly: true`를 기록합니다. 재개는 `pnpm start:emulators --import <소유 스냅샷>`을 사용합니다. 실행기는 이 표식과 Firebase 내보내기 메타데이터를 확인하며, 다른 앱 자료와 저장소 안 스냅샷을 거부합니다. 이 명령은 운영 Firebase에 자료를 복원하지 않습니다.

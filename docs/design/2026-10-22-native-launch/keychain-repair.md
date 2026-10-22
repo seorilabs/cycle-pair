@@ -1,5 +1,7 @@
 # iOS 암호화 저장 결함 수정안
 
+2026-10-22 사용자 지시 `적용해라`에 따라 아래 패치와 원문 보존 이관을 적용했다. 최초 이관과 기존 원문 복원은 작성자 개발 실행에서 확인했으며, 독립 L3와 UI3는 별도 미완료다.
+
 실제 iOS Simulator의 저장과 재실행에서 서버 기록 1건이 홈에서 복원되지 않았습니다. 설치된 react-native-keychain10.0.0의 Objective-C `cloudSyncValue`는 NSNumber의 참거짓 대신 존재 여부를 확인합니다. `cloudSync: false`인 기존 저장 3건이 Simulator Keychain에서 synchronizable1로 확인됐으며 기본 읽기와 열거에서 제외됐습니다. Simulator의 실제 iCloud 동기화는 확인하지 않았습니다.
 
 공식 결함: https://github.com/oblador/react-native-keychain/issues/800
@@ -17,4 +19,12 @@
 
 ## 검증
 
-기존 실패 화면과 Simulator 속성 집계를 보존했습니다. 이관 테스트는 기존 원문 보존, 쓰기 실패, 읽기 확인 실패, 중단한 제거의 재시도, 충돌 시 양쪽 보존과 이전 바이너리에서 새 JavaScript만 로드한 경우의 중단을 확인합니다. 패치 적용 후 iOS 재빌드와 기존 자료를 지우지 않은 실제 재실행, 오프라인 대기 기록 검증이 필요합니다.
+기존 실패 화면과 Simulator 속성 집계를 보존했다. 이관과 시작 순서 테스트12개는 원문과 삭제 복구 의도 보존, 쓰기 실패, 읽기 확인 실패, 중단한 제거의 재시도, 충돌 시 양쪽 보존, 이전 바이너리 중단, Android 저장 미접근과 Firebase 시작 전 대기를 확인한다. 시작 연결 테스트4개는 수정 전 실패하고 수정 후 통과했다.
+
+`pnpm-workspace.yaml`과 잠금 파일에 패치를 등록했고 frozen 설치로 재현했다. 첫 네이티브 산출물은 앱 내부의 오래된 생성 링크가 패치 전 의존성을 가리켜 수정 표식 검사에서 거부했다. 링크만 제거하고 실제 의존성 경로와 CocoaPods 입력을 다시 확인해 재빌드했다. 두 산출물과 거부 기록을 모두 보존했다.
+
+수정 표식이 포함된 Debug1.1.0(1001000)을 소유 iOS18.1 Simulator에 삭제 없이 설치했다. 시작 이관 후 활성 동기화 항목은0건이며 이전 항목은 Keychain의 표준 삭제 표식으로 남았다. Maestro 실제 재실행, 홈 감정과 달력의 기존 메모 원문 복원을 확인하고 PNG를 직접 검토했다. 초기 번들 로딩 시간 초과, 작은 화면의 탭 막대에 가린 자동 탭 실패와 수정 후 통과 원본도 보존했다.
+
+별도 [네이티브 검사용 도구](../../../e2e/native/README.md)로 이전 속성의 합성 대기 기록1개만 준비했다. 정상 앱 시작 후 실제 달력 원문, 서버의 같은 원문과 `lastMutationId`, schema3, 두 저장 속성에서 대기 항목이 제거된 결과가 모두 통과했다. 최초 검사용 자료의 잘못된 소수점6자리 시간으로 실패한 원본은 보존했고, 앱과 같은3자리 형식과 준비 전 검사를 적용해 재실행했다. 준비 도구는 사용자 입력 검사로 세지 않으며 확인 후 검사용 앱만 제거했다. 실제 앱과 기존 기록은 유지했다.
+
+비공개 근거: `~/.local/share/seorilabs/cycle-pair-qa/2026-10-22/evidence/ios-storage-{before,after}-approved-migration.json`, `authoring-ios-storage-01`부터 `03`까지, `authoring-ios-legacy-pending-01`과 `02`, `legacy-pending-fixture/*-result.json`. 이 작성자 실행은 공식 L3 또는 독립 검수 회차로 세지 않는다.

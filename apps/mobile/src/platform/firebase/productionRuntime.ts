@@ -2,6 +2,7 @@ import { assertDevelopmentBoundary } from './developmentBoundary';
 import { getAuth } from '@react-native-firebase/auth';
 import { firebaseAccountAdapter } from '../account/FirebaseAccountAdapter';
 import { initializeFirebaseAppCheck } from './FirebaseAppCheckBootstrap';
+import { migrateDeviceOnlyStorage } from '../local/migrateDeviceOnlyStorage';
 export const runtimeAccount = firebaseAccountAdapter;
 export async function initializeRuntime(): Promise<boolean> {
   try {
@@ -10,6 +11,7 @@ export async function initializeRuntime(): Promise<boolean> {
         'service',
         Boolean(getAuth().currentUser),
       );
+    await migrateDeviceOnlyStorage();
     await initializeFirebaseAppCheck();
     return true;
   } catch {

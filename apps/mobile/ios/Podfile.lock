@@ -3720,7 +3720,7 @@ DEPENDENCIES:
   - "RNFBFirestore (from `../node_modules/@react-native-firebase/firestore`)"
   - "RNFBFunctions (from `../node_modules/@react-native-firebase/functions`)"
   - "RNFBMessaging (from `../node_modules/@react-native-firebase/messaging`)"
-  - RNKeychain (from `../node_modules/react-native-keychain`)
+  - RNKeychain (from `../../../node_modules/react-native-keychain`)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
 SPEC REPOS:
@@ -3934,7 +3934,7 @@ EXTERNAL SOURCES:
   RNFBMessaging:
     :path: "../node_modules/@react-native-firebase/messaging"
   RNKeychain:
-    :path: "../node_modules/react-native-keychain"
+    :path: "../../../node_modules/react-native-keychain"
   Yoga:
     :path: "../node_modules/react-native/ReactCommon/yoga"
 

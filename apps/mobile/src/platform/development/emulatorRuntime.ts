@@ -16,6 +16,7 @@ import {
 } from '@react-native-firebase/functions';
 import { Platform } from 'react-native';
 import { createFirebaseAccountAdapter } from '../account/FirebaseAccountAdapter';
+import { migrateDeviceOnlyStorage } from '../local/migrateDeviceOnlyStorage';
 // Metro selects this module only for a development bundle with an explicit
 // emulator backend. Production has a separate dependency graph.
 const host = Platform.OS === 'android' ? '10.0.2.2' : '127.0.0.1';
@@ -39,6 +40,7 @@ export async function initializeRuntime(): Promise<boolean> {
     'emulator',
     Boolean(getAuth(app).currentUser),
   );
+  await migrateDeviceOnlyStorage();
   connectAuthEmulator(getAuth(app), `http://${host}:9399`, {
     disableWarnings: true,
   });

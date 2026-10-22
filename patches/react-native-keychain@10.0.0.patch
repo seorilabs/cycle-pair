@@ -1,0 +1,32 @@
+diff --git a/ios/RNKeychainManager/RNKeychainManager.m b/ios/RNKeychainManager/RNKeychainManager.m
+--- a/ios/RNKeychainManager/RNKeychainManager.m
++++ b/ios/RNKeychainManager/RNKeychainManager.m
+@@ -20,6 +20,11 @@
+ 
+ @synthesize bridge = _bridge;
+ RCT_EXPORT_MODULE();
++
++- (NSDictionary *)constantsToExport
++{
++  return @{@"cyclePairDeviceOnlyStorageVersion": @1};
++}
+ 
+ + (BOOL)requiresMainQueueSetup
+ {
+@@ -137,7 +142,7 @@
+ 
+ CFBooleanRef cloudSyncValue(NSDictionary *options)
+ {
+-  if (options && options[@"cloudSync"]) {
++  if (options && [options[@"cloudSync"] boolValue]) {
+     return kCFBooleanTrue;
+   }
+   return kCFBooleanFalse;
+@@ -351,6 +356,7 @@
+   NSMutableDictionary *query = [NSMutableDictionary dictionaryWithObjectsAndKeys:
+                                 (__bridge id)kCFBooleanTrue, (__bridge id)kSecReturnAttributes,
+                                 (__bridge id)kSecMatchLimitAll, (__bridge id)kSecMatchLimit,
++                                (__bridge id)kSecAttrSynchronizableAny, (__bridge id)kSecAttrSynchronizable,
+                                 nil];
+   if ([options[@"skipUIAuth"] boolValue]) {
+     [query setObject:(__bridge id)kSecUseAuthenticationUISkip forKey:(__bridge id)kSecUseAuthenticationUI];
