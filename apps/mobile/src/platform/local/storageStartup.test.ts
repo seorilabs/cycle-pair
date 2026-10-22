@@ -7,6 +7,16 @@ import { NativeModules } from 'react-native';
 import { runtimeServices as emulatorServices } from '../development/emulatorRuntime';
 import { isolatedServices } from '../development/isolatedServices';
 
+jest.mock('react-native', () => {
+  const native = jest.requireActual('react-native');
+  native.NativeModules.SourceCode = {
+    getConstants: () => ({
+      scriptURL: 'http://127.0.0.1:8081/index.bundle?platform=ios&dev=true',
+    }),
+  };
+  return native;
+});
+
 jest.mock('../observability/ProductAnalytics', () => ({
   productAnalytics: {},
 }));

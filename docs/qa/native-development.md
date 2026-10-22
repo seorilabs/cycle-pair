@@ -16,7 +16,11 @@ iPhone은 기존 개발 인증서와 해당 UDID가 포함된 기존 프로파�
 
 ADB 서버가 종료되면 역방향 연결도 사라진다. 기존 서버가 없으면 별도 터미널에서 `adb nodaemon server`를 유지한 뒤 실행한다. 이미 사용 중인 서버를 재시작하거나 종료하지 않는다. 작업이 끝나면 이번 작업이 시작한 프로세스만 정리한다. Firebase SDK의 localhost 자동 변환은 Debug 라이브러리 설정에서 끈다. 실제 생성된 Debug 설정에는 해당 플래그가 있고 Release에는 없음을 확인하며, 저장소의 원래 `firebase.json`은 바꾸지 않는다.
 
-실제 iPhone의 로컬 Firebase 접근 경로는 별도로 준비하고 검증해야 한다. 현재 Android용 localhost 연결을 iPhone에서도 통과했다고 취급하지 않는다. 실제 서비스에는 `CYCLEPAIR_DEV_BACKEND=service`를 사용하며 실행별 전용 계정, 합성 자료와 생성 식별 목록이 준비된 뒤 실행한다. 실제 계정 자료를 테스트에서 변경하지 않는다.
+실제 iPhone은 개발 번들을 제공한 Mac의 사설 IPv4 주소로 로컬 Firebase에 연결한다. 두 기기는 같은 로컬 네트워크에 있어야 한다. Mac에 할당된 주소를 명시해 `pnpm start:emulators --device-host <Mac의 사설 IPv4>`로 실행한다. 실행기는 지정한 인터페이스의 Auth9399, Firestore8380과 Functions5301만 기존 loopback 서버로 전달하며 종료 시 연결을 닫는다. 모든 인터페이스, 외부 주소나 할당되지 않은 주소는 거절한다. Android의 기존 adb reverse 경로는 그대로 사용한다. 소유 스냅샷을 재개할 때는 `--import <소유 스냅샷>`을 함께 적는다.
+
+iPhone 앱에는 같은 Mac의8081 포트에서 `CYCLEPAIR_DEV_BACKEND=emulator pnpm start:mobile`로 제공한 번들을 연결한다. 로컬 네트워크 목적 문구는 Debug 설정에서 생성된 plist에만 추가한다. Release는 기존 plist와 실제 서비스 런타임을 사용하며 개발 번들 주소로 로컬 서버를 선택하지 않는다. 실제 iPhone의 서버 연결과 화면 실행은 이 설정 구현 및 단위 검사와 별도로 증명한다. 기존 Android 실행을 iPhone 통과로 취급하지 않는다. [Apple의 plist 생성 규칙](https://developer.apple.com/documentation/bundleresources/managing-your-app-s-information-property-list)과 [로컬 네트워크 개인정보 지침](https://developer.apple.com/documentation/technotes/tn3179-understanding-local-network-privacy)을 따른다.
+
+실제 서비스에는 `CYCLEPAIR_DEV_BACKEND=service`를 사용하며 실행별 전용 계정, 합성 자료와 생성 식별 목록이 준비된 뒤 실행한다. 실제 계정 자료를 테스트에서 변경하지 않는다.
 
 로컬 Firebase 모드에서는 선택적 동의나 알림 설정을 켜도 운영 분석, 오류 수집, FCM과 Presence를 시작하지 않는다. Firebase가 제공하지 않는 이 로컬 기능은 격리된 구현으로 조립하며 원격 알림 허용 상태도 통과 처리하지 않는다. 로컬 인앱 알림과 실제 서비스의 원격 푸시 검수는 구분한다. 출시 경로는 실제 서비스 구현을 사용한다.
 

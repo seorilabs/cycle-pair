@@ -10,11 +10,20 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import {
+  openDeviceForwarders,
+  validateDeviceHost,
+} from "./device-emulator-forwarding.mjs";
 const root = process.cwd();
 const project = JSON.parse(
   await readFile("apps/mobile/firebase-environments.json", "utf8")
 ).projectId;
-const { values } = parseArgs({ options: { import: { type: "string" } } });
+const { values } = parseArgs({
+  options: { import: { type: "string" }, "device-host": { type: "string" } },
+});
+const deviceHost = values["device-host"]
+  ? validateDeviceHost(values["device-host"])
+  : undefined;
 let importDirectory;
 if (values.import) {
   importDirectory = path.resolve(values.import);
@@ -56,11 +65,14 @@ const temporary = await mkdtemp(
 const credentials = path.join(temporary, "no-credentials.json");
 const files = [
   'APPLE_IAP_PRIVATE_KEY_BASE64=ZHVtbXk=\nAPPLE_IAP_KEY_ID=emulator-test-key\nAPPLE_IAP_ISSUER_ID=00000000-0000-0000-0000-000000000000\nAPPLE_APP_ID=1\nAPPLE_IAP_ROOT_CERTIFICATES_BASE64_JSON=["ZHVtbXk="]\n',
-  "ENFORCE_APP_CHECK=false\nHTTP_PROXY=http://127.0.0.1:9\nHTTPS_PROXY=http://127.0.0.1:9\nALL_PROXY=http://127.0.0.1:9\nNO_PROXY=127.0.0.1,localhost,::1\n",
+  "ENFORCE_APP_CHECK=false\nHTTP_PROXY=http://127.0.0.1:9\nHTTPS_PROXY=http://127.0.0.1:9\nALL_PROXY=http://127.0.0.1:9\nNO_PROXY=127.0.0.1,localhost,::1\n" +
+    (deviceHost ? `CYCLEPAIR_EMULATOR_DEVICE_HOST=${deviceHost}\n` : ""),
 ];
 const owned = [];
 let child;
+let closeForwarders;
 async function cleanup() {
+  await closeForwarders?.();
   for (let i = 0; i < localFiles.length; i++) {
     if (
       owned.includes(i) &&
@@ -71,6 +83,7 @@ async function cleanup() {
   await rm(temporary, { recursive: true, force: true });
 }
 try {
+  if (deviceHost) closeForwarders = await openDeviceForwarders(deviceHost);
   await writeFile(
     credentials,
     '{"type":"cyclepair-emulator-no-credentials"}\n',

@@ -356,7 +356,9 @@
 				ENABLE_BITCODE = NO;
 				FIREBASE_CONFIG_PATH = "Firebase/GoogleService-Info.plist";
 				FIREBASE_EXPECTED_PROJECT_ID = "seorilabs-cyclepair-prod";
+				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = CyclePair/Info.plist;
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Connect to the local Cycle Pair test server for development.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
