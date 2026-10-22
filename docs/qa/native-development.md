@@ -1,18 +1,26 @@
-# 네이티브 개발 실행
+# 네이티브 실제 기기 실행
 
-현재 승인 범위는 [L3 테스트 계획](../design/2026-10-22-native-launch/test-plan.json)입니다. 물리 기기 대신 전용 Android 16 가상 환경과 iOS Simulator에서 실제 화면을 터치하고 입력합니다. Maestro 실행은 앱 내부 함수를 호출하지 않습니다.
+2026-10-22 사용자 지시로 연결된 Android와 iPhone에서 테스트한다. [테스트 계획](../design/2026-10-22-native-launch/test-plan.json)의 L3 전체 회귀, 독립 검수 3회와 두 마켓 공개 범위는 유지한다. Simulator와 AVD는 사용하거나 다운로드하지 않는다. Android는 Maestro 2.11과 adb, iOS는 서명된 XCTest 화면 입력을 사용한다. Maestro 2.11은 실제 iPhone을 지원하지 않으므로 해당 실행기로 iOS를 지정하면 중단한다.
 
-## 준비
+## 설치와 자료 보존
 
-`pnpm install --frozen-lockfile` 후 등록된 앱의 Firebase 설정을 복원합니다. Android와 iOS 개발 빌드를 별도로 만들고, 사용자 자료가 없는 전용 환경에 설치합니다. Android 이미지는 기존 API36 ARM64를 재사용하며 새 AVD의 실제 할당량은 8GB 이하로 유지합니다. API36은 GPU host, RAM4GB, CPU4 설정에서 OS 응답을 확인했습니다.
+등록된 기존 Firebase 설정과 서명 자료를 재사용한다. 연결 기기의 기존 설치, 버전과 계정 상태를 먼저 확인한다. 앱을 제거하거나 자료를 초기화하지 않는다. 기존 계정과 기록이 있는 설치를 합성 테스트용이라고 표시하지 않는다. 다른 연결 설정의 계정이나 캐시가 있으면 앱의 시작 차단을 유지하고 기존 자료를 보존한다.
 
-터미널 하나에서 `pnpm start:emulators`, 다른 터미널에서 `CYCLEPAIR_DEV_BACKEND=emulator pnpm start:mobile`을 실행합니다. Emulator는 Auth9399, Firestore8380, Functions5301을 사용합니다. 임시 `.env.local`이나 `.secret.local`이 이미 있으면 덮어쓰지 않고 중단합니다. 운영 자격증명을 사용하지 않으며 테스트 함수의 외부 네트워크도 차단합니다.
+물리 Android는 `adb install -r`로 설치를 갱신한다. 서명이 다르면 기존 설치를 제거해서 우회하지 않는다. 연결 Android에서 기존 Play 서명의 보관 자료와 Debug 서명 불일치를 확인했으므로 로컬 검수에는 `pnpm build:android:synthetic`으로 만든 `com.seorilabs.cyclepair.qa`를 사용한다. 이 설치는 이름이 Cycle Pair QA이고 운영 서버 시작을 차단한다. 기존 앱의 자료와 서명을 바꾸지 않으며 새로운 Firebase 앱이나 운영 리소스를 등록하지 않는다. 임시 Firebase 클라이언트 실행 사본은 빌드 후 제거한다. 테스트 APK는 `apps/mobile/android/app/build-synthetic/outputs/apk/debug/app-debug.apk`에 생성한다. 실제 Platform 인증과 원격 푸시는 원래 패키지의 정확한 서명 후보로 별도 검수한다.
 
-실제 서비스는 별도의 테스트 설치본과 `CYCLEPAIR_DEV_BACKEND=service`를 사용합니다. 연결이 다른 계정과 캐시가 있으면 앱이 시작을 거부합니다. 기존 자료를 자동 삭제하거나 새 게스트로 덮지 않습니다.
+iPhone은 기존 개발 인증서와 해당 UDID가 포함된 기존 프로파일로 빌드한다. Simulator 바이너리는 설치하지 않는다. 새 자격증명이나 프로파일은 만들지 않는다.
 
-## 소유 환경 목록
+## 로컬 Firebase와 실제 서비스
 
-저장소 밖 비공개 JSON에 아래 구조를 적습니다. 두 사용자 여정에는 두 환경이 필요합니다. Android는 `emulator-` ID와 QEMU, iOS는 Booted 상태의 `CyclePair_` 전용 Simulator만 허용합니다. 연결 기기 목록을 조회하거나 물리 기기를 선택하지 않습니다.
+로컬 Firebase는 가상 휴대폰이 아닌 테스트 서버다. `pnpm start:emulators`와 `CYCLEPAIR_DEV_BACKEND=emulator pnpm start:mobile`을 별도 터미널에서 실행한다. 실제 Android의 localhost에서 Mac에 접근하도록 adb reverse로 Metro8081, Auth9399, Firestore8380, Functions5301을 연결한다. 기존 포트 연결이 있으면 보존하며 다른 목적의 연결을 덮지 않는다. 임시 `.env.local`이나 `.secret.local`도 기존 파일을 덮지 않는다. 서버는 운영 자격증명을 사용하지 않고 테스트 함수의 외부 네트워크를 차단한다.
+
+ADB 서버가 종료되면 역방향 연결도 사라진다. 기존 서버가 없으면 별도 터미널에서 `adb nodaemon server`를 유지한 뒤 실행한다. 이미 사용 중인 서버를 재시작하거나 종료하지 않는다. 작업이 끝나면 이번 작업이 시작한 프로세스만 정리한다. Firebase SDK의 localhost 자동 변환은 Debug 라이브러리 설정에서 끈다. 실제 생성된 Debug 설정에는 해당 플래그가 있고 Release에는 없음을 확인하며, 저장소의 원래 `firebase.json`은 바꾸지 않는다.
+
+실제 iPhone의 로컬 Firebase 접근 경로는 별도로 준비하고 검증해야 한다. 현재 Android용 localhost 연결을 iPhone에서도 통과했다고 취급하지 않는다. 실제 서비스에는 `CYCLEPAIR_DEV_BACKEND=service`를 사용하며 실행별 전용 계정, 합성 자료와 생성 식별 목록이 준비된 뒤 실행한다. 실제 계정 자료를 테스트에서 변경하지 않는다.
+
+## 실행 대상과 결과
+
+저장소 밖 비공개 JSON에 대상과 승인 범위를 기록한다. 아래 `appData: synthetic`은 설치 상태를 확인한 뒤에만 기입한다. 자동 실행기는 자료 초기화를 허용하지 않는다.
 
 ```json
 {
@@ -20,26 +28,29 @@
   "backend": "emulator",
   "adb": "<Android SDK>/platform-tools/adb",
   "runtimes": [
-    {"platform": "android", "deviceId": "emulator-5580", "createdFor": "cycle-pair-native-launch", "allowAppDataReset": true},
-    {"platform": "ios", "deviceId": "<owned simulator UUID>", "createdFor": "cycle-pair-native-launch", "allowAppDataReset": true}
+    {"platform": "android", "kind": "physical", "deviceId": "<approved connected serial>", "appId": "com.seorilabs.cyclepair.qa", "createdFor": "cycle-pair-native-launch", "authorized": true, "appData": "synthetic"}
   ]
 }
 ```
 
-## 실행과 결과
-
 ```sh
-JAVA_HOME=<JDK17> pnpm test:e2e:dev --ownership <소유환경.json> --output <저장소밖/결과폴더> --maestro <Maestro실행파일>
-JAVA_HOME=<JDK17> pnpm test:e2e:live --ownership <서비스소유환경.json> --output <저장소밖/결과폴더> --maestro <Maestro실행파일>
+JAVA_HOME=<JDK17> pnpm test:e2e:dev --scope solo --ownership <실제기기.json> --output <저장소밖/결과폴더> --maestro <Maestro실행파일>
+JAVA_HOME=<JDK17> pnpm test:e2e:live --scope solo --ownership <서비스기기.json> --output <저장소밖/결과폴더> --maestro <Maestro실행파일>
 ```
 
-작성 중에는 `--authoring`, 한 사용자에는 `--scope solo`, 특정 여정 재현에는 `--flow record-restored,language`를 사용합니다. 기존 합성 자료를 읽는 재현은 `--run-id`로 원래 실행 ID를 지정합니다. 커밋하지 않은 작성자 실행은 출시 검수 근거가 아닙니다.
+작성 중에는 `--authoring`, 특정 여정 재현에는 `--flow record-restored,language`를 사용한다. 기존 합성 자료를 읽는 재현은 `--run-id`로 원래 실행 ID를 지정한다. 커밋하지 않은 작성자 실행은 출시 검수 근거가 아니다. 실제 iPhone의 실행은 XCTest 보고서에 별도로 남긴다. 두 도구의 두 사용자 연결은 같은 실행별 식별 목록과 초대 전달 범위로 조율한다.
 
-결과의 `executedScenariosPassed`는 실행한 여정만 설명합니다. `unrun`이 남은 현재 실행기는 전체 L3 통과를 선언하지 않으며 `passed`를 false로 보존합니다. 계정 복구와 삭제, 만료 및 재사용 초대, 원격 푸시와 접근성 등의 승인 조건을 추가로 실행해야 합니다.
+Maestro의 Android 문자 입력과 내부 붙여넣기는 선택한 키보드 언어에 따라 영문을 자모로 입력할 수 있다. 사전 확인으로 기존 영문 입력 subtype을 확인한 경우에만 해당 runtime에 `keyboard: {"inputMethod": "<기존 IME ID>", "asciiSubtype": "<관찰한 영문 subtype 정수>"}`를 추가한다. 실행기는 기본 키보드 앱을 바꾸지 않으며 시작 당시 subtype을 보존하고 완료, 실패와 SIGINT 또는 SIGTERM 중단 뒤 복원한다. 모르는 값이나 다른 기본 키보드이면 변경하지 않고 중단한다. 기록은 저장 전에 입력 원문도 검사한다. 새 키보드를 설치하지 않는다.
 
-초대 코드는 화면에서 복사한 값을 실행기 메모리로만 두 사용자 사이에 전달합니다. 원본 명령 기록과 자동 실패 캡처는 비공개 임시 폴더에서 처리한 뒤 제거합니다. 보존하는 로그는 비밀값을 가리고, `safe/`로 명시한 합성 화면만 남깁니다. 초대, 토큰과 비밀번호를 캡처하거나 결과에 넣지 않습니다.
+`executedScenariosPassed`는 실행한 여정만 설명한다. 현재 실행기는 전체 L3 통과를 선언하지 않고 `passed: false`를 유지한다. 미실행인 계정 복구와 삭제, 초대 만료와 재사용, 실제 원격 푸시와 접근성을 추가로 실행해야 한다. 독립 검수는 별도 사전 계획과 후보 SHA를 남긴 뒤 시작한다.
 
-실제 서비스 자료는 실행별 전용 계정과 합성 기록만 사용하고 생성한 식별 목록에 한정해 정리합니다. 운영 푸시 수신은 단위 테스트나 Emulator 전달로 증명하지 않습니다. iOS Simulator APNs의 개발 서버 수신과 공개 빌드의 production APNs를 구분합니다.
+초대 코드와 토큰, 비밀번호는 캡처와 결과에 남기지 않는다. 자동 실패 캡처는 비공개 임시 폴더에서 처리한 뒤 제거하고, `safe/`로 명시한 합성 화면만 보존한다. 비행기 모드 검수는 원래 설정을 기록하고 짧게 통신을 끊은 뒤 반드시 복원한다. 계정 복구와 삭제는 실행 목록으로 소유권을 확인한 전용 테스트 계정만 대상으로 한다. 실제 원격 푸시는 해당 서명 빌드의 수신과 알림 진입으로 증명하며 개발 APNs와 production APNs를 구분한다.
+
+## 가상 기기 정리
+
+다운로드한 iOS 런타임18.1, 26.2, 26.5, 27.0, 이번 작업의 iOS 가상 기기2개, Android AVD1개와 Simulator 빌드 캐시를 삭제했다. SDK의 Android 시스템 이미지는 없었고 emulator 도구도 제거했다. `simctl runtime list`가 비어 있고 이미지와 도구 경로가 없는 것을 재확인했다. Android 이미지 복원 제안은 취소했다. 기존의 다른 가상 기기 자료는 임의로 초기화하지 않았다.
+
+작은 실패 원본과 합성 Firebase 스냅샷은 보존했다. 정리 전후 목록과 실제 가용 공간 차이는 저장소 밖 `evidence/simulator-cleanup.json`에 남긴다. 이전 Simulator 검수 결과는 당시 실행 근거로 보존하며 실제 기기 통과로 바꾸지 않는다.
 
 ## 실행에서 발견한 결함
 

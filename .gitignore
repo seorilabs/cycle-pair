@@ -18,6 +18,7 @@ ui-debug.log
 **/.gradle/
 **/android/.cxx/
 **/android/app/build/
+**/android/app/build-synthetic/
 **/ios/build/
 **/.granite/
 **/.swc/

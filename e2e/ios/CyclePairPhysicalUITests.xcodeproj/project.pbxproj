@@ -1,0 +1,83 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {};
+	objectVersion = 56;
+	objects = {
+		110000000000000000000001 = {isa = PBXBuildFile; fileRef = 110000000000000000000002; };
+		110000000000000000000002 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CyclePairPhysicalUITests.swift; sourceTree = "<group>"; };
+		110000000000000000000003 = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CyclePairPhysicalUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		110000000000000000000004 = {isa = PBXGroup; children = (110000000000000000000005, 110000000000000000000006); sourceTree = "<group>"; };
+		110000000000000000000005 = {isa = PBXGroup; children = (110000000000000000000002); path = CyclePairPhysicalUITests; sourceTree = "<group>"; };
+		110000000000000000000006 = {isa = PBXGroup; children = (110000000000000000000003); name = Products; sourceTree = "<group>"; };
+		110000000000000000000007 = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 110000000000000000000009;
+			buildPhases = (110000000000000000000010, 110000000000000000000011, 110000000000000000000012);
+			buildRules = ();
+			dependencies = ();
+			name = CyclePairPhysicalUITests;
+			productName = CyclePairPhysicalUITests;
+			productReference = 110000000000000000000003;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		110000000000000000000008 = {
+			isa = PBXProject;
+			attributes = {BuildIndependentTargetsInParallel = YES; LastUpgradeCheck = 2710; TargetAttributes = {110000000000000000000007 = {CreatedOnToolsVersion = 27.1; ProvisioningStyle = Automatic; }; }; };
+			buildConfigurationList = 110000000000000000000013;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (en, Base);
+			mainGroup = 110000000000000000000004;
+			productRefGroup = 110000000000000000000006;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (110000000000000000000007);
+		};
+		110000000000000000000009 = {isa = XCConfigurationList; buildConfigurations = (110000000000000000000014, 110000000000000000000015); defaultConfigurationIsVisible = 0; defaultConfigurationName = Debug; };
+		110000000000000000000010 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (110000000000000000000001); runOnlyForDeploymentPostprocessing = 0; };
+		110000000000000000000011 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		110000000000000000000012 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		110000000000000000000013 = {isa = XCConfigurationList; buildConfigurations = (110000000000000000000016, 110000000000000000000017); defaultConfigurationIsVisible = 0; defaultConfigurationName = Debug; };
+		110000000000000000000014 = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@loader_path/Frameworks");
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.seorilabs.cyclepair.physicalqa;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		110000000000000000000015 = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@loader_path/Frameworks");
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.seorilabs.cyclepair.physicalqa;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		110000000000000000000016 = {isa = XCBuildConfiguration; buildSettings = {CLANG_ENABLE_MODULES = YES; SDKROOT = iphoneos; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; }; name = Debug; };
+		110000000000000000000017 = {isa = XCBuildConfiguration; buildSettings = {CLANG_ENABLE_MODULES = YES; SDKROOT = iphoneos; SWIFT_OPTIMIZATION_LEVEL = "-O"; }; name = Release; };
+	};
+	rootObject = 110000000000000000000008;
+}

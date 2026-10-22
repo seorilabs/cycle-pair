@@ -15,6 +15,7 @@ import {
 } from "node:fs/promises";
 import path from "node:path";
 import { tmpdir } from "node:os";
+import { validatePhysicalRuntime, assertPhysicalAndroidState } from './physical-e2e-runtime.mjs';
 const exec = promisify(execFile);
 const { values } = parseArgs({
   options: {
@@ -53,19 +54,16 @@ if (
   ownership.runtimes.length !== (values.scope === "solo" ? 1 : 2)
 )
   throw new Error(
-    "A backend-specific ownership manifest for two isolated test runtimes is required"
+    "A backend-specific manifest for the selected physical test installations is required"
   );
 for (const runtime of ownership.runtimes) {
-  if (
-    runtime.createdFor !== "cycle-pair-native-launch" ||
-    runtime.allowAppDataReset !== true
-  )
-    throw new Error(
-      "Only explicitly owned synthetic test installations may run"
-    );
+  validatePhysicalRuntime(runtime);
+  if (values.backend === 'service' && runtime.appId.endsWith('.qa'))
+    throw new Error('The synthetic installation is restricted to local Firebase');
   if (runtime.platform === "android") {
-    if (!/^emulator-\d+$/.test(runtime.deviceId))
-      throw new Error("Physical Android devices are excluded");
+    const { stdout: state } = await exec(ownership.adb || "adb", [
+      '-s', runtime.deviceId, 'get-state',
+    ]);
     const { stdout } = await exec(ownership.adb || "adb", [
       "-s",
       runtime.deviceId,
@@ -73,26 +71,10 @@ for (const runtime of ownership.runtimes) {
       "getprop",
       "ro.kernel.qemu",
     ]);
-    if (stdout.trim() !== "1")
-      throw new Error("The selected Android runtime is not an emulator");
+    assertPhysicalAndroidState(state, stdout);
   } else if (runtime.platform === "ios") {
-    const { stdout } = await exec("xcrun", [
-      "simctl",
-      "list",
-      "devices",
-      "available",
-      "-j",
-    ]);
-    const device = Object.values(JSON.parse(stdout).devices)
-      .flat()
-      .find((item) => item.udid === runtime.deviceId);
-    if (
-      !device ||
-      !device.name.startsWith("CyclePair_") ||
-      device.state !== "Booted"
-    )
-      throw new Error("Use a booted, owned CyclePair iOS Simulator");
-  } else throw new Error("Unknown virtual runtime");
+    throw new Error('Maestro 2.11 does not support physical iOS; use the signed XCTest device suite. No Simulator fallback is allowed.');
+  }
 }
 const { stdout: revision } = await exec("git", ["rev-parse", "HEAD"]);
 const { stdout: dirty } = await exec("git", [
@@ -154,21 +136,57 @@ function redact(value) {
     );
 }
 const scenarios = [];
+const createdReversePorts = [];
+const keyboardStates = [];
+let keyboardSubtypesRestored = true;
+let activeChild;
+let cancelledBy;
+for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => {
+  cancelledBy = signal;
+  activeChild?.kill('SIGTERM');
+});
+async function keyboardSetting(deviceId, name) {
+  const {stdout} = await exec(ownership.adb || 'adb', ['-s', deviceId, 'shell', 'settings', 'get', 'secure', name], {timeout: 30_000});
+  return stdout.trim();
+}
+async function connectAndroid(runtime) {
+  const adb = ownership.adb || 'adb';
+  const {stdout} = await exec(adb, ['-s', runtime.deviceId, 'reverse', '--list']);
+  const routes = stdout.trim().split('\n').filter(Boolean).map(line => line.trim().split(/\s+/));
+  const ports = values.backend === 'emulator' ? [8081, 9399, 8380, 5301] : [8081];
+  for (const port of ports) {
+    const socket = `tcp:${port}`;
+    const existing = routes.find(route => route[1] === socket);
+    if (existing && existing[2] !== socket)
+      throw new Error(`Preserve the existing Android reverse connection on ${socket}`);
+    if (!existing) {
+      await exec(adb, ['-s', runtime.deviceId, 'reverse', socket, socket], {timeout: 30_000});
+      createdReversePorts.push({deviceId: runtime.deviceId, socket});
+    }
+  }
+  if (runtime.keyboard) {
+    const method = await keyboardSetting(runtime.deviceId, 'default_input_method');
+    const subtype = await keyboardSetting(runtime.deviceId, 'selected_input_method_subtype');
+    if (method !== runtime.keyboard.inputMethod || !/^-?\d+$/.test(subtype) || !/^-?\d+$/.test(runtime.keyboard.asciiSubtype))
+      throw new Error('Preserve the unrecognized input method or subtype');
+    if (subtype !== runtime.keyboard.asciiSubtype) {
+      keyboardStates.push({deviceId: runtime.deviceId, method, subtype});
+      await exec(adb, ['-s', runtime.deviceId, 'shell', 'settings', 'put', 'secure', 'selected_input_method_subtype', runtime.keyboard.asciiSubtype], {timeout: 30_000});
+      if (await keyboardSetting(runtime.deviceId, 'selected_input_method_subtype') !== runtime.keyboard.asciiSubtype)
+        throw new Error('The explicit test input subtype was not applied');
+    }
+  }
+}
 async function runFlow(actor, name, featureIds) {
+  if (cancelledBy) throw new Error(`UI execution cancelled by ${cancelledBy}`);
   const runtime = ownership.runtimes[actor];
-  if (runtime.platform === "android")
-    await exec(
-      ownership.adb || "adb",
-      ["-s", runtime.deviceId, "reverse", "tcp:8081", "tcp:8081"],
-      { timeout: 30_000 }
-    );
   const temporary = await mkdtemp(path.join(tmpdir(), "cyclepair-maestro-"));
   const startedAt = new Date().toISOString();
   let log = "";
   let code = 1;
-  let child;
+  let flowTimeout;
   try {
-    child = spawn(
+    const child = spawn(
       values.maestro,
       [
         `--platform=${runtime.platform}`,
@@ -179,6 +197,8 @@ async function runFlow(actor, name, featureIds) {
         `--test-output-dir=${temporary}/output`,
         `--debug-output=${temporary}/debug`,
         "-e",
+        `APP_ID=${runtime.appId}`,
+        "-e",
         `CONTROL_URL=${controlUrl}`,
         "-e",
         `SYNTHETIC_NOTE=${runId}-note`,
@@ -188,7 +208,6 @@ async function runFlow(actor, name, featureIds) {
       ],
       {
         cwd: root,
-        detached: runtime.platform === "ios",
         env: {
           ...process.env,
           MAESTRO_CLI_NO_ANALYTICS: "true",
@@ -202,6 +221,7 @@ async function runFlow(actor, name, featureIds) {
         stdio: ["ignore", "pipe", "pipe"],
       }
     );
+    activeChild = child;
     let safeProgress = Promise.resolve();
     for (const stream of [child.stdout, child.stderr]) {
       let pending = "";
@@ -220,12 +240,12 @@ async function runFlow(actor, name, featureIds) {
           );
       });
     }
-    const timeout = setTimeout(() => child.kill("SIGTERM"), 300_000);
+    flowTimeout = setTimeout(() => child.kill("SIGTERM"), 300_000);
     code = await new Promise((resolve, reject) => {
       child.once("error", reject);
       child.once("exit", (status) => resolve(status ?? 1));
     });
-    clearTimeout(timeout);
+    clearTimeout(flowTimeout);
     await safeProgress;
     await writeFile(path.join(output, `${actor}-${name}.log`), redact(log), {
       mode: 0o600,
@@ -251,15 +271,8 @@ async function runFlow(actor, name, featureIds) {
     }
     await retainSafeCaptures(path.join(temporary, "output"));
   } finally {
-    // Maestro's XCTest child can outlive the CLI. Own a process group so its
-    // helpers are stopped without touching any other session or the app.
-    if (runtime.platform === "ios" && child?.pid) {
-      try {
-        process.kill(-child.pid, "SIGTERM");
-      } catch (error) {
-        if (error.code !== "ESRCH") throw error;
-      }
-    }
+    clearTimeout(flowTimeout);
+    activeChild = undefined;
     await rm(temporary, { recursive: true, force: true });
   }
   scenarios.push({
@@ -278,7 +291,7 @@ async function runOffline(actor) {
   const runtime = ownership.runtimes[actor];
   if (runtime.platform !== "android")
     throw new Error(
-      "This offline OS control requires the owned Android emulator"
+      "This offline OS control requires the approved physical Android device"
     );
   const adb = ownership.adb || "adb";
   const deviceId = runtime.deviceId;
@@ -293,6 +306,8 @@ async function runOffline(actor) {
   const airplane = await readSetting("airplane_mode_on");
   const wifi = await readSetting("wifi_on");
   const mobileData = await readSetting("mobile_data");
+  if (![airplane, wifi, mobileData].every(value => ['0', '1'].includes(value)))
+    throw new Error('Preserve unknown network settings; offline control was not started');
   try {
     await exec(
       adb,
@@ -335,7 +350,7 @@ async function runOffline(actor) {
     } while (Date.now() < disconnectDeadline);
     if (activeDefault && !["none", "null"].includes(activeDefault))
       throw new Error(
-        "The owned emulator still has an active network; offline UI was not run"
+        "The selected device still has an active network; offline UI was not run"
       );
     await writeFile(
       path.join(output, "offline-network.json"),
@@ -410,6 +425,9 @@ async function runEventAndRevoke() {
 }
 let failed;
 try {
+  for (const runtime of ownership.runtimes) {
+    if (runtime.platform === 'android') await connectAndroid(runtime);
+  }
   if (values.flow) {
     for (const name of values.flow.split(",")) {
       if (name === "offline") await runOffline(0);
@@ -442,6 +460,23 @@ try {
   failed = error.message;
   process.exitCode = 1;
 } finally {
+  for (const {deviceId, method, subtype} of keyboardStates) {
+    try {
+      if (await keyboardSetting(deviceId, 'default_input_method') !== method)
+        throw new Error('The input method changed outside this execution');
+      await exec(ownership.adb || 'adb', ['-s', deviceId, 'shell', 'settings', 'put', 'secure', 'selected_input_method_subtype', subtype], {timeout: 30_000});
+      if (await keyboardSetting(deviceId, 'selected_input_method_subtype') !== subtype)
+        throw new Error('The original keyboard subtype was not restored');
+    } catch {
+      keyboardSubtypesRestored = false;
+      failed ??= 'Unable to restore the original keyboard subtype';
+      process.exitCode = 1;
+    }
+  }
+  for (const {deviceId, socket} of createdReversePorts) {
+    await exec(ownership.adb || 'adb', ['-s', deviceId, 'reverse', '--remove', socket])
+      .catch(() => { failed ??= 'Unable to restore an owned Android reverse connection'; process.exitCode = 1; });
+  }
   await new Promise((resolve) => server.close(resolve));
   const report = {
     schemaVersion: 1,
@@ -449,9 +484,12 @@ try {
     sourceSha: revision.trim(),
     sourceDirty: Boolean(dirty.trim()),
     backend: values.backend,
-    kind: "native-development",
+    kind: "physical-device",
+    platforms: ownership.runtimes.map(runtime => runtime.platform),
     scope: values.scope,
     scenarios,
+    keyboardSubtypesRestored,
+    cancelledBy: cancelledBy ?? null,
     executedScenariosPassed: !failed,
     passed: false,
     failure: failed ?? null,
@@ -469,7 +507,7 @@ try {
     limitations: [
       "This is an incomplete authoring journey, not full L3 release evidence.",
       "This journey does not certify the unrun required acceptance cases.",
-      "Simulator APNs uses the development server; production APNs remains separate.",
+      "Remote push delivery requires the signed target build and actual receipt on a physical device.",
     ],
   };
   await writeFile(

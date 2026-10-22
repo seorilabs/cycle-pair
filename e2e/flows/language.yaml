@@ -1,4 +1,4 @@
-appId: com.seorilabs.cyclepair
+appId: ${APP_ID}
 ---
 - tapOn:
     id: tab-settings

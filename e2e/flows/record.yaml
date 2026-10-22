@@ -1,4 +1,4 @@
-appId: com.seorilabs.cyclepair
+appId: ${APP_ID}
 ---
 - tapOn:
     id: home-record
@@ -89,5 +89,7 @@ appId: com.seorilabs.cyclepair
       - tapOn: 'Select All|Select all|전체 선택|모두 선택'
       - eraseText: 1
 - inputText: ${SYNTHETIC_NOTE}
+- assertVisible: ${SYNTHETIC_NOTE}
+- takeScreenshot: safe/record-note-keyboard
 - runFlow: dismiss-keyboard.yaml
 - runFlow: record-save.yaml

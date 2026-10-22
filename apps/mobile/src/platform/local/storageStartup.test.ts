@@ -3,6 +3,7 @@ import { initializeFirebaseAppCheck } from '../firebase/FirebaseAppCheckBootstra
 import { initializeRuntime as initializeService } from '../firebase/productionRuntime';
 import { initializeRuntime as initializeEmulator } from '../development/emulatorRuntime';
 import { connectAuthEmulator } from '@react-native-firebase/auth';
+import { NativeModules } from 'react-native';
 
 jest.mock('./migrateDeviceOnlyStorage', () => ({
   migrateDeviceOnlyStorage: jest.fn(),
@@ -37,6 +38,14 @@ const migration = jest.mocked(migrateDeviceOnlyStorage);
 beforeEach(() => {
   jest.clearAllMocks();
   migration.mockReset();
+  NativeModules.CyclePairBuildEnvironment = { syntheticQa: false };
+});
+
+it('rejects the synthetic Android installation before service storage or authentication opens', async () => {
+  NativeModules.CyclePairBuildEnvironment = { syntheticQa: true };
+  await expect(initializeService()).resolves.toBe(false);
+  expect(migration).not.toHaveBeenCalled();
+  expect(initializeFirebaseAppCheck).not.toHaveBeenCalled();
 });
 
 it.each([

@@ -15,42 +15,13 @@
     "observability"
   ],
   "environments": [
-    "dev"
+    "dev",
+    "android",
+    "ios"
   ],
   "redesign": true,
   "foundationRerun": true,
-  "floorOverrides": [
-    {
-      "rule": "foundation",
-      "featureId": "records",
-      "reason": "승인 계획의 RN 개발 실행에서 실제 화면 입력, 로컬 Firebase 전체 여정과 실제 SDK 및 운영 Firebase 연결을 확인한다. 물리 기기는 별도 승인 범위이며 미실행을 통과 처리하지 않는다."
-    },
-    {
-      "rule": "foundation",
-      "featureId": "pairing-sharing",
-      "reason": "승인 계획의 RN 개발 실행에서 실제 화면 입력, 로컬 Firebase 전체 여정과 실제 SDK 및 운영 Firebase 연결을 확인한다. 물리 기기는 별도 승인 범위이며 미실행을 통과 처리하지 않는다."
-    },
-    {
-      "rule": "foundation",
-      "featureId": "account",
-      "reason": "승인 계획의 RN 개발 실행에서 실제 화면 입력, 로컬 Firebase 전체 여정과 실제 SDK 및 운영 Firebase 연결을 확인한다. 물리 기기는 별도 승인 범위이며 미실행을 통과 처리하지 않는다."
-    },
-    {
-      "rule": "foundation",
-      "featureId": "notifications",
-      "reason": "승인 계획의 RN 개발 실행에서 실제 화면 입력, 로컬 Firebase 전체 여정과 실제 SDK 및 운영 Firebase 연결을 확인한다. 물리 기기는 별도 승인 범위이며 미실행을 통과 처리하지 않는다."
-    },
-    {
-      "rule": "foundation",
-      "featureId": "privacy",
-      "reason": "승인 계획의 RN 개발 실행에서 실제 화면 입력, 로컬 Firebase 전체 여정과 실제 SDK 및 운영 Firebase 연결을 확인한다. 물리 기기는 별도 승인 범위이며 미실행을 통과 처리하지 않는다."
-    },
-    {
-      "rule": "foundation",
-      "featureId": "observability",
-      "reason": "승인 계획의 RN 개발 실행에서 실제 화면 입력, 로컬 Firebase 전체 여정과 실제 SDK 및 운영 Firebase 연결을 확인한다. 물리 기기는 별도 승인 범위이며 미실행을 통과 처리하지 않는다."
-    }
-  ],
+  "floorOverrides": [],
   "release": {
     "markets": [
       "google-play",

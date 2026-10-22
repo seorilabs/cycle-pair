@@ -1,4 +1,4 @@
-appId: com.seorilabs.cyclepair
+appId: ${APP_ID}
 ---
 - runFlow: cold-home.yaml
 - tapOn:
