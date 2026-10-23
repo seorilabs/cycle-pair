@@ -5,6 +5,7 @@ import { lstat, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } fro
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { StringDecoder } from 'node:string_decoder';
+import { resolvePrivateInput, privateInputEnvironment, ACCOUNT_CANARY_SCOPE } from './private-e2e-input.mjs';
 
 const TARGET = 'CyclePairPhysicalUITests';
 export const DEFAULT_FLOWS = Object.freeze({
@@ -14,8 +15,9 @@ export const DEFAULT_FLOWS = Object.freeze({
   record: { method: 'testRecordSurvivesColdRestart', secret: false, ready: true },
   'diagnostics-consent': { method: 'testDiagnosticsConsentSurvivesColdRestart', secret: false, ready: true },
   'privacy-read': { method: 'testPrivacyNoticeCanBeReadAndClosed', secret: false, ready: true },
-  'invitation-canary': { method: 'testInvitationInputCanary', className: 'CyclePairCoordinatedUITests', secret: false, ready: true },
-  'invitation-accept': { method: 'testInvitationAccept', className: 'CyclePairCoordinatedUITests', secret: true, ready: true },
+  'invitation-canary': { method: 'testInvitationInputCanary', className: 'CyclePairCoordinatedUITests', canaryPurpose: 'invitation', secret: false, ready: true },
+  'account-input-canary': { method: 'testAccountInputCanary', className: 'CyclePairCoordinatedUITests', canaryPurpose: 'account', secret: false, ready: true },
+  'invitation-accept': { method: 'testInvitationAccept', className: 'CyclePairCoordinatedUITests', inputKind: 'invitation', secret: true, ready: true },
   'sharing-private': { method: 'testSharingPrivate', className: 'CyclePairCoordinatedUITests', secret: false, ready: true },
   'partner-received': { method: 'testPartnerReceived', className: 'CyclePairCoordinatedUITests', secret: false, ready: true },
   'event-received': { method: 'testEventReceived', className: 'CyclePairCoordinatedUITests', secret: false, ready: true },
@@ -29,10 +31,11 @@ export function createStreamRedactor(secretValues = []) {
   const secrets = [...new Set(secretValues
     .filter(value => typeof value === 'string' && value.length)
     .flatMap(value => {
-      const variants = [value];
+      const forms = [...new Set([value, JSON.stringify(value).slice(1, -1), encodeURIComponent(value)])];
+      const variants = [...forms];
       // XCTest abbreviates typeText activity even when attachments are disabled.
-      for (let length = 1; length < value.length; length++) {
-        const prefix = value.slice(0, length);
+      for (const form of forms) for (let length = 1; length < form.length; length++) {
+        const prefix = form.slice(0, length);
         variants.push(`${prefix}...`, `${prefix}…`);
       }
       return variants;
@@ -88,7 +91,12 @@ const sanitize = (text, secrets) => {
   return redactor.push(String(text)) + redactor.end();
 };
 
-export async function validateCanaryReceipt({ receipt, baseXctestrun, ownership, candidateSha, privateRoot }) {
+export async function validateCanaryReceipt({ receipt, baseXctestrun, ownership, candidateSha, privateRoot, purpose }) {
+  const expected = {
+    invitation: ['invitation-canary', 'CyclePairCoordinatedUITests/testInvitationInputCanary'],
+    account: ['account-input-canary', 'CyclePairCoordinatedUITests/testAccountInputCanary'],
+  }[purpose];
+  if (!expected) throw new Error('공개 입력 시험의 목적을 명시해야 합니다');
   const root = await realpath(privateRoot);
   const file = await ownedPath(root, receipt);
   await assertPrivateFile(file);
@@ -106,8 +114,8 @@ export async function validateCanaryReceipt({ receipt, baseXctestrun, ownership,
   if (inspected.code !== 0 || inspected.timedOut || inspected.ownedGroupCleaned !== true)
     throw new Error('현재 signed helper 지문을 읽을 수 없습니다');
   const fingerprint = JSON.parse(metadata);
-  if (record.executionMode !== 'physical' || record.flow !== 'invitation-canary' || record.passed !== true ||
-      record.testIdentifier !== 'CyclePairCoordinatedUITests/testInvitationInputCanary' || record.diagnosticOnly !== false ||
+  if (record.executionMode !== 'physical' || record.flow !== expected[0] || record.passed !== true ||
+      record.testIdentifier !== expected[1] || record.diagnosticOnly !== false ||
       record.plistPreparation?.testBundleExecutableSHA256 !== fingerprint.testBundleExecutableSHA256 ||
       record.sourceSha !== candidateSha || record.requestedCandidateSha !== candidateSha ||
       record.ownershipManifestSHA256 !== digest(await readFile(manifestFile)) ||
@@ -115,6 +123,14 @@ export async function validateCanaryReceipt({ receipt, baseXctestrun, ownership,
       record.summaryDeviceMatches !== true || record.ownedXcodebuildGroupCleaned !== true || record.privateRawRemoved !== true ||
       counts?.totalTestCount !== 1 || counts.passedTests !== 1 || counts.failedTests !== 0 || counts.skippedTests !== 0 || counts.expectedFailures !== 0)
     throw new Error('같은 후보, 설치와 도우미에서 공개 입력 시험이 실제 통과하고 정리된 근거가 필요합니다');
+  if (purpose === 'account') {
+    const manifest = JSON.parse(await readFile(manifestFile, 'utf8'));
+    const account = await ownedPath(root, manifest.accountOwnershipPath);
+    await assertPrivateFile(account);
+    if (record.accountOwnershipSHA256 !== digest(await readFile(account)) ||
+        Object.entries(ACCOUNT_CANARY_SCOPE).some(([key, value]) => record.canaryScope?.[key] !== value))
+      throw new Error('같은 소유 계정과 제한된 계정 canary 범위가 필요합니다');
+  }
   return true;
 }
 function cleanEnvironment() {
@@ -241,12 +257,12 @@ export async function runPhysicalIosFlow(options, dependencies = {}) {
   if (!flow.ready) throw new Error('UI helper 계약과 canary 검증이 준비되지 않은 flow');
   if (flow.secret && (!options.allowSecretExecution || !options.secretTransportValidated))
     throw new Error('비밀 flow는 공개 canary와 입력 경로 검증이 선행되어야 합니다');
-  if (flow.secret !== Boolean(options.invitation)) throw new Error('flow와 비밀 입력 범위가 다릅니다');
-  if (options.invitation && !/^[A-Za-z0-9_-]{43}$/.test(options.invitation)) throw new Error('초대 형식 거절');
+  if (options.invitation !== undefined) throw new Error('typed private input을 사용해야 합니다');
+  const input = resolvePrivateInput(flow, options.privateInput);
+  if (flow.secret !== Boolean(options.privateInput)) throw new Error('flow와 비밀 입력 범위가 다릅니다');
   if (!fake && options.executePhysical !== true) throw new Error('실제 실행은 명시적으로 선택해야 합니다');
   // 공개 canary도 향후 비밀 입력과 같은 exact-value 가림 경로를 검증한다.
-  const secrets = options.invitation ? [options.invitation] :
-    options.flow === 'invitation-canary' ? ['cyclepair-canary-20261023'] : [];
+  const secrets = input.secrets;
   for (const value of [options.baseXctestrun, options.ownership, options.output])
     if (secrets.some(secret => typeof value === 'string' && value.includes(secret)))
       throw new Error('파일 경로에 비밀값을 넣을 수 없습니다');
@@ -274,6 +290,9 @@ export async function runPhysicalIosFlow(options, dependencies = {}) {
   await assertPrivateFile(account);
   if (!/^[a-f0-9]{40}$/.test(options.candidateSha || '') || options.candidateSha !== manifest.installedSourceSha)
     throw new Error('설치 후보와 요청 후보가 다릅니다');
+  if (input.kind === 'account' && options.privateInput && !fake)
+    await validateCanaryReceipt({ receipt: options.inputValidation, baseXctestrun: base, ownership: ownershipPath,
+      candidateSha: options.candidateSha, privateRoot, purpose: 'account' });
   await mkdir(output, { mode: 0o700 }); // 덮어쓰기 금지
   const temporary = await mkdtemp(path.join(output, '.private-raw-'));
   const privatePlist = path.join(temporary, 'private.xctestrun');
@@ -295,7 +314,10 @@ export async function runPhysicalIosFlow(options, dependencies = {}) {
     flow: options.flow, testIdentifier: `${className}/${flow.method}`,
     diagnosticOnly: Boolean(dependencies.flowDefinitions), runId: options.runId, startedAt: new Date().toISOString(),
     ownershipManifestSHA256: digest(manifestBytes), formalUIRounds: 0, fullL3: false,
-    invitationProvided: Boolean(options.invitation), passed: false, status: 'failed',
+    privateInputKind: input.kind, privateInputProvided: Boolean(options.privateInput),
+    accountOwnershipSHA256: digest(await readFile(account)),
+    ...(flow.canaryPurpose === 'account' ? { canaryScope: ACCOUNT_CANARY_SCOPE } : {}),
+    passed: false, status: 'failed',
     automaticRetry: false, attachmentPolicy: { system: 'keepNever', user: 'keepNever' } };
   let summaryText = '', summaryStderr = '', summaryCode, failure;
   const stream = name => chunk => {
@@ -306,9 +328,8 @@ export async function runPhysicalIosFlow(options, dependencies = {}) {
   try {
     const environment = { CYCLEPAIR_PHYSICAL_UI_APPROVED: '1', CYCLEPAIR_SYNTHETIC_INSTALLATION: '1',
       CYCLEPAIR_TEST_RUN_ID: options.runId, CYCLEPAIR_CAPTURE_SAFE_SCREENS: '0',
-      CYCLEPAIR_TEST_FLOW: options.flow };
-    if (options.invitation) {
-      environment.CYCLEPAIR_TEST_INVITATION = options.invitation;
+      CYCLEPAIR_TEST_FLOW: options.flow, ...privateInputEnvironment(input, 'ios') };
+    if (options.privateInput) {
       environment.CYCLEPAIR_SECRET_INPUT_VALIDATED = '1';
     }
     let preparation = '';

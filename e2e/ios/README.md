@@ -68,6 +68,7 @@ xcodebuild build-for-testing \
 |---|---|
 | `start` | 첫 안내의 예시, 동의와 첫 설정 저장, 홈 도착 |
 | `invitation-canary` | 공개 시험 문자열 입력, 원문 일치 확인, 연결 없이 닫기 |
+| `account-input-canary` | 빈 게스트 계정 입력란에 공개 이메일과 비밀번호 입력, 이메일 일치와 secure 필드 마스킹 길이 확인, 제출 없이 닫고 입력 정리 확인 |
 | `invitation-accept` | 비공개 초대 입력, 실제 연결, 기본 비공개 미리보기와 저장 |
 | `sharing-private` | 이미 열린 공유 화면에서 기본 비공개 확인과 저장 |
 | `partner-received` | 공유받은 감정과 도움, 공유하지 않은 합성 메모 부재 |
@@ -81,7 +82,11 @@ xcodebuild build-for-testing \
 
 기본 키는 `CYCLEPAIR_PHYSICAL_UI_APPROVED=1`, `CYCLEPAIR_SYNTHETIC_INSTALLATION=1`, `CYCLEPAIR_TEST_RUN_ID`다. 실행 ID 형식은 `cp-`와 숫자17자리, 하이픈, 소문자16진수6자리다. coordinated 메서드에는 `CYCLEPAIR_TEST_FLOW`도 전달한다. 초대 값은 CLI 인수나 xcodebuild 프로세스 환경에 넣지 않고 비공개 plist의 `CYCLEPAIR_TEST_INVITATION`으로만 전달한다. `CYCLEPAIR_SECRET_INPUT_VALIDATED=1`은 같은 후보와 도우미에서 공개 입력 시험이 실제 통과하고 원시 자료가 정리된 경우에만 전달한다.
 
-`typeText`는 원시 XCTest activity에 값을 기록할 수 있다. 모든 흐름에서 `CYCLEPAIR_CAPTURE_SAFE_SCREENS=0`, System/User attachment `keepNever`, diagnostics 수집 `never`를 강제한다. stdout와 stderr는 UTF-8와 chunk 경계를 보존하며 초대, 공개 시험 문자열과 XCTest가 줄여 남긴 입력 앞부분을 가린다. 원시 console은 저장하지 않고 hash만 남긴다. `xcresulttool` 요약은 메모리에서 가려 보존한다. 정확히1 PASS, 0 FAIL, 0 SKIP, 0 expected failure와 선택한 물리 기기 일치를 모두 확인한다.
+래퍼 입력은 `privateInput: { kind: 'invitation', code }` 또는 `{ kind: 'account', email, password }`로 종류를 지정한다. 계정 값은 비공개 plist의 `CYCLEPAIR_TEST_ACCOUNT_EMAIL`, `CYCLEPAIR_TEST_ACCOUNT_PASSWORD`로만 전달한다. Android 준비 함수 `spawnMaestroFlow`도 같은 typed 입력을 받으며 child 전용 `MAESTRO_TEST_ACCOUNT_EMAIL`, `MAESTRO_TEST_ACCOUNT_PASSWORD`와 가린 출력 stream을 사용한다. 실제 계정 제출 흐름과 Android 계정 화면 흐름은 아직 제공하지 않는다.
+
+공개 계정 canary는 코드에 고정한 공개값만 사용하며 외부 입력을 거절한다. 비밀번호의 마스킹과 길이 확인은 정확한 비밀번호 입력이나 인증 성공을 증명하지 않는다. 결과의 `canaryScope`도 `passwordExactInputValidated=false`, `authenticationSucceeded=false`, `submitted=false`를 유지한다. 향후 첫 비공개 계정 입력에는 목적이 같은 canary의 후보, helper, manifest와 소유 계정 파일 지문이 일치하고 원시 자료가 정리된 `inputValidation` 근거가 필요하다. 정상 UI 인증 성공은 이후 계정 흐름에서 별도로 확인한다. 공개 canary 자체에는 인증 성공을 요구하지 않는다.
+
+`typeText`는 원시 XCTest activity에 값을 기록할 수 있다. 모든 흐름에서 `CYCLEPAIR_CAPTURE_SAFE_SCREENS=0`, System/User attachment `keepNever`, diagnostics 수집 `never`를 강제한다. stdout와 stderr는 UTF-8와 chunk 경계를 보존하며 초대, 이메일, 짧은 비밀번호, JSON 또는 URL 이스케이프와 XCTest가 줄여 남긴 입력 앞부분을 가린다. 예외 메시지도 같은 값 가림을 거친다. 값별 hash는 남기지 않는다. 원시 console은 저장하지 않고 전체 stream hash만 남긴다. `xcresulttool` 요약은 메모리에서 가려 보존한다. 정확히1 PASS, 0 FAIL, 0 SKIP, 0 expected failure와 선택한 물리 기기 일치를 모두 확인한다.
 
 실행은 각자 만든 process group만 정리한다. 그룹 종료를 확인한 뒤 비공개 임시 plist와 원시 xcresult를 제거하며, 실패해도 가린 원본과 hash를 보존한다. 그룹 종료를 확인하지 못하면 통과를 거절하고 비공개 원시 자료를 보존해 조율자에게 인계한다. 기존 ADB, Metro와 Firebase를 종료하지 않는다. 이 래퍼의 통과는 한 흐름의 결과이며 공식 독립 UI 검수와 전체 L3 판정은 별도 원장에서 확인한다.
 
