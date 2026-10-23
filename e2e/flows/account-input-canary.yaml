@@ -23,27 +23,33 @@ appId: ${APP_ID}
       id: account-upgrade-email
     direction: DOWN
     centerElement: true
-- assertVisible:
-    id: account-upgrade-email
-    text: '^(name@example[.]com)?$'
+- runScript:
+    file: ../scripts/read-account-empty.js
+    env:
+      ACCOUNT_FIELD: email
+- assertTrue: ${output.accountInputEmpty === true}
 - evalScript: ${console.log('CP_ACCOUNT_CANARY stage=initial-email-empty')}
 - scrollUntilVisible:
     element:
       id: account-upgrade-password
     direction: DOWN
     centerElement: true
-- assertVisible:
-    id: account-upgrade-password
-    text: '^(Password, at least 8 characters|비밀번호 8자 이상)?$'
+- runScript:
+    file: ../scripts/read-account-empty.js
+    env:
+      ACCOUNT_FIELD: password
+- assertTrue: ${output.accountInputEmpty === true}
 - evalScript: ${console.log('CP_ACCOUNT_CANARY stage=initial-password-empty')}
 - scrollUntilVisible:
     element:
       id: account-upgrade-password-confirm
     direction: DOWN
     centerElement: true
-- assertVisible:
-    id: account-upgrade-password-confirm
-    text: '^(Enter password again|비밀번호 다시 입력)?$'
+- runScript:
+    file: ../scripts/read-account-empty.js
+    env:
+      ACCOUNT_FIELD: confirm
+- assertTrue: ${output.accountInputEmpty === true}
 - evalScript: ${console.log('CP_ACCOUNT_CANARY stage=initial-confirm-empty')}
 - scrollUntilVisible:
     element:
@@ -105,27 +111,33 @@ appId: ${APP_ID}
       id: account-upgrade-email
     direction: DOWN
     centerElement: true
-- assertVisible:
-    id: account-upgrade-email
-    text: '^(name@example[.]com)?$'
+- runScript:
+    file: ../scripts/read-account-empty.js
+    env:
+      ACCOUNT_FIELD: email
+- assertTrue: ${output.accountInputEmpty === true}
 - evalScript: ${console.log('CP_ACCOUNT_CANARY stage=cleared-email')}
 - scrollUntilVisible:
     element:
       id: account-upgrade-password
     direction: DOWN
     centerElement: true
-- assertVisible:
-    id: account-upgrade-password
-    text: '^(Password, at least 8 characters|비밀번호 8자 이상)?$'
+- runScript:
+    file: ../scripts/read-account-empty.js
+    env:
+      ACCOUNT_FIELD: password
+- assertTrue: ${output.accountInputEmpty === true}
 - evalScript: ${console.log('CP_ACCOUNT_CANARY stage=cleared-password')}
 - scrollUntilVisible:
     element:
       id: account-upgrade-password-confirm
     direction: DOWN
     centerElement: true
-- assertVisible:
-    id: account-upgrade-password-confirm
-    text: '^(Enter password again|비밀번호 다시 입력)?$'
+- runScript:
+    file: ../scripts/read-account-empty.js
+    env:
+      ACCOUNT_FIELD: confirm
+- assertTrue: ${output.accountInputEmpty === true}
 - evalScript: ${console.log('CP_ACCOUNT_CANARY stage=cleared-confirm')}
 - scrollUntilVisible:
     element:

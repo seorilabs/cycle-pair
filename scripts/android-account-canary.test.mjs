@@ -39,7 +39,7 @@ test('공개 Android canary의 잘못된 대상은 adb와 출력 생성 전에 �
 test('화면 흐름은 같은 입력 ID의 빈값과 마스킹을 확인하고 제출하지 않는다', async () => {
   const flow = await readFile('e2e/flows/account-input-canary.yaml', 'utf8');
   for (const id of ['account-upgrade-email', 'account-upgrade-password', 'account-upgrade-password-confirm'])
-    assert.ok([...flow.matchAll(new RegExp(`^\\s+id: ${id}$`, 'gm'))].length >= 3,
+    assert.ok([...flow.matchAll(new RegExp(`^\\s+id: ${id}$`, 'gm'))].length >= 2,
       `${id}: 입력 전, 입력 후, 다시 열기 검사가 필요`);
   assert.match(flow, /MAESTRO_TEST_ACCOUNT_EMAIL === 'cyclepair-public-canary@example\.invalid'/);
   assert.match(flow, /MAESTRO_TEST_ACCOUNT_PASSWORD === 'CyclePair-Public-Canary!2026'/);
@@ -48,7 +48,9 @@ test('화면 흐름은 같은 입력 ID의 빈값과 마스킹을 확인하고 �
   for (const stage of ['initial-email-empty', 'initial-password-empty', 'initial-confirm-empty', 'email-exact',
     'password-masked', 'confirm-masked', 'closed', 'reopened', 'cleared-email', 'cleared-password', 'cleared-confirm', 'closed-again'])
     assert.ok(flow.includes(`CP_ACCOUNT_CANARY stage=${stage}`));
-  assert.doesNotMatch(flow, /account-upgrade-submit|takeScreenshot|copyTextFrom|pasteText|clearState|clearKeychain|openLink|runScript/);
+  assert.doesNotMatch(flow, /account-upgrade-submit|takeScreenshot|copyTextFrom|pasteText|clearState|clearKeychain|openLink/);
+  assert.equal([...flow.matchAll(/file: \.\.\/scripts\/read-account-empty[.]js/g)].length, 6);
+  assert.doesNotMatch(flow, /text: '\^\(.*\)\?\$'/);
   const taps = [...flow.matchAll(/^- tapOn: (.+)$|^- tapOn:\n    id: (.+)$/gm)].map(match => match[1] || match[2]);
   assert.equal(taps.length, [...flow.matchAll(/^- tapOn/gm)].length);
   assert.deepEqual(new Set(taps), new Set(['tab-settings', 'tab-home', 'account-upgrade-email',

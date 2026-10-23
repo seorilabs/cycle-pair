@@ -18,6 +18,7 @@ import { tmpdir } from "node:os";
 import { validatePhysicalRuntime, assertPhysicalAndroidState } from './physical-e2e-runtime.mjs';
 import { runPhysicalIosFlow, validateCanaryReceipt } from './physical-ios-wrapper.mjs';
 import { spawnMaestroFlow, androidAccountCanaryOptions } from './maestro-process.mjs';
+import { observeAccountInputEmpty } from './android-account-ui.mjs';
 import { ACCOUNT_CANARY_SCOPE } from './private-e2e-input.mjs';
 import { finished } from 'node:stream/promises';
 const exec = promisify(execFile);
@@ -112,8 +113,20 @@ for (const value of [androidAccountInput.privateInput?.email, androidAccountInpu
   if (value) secretValues.add(value);
 let invitation;
 let iosInputValidation = values['ios-input-validation'];
+const accountObservation = new AbortController();
 const controlKey = randomBytes(24).toString("hex");
 const server = createServer(async (request, response) => {
+  const field = ['email', 'password', 'confirm'].find(name => request.url === `/${controlKey}/account-empty/${name}`);
+  if (field && androidAccountInput.inputKind === 'account' && request.method === 'GET') {
+    try {
+      const result = await observeAccountInputEmpty({ adb: ownership.adb || 'adb',
+        runtime: ownership.runtimes[0], field, signal: accountObservation.signal });
+      response.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }).end(JSON.stringify(result));
+    } catch {
+      response.writeHead(409).end('QA account input observation unavailable');
+    }
+    return;
+  }
   if (request.url !== `/${controlKey}/invitation`) {
     response.writeHead(404).end();
     return;
@@ -158,6 +171,7 @@ let activeChild;
 let cancelledBy;
 for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => {
   cancelledBy = signal;
+  accountObservation.abort();
   activeChild?.kill('SIGTERM');
 });
 async function keyboardSetting(deviceId, name) {
@@ -511,6 +525,7 @@ try {
   failed = error.message;
   process.exitCode = 1;
 } finally {
+  accountObservation.abort();
   for (const {deviceId, method, subtype} of keyboardStates) {
     try {
       if (await keyboardSetting(deviceId, 'default_input_method') !== method)
