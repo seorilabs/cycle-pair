@@ -23,7 +23,7 @@ export async function restoreOwnedReversePorts({adb, routes, exec}) {
     } catch {
       status = 'inspection-failed';
     }
-    observations.push({socket, status});
+    observations.push({deviceId, socket, status});
   }
   return {restored: observations.every(item => ['already-absent', 'absence-confirmed'].includes(item.status)), observations};
 }

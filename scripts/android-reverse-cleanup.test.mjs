@@ -76,3 +76,17 @@ test('직접 만든 연결이 없으면 기기를 조회하지 않는다', async
     exec: () => { throw Error('unexpected command'); }});
   assert.deepEqual(result, {restored: true, observations: []});
 });
+test('두 기기의 같은 포트는 정리 관측에서 기기를 구분한다', async () => {
+  const result = await restoreOwnedReversePorts({adb: '/owned/adb', routes: [
+    {deviceId: 'first-owned-device', socket: 'tcp:8081'},
+    {deviceId: 'second-owned-device', socket: 'tcp:8081'},
+  ], exec: async (_adb, args) => {
+    assert.equal(args[3], '--list');
+    return {stdout: args[1] === 'first-owned-device' ? '' : 'UsbFfs tcp:8081 tcp:9001'};
+  }});
+  assert.equal(result.restored, false);
+  assert.deepEqual(result.observations, [
+    {deviceId: 'first-owned-device', socket: 'tcp:8081', status: 'already-absent'},
+    {deviceId: 'second-owned-device', socket: 'tcp:8081', status: 'changed-target-preserved'},
+  ]);
+});
