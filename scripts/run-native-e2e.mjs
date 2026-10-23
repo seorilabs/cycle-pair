@@ -119,8 +119,7 @@ const server = createServer(async (request, response) => {
   const field = ['email', 'password', 'confirm'].find(name => request.url === `/${controlKey}/account-empty/${name}`);
   if (field && androidAccountInput.inputKind === 'account' && request.method === 'GET') {
     try {
-      const result = await observeAccountInputEmpty({ adb: ownership.adb || 'adb',
-        runtime: ownership.runtimes[0], field, signal: accountObservation.signal });
+      const result = await observeAccountInputEmpty({ runtime: ownership.runtimes[0], field, signal: accountObservation.signal });
       response.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }).end(JSON.stringify(result));
     } catch {
       response.writeHead(409).end('QA account input observation unavailable');

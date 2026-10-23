@@ -10,30 +10,32 @@ const runtime = { appId, platform: 'android', deviceId: 'public-fake-device', cr
   kind: 'physical', appData: 'synthetic', authorized: true };
 const ready = { code: 0, timedOut: false, ownedGroupCleaned: true };
 const foreground = `topResumedActivity=ActivityRecord{public u0 ${appId}/.MainActivity t1}`;
-const node = (text, extra = '') => `<node package="${appId}" resource-id="account-upgrade-email" text="${text}" hint="name@example.com" ${extra}/>`;
+const node = (text, extra = '') => `<node package="${appId}" resource-id="account-upgrade-email" text="${text}" hintText="name@example.com" ${extra}/>`;
 const hierarchy = body => `<?xml version="1.0"?><hierarchy>${body}</hierarchy>\nUI hierchary dumped to: /dev/tty\n`;
 function harness({ xml = hierarchy(node('')), before = foreground, after = foreground, fail } = {}) {
   const calls = [];
-  return { calls, runCommand: async (binary, args, options) => {
+  let reads = 0;
+  return { calls, readUiService: async options => {
+    calls.push({ ui: options });
+    if (fail) throw Object.assign(new Error('public-sensitive-fake-error'), { stdout: xml });
+    reads++;
+    return options.hierarchy ? xml : (reads === 1 ? before : after);
+  }, runCommand: async (binary, args, options) => {
     calls.push({ binary, args, options });
     if (fail) throw Object.assign(new Error('public-sensitive-fake-error'), { stdout: xml });
     if (binary === '/usr/bin/python3') return runOwnedCommand(binary, args, options);
-    assert.equal(binary, 'public-fake-adb');
-    assert.equal(options.input, undefined);
-    assert.equal(options.timeoutMs, 30_000);
-    options.onStdout(Buffer.from(args.includes('dumpsys') ? (calls.length === 1 ? before : after) : xml));
-    options.onStderr(Buffer.from('public-fake-sensitive-stderr'));
-    return ready;
+    throw new Error('실제 adb 실행은 허용하지 않음');
   } };
 }
-const observe = (dependencies, patch = {}) => observeAccountInputEmpty({ adb: 'public-fake-adb', runtime, field: 'email', ...patch }, dependencies);
+const observe = (dependencies, patch = {}) => observeAccountInputEmpty({ runtime, field: 'email', ...patch }, dependencies);
 
 test('UI 빈값은 hint가 아니라 실제 text로 판정하며 원문은 parser stdin으로만 보낸다', async () => {
   for (const text of ['', 'public-existing-draft', 'name@example.com']) {
     const xml = hierarchy(node(text)), fake = harness({ xml });
     assert.deepEqual(await observe(fake), { empty: text === '' });
     assert.equal(fake.calls.length, 4);
-    assert.deepEqual(fake.calls[1].args.slice(2), ['exec-out', 'uiautomator', 'dump', '/dev/tty']);
+    assert.equal(fake.calls[1].ui.hierarchy, true);
+    assert.equal(fake.calls[1].ui.deviceId, runtime.deviceId);
     assert.equal(fake.calls[3].options.input, xml);
     assert.equal(JSON.stringify(fake.calls.map(call => call.args)).includes(xml), false);
   }
@@ -94,4 +96,21 @@ test('보호 채널 script는 bool만 반환하고 관찰 오류를 빈칸 성�
   const runner = await readFile('scripts/run-native-e2e.mjs', 'utf8');
   assert.match(runner, /field && androidAccountInput.inputKind === 'account' && request.method === 'GET'/);
   assert.match(runner, /accountObservation.abort\(\)/);
+});
+
+test('Maestro가 UiAutomation을 점유해도 별도 uiautomator를 실행하지 않는다', async () => {
+  const xml = hierarchy(node(''));
+  const dependencies = {
+    readUiService: async ({ hierarchy: readHierarchy }) => readHierarchy ? xml : foreground,
+    runCommand: async (binary, args, options) => {
+      if (binary === '/usr/bin/python3') return runOwnedCommand(binary, args, options);
+      if (args.includes('uiautomator')) {
+        options.onStderr(Buffer.from('UiAutomationService already registered!'));
+        return { ...ready, code: 1 };
+      }
+      options.onStdout(Buffer.from(foreground));
+      return ready;
+    },
+  };
+  assert.deepEqual(await observe(dependencies), { empty: true });
 });

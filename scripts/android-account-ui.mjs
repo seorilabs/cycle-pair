@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { validatePhysicalRuntime } from './physical-e2e-runtime.mjs';
+import { readAccountUiService } from './account-ui-driver.mjs';
 import { runOwnedCommand } from './physical-ios-wrapper.mjs';
 
 const PACKAGE = 'com.seorilabs.cyclepair.qa';
@@ -12,8 +13,9 @@ function assertForeground(value) {
 }
 
 /** 정상 UI의 고정 ID 하나만 관찰한다. 원시 stdout/stderr를 반환하거나 예외에 붙이지 않는다. */
-export async function observeAccountInputEmpty({ adb, runtime, field, signal }, dependencies = {}) {
+export async function observeAccountInputEmpty({ runtime, field, signal }, dependencies = {}) {
   const command = dependencies.runCommand || runOwnedCommand;
+  const readUiService = dependencies.readUiService || readAccountUiService;
   const controller = new AbortController();
   const combinedSignal = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal;
   async function capture(binary, args, input) {
@@ -36,10 +38,10 @@ export async function observeAccountInputEmpty({ adb, runtime, field, signal }, 
   try {
     validatePhysicalRuntime(runtime);
     if (runtime.platform !== 'android' || runtime.appId !== PACKAGE || !FIELDS.includes(field)) throw new Error(ERROR);
-    const foregroundArgs = ['-s', runtime.deviceId, 'shell', 'dumpsys', 'activity', 'activities'];
-    assertForeground(await capture(adb, foregroundArgs));
-    const xml = await capture(adb, ['-s', runtime.deviceId, 'exec-out', 'uiautomator', 'dump', '/dev/tty']);
-    assertForeground(await capture(adb, foregroundArgs));
+    const observation = { deviceId: runtime.deviceId, signal: combinedSignal };
+    assertForeground(await readUiService(observation));
+    const xml = await readUiService({ ...observation, hierarchy: true });
+    assertForeground(await readUiService(observation));
     const result = JSON.parse(await capture('/usr/bin/python3',
       [fileURLToPath(new URL('./read-account-ui.py', import.meta.url)), field], xml));
     if (Object.keys(result).length !== 1 || typeof result.empty !== 'boolean') throw new Error(ERROR);
