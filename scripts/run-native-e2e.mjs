@@ -16,6 +16,7 @@ import {
 import path from "node:path";
 import { tmpdir } from "node:os";
 import { validatePhysicalRuntime, assertPhysicalAndroidState } from './physical-e2e-runtime.mjs';
+import { runPhysicalIosFlow, validateCanaryReceipt } from './physical-ios-wrapper.mjs';
 const exec = promisify(execFile);
 const { values } = parseArgs({
   options: {
@@ -23,6 +24,9 @@ const { values } = parseArgs({
     ownership: { type: "string" },
     output: { type: "string" },
     maestro: { type: "string" },
+    "ios-xctestrun": { type: "string" },
+    "ios-input-validation": { type: "string" },
+    "private-root": { type: "string" },
     authoring: { type: "boolean", default: false },
     scope: { type: "string", default: "pair" },
     flow: { type: "string" },
@@ -32,11 +36,10 @@ const { values } = parseArgs({
 if (
   !["emulator", "service"].includes(values.backend) ||
   !values.ownership ||
-  !values.output ||
-  !values.maestro
+  !values.output
 )
   throw new Error(
-    "Provide --backend emulator|service --ownership <owned-runtime.json> --output <outside-repo-dir> --maestro <binary>"
+    "Provide --backend emulator|service --ownership <owned-runtime.json> --output <outside-repo-dir> and the platform UI runner"
   );
 const root = process.cwd();
 const output = path.resolve(values.output);
@@ -56,6 +59,13 @@ if (
   throw new Error(
     "A backend-specific manifest for the selected physical test installations is required"
   );
+if (ownership.runtimes.some(runtime => runtime.platform === 'android') && !values.maestro)
+  throw new Error('Android actual UI requires --maestro <binary>');
+if (ownership.runtimes.some(runtime => runtime.platform === 'ios') && !values['ios-xctestrun'])
+  throw new Error('Physical iPhone actual UI requires --ios-xctestrun <signed-build-for-testing>');
+if (values.scope === 'pair' && ownership.runtimes.some(runtime => runtime.platform === 'ios') &&
+    (ownership.runtimes[0].platform !== 'android' || ownership.runtimes[1].platform !== 'ios'))
+  throw new Error('The mixed pair controller sends from Android actor 0 to iPhone actor 1');
 for (const runtime of ownership.runtimes) {
   validatePhysicalRuntime(runtime);
   if (values.backend === 'service' && runtime.appId.endsWith('.qa'))
@@ -72,8 +82,6 @@ for (const runtime of ownership.runtimes) {
       "ro.kernel.qemu",
     ]);
     assertPhysicalAndroidState(state, stdout);
-  } else if (runtime.platform === "ios") {
-    throw new Error('Maestro 2.11 does not support physical iOS; use the signed XCTest device suite. No Simulator fallback is allowed.');
   }
 }
 const { stdout: revision } = await exec("git", ["rev-parse", "HEAD"]);
@@ -97,6 +105,7 @@ const runId =
   )}`;
 const secretValues = new Set();
 let invitation;
+let iosInputValidation = values['ios-input-validation'];
 const controlKey = randomBytes(24).toString("hex");
 const server = createServer(async (request, response) => {
   if (request.url !== `/${controlKey}/invitation`) {
@@ -180,6 +189,35 @@ async function connectAndroid(runtime) {
 async function runFlow(actor, name, featureIds) {
   if (cancelledBy) throw new Error(`UI execution cancelled by ${cancelledBy}`);
   const runtime = ownership.runtimes[actor];
+  if (runtime.platform === 'ios') {
+    const startedAt = new Date().toISOString();
+    const privateRoot = path.resolve(values['private-root'] || path.dirname(values.ownership));
+    let inputValidated = false;
+    if (name === 'invite-receive') {
+      if (!invitation || !iosInputValidation)
+        throw new Error('An actual invitation and the same-candidate public-input receipt are required before iPhone acceptance');
+      inputValidated = await validateCanaryReceipt({
+        receipt: path.resolve(iosInputValidation),
+        baseXctestrun: path.resolve(values['ios-xctestrun']),
+        ownership: path.resolve(values.ownership), candidateSha: revision.trim(), privateRoot,
+      });
+    }
+    const result = await runPhysicalIosFlow({
+      baseXctestrun: path.resolve(values['ios-xctestrun']),
+      ownership: path.resolve(values.ownership), privateRoot,
+      output: path.join(output, `${actor}-${name}`), backend: values.backend,
+      deviceId: runtime.deviceId, candidateSha: revision.trim(), runId,
+      flow: name === 'invite-receive' ? 'invitation-accept' : name,
+      invitation: name === 'invite-receive' ? invitation : undefined,
+      allowSecretExecution: inputValidated, secretTransportValidated: inputValidated,
+      executePhysical: true,
+    });
+    scenarios.push({ id: name, actor, featureIds, passed: result.passed,
+      startedAt, completedAt: new Date().toISOString(), driver: 'xctest' });
+    console.log(`${name}, actor ${actor}: ${result.passed ? 'PASS' : 'FAIL'}`);
+    if (!result.passed) throw new Error(`Actual UI journey failed: ${name}, actor ${actor}`);
+    return;
+  }
   const temporary = await mkdtemp(path.join(tmpdir(), "cyclepair-maestro-"));
   const startedAt = new Date().toISOString();
   let log = "";
@@ -406,6 +444,10 @@ async function runOffline(actor) {
 async function runPair() {
   if (values.scope !== "pair")
     throw new Error("Pair UI requires two owned runtimes");
+  if (ownership.runtimes[1].platform === 'ios' && !iosInputValidation) {
+    await runFlow(1, 'invitation-canary', []);
+    iosInputValidation = path.join(output, '1-invitation-canary', 'result.json');
+  }
   await runFlow(0, "invite-send", ["pairing-sharing"]);
   await runFlow(1, "invite-receive", ["pairing-sharing"]);
   await runConnectedPair();

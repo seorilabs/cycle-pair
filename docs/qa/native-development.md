@@ -1,6 +1,6 @@
 # 네이티브 실제 기기 실행
 
-2026-10-22 사용자 지시로 연결된 Android와 iPhone에서 테스트한다. [테스트 계획](../design/2026-10-22-native-launch/test-plan.json)의 L3 전체 회귀, 독립 검수 3회와 두 마켓 공개 범위는 유지한다. Simulator와 AVD는 사용하거나 다운로드하지 않는다. Android는 Maestro 2.11과 adb, iOS는 서명된 XCTest 화면 입력을 사용한다. Maestro 2.11은 실제 iPhone을 지원하지 않으므로 해당 실행기로 iOS를 지정하면 중단한다.
+2026-10-22 사용자 지시로 연결된 Android와 iPhone에서 테스트한다. [테스트 계획](../design/2026-10-22-native-launch/test-plan.json)의 L3 전체 회귀, 독립 검수 3회와 두 마켓 공개 범위는 유지한다. Simulator와 AVD는 사용하거나 다운로드하지 않는다. 실행기는 Android에 Maestro 2.11과 adb, iPhone에 별도로 서명한 XCTest를 선택한다. iPhone을 Maestro나 Simulator로 대체하지 않는다.
 
 ## 설치와 자료 보존
 
@@ -44,7 +44,17 @@ JAVA_HOME=<JDK17> pnpm test:e2e:dev --scope solo --ownership <실제기기.json>
 JAVA_HOME=<JDK17> pnpm test:e2e:live --scope solo --ownership <서비스기기.json> --output <저장소밖/결과폴더> --maestro <Maestro실행파일>
 ```
 
-작성 중에는 `--authoring`, 특정 여정 재현에는 `--flow record-restored,language`를 사용한다. 기존 합성 자료를 읽는 재현은 `--run-id`로 원래 실행 ID를 지정한다. 커밋하지 않은 작성자 실행은 출시 검수 근거가 아니다. 실제 iPhone의 실행은 XCTest 보고서에 별도로 남긴다. 두 도구의 두 사용자 연결은 같은 실행별 식별 목록과 초대 전달 범위로 조율한다.
+작성 중에는 `--authoring`, 특정 여정 재현에는 `--flow record-restored,language`를 사용한다. 기존 합성 자료를 읽는 재현은 `--run-id`로 원래 실행 ID를 지정한다. 커밋하지 않은 작성자 실행은 출시 검수 근거가 아니다.
+
+혼합 두 사용자 실행은 Android를 `runtimes[0]`, iPhone을 `runtimes[1]`에 적는다. iPhone runtime에는 `allowAppDataReset: false`를 명시하고, manifest 최상위에는 실제 설치와 Metro의 동일 후보인 `installedSourceSha`와 비공개 iPhone 계정 소유 목록의 절대 경로 `accountOwnershipPath`를 추가한다. 선언만 바꾸지 말고 실제 빌드, 설치와 실행 설정을 먼저 대조한다. manifest, 계정 목록, signed `.xctestrun`과 결과는 소스 트리 밖 같은 비공개 작업 공간에 두며 파일은 0600으로 제한한다.
+
+```sh
+pnpm test:e2e:dev --scope pair --ownership <비공개작업공간/두기기.json> --output <비공개작업공간/새결과폴더> --private-root <비공개작업공간> --maestro <Maestro실행파일> --ios-xctestrun <비공개작업공간/signed-build/도우미.xctestrun>
+```
+
+전체 명령의 첫 안내는 두 계정이 첫 안내에 있다는 선행 조건이다. 기존 계정을 초기화해 맞추지 않는다. 기존 홈에서 연결만 재현하려면 `--authoring --flow pair --run-id <두계정의원래실행ID>`를 함께 사용한다. iPhone만 공개 입력을 확인할 때는 iPhone runtime 하나와 `--scope solo --authoring --flow invitation-canary`를 사용하며 Maestro 인수는 필요 없다.
+
+혼합 연결 실행은 실제 초대를 만들기 전에 iPhone 초대 입력란에 공개 문자열을 넣고 닫는 시험을 먼저 수행한다. 같은 후보, manifest와 signed 도우미의 1 PASS, 0 FAIL, 0 SKIP 및 원시 파일 정리가 확인돼야 실제 초대를 입력한다. 이 결과는 `result.json`이며 재개할 때만 `--ios-input-validation <같은조건의result.json>`으로 지정한다. 초대는 Android의 실제 화면에서 읽어 메모리로 전달하고 private `.xctestrun`에만 넣는다. XCTest가 출력한 입력 activity는 가린 로그와 원시 해시만 보존하고 원시 결과와 임시 plist는 제거한다. iPhone에서 자동 첨부는 모두 끈다. 두 기기의 단계별 결과와 XCTest 요약은 같은 실행 원장에 남는다.
 
 Maestro의 Android 문자 입력과 내부 붙여넣기는 선택한 키보드 언어에 따라 영문을 자모로 입력할 수 있다. 사전 확인으로 기존 영문 입력 subtype을 확인한 경우에만 해당 runtime에 `keyboard: {"inputMethod": "<기존 IME ID>", "asciiSubtype": "<관찰한 영문 subtype 정수>"}`를 추가한다. 실행기는 기본 키보드 앱을 바꾸지 않으며 시작 당시 subtype을 보존하고 완료, 실패와 SIGINT 또는 SIGTERM 중단 뒤 복원한다. 모르는 값이나 다른 기본 키보드이면 변경하지 않고 중단한다. 기록은 저장 전에 입력 원문도 검사한다. 새 키보드를 설치하지 않는다.
 
