@@ -22,6 +22,9 @@ const mockReauthenticate = jest.fn(
   }),
 );
 const mockReload = jest.fn(async (_user: unknown) => undefined);
+const mockSetLanguageCode = jest.fn(
+  async (_auth: unknown, _locale: string): Promise<void> => undefined,
+);
 const mockSendVerification = jest.fn(async (_user: unknown) => undefined);
 const mockSendReset = jest.fn(
   async (_auth: unknown, _email: string) => undefined,
@@ -71,6 +74,8 @@ jest.mock('@react-native-firebase/auth', () => ({
   reauthenticateWithCredential: (firebaseUser: unknown, credential: unknown) =>
     mockReauthenticate(firebaseUser, credential),
   reload: (firebaseUser: unknown) => mockReload(firebaseUser),
+  setLanguageCode: (auth: unknown, locale: string) =>
+    mockSetLanguageCode(auth, locale),
   sendEmailVerification: (firebaseUser: unknown) =>
     mockSendVerification(firebaseUser),
   sendPasswordResetEmail: (auth: unknown, email: string) =>
@@ -112,10 +117,77 @@ describe('FirebaseAccountAdapter', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockAuthState.currentUser = user();
+    mockSetLanguageCode.mockResolvedValue(undefined);
     mockCreateGuestCredential.mockResolvedValue({
       firebaseCustomToken: 'firebase-custom-token',
       appUserId: PLATFORM_GUEST_UID,
     });
+  });
+
+  it.each(['ko', 'en'] as const)(
+    'awaits %s before sending verification mail',
+    async locale => {
+      mockAuthState.currentUser = user({
+        email: 'user@example.com',
+        isAnonymous: false,
+      });
+      let release!: () => void;
+      mockSetLanguageCode.mockImplementationOnce(
+        () =>
+          new Promise<void>(resolve => {
+            release = resolve;
+          }),
+      );
+      const sending = firebaseAccountAdapter.sendVerificationEmail(locale);
+      await Promise.resolve();
+      expect(mockSetLanguageCode).toHaveBeenCalledWith(mockAuthState, locale);
+      expect(mockSendVerification).not.toHaveBeenCalled();
+      release();
+      await sending;
+      expect(mockSendVerification).toHaveBeenCalledWith(
+        mockAuthState.currentUser,
+      );
+    },
+  );
+
+  it.each(['ko', 'en'] as const)(
+    'awaits %s before sending password reset mail',
+    async locale => {
+      let release!: () => void;
+      mockSetLanguageCode.mockImplementationOnce(
+        () =>
+          new Promise<void>(resolve => {
+            release = resolve;
+          }),
+      );
+      const sending = firebaseAccountAdapter.sendPasswordResetEmail(
+        'user@example.com',
+        locale,
+      );
+      await Promise.resolve();
+      expect(mockSetLanguageCode).toHaveBeenCalledWith(mockAuthState, locale);
+      expect(mockSendReset).not.toHaveBeenCalled();
+      release();
+      await sending;
+      expect(mockSendReset).toHaveBeenCalledWith(
+        mockAuthState,
+        'user@example.com',
+      );
+    },
+  );
+
+  it('does not send mail when setting the selected language fails', async () => {
+    mockAuthState.currentUser = user({
+      email: 'user@example.com',
+      isAnonymous: false,
+    });
+    mockSetLanguageCode.mockRejectedValueOnce(
+      new Error('language-setting-failed'),
+    );
+    await expect(
+      firebaseAccountAdapter.sendVerificationEmail('en'),
+    ).rejects.toThrow('language-setting-failed');
+    expect(mockSendVerification).not.toHaveBeenCalled();
   });
 
   it('reuses the native persisted user during initialization', async () => {
@@ -285,7 +357,7 @@ describe('FirebaseAccountAdapter', () => {
       });
 
     await expect(
-      firebaseAccountAdapter.requestDataExport(),
+      firebaseAccountAdapter.requestDataExport('ko'),
     ).resolves.toMatchObject({
       schemaVersion: 1,
       exportSubjectUid: 'stable-uid',
@@ -314,6 +386,7 @@ describe('FirebaseAccountAdapter', () => {
     await firebaseAccountAdapter.purgeLocalPrivateData('stable-uid');
     expect(mockCallableInvoke).toHaveBeenNthCalledWith(1, {
       uid: 'stable-uid',
+      locale: 'ko',
     });
     expect(mockCallableInvoke).toHaveBeenNthCalledWith(2, {
       uid: 'stable-uid',
@@ -326,6 +399,46 @@ describe('FirebaseAccountAdapter', () => {
       uid: 'stable-uid',
       recoveryReceipt: 'r'.repeat(43),
     });
+  });
+
+  it('sends the export locale and permits only the public language query', async () => {
+    mockAuthState.currentUser = user({
+      email: 'user@example.com',
+      isAnonymous: false,
+    });
+    const ticket = {
+      schemaVersion: 1,
+      exportSubjectUid: 'stable-uid',
+      expiresAt: '2026-07-14T00:05:00.000Z',
+      filename: 'cycle-pair-data-export-2026-07-14.json',
+      singleUse: true,
+      downloadUrl: 'https://example.com/export?lang=en#token=' + 'a'.repeat(43),
+    };
+    mockCallableInvoke.mockResolvedValueOnce({ data: ticket });
+    await expect(
+      firebaseAccountAdapter.requestDataExport('en'),
+    ).resolves.toEqual(ticket);
+    expect(mockCallableInvoke).toHaveBeenCalledWith({
+      uid: 'stable-uid',
+      locale: 'en',
+    });
+    for (const query of [
+      '?lang=ko',
+      '?lang=fr',
+      '?lang=en&lang=ko',
+      '?lang=en&token=secret',
+    ]) {
+      mockCallableInvoke.mockResolvedValueOnce({
+        data: {
+          ...ticket,
+          downloadUrl:
+            'https://example.com/export' + query + '#token=' + 'a'.repeat(43),
+        },
+      });
+      await expect(
+        firebaseAccountAdapter.requestDataExport('en'),
+      ).rejects.toMatchObject({ code: 'account/invalid-export-response' });
+    }
   });
   it.each(['127.0.0.1', '192.168.1.24', '172.16.0.2'])(
     'keeps emulator exports at %s while the service adapter rejects HTTP',
@@ -354,10 +467,10 @@ describe('FirebaseAccountAdapter', () => {
         exportOrigin: `http://${host}:5301`,
       });
       mockCallableInvoke.mockResolvedValueOnce({ data: ticket });
-      await expect(local.requestDataExport()).resolves.toEqual(ticket);
+      await expect(local.requestDataExport('ko')).resolves.toEqual(ticket);
       mockCallableInvoke.mockResolvedValueOnce({ data: ticket });
       await expect(
-        firebaseAccountAdapter.requestDataExport(),
+        firebaseAccountAdapter.requestDataExport('ko'),
       ).rejects.toMatchObject({ code: 'account/invalid-export-response' });
       mockCallableInvoke.mockResolvedValueOnce({
         data: {
@@ -365,7 +478,7 @@ describe('FirebaseAccountAdapter', () => {
           downloadUrl: 'https://example.com/export#token=' + 'a'.repeat(43),
         },
       });
-      await expect(local.requestDataExport()).rejects.toMatchObject({
+      await expect(local.requestDataExport('ko')).rejects.toMatchObject({
         code: 'account/invalid-export-response',
       });
       mockCallableInvoke.mockResolvedValueOnce({
@@ -375,7 +488,7 @@ describe('FirebaseAccountAdapter', () => {
             'http://192.168.1.25:5301/export#token=' + 'a'.repeat(43),
         },
       });
-      await expect(local.requestDataExport()).rejects.toMatchObject({
+      await expect(local.requestDataExport('ko')).rejects.toMatchObject({
         code: 'account/invalid-export-response',
       });
     },

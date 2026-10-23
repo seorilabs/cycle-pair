@@ -7,6 +7,14 @@ test('production always uses HTTPS and ignores untrusted request host', () => {
     expect(() => accountExportEndpoint({...production, configured})).toThrow();
   }
 });
+test('carries only an explicit public locale while preserving legacy URLs', () => {
+  const base = accountExportEndpoint(production);
+  expect(accountExportEndpoint({...production, locale: 'en'})).toBe(`${base}?lang=en`);
+  expect(accountExportEndpoint({...production, locale: 'ko'})).toBe(`${base}?lang=ko`);
+  for (const locale of ['fr', '', ['en'], 'en&token=secret']) {
+    expect(() => accountExportEndpoint({...production, locale})).toThrow();
+  }
+});
 test.each(['127.0.0.1:5301', 'localhost:5301', '10.0.2.2:5301'])('owned emulator exports stay within %s', requestHost => {
   expect(accountExportEndpoint({...production, emulator: true, requestHost})).toBe(`http://${requestHost}/cyclepair-test/asia-northeast3/downloadAccountDataExport`);
 });

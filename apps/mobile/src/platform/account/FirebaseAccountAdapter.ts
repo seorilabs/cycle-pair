@@ -9,6 +9,7 @@ import {
   reload,
   sendEmailVerification,
   sendPasswordResetEmail,
+  setLanguageCode,
   signInWithCustomToken,
   signInWithEmailAndPassword,
   signOut,
@@ -18,6 +19,7 @@ import { getFunctions, httpsCallable } from '@react-native-firebase/functions';
 import {
   AccountOperationError,
   type AccountExportDownloadTicket,
+  type AccountLocale,
   type AccountDeletionPreparation,
   type AccountDeletionResult,
   type AccountDeletionStatus,
@@ -58,6 +60,7 @@ async function callAccountFunction<Request, Response>(
 function parseDataExportTicket(
   value: unknown,
   expectedUid: string,
+  locale: AccountLocale,
   localExportOrigin?: string,
 ): AccountExportDownloadTicket {
   const data = asRecord(value);
@@ -79,7 +82,7 @@ function parseDataExportTicket(
         : url.protocol === 'https:') &&
       url.username.length === 0 &&
       url.password.length === 0 &&
-      url.search.length === 0 &&
+      (url.search.length === 0 || url.search === `?lang=${locale}`) &&
       /^#token=[A-Za-z0-9_-]{43}$/.test(url.hash);
   } catch {
     validDownloadUrl = false;
@@ -237,12 +240,15 @@ export function createFirebaseAccountAdapter(
       return toAccountSession(upgraded);
     },
 
-    async sendVerificationEmail() {
+    async sendVerificationEmail(locale) {
       const user = requireCurrentUser();
       if (!user.email || isFirebaseGuestUser(user)) {
         throw new AccountOperationError('account/email-account-required');
       }
-      if (!user.emailVerified) await sendEmailVerification(user);
+      if (!user.emailVerified) {
+        await setLanguageCode(getAuth(), locale);
+        await sendEmailVerification(user);
+      }
     },
 
     async reloadSession() {
@@ -260,8 +266,10 @@ export function createFirebaseAccountAdapter(
       return toAccountSession(credential.user);
     },
 
-    async sendPasswordResetEmail(email) {
-      await sendPasswordResetEmail(getAuth(), email);
+    async sendPasswordResetEmail(email, locale) {
+      const auth = getAuth();
+      await setLanguageCode(auth, locale);
+      await sendPasswordResetEmail(auth, email);
     },
 
     async reauthenticateWithPassword(password) {
@@ -276,14 +284,15 @@ export function createFirebaseAccountAdapter(
       await getIdToken(user, true);
     },
 
-    async requestDataExport() {
+    async requestDataExport(locale) {
       const uid = requireCurrentUser().uid;
       return parseDataExportTicket(
-        await callAccountFunction<{ uid: string }, unknown>(
-          'requestAccountDataExport',
-          { uid },
-        ),
+        await callAccountFunction<
+          { uid: string; locale: AccountLocale },
+          unknown
+        >('requestAccountDataExport', { uid, locale }),
         uid,
+        locale,
         development?.exportOrigin,
       );
     },

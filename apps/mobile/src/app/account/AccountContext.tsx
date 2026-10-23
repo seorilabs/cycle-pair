@@ -20,6 +20,7 @@ import {
   type AccountSessionIntentStorage,
 } from '../../platform/local/AccountSessionIntentStorage';
 import type { SafeCrashReporter } from '../../platform/observability/SafeCrashReporter';
+import { useI18n } from '../../i18n/I18nProvider';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -154,6 +155,7 @@ export function AccountProvider({
   crashReporter?: SafeCrashReporter;
   sessionCleanup?: AccountSessionCleanup;
 }>) {
+  const { locale } = useI18n();
   const [state, setState] = useState<AccountState>({
     hydrating: true,
     busy: false,
@@ -454,7 +456,7 @@ export function AccountProvider({
         await intentStorage.clearExplicitSignOut();
         setState(current => ({ ...current, session }));
         try {
-          await account.sendVerificationEmail();
+          await account.sendVerificationEmail(locale);
           setState(current => ({
             ...current,
             busy: false,
@@ -474,7 +476,7 @@ export function AccountProvider({
         return false;
       }
     },
-    [account, applyError, intentStorage],
+    [account, applyError, intentStorage, locale],
   );
 
   const resendVerification = useCallback(async () => {
@@ -485,7 +487,7 @@ export function AccountProvider({
         error: null,
         notice: null,
       }));
-      await account.sendVerificationEmail();
+      await account.sendVerificationEmail(locale);
       setState(current => ({
         ...current,
         busy: false,
@@ -496,7 +498,7 @@ export function AccountProvider({
       applyError(error);
       return false;
     }
-  }, [account, applyError]);
+  }, [account, applyError, locale]);
 
   const refreshVerification = useCallback(async () => {
     try {
@@ -578,7 +580,7 @@ export function AccountProvider({
           error: null,
           notice: null,
         }));
-        await account.sendPasswordResetEmail(email);
+        await account.sendPasswordResetEmail(email, locale);
         setState(current => ({
           ...current,
           busy: false,
@@ -590,7 +592,7 @@ export function AccountProvider({
         return false;
       }
     },
-    [account, applyError],
+    [account, applyError, locale],
   );
 
   const reauthenticate = useCallback(
@@ -641,7 +643,7 @@ export function AccountProvider({
         error: null,
         notice: null,
       }));
-      const ticket = await account.requestDataExport();
+      const ticket = await account.requestDataExport(locale);
       setState(current => ({
         ...current,
         busy: false,
@@ -655,6 +657,7 @@ export function AccountProvider({
   }, [
     account,
     applyError,
+    locale,
     state.reauthenticatedAt,
     state.session?.isAnonymous,
   ]);

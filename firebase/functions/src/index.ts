@@ -1,5 +1,10 @@
 import {createHash, randomBytes, timingSafeEqual} from "node:crypto";
 import {accountExportEndpoint} from "./services/accountExportEndpoint.js";
+import {
+  accountExportBootstrapHtml,
+  accountExportLocale,
+  type AccountExportLocale,
+} from "./services/accountExportBootstrap.js";
 
 import {initializeApp} from "firebase-admin/app";
 import {getAuth} from "firebase-admin/auth";
@@ -1460,10 +1465,14 @@ export const deletePairEvent = onCall(callableOptions, async request => {
   return {pairId, eventId, mutationId, ...result};
 });
 
-function accountExportDownloadBaseUrl(requestHost: string | undefined): string {
+function accountExportDownloadBaseUrl(
+  requestHost: string | undefined,
+  locale?: AccountExportLocale,
+): string {
   try {
     return accountExportEndpoint({
       configured: process.env.ACCOUNT_EXPORT_DOWNLOAD_BASE_URL,
+      locale,
       projectId: process.env.GCLOUD_PROJECT ?? process.env.GOOGLE_CLOUD_PROJECT,
       region: FUNCTIONS_REGION,
       emulator: process.env.FUNCTIONS_EMULATOR === "true",
@@ -1489,6 +1498,9 @@ export const requestAccountDataExport = onCall(
         Math.floor(Date.now() / 1_000),
       ),
     );
+    const locale = data.locale === undefined
+      ? undefined
+      : accountPolicy(() => accountExportLocale(data.locale));
     const now = new Date();
     const expiresAt = new Date(now.getTime() + ACCOUNT_EXPORT_TICKET_TTL_MS);
     const token = randomBytes(ACCOUNT_EXPORT_TOKEN_BYTES).toString("base64url");
@@ -1540,7 +1552,7 @@ export const requestAccountDataExport = onCall(
       // The token stays in the fragment: browsers do not send it in the GET
       // request URL or Referer. The bootstrap moves it into a same-origin
       // Authorization header for the one download POST.
-      downloadUrl: `${accountExportDownloadBaseUrl(request.rawRequest.get("host"))}#token=${encodeURIComponent(token)}`,
+      downloadUrl: `${accountExportDownloadBaseUrl(request.rawRequest.get("host"), locale)}#token=${encodeURIComponent(token)}`,
     };
   },
 );
@@ -1558,14 +1570,6 @@ function setAccountExportNoStoreHeaders(
   });
 }
 
-function accountExportBootstrapHtml(nonce: string): string {
-  return `<!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>사이클 페어 데이터 내보내기</title></head>
-<body><main><h1>사이클 페어 데이터 내보내기</h1><p id="status">보안 다운로드를 준비하고 있습니다.</p></main>
-<script nonce="${nonce}">
-(async()=>{const status=document.getElementById("status");const params=new URLSearchParams(location.hash.slice(1));const token=params.get("token");history.replaceState(null,"",location.pathname);if(!token||!/^[A-Za-z0-9_-]{43}$/.test(token)){status.textContent="다운로드 링크가 올바르지 않습니다.";return;}try{const response=await fetch(location.pathname,{method:"POST",headers:{Authorization:"Bearer "+token,Accept:"application/json"},cache:"no-store",credentials:"omit"});if(!response.ok){throw new Error("download rejected");}const blob=await response.blob();const link=document.createElement("a");link.href=URL.createObjectURL(blob);link.download=response.headers.get("x-cycle-pair-filename")||"cycle-pair-data-export.json";document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(link.href),1000);status.textContent="다운로드를 시작했습니다. 이 링크는 다시 사용할 수 없습니다.";}catch{status.textContent="링크가 만료되었거나 이미 사용되었습니다. 앱에서 새 링크를 요청해 주세요.";}})();
-</script></body></html>`;
-}
 
 async function consumeAccountExportTicket(token: string): Promise<string> {
   const tokenHash = accountExportTokenHash(token);
@@ -1603,12 +1607,21 @@ export const downloadAccountDataExport = onRequest(
   async (request, response) => {
     setAccountExportNoStoreHeaders(response);
     if (request.method === "GET") {
+      let locale: AccountExportLocale;
+      try {
+        locale = accountExportLocale(request.query.lang);
+      } catch {
+        response.status(400).type("text/plain").send("Unsupported language");
+        return;
+      }
       const nonce = randomBytes(18).toString("base64");
       response.set(
         "Content-Security-Policy",
         `default-src 'none'; script-src 'nonce-${nonce}'; connect-src 'self'; style-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
       );
-      response.status(200).type("html").send(accountExportBootstrapHtml(nonce));
+      response.status(200).type("html").send(
+        accountExportBootstrapHtml(nonce, locale),
+      );
       return;
     }
     if (request.method !== "POST") {

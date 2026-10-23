@@ -5,6 +5,8 @@ export interface AccountSession {
   readonly emailVerified: boolean;
 }
 
+export type AccountLocale = 'ko' | 'en';
+
 export type AccountSessionListener = (session: AccountSession | null) => void;
 export type AccountErrorListener = (error: unknown) => void;
 export type AccountUnsubscribe = () => void;
@@ -63,12 +65,14 @@ export interface AccountPort {
     onError: AccountErrorListener,
   ): AccountUnsubscribe;
   upgradeAnonymous(email: string, password: string): Promise<AccountSession>;
-  sendVerificationEmail(): Promise<void>;
+  sendVerificationEmail(locale: AccountLocale): Promise<void>;
   reloadSession(): Promise<AccountSession>;
   signIn(email: string, password: string): Promise<AccountSession>;
-  sendPasswordResetEmail(email: string): Promise<void>;
+  sendPasswordResetEmail(email: string, locale: AccountLocale): Promise<void>;
   reauthenticateWithPassword(password: string): Promise<void>;
-  requestDataExport(): Promise<AccountExportDownloadTicket>;
+  requestDataExport(
+    locale: AccountLocale,
+  ): Promise<AccountExportDownloadTicket>;
   beginAccountDeletion(): Promise<AccountDeletionPreparation>;
   getAccountDeletionStatus(
     uid: string,

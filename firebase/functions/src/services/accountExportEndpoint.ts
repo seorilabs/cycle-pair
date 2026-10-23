@@ -1,4 +1,7 @@
+import {accountExportLocale} from "./accountExportBootstrap.js";
+
 interface EndpointEnvironment {
+  readonly locale?: unknown;
   readonly configured?: string | undefined;
   readonly projectId?: string | undefined;
   readonly region: string;
@@ -16,18 +19,19 @@ function isPrivateIPv4(host: string): boolean {
 }
 
 export function accountExportEndpoint(environment: EndpointEnvironment): string {
+  const query = environment.locale === undefined ? "" : `?lang=${accountExportLocale(environment.locale)}`;
   if (environment.emulator) {
     const host = environment.requestHost ?? '';
     const allowedHost = /^(127\.0\.0\.1|localhost|10\.0\.2\.2):[0-9]{1,5}$/.test(host) ||
       (environment.emulatorDeviceHost !== undefined && isPrivateIPv4(environment.emulatorDeviceHost) && host === `${environment.emulatorDeviceHost}:5301`);
     if (environment.configured !== undefined || !allowedHost || !environment.projectId || !/^[a-z0-9][a-z0-9-]{3,61}[a-z0-9]$/.test(environment.projectId)) throw new Error('Invalid local export endpoint');
-    return `http://${environment.requestHost}/${environment.projectId}/${environment.region}/downloadAccountDataExport`;
+    return `http://${environment.requestHost}/${environment.projectId}/${environment.region}/downloadAccountDataExport${query}`;
   }
   if (environment.configured !== undefined) {
     const url = new URL(environment.configured);
     if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) throw new Error('Invalid export download endpoint');
-    return url.toString().replace(/\/$/, '');
+    return url.toString().replace(/\/$/, '') + query;
   }
   if (!environment.projectId || !/^[a-z0-9][a-z0-9-]{3,61}[a-z0-9]$/.test(environment.projectId)) throw new Error('Invalid Firebase project');
-  return `https://${environment.region}-${environment.projectId}.cloudfunctions.net/downloadAccountDataExport`;
+  return `https://${environment.region}-${environment.projectId}.cloudfunctions.net/downloadAccountDataExport${query}`;
 }
