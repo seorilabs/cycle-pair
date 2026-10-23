@@ -80,14 +80,22 @@ appId: ${APP_ID}
     element:
       id: record-note
     direction: DOWN
-- longPressOn:
-    id: record-note
 - runFlow:
     when:
-      visible: 'Select All|Select all|전체 선택|모두 선택'
+      platform: Android
+    file: record-note-clear-android.yaml
+- runFlow:
+    when:
+      platform: iOS
     commands:
-      - tapOn: 'Select All|Select all|전체 선택|모두 선택'
-      - eraseText: 1
+      - longPressOn:
+          id: record-note
+      - runFlow:
+          when:
+            visible: 'Select All|Select all|전체 선택|모두 선택'
+          commands:
+            - tapOn: 'Select All|Select all|전체 선택|모두 선택'
+            - eraseText: 1
 - inputText: ${SYNTHETIC_NOTE}
 - assertVisible: ${SYNTHETIC_NOTE}
 - takeScreenshot: safe/record-note-keyboard

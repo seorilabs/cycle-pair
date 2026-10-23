@@ -126,3 +126,67 @@ test('로그인과 재인증의 기존 고정 label은 EditText와 secure 속성
       await assert.rejects(observe(harness({xml: hierarchy(bad)}), {field}));
   }
 });
+
+
+test('기록 메모 관찰은 실제 text만 읽고 검증된 실행 package에 결속한다', async () => {
+  const { observeRecordNoteEmpty } = await import('./android-account-ui.mjs');
+  assert.equal(typeof observeRecordNoteEmpty, 'function');
+  for (const packageName of [appId, 'com.seorilabs.cyclepair']) {
+    for (const text of ['', 'public-existing-note']) {
+      const note = `<node package="${packageName}" resource-id="${packageName}:id/record-note" class="android.widget.EditText" password="false" text="${text}" hintText="Add a note"/>`;
+      const fake = harness({ xml: hierarchy(note), before: foreground.replace(appId, packageName), after: foreground.replace(appId, packageName) });
+      assert.deepEqual(await observeRecordNoteEmpty({ runtime: { ...runtime, appId: packageName }, driverPort: 32457 }, fake), { empty: text === '' });
+      assert.equal(fake.calls[1].ui.deviceId, runtime.deviceId);
+      assert.equal(fake.calls[1].ui.driverPort, 32457);
+    }
+  }
+});
+
+test('기록 ID 누락, 중복, 비입력 노드와 다른 전면은 빈 메모로 처리하지 않는다', async () => {
+  const { observeRecordNoteEmpty } = await import('./android-account-ui.mjs');
+  assert.equal(typeof observeRecordNoteEmpty, 'function');
+  const note = `<node package="${appId}" resource-id="record-note" class="android.widget.EditText" password="false" text=""/>`;
+  for (const xml of [hierarchy(''), hierarchy(note + note), hierarchy(note.replace('EditText', 'TextView')),
+    hierarchy(note.replace('password="false"', 'password="true"')), hierarchy(note.replace('text=""', '')),
+    hierarchy(note.replace(appId, 'public.other'))]) {
+    await assert.rejects(observeRecordNoteEmpty({ runtime, driverPort: 32457 }, harness({ xml })),
+      { message: '기록 메모의 빈값을 확인하지 못했습니다' });
+  }
+  for (const patch of [{ before: foreground.replace(appId, 'public.other') }, { after: '' }, { fail: true }])
+    await assert.rejects(observeRecordNoteEmpty({ runtime, driverPort: 32457 }, harness(patch)),
+      error => error.message === '기록 메모의 빈값을 확인하지 못했습니다' && !('stdout' in error));
+  const fake = harness();
+  await assert.rejects(observeRecordNoteEmpty({ runtime: { ...runtime, authorized: false }, driverPort: 32457 }, fake));
+  assert.equal(fake.calls.length, 0);
+});
+
+test('Android 기록은 전체 선택 실패나 삭제 후 nonempty를 통과해 입력하지 않는다', async () => {
+  const flow = await readFile('e2e/flows/record.yaml', 'utf8');
+  assert.match(flow, /file: record-note-clear-android.yaml/, 'Android 입력 전에 전체 선택과 필수 빈값 검사를 실행해야 한다');
+  const clear = await readFile('e2e/flows/record-note-clear-android.yaml', 'utf8');
+  assert.ok(flow.indexOf('record-note-clear-android.yaml') < flow.indexOf('inputText: ${SYNTHETIC_NOTE}'));
+  assert.match(clear, /---\n- tapOn:\n    id: record-note\n- runScript:/);
+  assert.match(clear, /when:\n      true: \$\{output.recordNoteEmpty === false\}/);
+  assert.match(clear, /assertVisible: 'Select All\|Select all\|전체 선택\|모두 선택'/);
+  assert.ok(clear.indexOf('assertVisible:') < clear.indexOf('- eraseText: 1'));
+  assert.match(clear, /when:\n            notVisible: 'Select All\|Select all\|전체 선택\|모두 선택'/);
+  assert.match(clear, /tapOn: 'More options\|옵션 더보기'/);
+  assert.match(clear.trimEnd(), /- assertTrue: \$\{output.recordNoteEmpty === true\}$/);
+  assert.equal(clear.includes('inputText:'), false);
+  const script = await readFile('e2e/scripts/read-record-empty.js', 'utf8');
+  for (const empty of [true, false]) {
+    const context = { output: {}, MAESTRO_CONTROL_URL: 'http://public-fake',
+      http: { get: url => { assert.equal(url, 'http://public-fake/record-note-empty'); return {status: 200, body: JSON.stringify({empty})}; } } };
+    vm.runInNewContext(script, context);
+    assert.equal(context.output.recordNoteEmpty, empty);
+  }
+  for (const response of [{ status: 409, body: 'public-existing-note' }, { status: 200, body: '{}' },
+    { status: 200, body: '{public-existing-note' }, { status: 200, body: '{"empty":true,"text":"public-existing-note"}' }]) {
+    assert.throws(() => vm.runInNewContext(script, { output: {}, MAESTRO_CONTROL_URL: 'http://public-fake',
+      http: { get: () => response } }), error => !error.message.includes('public-existing-note'));
+  }
+  const runner = await readFile('scripts/run-native-e2e.mjs', 'utf8');
+  assert.match(runner, /activeAndroidFlow\?\.name === 'record'/);
+  assert.match(runner, /observeRecordNoteEmpty\(\{ runtime: activeAndroidFlow.runtime, driverPort: activeAndroidFlow.driverPort/);
+  assert.match(runner, /inputKind === 'account' \|\| name === 'record' \? await selectMaestroDriverPort/);
+});

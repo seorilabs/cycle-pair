@@ -17,7 +17,7 @@ import { tmpdir } from "node:os";
 import { validatePhysicalRuntime, assertPhysicalAndroidState } from './physical-e2e-runtime.mjs';
 import { runPhysicalIosFlow, validateCanaryReceipt, runOwnedCommand } from './physical-ios-wrapper.mjs';
 import { spawnMaestroFlow, androidAccountCanaryOptions, selectMaestroDriverPort } from './maestro-process.mjs';
-import { observeAccountInputEmpty, ANDROID_ACCOUNT_INPUT_FIELDS } from './android-account-ui.mjs';
+import { observeAccountInputEmpty, observeRecordNoteEmpty, ANDROID_ACCOUNT_INPUT_FIELDS } from './android-account-ui.mjs';
 import { androidAuthRequested, androidAccountBinding, loadAndroidAccountInput, makeAndroidAccountCanaryReceipt, removeAndroidRawAfterGroup } from './physical-android-account.mjs';
 import { ACCOUNT_CANARY_SCOPE } from './private-e2e-input.mjs';
 import { finished } from 'node:stream/promises';
@@ -120,13 +120,22 @@ for (const value of [androidAccountInput.privateInput?.email, androidAccountInpu
 let invitation;
 let iosInputValidation = values['ios-input-validation'];
 const accountObservation = new AbortController();
-let accountDriverPort;
+let activeAndroidFlow;
 const controlKey = randomBytes(24).toString("hex");
 const server = createServer(async (request, response) => {
+  if (request.url === `/${controlKey}/record-note-empty` && request.method === 'GET' && activeAndroidFlow?.name === 'record') {
+    try {
+      const result = await observeRecordNoteEmpty({ runtime: activeAndroidFlow.runtime, driverPort: activeAndroidFlow.driverPort, signal: accountObservation.signal });
+      response.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }).end(JSON.stringify(result));
+    } catch {
+      response.writeHead(409).end('Record note observation unavailable');
+    }
+    return;
+  }
   const field = ANDROID_ACCOUNT_INPUT_FIELDS.find(name => request.url === `/${controlKey}/account-empty/${name}`);
   if (field && androidAccountInput.inputKind === 'account' && request.method === 'GET') {
     try {
-      const result = await observeAccountInputEmpty({ runtime: ownership.runtimes[0], field, driverPort: accountDriverPort, signal: accountObservation.signal });
+      const result = await observeAccountInputEmpty({ runtime: activeAndroidFlow?.runtime, field, driverPort: activeAndroidFlow?.driverPort, signal: accountObservation.signal });
       response.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }).end(JSON.stringify(result));
     } catch {
       response.writeHead(409).end('QA account input observation unavailable');
@@ -253,7 +262,8 @@ async function runFlow(actor, name, featureIds) {
   let ownedMaestroGroupCleaned = true;
   let privateRawRemoved = false;
   try {
-    accountDriverPort = androidAccountInput.inputKind === 'account' ? await selectMaestroDriverPort() : undefined;
+    const driverPort = androidAccountInput.inputKind === 'account' || name === 'record' ? await selectMaestroDriverPort() : undefined;
+    activeAndroidFlow = { runtime, name, driverPort };
     let child;
     let safeProgress = Promise.resolve();
     const consume = () => {
@@ -295,7 +305,7 @@ async function runFlow(actor, name, featureIds) {
         timeoutMs: 300_000, signal: accountObservation.signal,
         onStdout: consume(), onStderr: consume(),
         spawnImpl(binary, args, options) {
-          child = spawnMaestroFlow(binary, args, { ...options, ...androidAccountInput, driverPort: accountDriverPort }, controlUrl);
+          child = spawnMaestroFlow(binary, args, { ...options, ...androidAccountInput, driverPort: activeAndroidFlow.driverPort }, controlUrl);
           child.once('spawn', () => { ownedMaestroGroupCleaned = false; });
           activeChild = child;
           return child;
@@ -329,7 +339,7 @@ async function runFlow(actor, name, featureIds) {
     }
     if (androidAccountInput.inputKind !== 'account') await retainSafeCaptures(path.join(temporary, "output"));
   } finally {
-    accountDriverPort = undefined;
+    activeAndroidFlow = undefined;
     activeChild = undefined;
     privateRawRemoved = await removeAndroidRawAfterGroup(temporary, ownedMaestroGroupCleaned);
     if (!privateRawRemoved) await writeFile(path.join(output, `${actor}-${name}.private-raw-retained.json`),
