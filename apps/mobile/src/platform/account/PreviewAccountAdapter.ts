@@ -62,7 +62,7 @@ export const previewAccountAdapter: AccountPort = {
     return session;
   },
 
-  async sendVerificationEmail() {},
+  async sendVerificationEmail(_locale) {},
 
   async reloadSession() {
     if (!session) throw new AccountOperationError('account/no-current-user');
@@ -82,7 +82,7 @@ export const previewAccountAdapter: AccountPort = {
     return session;
   },
 
-  async sendPasswordResetEmail() {},
+  async sendPasswordResetEmail(_email, _locale) {},
 
   async reauthenticateWithPassword() {
     if (!session || session.isAnonymous) {
@@ -90,7 +90,7 @@ export const previewAccountAdapter: AccountPort = {
     }
   },
 
-  async requestDataExport() {
+  async requestDataExport(_locale) {
     if (!session) throw new AccountOperationError('account/no-current-user');
     const now = new Date();
     return {

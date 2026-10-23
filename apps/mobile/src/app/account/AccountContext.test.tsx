@@ -4,6 +4,7 @@ import React from 'react';
 import { Alert, Linking, Pressable, Text } from 'react-native';
 import type {
   AccountErrorListener,
+  AccountLocale,
   AccountDeletionStatus,
   AccountPort,
   AccountSession,
@@ -18,6 +19,15 @@ import {
   accountErrorMessage,
   useAccount,
 } from './AccountContext';
+
+let mockAccountLocale: 'ko' | 'en' = 'ko';
+jest.mock('../../i18n/I18nProvider', () => {
+  const actual = jest.requireActual('../../i18n/I18nProvider');
+  return {
+    ...actual,
+    useI18n: () => ({ ...actual.useI18n(), locale: mockAccountLocale }),
+  };
+});
 
 class FakeAccountPort implements AccountPort {
   readonly currentSession = jest.fn(() => this.session);
@@ -47,7 +57,9 @@ class FakeAccountPort implements AccountPort {
       return this.session;
     },
   );
-  readonly sendVerificationEmail = jest.fn(async () => undefined);
+  readonly sendVerificationEmail = jest.fn(
+    async (_locale: AccountLocale) => undefined,
+  );
   readonly reloadSession = jest.fn(async () => {
     if (!this.session) throw { code: 'auth/no-current-user' };
     this.session = { ...this.session, emailVerified: true };
@@ -65,12 +77,12 @@ class FakeAccountPort implements AccountPort {
     return this.session;
   });
   readonly sendPasswordResetEmail = jest.fn(
-    async (_email: string) => undefined,
+    async (_email: string, _locale: AccountLocale) => undefined,
   );
   readonly reauthenticateWithPassword = jest.fn(
     async (_password: string) => undefined,
   );
-  readonly requestDataExport = jest.fn(async () => ({
+  readonly requestDataExport = jest.fn(async (_locale: AccountLocale) => ({
     schemaVersion: 1 as const,
     exportSubjectUid: this.session?.uid ?? 'missing',
     expiresAt: '2026-07-14T00:05:00.000Z',
@@ -127,6 +139,43 @@ function AccountHarness() {
   return state.session ? <AccountSettingsCard /> : <AccountGateScreen />;
 }
 
+function EmailLocaleHarness() {
+  const {
+    resendVerification,
+    requestPasswordReset,
+    reauthenticate,
+    requestDataExport,
+  } = useAccount();
+  return (
+    <>
+      <Pressable
+        testID="locale-resend"
+        onPress={() => {
+          resendVerification();
+        }}
+      />
+      <Pressable
+        testID="locale-reset"
+        onPress={() => {
+          requestPasswordReset(' USER@example.com ');
+        }}
+      />
+      <Pressable
+        testID="locale-reauth"
+        onPress={() => {
+          reauthenticate('public-test-password');
+        }}
+      />
+      <Pressable
+        testID="locale-export"
+        onPress={() => {
+          requestDataExport();
+        }}
+      />
+    </>
+  );
+}
+
 function QuiesceHarness() {
   const { state, deleteAccount, signIn } = useAccount();
   if (state.hydrating) return null;
@@ -165,11 +214,54 @@ function fakeSessionCleanup(): AccountSessionCleanup {
 
 describe('AccountProvider account flows', () => {
   beforeEach(async () => {
+    mockAccountLocale = 'ko';
     await AsyncStorage.clear();
     await asyncStorageAccountSessionIntentStorage.clearAccountDeletionIntent();
   });
 
   afterEach(() => jest.restoreAllMocks());
+
+  it('uses the selected language for resend, reset and export after a language change', async () => {
+    const account = new FakeAccountPort({
+      uid: 'locale-owner',
+      email: 'user@example.com',
+      isAnonymous: false,
+      emailVerified: false,
+    });
+    mockAccountLocale = 'en';
+    const tree = (
+      <AccountProvider account={account}>
+        <EmailLocaleHarness />
+      </AccountProvider>
+    );
+    const view = await render(tree);
+    await fireEvent.press(view.getByTestId('locale-resend'));
+    await waitFor(() =>
+      expect(account.sendVerificationEmail).toHaveBeenCalledWith('en'),
+    );
+    await fireEvent.press(view.getByTestId('locale-reset'));
+    await waitFor(() =>
+      expect(account.sendPasswordResetEmail).toHaveBeenCalledWith(
+        'user@example.com',
+        'en',
+      ),
+    );
+    await fireEvent.press(view.getByTestId('locale-reauth'));
+    await fireEvent.press(view.getByTestId('locale-export'));
+    await waitFor(() =>
+      expect(account.requestDataExport).toHaveBeenCalledWith('en'),
+    );
+    mockAccountLocale = 'ko';
+    await view.rerender(
+      <AccountProvider account={account}>
+        <EmailLocaleHarness />
+      </AccountProvider>,
+    );
+    await fireEvent.press(view.getByTestId('locale-resend'));
+    await waitFor(() =>
+      expect(account.sendVerificationEmail).toHaveBeenLastCalledWith('ko'),
+    );
+  });
 
   it('upgrades an anonymous user without changing the uid and verifies/reauthenticates it', async () => {
     const account = new FakeAccountPort({
@@ -207,6 +299,7 @@ describe('AccountProvider account flows', () => {
       'password-123',
     );
     expect(account.sendVerificationEmail).toHaveBeenCalledTimes(1);
+    expect(account.sendVerificationEmail).toHaveBeenCalledWith('ko');
     expect(account.reloadSession).not.toHaveBeenCalled();
 
     await fireEvent.press(view.getByText('인증 여부 새로고침'));
@@ -465,6 +558,7 @@ describe('AccountProvider account flows', () => {
     );
     expect(account.sendPasswordResetEmail).toHaveBeenCalledWith(
       'reset@example.com',
+      'ko',
     );
     expect(accountErrorMessage({ code: 'auth/invalid-credential' })).toBe(
       '이메일 또는 비밀번호가 올바르지 않습니다.',
