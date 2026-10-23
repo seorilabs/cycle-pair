@@ -48,7 +48,7 @@ def main():
         return
     environment = target.setdefault('EnvironmentVariables', {})
     # 이전 실행의 비밀값을 새 실행에 이어받지 않는다.
-    if any(('INVITATION' in key or 'SECRET' in key) and key.startswith('CYCLEPAIR_')
+    if any(any(part in key for part in ['INVITATION', 'SECRET', 'PASSWORD', 'ACCOUNT_EMAIL']) and key.startswith('CYCLEPAIR_')
            for key in environment):
         raise ValueError('이전 비밀 환경변수가 있는 base는 거절')
     environment = {key: value for key, value in environment.items()

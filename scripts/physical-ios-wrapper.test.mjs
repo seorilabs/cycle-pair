@@ -9,6 +9,7 @@ import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { DEFAULT_FLOWS, createStreamRedactor, runPhysicalIosFlow, runOwnedCommand, validateCanaryReceipt } from './physical-ios-wrapper.mjs';
+import { ACCOUNT_CANARY_SCOPE, PUBLIC_ACCOUNT_CANARY } from './private-e2e-input.mjs';
 const APPROVED_DEVICE_ID = '00000000-0000000000000000';
 // 아래 값은 공개된 고정 가짜 값이며 실제 초대를 생성하지 않는다.
 const CANARY = 'C'.repeat(43), OTHER = 'Z'.repeat(500), RUN = 'cp-20261023010000000-abcdef', SHA = '1'.repeat(40);
@@ -98,6 +99,126 @@ test('42자리와 불완전한 마지막 짧은 값은 보존하고 43자리부�
   const a = createStreamRedactor(); assert.equal(a.push('x'.repeat(42)) + a.end(), 'x'.repeat(42));
   const b = createStreamRedactor(); assert.equal(b.push('x'.repeat(43)) + b.end(), '[redacted]');
 });
+
+test('짧은 공개 가짜 비밀번호의 이스케이프와 이메일을 가린다', () => {
+  const password = 'Public"Fake\\Pass!7', email = 'public-fake-account@example.invalid';
+  for (const form of [password, JSON.stringify(password).slice(1, -1), encodeURIComponent(password), email]) {
+    for (const shown of [form, form.slice(0, 8) + '...', form.slice(0, 8) + '…']) {
+      const bytes = Buffer.from(`오류 "${shown}" 끝`);
+      for (let n = 0; n <= bytes.length; n++) {
+        const redactor = createStreamRedactor([password, email]);
+        assert.equal(redactor.push(bytes.subarray(0, n)) + redactor.push(bytes.subarray(n)) + redactor.end(),
+          '오류 "[redacted]" 끝');
+      }
+    }
+  }
+});
+
+test('typed 계정 입력은 CLI 대신 private plist로만 전달하고 정리한다', async () => {
+  const f = await fixture();
+  const input = { kind: 'account', email: 'public-fake-account@example.invalid', password: 'Public"Fake\\Pass!7' };
+  const x = fake({ inspect: async ({ prepared, args }) => {
+    assert.equal(prepared.EnvironmentVariables.CYCLEPAIR_TEST_ACCOUNT_EMAIL, input.email);
+    assert.equal(prepared.EnvironmentVariables.CYCLEPAIR_TEST_ACCOUNT_PASSWORD, input.password);
+    assert.ok(!JSON.stringify(args).includes(input.email));
+    assert.ok(!JSON.stringify(args).includes(input.password));
+    assert.ok(!JSON.stringify(x.calls).includes(input.email));
+    assert.ok(!JSON.stringify(x.calls).includes(input.password));
+  } });
+  const flowDefinitions = { 'account-transport-unit': { method: 'testAccountTransportUnit', inputKind: 'account', secret: true, ready: true } };
+  const result = await runPhysicalIosFlow({ ...f.options, flow: 'account-transport-unit', privateInput: input,
+    allowSecretExecution: true, secretTransportValidated: true }, { ...x, flowDefinitions });
+  assert.equal(result.passed, true);
+  assert.equal(result.privateRawRemoved, true);
+  await gone(x.plist()); await gone(x.bundle());
+});
+
+test('계정 공개 canary는 제한된 범위와 제출없는 메서드에만 결속한다', async () => {
+  const f = await fixture(), x = fake({ inspect: async ({ prepared, args }) => {
+    assert.equal(prepared.EnvironmentVariables.CYCLEPAIR_TEST_ACCOUNT_EMAIL, PUBLIC_ACCOUNT_CANARY.email);
+    assert.equal(prepared.EnvironmentVariables.CYCLEPAIR_TEST_ACCOUNT_PASSWORD, PUBLIC_ACCOUNT_CANARY.password);
+    assert.ok(!('CYCLEPAIR_SECRET_INPUT_VALIDATED' in prepared.EnvironmentVariables));
+    assert.ok(args.includes('-only-testing:CyclePairPhysicalUITests/CyclePairCoordinatedUITests/testAccountInputCanary'));
+  }, summary: { testFailures: [], publicEmail: PUBLIC_ACCOUNT_CANARY.email, publicPassword: PUBLIC_ACCOUNT_CANARY.password } });
+  const result = await runPhysicalIosFlow({ ...f.options, flow: 'account-input-canary' }, x);
+  assert.equal(result.passed, true);
+  assert.deepEqual(result.canaryScope, ACCOUNT_CANARY_SCOPE);
+  assert.equal(result.canaryScope.passwordExactInputValidated, false);
+  assert.equal(result.canaryScope.authenticationSucceeded, false);
+  assert.equal(result.canaryScope.submitted, false);
+  await gone(x.plist()); await gone(x.bundle());
+  const artifacts = await Promise.all((await readdir(f.options.output)).map(file => readFile(path.join(f.options.output, file), 'utf8')));
+  for (const value of Object.values(PUBLIC_ACCOUNT_CANARY)) assert.ok(!artifacts.join('').includes(value));
+});
+
+test('canary의 실제 입력 제공, 이전 plist 계정값과 공개값 예외를 안전하게 처리한다', async () => {
+  const input = { kind: 'account', ...PUBLIC_ACCOUNT_CANARY };
+  const first = await fixture(), noSpawn = fake();
+  await assert.rejects(runPhysicalIosFlow({ ...first.options, flow: 'account-input-canary', privateInput: input }, noSpawn));
+  assert.equal(noSpawn.calls.length, 0);
+  for (const key of ['CYCLEPAIR_TEST_ACCOUNT_EMAIL', 'CYCLEPAIR_TEST_ACCOUNT_PASSWORD']) {
+    const f = await fixture(), x = fake();
+    py("import plistlib,sys; p=sys.argv[1]; d=plistlib.load(open(p,'rb')); d['CyclePairPhysicalUITests']['EnvironmentVariables'][sys.argv[2]]='public-fake-stale'; open(p,'wb').write(plistlib.dumps(d))", [f.base, key]);
+    const result = await runPhysicalIosFlow({ ...f.options, flow: 'account-input-canary' }, x);
+    assert.equal(result.passed, false); assert.equal(x.calls.length, 0); assert.equal(result.privateRawRemoved, true);
+  }
+  const f = await fixture(), x = fake({ execute: async () => { throw new Error(
+    `public fake failure ${PUBLIC_ACCOUNT_CANARY.email} ${JSON.stringify(PUBLIC_ACCOUNT_CANARY.password)} ${encodeURIComponent(PUBLIC_ACCOUNT_CANARY.password)}`); } });
+  const result = await runPhysicalIosFlow({ ...f.options, flow: 'account-input-canary' }, x);
+  assert.equal(result.passed, false);
+  assert.equal(result.error, 'public fake failure [redacted] "[redacted]" [redacted]');
+  assert.equal(result.privateRawRemoved, true);
+  await gone(x.plist()); await gone(x.bundle());
+});
+
+test('계정 canary 근거는 목적과 소유 계정에 결속하고 인증 성공을 요구하지 않는다', async () => {
+  const f = await fixture();
+  const hash = async file => createHash('sha256').update(await readFile(file)).digest('hex');
+  const receipt = path.join(f.dir, 'account-canary.json');
+  const record = { executionMode: 'physical', flow: 'account-input-canary', passed: true,
+    testIdentifier: 'CyclePairCoordinatedUITests/testAccountInputCanary', diagnosticOnly: false,
+    sourceSha: SHA, requestedCandidateSha: SHA, ownershipManifestSHA256: await hash(f.ownership),
+    accountOwnershipSHA256: await hash(f.manifest.accountOwnershipPath), canaryScope: ACCOUNT_CANARY_SCOPE,
+    plistPreparation: { sourceSHA256: await hash(f.base), testBundleExecutableSHA256: await hash(f.helper) },
+    summaryDeviceMatches: true, ownedXcodebuildGroupCleaned: true, privateRawRemoved: true,
+    counts: { totalTestCount: 1, passedTests: 1, failedTests: 0, skippedTests: 0, expectedFailures: 0 } };
+  const options = { purpose: 'account', receipt, baseXctestrun: f.base, ownership: f.ownership, candidateSha: SHA, privateRoot: f.dir };
+  for (const patch of [{ flow: 'invitation-canary' }, { accountOwnershipSHA256: '0'.repeat(64) },
+    ...['submitted', 'authenticationSucceeded', 'passwordExactInputValidated'].map(key => ({ canaryScope: { ...ACCOUNT_CANARY_SCOPE, [key]: true } }))]) {
+    await writeFile(receipt, JSON.stringify({ ...record, ...patch }), { mode: 0o600 });
+    await assert.rejects(validateCanaryReceipt(options));
+  }
+  await writeFile(receipt, JSON.stringify(record), { mode: 0o600 });
+  assert.equal(await validateCanaryReceipt(options), true);
+  await assert.rejects(validateCanaryReceipt({ ...options, purpose: 'invitation' }));
+  await writeFile(f.manifest.accountOwnershipPath, '{"syntheticOnly":true,"newGuest":true}');
+  await assert.rejects(validateCanaryReceipt(options));
+});
+
+test('계정용 비공개 UI flow는 같은 후보의 공개 입력 근거가 없으면 실행 전에 거절한다', async () => {
+  const f = await fixture();
+  // 실제 명령은 시작하지 않는다. 빈 receipt가 경로 검사에서 먼저 거절된다.
+  await assert.rejects(runPhysicalIosFlow({ ...f.options, flow: 'account-transport-unit',
+    privateInput: { kind: 'account', ...PUBLIC_ACCOUNT_CANARY }, allowSecretExecution: true,
+    secretTransportValidated: true, executePhysical: true }, {
+    flowDefinitions: { 'account-transport-unit': { method: 'testAccountTransportUnit', inputKind: 'account', secret: true, ready: true } },
+  }), /비공개 작업 공간 절대 경로 필요/);
+  await gone(f.options.output);
+});
+
+test('잘못된 UTF-16 계정값은 임시 자료와 listener를 만들기 전에 거절한다', async () => {
+  for (const key of ['email', 'password']) {
+    const f = await fixture(), x = fake(), signals = new EventEmitter();
+    const input = { kind: 'account', ...PUBLIC_ACCOUNT_CANARY, [key]: 'pa\uD800ss' };
+    await assert.rejects(runPhysicalIosFlow({ ...f.options, flow: 'account-transport-unit', privateInput: input,
+      allowSecretExecution: true, secretTransportValidated: true }, { ...x, signalSource: signals,
+      flowDefinitions: { 'account-transport-unit': { method: 'testAccountTransportUnit', inputKind: 'account', secret: true, ready: true } } }));
+    assert.equal(x.calls.length, 0);
+    assert.equal(signals.listenerCount('SIGINT'), 0);
+    assert.equal(signals.listenerCount('SIGTERM'), 0);
+    await gone(f.options.output);
+  }
+});
 test('승인된 manifest의 물리 iPhone과 외부 근거 디렉터리를 사용한다', async () => {
   const f = await fixture(), x = fake();
   const result = await runPhysicalIosFlow(f.options, x);
@@ -140,7 +261,7 @@ test('소유 합성자료, reset 금지, authorized physical과 로컬 backend�
   }
 });
 test('실제 초대는 helper 준비와 공개 canary 검증 전 차단한다', async () => {
-  const f=await fixture(),x=fake(),options={...f.options,flow:'invitation-accept',invitation:CANARY};
+  const f=await fixture(),x=fake(),options={...f.options,flow:'invitation-accept',privateInput:{kind:'invitation',code:CANARY}};
   await assert.rejects(runPhysicalIosFlow(options,x)); await assert.rejects(runPhysicalIosFlow(options,{...x,flowDefinitions:fakeFlows})); assert.equal(x.calls.length,0);
 });
 test('공개 입력 근거의 후보, 설치와 signed helper가 같아야 초대 입력을 허용한다', async () => {
@@ -153,7 +274,7 @@ test('공개 입력 근거의 후보, 설치와 signed helper가 같아야 초�
     ownedXcodebuildGroupCleaned: true, privateRawRemoved: true,
     counts: { totalTestCount: 1, passedTests: 1, failedTests: 0, skippedTests: 0, expectedFailures: 0 } };
   const receipt = path.join(f.dir, 'canary.json');
-  const options = { receipt, baseXctestrun: f.base, ownership: f.ownership, candidateSha: SHA, privateRoot: f.dir };
+  const options = { purpose: 'invitation', receipt, baseXctestrun: f.base, ownership: f.ownership, candidateSha: SHA, privateRoot: f.dir };
   for (const patch of [{testIdentifier: 'CyclePairCoordinatedUITests/testPublicInputMethodComparison'},
     {testIdentifier: undefined}, {diagnosticOnly: true}, {diagnosticOnly: undefined},
     {executionMode: 'injected-fake'}, {passed: false}, {sourceSha: '2'.repeat(40)},
@@ -178,13 +299,13 @@ for (const binary of [false,true]) test(`${binary?'binary':'XML'} 형식과 원�
   const result=await runPhysicalIosFlow(f.options,x); assert.equal(result.passed,true); assert.equal(result.executionMode,'injected-fake'); assert.deepEqual(await readFile(f.base),original); assert.equal(result.formalUIRounds,0); assert.equal(result.fullL3,false); await gone(x.plist()); await gone(x.bundle()); await safeArtifacts(f.options.output);
 });
 test('가짜 비밀은 private plist로만 전달하고 원시 xcresult를 제거한다',async()=>{
- const f=await fixture(),x=fake({secret:true}); const r=await runPhysicalIosFlow({...f.options,flow:'invitation-accept',invitation:CANARY,allowSecretExecution:true,secretTransportValidated:true},{...x,flowDefinitions:fakeFlows}); assert.equal(r.passed,true);assert.equal(r.privateRawRemoved,true);assert.equal(r.rawBundleHash.files,1);await safeArtifacts(f.options.output);
+ const f=await fixture(),x=fake({secret:true}); const r=await runPhysicalIosFlow({...f.options,flow:'invitation-accept',privateInput:{kind:'invitation',code:CANARY},allowSecretExecution:true,secretTransportValidated:true},{...x,flowDefinitions:fakeFlows}); assert.equal(r.passed,true);assert.equal(r.privateRawRemoved,true);assert.equal(r.rawBundleHash.files,1);await safeArtifacts(f.options.output);
 });
 for(const [name,override] of [['0개실행',{summary:{totalTestCount:0,passedTests:0}}],['두개실행',{summary:{totalTestCount:2,passedTests:2}}],['skip',{summary:{skippedTests:1}}],['fail',{summary:{failedTests:1}}],['expectedFailure',{summary:{expectedFailures:1}}],['다른기기',{summary:{devicesAndConfigurations:[{device:{deviceId:'other',platform:'iOS'}}]}}],['Simulator',{summary:{devicesAndConfigurations:[{device:{deviceId:APPROVED_DEVICE_ID,platform:'iOS Simulator'}}]}}],['오류종료',{code:65}],['timeout',{timedOut:true}],['잘못된요약',{invalid:true}],['요약오류',{summaryCode:1}]]) test(`${name}는 실패이며 원시파일을 정리한다`,async()=>{
  const f=await fixture(),x=fake(override),r=await runPhysicalIosFlow(f.options,x);assert.equal(r.passed,false);assert.equal(r.privateRawRemoved,true);await gone(x.plist());await gone(x.bundle());await safeArtifacts(f.options.output);
 });
 test('예외 메시지의 가짜 비밀도 가리고 실패 hash와 정리 결과를 남긴다',async()=>{
- const f=await fixture(),x=fake({secret:true,execute:async()=>{throw new Error('synthetic failure '+CANARY);}});const r=await runPhysicalIosFlow({...f.options,flow:'invitation-accept',invitation:CANARY,allowSecretExecution:true,secretTransportValidated:true},{...x,flowDefinitions:fakeFlows});assert.equal(r.passed,false);assert.equal(r.error,'synthetic failure [redacted]');assert.equal(r.privateRawRemoved,true);await safeArtifacts(f.options.output);
+ const f=await fixture(),x=fake({secret:true,execute:async()=>{throw new Error('synthetic failure '+CANARY);}});const r=await runPhysicalIosFlow({...f.options,flow:'invitation-accept',privateInput:{kind:'invitation',code:CANARY},allowSecretExecution:true,secretTransportValidated:true},{...x,flowDefinitions:fakeFlows});assert.equal(r.passed,false);assert.equal(r.error,'synthetic failure [redacted]');assert.equal(r.privateRawRemoved,true);await safeArtifacts(f.options.output);
 });
 test('SIGINT는 해당 실행 AbortSignal만 중단하고 원시파일과 listener를 정리한다',async()=>{
  const f=await fixture(),signals=new EventEmitter();let observed=false;const x=fake({execute:async options=>{options.signal.addEventListener('abort',()=>{observed=true;});signals.emit('SIGINT');return{code:130,signal:'SIGINT'};}});const r=await runPhysicalIosFlow(f.options,{...x,signalSource:signals});assert.equal(observed,true);assert.equal(r.status,'cancelled');assert.equal(r.privateRawRemoved,true);assert.equal(x.calls.length,1);assert.equal(signals.listenerCount('SIGINT'),0);await safeArtifacts(f.options.output);

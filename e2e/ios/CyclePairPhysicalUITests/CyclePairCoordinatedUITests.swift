@@ -7,6 +7,8 @@ final class CyclePairCoordinatedUITests: XCTestCase {
     private var syntheticNote: String { "\(runID)-note" }
     private var syntheticEvent: String { "\(runID)-event" }
     private static let publicCanary = "cyclepair-canary-20261023"
+    private static let publicAccountEmail = "cyclepair-public-canary@example.invalid"
+    private static let publicAccountPassword = "CyclePair-Public-Canary!2026"
 
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -25,6 +27,7 @@ final class CyclePairCoordinatedUITests: XCTestCase {
         let flows = [
             "testStartFromOnboarding": "start",
             "testInvitationInputCanary": "invitation-canary",
+            "testAccountInputCanary": "account-input-canary",
             "testInvitationAccept": "invitation-accept",
             "testSharingPrivate": "sharing-private",
             "testPartnerReceived": "partner-received",
@@ -47,6 +50,15 @@ final class CyclePairCoordinatedUITests: XCTestCase {
             guard (environment["CYCLEPAIR_TEST_INVITATION"] ?? "").isEmpty else {
                 throw PreparationError.actualInvitationNotAllowed
             }
+        }
+        if flow == "account-input-canary" {
+            guard environment["CYCLEPAIR_TEST_ACCOUNT_EMAIL"] == Self.publicAccountEmail,
+                  environment["CYCLEPAIR_TEST_ACCOUNT_PASSWORD"] == Self.publicAccountPassword else {
+                throw PreparationError.actualAccountInputNotAllowed
+            }
+        } else if !(environment["CYCLEPAIR_TEST_ACCOUNT_EMAIL"] ?? "").isEmpty ||
+                  !(environment["CYCLEPAIR_TEST_ACCOUNT_PASSWORD"] ?? "").isEmpty {
+            throw PreparationError.actualAccountInputNotAllowed
         }
         if flow == "sharing-private" {
             // This flow explicitly requires the already-open sharing screen.
@@ -100,6 +112,53 @@ final class CyclePairCoordinatedUITests: XCTestCase {
         XCTAssertTrue(element("tab-partner").waitForExistence(timeout: 15), "닫기 뒤 기본 탐색으로 돌아와야 합니다.")
         XCTAssertTrue(wait { !self.element("invite-input").exists }, "초대 입력 화면을 제출 없이 닫아야 합니다.")
         print("CP_COORDINATED_CANARY inputMatches=true closed=true connectInvoked=false")
+    }
+
+    func testAccountInputCanary() {
+        XCTAssertTrue(element("home-record").waitForExistence(timeout: 120), "소유 게스트의 홈이 선행 조건입니다.")
+        tap("tab-settings")
+        let account = app.buttons.matching(NSPredicate(format: "label CONTAINS %@ OR label CONTAINS %@",
+            "Account and recovery", "계정과 복구")).firstMatch
+        reveal(account)
+        XCTAssertTrue(account.isHittable, "계정 설정을 실제로 열 수 있어야 합니다.")
+        account.tap()
+        let email = app.textFields.matching(NSPredicate(format: "label IN %@", ["New account email", "계정 전환 이메일"])).firstMatch
+        let password = app.secureTextFields.matching(NSPredicate(format: "label IN %@", ["New account password", "계정 전환 비밀번호"])).firstMatch
+        func empty(_ field: XCUIElement) -> Bool {
+            let value = field.value as? String ?? ""
+            return value.isEmpty || value == field.placeholderValue
+        }
+        guard email.waitForExistence(timeout: 15), password.exists, empty(email), empty(password) else {
+            closeAccountCanary()
+            XCTFail("기존 입력이 없는 게스트 전환 입력란만 사용합니다.")
+            return
+        }
+        reveal(email); email.tap(); email.typeText(Self.publicAccountEmail)
+        let emailExact = wait { (email.value as? String) == Self.publicAccountEmail }
+        reveal(password); password.tap(); password.typeText(Self.publicAccountPassword)
+        let secureMasked = wait {
+            guard let value = password.value as? String else { return false }
+            return value.count == Self.publicAccountPassword.count &&
+                value.allSatisfy { "•●*".contains($0) }
+        }
+        closeAccountCanary()
+        let closed = wait { !email.exists && !password.exists }
+        // 닫기 후 다시 열어 입력이 지워졌는지 확인한다. 계정 만들기는 누르지 않는다.
+        reveal(account); account.tap()
+        let cleared = email.waitForExistence(timeout: 15) && password.exists && empty(email) && empty(password)
+        closeAccountCanary()
+        XCTAssertTrue(emailExact && secureMasked && closed && cleared && wait { !email.exists },
+            "공개 이메일 정확입력, 비밀번호 마스킹 길이, 입력 정리와 제출없는 닫기만 검증합니다.")
+        print("CP_ACCOUNT_CANARY emailExact=true secureMaskedLengthOnly=true closed=true submitted=false authenticated=false")
+    }
+
+    private func closeAccountCanary() {
+        let back = button(["Back", "뒤로"])
+        for _ in 0..<12 {
+            if back.exists && back.isHittable { back.tap(); return }
+            app.swipeDown(velocity: .slow)
+        }
+        XCTFail("계정 입력을 제출하지 않고 닫아야 합니다.")
     }
 
     func testInvitationAccept() {
@@ -258,5 +317,6 @@ final class CyclePairCoordinatedUITests: XCTestCase {
         case attachmentsMustBeDisabled
         case actualInvitationNotAllowed
         case secretInputNotValidated
+        case actualAccountInputNotAllowed
     }
 }

@@ -198,6 +198,7 @@ async function runFlow(actor, name, featureIds) {
       if (!invitation || !iosInputValidation)
         throw new Error('An actual invitation and the same-candidate public-input receipt are required before iPhone acceptance');
       inputValidated = await validateCanaryReceipt({
+        purpose: 'invitation',
         receipt: path.resolve(iosInputValidation),
         baseXctestrun: path.resolve(values['ios-xctestrun']),
         ownership: path.resolve(values.ownership), candidateSha: revision.trim(), privateRoot,
@@ -209,7 +210,7 @@ async function runFlow(actor, name, featureIds) {
       output: path.join(output, `${actor}-${name}`), backend: values.backend,
       deviceId: runtime.deviceId, candidateSha: revision.trim(), runId,
       flow: name === 'invite-receive' ? 'invitation-accept' : name,
-      invitation: name === 'invite-receive' ? invitation : undefined,
+      privateInput: name === 'invite-receive' ? { kind: 'invitation', code: invitation } : undefined,
       allowSecretExecution: inputValidated, secretTransportValidated: inputValidated,
       executePhysical: true,
     });
