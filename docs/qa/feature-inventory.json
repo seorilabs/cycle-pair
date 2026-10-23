@@ -80,7 +80,7 @@
       "core": true,
       "foundation": true,
       "paths": [
-        "apps/mobile/src/components/PrivacyCenterModal.tsx",
+        "apps/mobile/src/components/PrivacyCenter.tsx",
         "apps/mobile/src/domain/privacy/**",
         "firebase/functions/src/domain/accountLifecycle.ts"
       ]

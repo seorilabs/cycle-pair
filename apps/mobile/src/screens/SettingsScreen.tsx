@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { CycleSeed, useCyclePair } from '../app/CyclePairStore';
 import { AccountSettingsCard } from '../components/AccountSettingsCard';
-import { PrivacyCenterModal } from '../components/PrivacyCenterModal';
+import { PrivacyCenter } from '../components/PrivacyCenter';
 import {
   Card,
   PrimaryButton,
@@ -40,12 +40,14 @@ function SettingsAccordionSection({
   expanded,
   onPress,
   children,
+  detail,
 }: {
   title: string;
   summary: string;
   expanded: boolean;
   onPress(): void;
   children: React.ReactNode;
+  detail?: { content: React.ReactNode; onClose(): void };
 }) {
   const { l } = useI18n();
   return (
@@ -64,17 +66,25 @@ function SettingsAccordionSection({
         </View>
         <Text style={styles.accordionChevron}>{expanded ? '⌃' : '⌄'}</Text>
       </Pressable>
-      <Modal visible={expanded} animationType="slide" onRequestClose={onPress}>
-        <Screen>
-          <TextButton label={l('뒤로')} onPress={onPress} />
-          <Text
-            accessibilityRole="header"
-            style={[styles.accordionTitle, { marginVertical: spacing.lg }]}
-          >
-            {title}
-          </Text>
-          {children}
-        </Screen>
+      <Modal
+        visible={expanded}
+        animationType="slide"
+        onRequestClose={detail?.onClose ?? onPress}
+      >
+        {detail ? (
+          detail.content
+        ) : (
+          <Screen>
+            <TextButton label={l('뒤로')} onPress={onPress} />
+            <Text
+              accessibilityRole="header"
+              style={[styles.accordionTitle, { marginVertical: spacing.lg }]}
+            >
+              {title}
+            </Text>
+            {children}
+          </Screen>
+        )}
       </Modal>
     </View>
   );
@@ -183,6 +193,7 @@ export function SettingsScreen() {
   function toggleSection(nextSection: SettingsSectionKey) {
     if (openSection === 'cycle') resetCycleDraft();
     if (openSection === 'notifications') resetQuietHoursDraft();
+    setPrivacyVisible(false);
     setOpenSection(current => (current === nextSection ? null : nextSection));
   }
 
@@ -242,6 +253,13 @@ export function SettingsScreen() {
       ],
     );
   }
+
+  const privacyDetail = privacyVisible
+    ? {
+        content: <PrivacyCenter onClose={() => setPrivacyVisible(false)} />,
+        onClose: () => setPrivacyVisible(false),
+      }
+    : undefined;
 
   return (
     <Screen contentStyle={styles.content}>
@@ -463,6 +481,7 @@ export function SettingsScreen() {
           } · ${state.diagnosticsEnabled ? l('진단 허용') : l('진단 안 함')}`}
           expanded={openSection === 'notifications'}
           onPress={() => toggleSection('notifications')}
+          detail={privacyDetail}
         >
           <Card style={styles.rowsCard}>
             <ToggleRow
@@ -636,6 +655,7 @@ export function SettingsScreen() {
           summary={l('개인정보 · 비의료 고지')}
           expanded={openSection === 'about'}
           onPress={() => toggleSection('about')}
+          detail={privacyDetail}
         >
           <Card style={styles.aboutCard}>
             <Text style={styles.aboutTitle}>{l('건강 정보 이용 안내')}</Text>
@@ -662,11 +682,6 @@ export function SettingsScreen() {
       {backendError ? (
         <Text style={styles.syncError}>{l(backendError)}</Text>
       ) : null}
-
-      <PrivacyCenterModal
-        visible={privacyVisible}
-        onClose={() => setPrivacyVisible(false)}
-      />
     </Screen>
   );
 }
