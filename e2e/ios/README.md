@@ -84,6 +84,8 @@ xcodebuild build-for-testing \
 
 래퍼 입력은 `privateInput: { kind: 'invitation', code }` 또는 `{ kind: 'account', email, password }`로 종류를 지정한다. 계정 값은 비공개 plist의 `CYCLEPAIR_TEST_ACCOUNT_EMAIL`, `CYCLEPAIR_TEST_ACCOUNT_PASSWORD`로만 전달한다. Android 준비 함수 `spawnMaestroFlow`도 같은 typed 입력을 받으며 child 전용 `MAESTRO_TEST_ACCOUNT_EMAIL`, `MAESTRO_TEST_ACCOUNT_PASSWORD`와 가린 출력 stream을 사용한다. 실제 계정 제출 흐름과 Android 계정 화면 흐름은 아직 제공하지 않는다.
 
+잘못된 UTF-16 입력은 자식 실행과 임시 자료 생성 전에 거절하며, 출력 가림기도 그전에 준비한다.
+
 공개 계정 canary는 코드에 고정한 공개값만 사용하며 외부 입력을 거절한다. 비밀번호의 마스킹과 길이 확인은 정확한 비밀번호 입력이나 인증 성공을 증명하지 않는다. 결과의 `canaryScope`도 `passwordExactInputValidated=false`, `authenticationSucceeded=false`, `submitted=false`를 유지한다. 향후 첫 비공개 계정 입력에는 목적이 같은 canary의 후보, helper, manifest와 소유 계정 파일 지문이 일치하고 원시 자료가 정리된 `inputValidation` 근거가 필요하다. 정상 UI 인증 성공은 이후 계정 흐름에서 별도로 확인한다. 공개 canary 자체에는 인증 성공을 요구하지 않는다.
 
 `typeText`는 원시 XCTest activity에 값을 기록할 수 있다. 모든 흐름에서 `CYCLEPAIR_CAPTURE_SAFE_SCREENS=0`, System/User attachment `keepNever`, diagnostics 수집 `never`를 강제한다. stdout와 stderr는 UTF-8와 chunk 경계를 보존하며 초대, 이메일, 짧은 비밀번호, JSON 또는 URL 이스케이프와 XCTest가 줄여 남긴 입력 앞부분을 가린다. 예외 메시지도 같은 값 가림을 거친다. 값별 hash는 남기지 않는다. 원시 console은 저장하지 않고 전체 stream hash만 남긴다. `xcresulttool` 요약은 메모리에서 가려 보존한다. 정확히1 PASS, 0 FAIL, 0 SKIP, 0 expected failure와 선택한 물리 기기 일치를 모두 확인한다.

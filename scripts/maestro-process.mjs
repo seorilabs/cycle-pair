@@ -12,6 +12,8 @@ export function spawnMaestroFlow(binary, args, options, controlUrl, spawnProcess
     throw new Error('비공개 입력을 명령 인수나 경로에 넣을 수 없습니다');
   if (input.secrets.length && (options.stdio?.[1] !== 'pipe' || options.stdio?.[2] !== 'pipe'))
     throw new Error('비공개 입력의 출력은 가림 가능한 pipe만 허용합니다');
+  const redactors = Object.fromEntries(input.secrets.length
+    ? ['stdout', 'stderr'].map(name => [name, createStreamRedactor(input.secrets)]) : []);
   let child;
   try {
     child = spawnProcess(binary, args, {
@@ -19,11 +21,11 @@ export function spawnMaestroFlow(binary, args, options, controlUrl, spawnProcess
       env: { ...childOptions.env, ...privateInputEnvironment(input, 'android'), MAESTRO_CONTROL_URL: controlUrl },
     });
   } catch (error) {
-    const redactor = createStreamRedactor(input.secrets);
+    const redactor = redactors.stderr || createStreamRedactor();
     throw new Error(redactor.push(error?.message || '입력 도구 실행 오류') + redactor.end());
   }
   for (const name of input.secrets.length ? ['stdout', 'stderr'] : []) {
-    const redactor = createStreamRedactor(input.secrets);
+    const redactor = redactors[name];
     child[name] = child[name].pipe(new Transform({
       transform(chunk, _encoding, done) { done(null, redactor.push(chunk)); },
       flush(done) { done(null, redactor.end()); },

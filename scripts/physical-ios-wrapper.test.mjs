@@ -205,6 +205,20 @@ test('계정용 비공개 UI flow는 같은 후보의 공개 입력 근거가 �
   }), /비공개 작업 공간 절대 경로 필요/);
   await gone(f.options.output);
 });
+
+test('잘못된 UTF-16 계정값은 임시 자료와 listener를 만들기 전에 거절한다', async () => {
+  for (const key of ['email', 'password']) {
+    const f = await fixture(), x = fake(), signals = new EventEmitter();
+    const input = { kind: 'account', ...PUBLIC_ACCOUNT_CANARY, [key]: 'pa\uD800ss' };
+    await assert.rejects(runPhysicalIosFlow({ ...f.options, flow: 'account-transport-unit', privateInput: input,
+      allowSecretExecution: true, secretTransportValidated: true }, { ...x, signalSource: signals,
+      flowDefinitions: { 'account-transport-unit': { method: 'testAccountTransportUnit', inputKind: 'account', secret: true, ready: true } } }));
+    assert.equal(x.calls.length, 0);
+    assert.equal(signals.listenerCount('SIGINT'), 0);
+    assert.equal(signals.listenerCount('SIGTERM'), 0);
+    await gone(f.options.output);
+  }
+});
 test('승인된 manifest의 물리 iPhone과 외부 근거 디렉터리를 사용한다', async () => {
   const f = await fixture(), x = fake();
   const result = await runPhysicalIosFlow(f.options, x);

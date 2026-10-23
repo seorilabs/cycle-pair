@@ -22,6 +22,8 @@ export function resolvePrivateInput(flow, input) {
       Object.keys(input).sort().join(',') !== ['kind', ...fields].sort().join(',') ||
       fields.some(key => typeof input[key] !== 'string' || !input[key]))
     throw new Error('흐름의 비공개 입력 종류와 필드가 맞지 않습니다');
+  if (fields.some(key => !input[key].isWellFormed()))
+    throw new Error('비공개 입력에는 올바른 문자열이 필요합니다');
   if (kind === 'invitation' && !/^[A-Za-z0-9_-]{43}$/.test(input.code)) throw new Error('초대 형식 거절');
   const values = Object.fromEntries(fields.map(key => [key, input[key]]));
   return { kind, values, secrets: Object.values(values) };

@@ -294,6 +294,7 @@ export async function runPhysicalIosFlow(options, dependencies = {}) {
   if (input.kind === 'account' && options.privateInput && !fake)
     await validateCanaryReceipt({ receipt: options.inputValidation, baseXctestrun: base, ownership: ownershipPath,
       candidateSha: options.candidateSha, privateRoot, purpose: 'account' });
+  const redactors = { stdout: createStreamRedactor(secrets), stderr: createStreamRedactor(secrets) };
   await mkdir(output, { mode: 0o700 }); // 덮어쓰기 금지
   const temporary = await mkdtemp(path.join(output, '.private-raw-'));
   const privatePlist = path.join(temporary, 'private.xctestrun');
@@ -308,7 +309,6 @@ export async function runPhysicalIosFlow(options, dependencies = {}) {
   options.signal?.addEventListener('abort', externalAbort, { once: true });
   if (options.signal?.aborted) externalAbort();
   const hashes = { stdout: createHash('sha256'), stderr: createHash('sha256') };
-  const redactors = { stdout: createStreamRedactor(secrets), stderr: createStreamRedactor(secrets) };
   const log = openSync(path.join(output, 'xcodebuild.redacted.log'), 'wx', 0o600);
   const record = { tool: 'xctest', executionMode: fake ? 'injected-fake' : 'physical',
     sourceSha: manifest.installedSourceSha, requestedCandidateSha: options.candidateSha || null,
