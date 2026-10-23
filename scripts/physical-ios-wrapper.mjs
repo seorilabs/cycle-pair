@@ -96,7 +96,17 @@ export async function validateCanaryReceipt({ receipt, baseXctestrun, ownership,
   await assertPrivateFile(base);
   await assertPrivateFile(manifestFile);
   const counts = record.counts;
+  let metadata = '';
+  const inspected = await runOwnedCommand('/usr/bin/python3', [fileURLToPath(new URL('./prepare-xctestrun.py', import.meta.url))], {
+    input: JSON.stringify({ source: base, inspectOnly: true }),
+    onStdout: chunk => { metadata += chunk; }, onStderr: () => {}, timeoutMs: 30_000,
+  });
+  if (inspected.code !== 0 || inspected.timedOut || inspected.ownedGroupCleaned !== true)
+    throw new Error('현재 signed helper 지문을 읽을 수 없습니다');
+  const fingerprint = JSON.parse(metadata);
   if (record.executionMode !== 'physical' || record.flow !== 'invitation-canary' || record.passed !== true ||
+      record.testIdentifier !== 'CyclePairCoordinatedUITests/testInvitationInputCanary' || record.diagnosticOnly !== false ||
+      record.plistPreparation?.testBundleExecutableSHA256 !== fingerprint.testBundleExecutableSHA256 ||
       record.sourceSha !== candidateSha || record.requestedCandidateSha !== candidateSha ||
       record.ownershipManifestSHA256 !== digest(await readFile(manifestFile)) ||
       record.plistPreparation?.sourceSHA256 !== digest(await readFile(base)) ||
@@ -280,7 +290,8 @@ export async function runPhysicalIosFlow(options, dependencies = {}) {
   const log = openSync(path.join(output, 'xcodebuild.redacted.log'), 'wx', 0o600);
   const record = { tool: 'xctest', executionMode: fake ? 'injected-fake' : 'physical',
     sourceSha: manifest.installedSourceSha, requestedCandidateSha: options.candidateSha || null,
-    flow: options.flow, runId: options.runId, startedAt: new Date().toISOString(),
+    flow: options.flow, testIdentifier: `${className}/${flow.method}`,
+    diagnosticOnly: Boolean(dependencies.flowDefinitions), runId: options.runId, startedAt: new Date().toISOString(),
     ownershipManifestSHA256: digest(manifestBytes), formalUIRounds: 0, fullL3: false,
     invitationProvided: Boolean(options.invitation), passed: false, status: 'failed',
     automaticRetry: false, attachmentPolicy: { system: 'keepNever', user: 'keepNever' } };
