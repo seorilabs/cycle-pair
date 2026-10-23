@@ -1,4 +1,4 @@
-import { spawn, execFile } from "node:child_process";
+import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { parseArgs } from "node:util";
 import { createServer } from "node:http";
@@ -17,6 +17,7 @@ import path from "node:path";
 import { tmpdir } from "node:os";
 import { validatePhysicalRuntime, assertPhysicalAndroidState } from './physical-e2e-runtime.mjs';
 import { runPhysicalIosFlow, validateCanaryReceipt } from './physical-ios-wrapper.mjs';
+import { spawnMaestroFlow } from './maestro-process.mjs';
 const exec = promisify(execFile);
 const { values } = parseArgs({
   options: {
@@ -224,7 +225,7 @@ async function runFlow(actor, name, featureIds) {
   let code = 1;
   let flowTimeout;
   try {
-    const child = spawn(
+    const child = spawnMaestroFlow(
       values.maestro,
       [
         `--platform=${runtime.platform}`,
@@ -236,8 +237,6 @@ async function runFlow(actor, name, featureIds) {
         `--debug-output=${temporary}/debug`,
         "-e",
         `APP_ID=${runtime.appId}`,
-        "-e",
-        `CONTROL_URL=${controlUrl}`,
         "-e",
         `SYNTHETIC_NOTE=${runId}-note`,
         "-e",
@@ -257,7 +256,8 @@ async function runFlow(actor, name, featureIds) {
           } -Duser.home=${temporary}/state`,
         },
         stdio: ["ignore", "pipe", "pipe"],
-      }
+      },
+      controlUrl
     );
     activeChild = child;
     let safeProgress = Promise.resolve();

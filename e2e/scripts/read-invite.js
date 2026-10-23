@@ -1,1 +1,1 @@
-output.invitation = JSON.parse(http.get(CONTROL_URL + '/invitation').body).code;
+output.invitation = JSON.parse(http.get(MAESTRO_CONTROL_URL + '/invitation').body).code;
