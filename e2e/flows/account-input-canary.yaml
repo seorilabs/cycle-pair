@@ -1,0 +1,154 @@
+appId: ${APP_ID}
+---
+- assertTrue: ${APP_ID === 'com.seorilabs.cyclepair.qa'}
+- assertTrue: ${MAESTRO_TEST_ACCOUNT_EMAIL === 'cyclepair-public-canary@example.invalid'}
+- assertTrue: ${MAESTRO_TEST_ACCOUNT_PASSWORD === 'CyclePair-Public-Canary!2026'}
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: home-record
+    timeout: 60000
+- tapOn:
+    id: tab-settings
+- scrollUntilVisible:
+    element:
+      text: '.*(Account and recovery|계정과 복구).*'
+    direction: DOWN
+    centerElement: true
+- tapOn: '.*(Account and recovery|계정과 복구).*'
+- assertVisible: 'Guest|게스트'
+- scrollUntilVisible:
+    element:
+      id: account-upgrade-email
+    direction: DOWN
+    centerElement: true
+- runScript:
+    file: ../scripts/read-account-empty.js
+    env:
+      ACCOUNT_FIELD: email
+- assertTrue: ${output.accountInputEmpty === true}
+- evalScript: ${console.log('CP_ACCOUNT_CANARY stage=initial-email-empty')}
+- scrollUntilVisible:
+    element:
+      id: account-upgrade-password
+    direction: DOWN
+    centerElement: true
+- runScript:
+    file: ../scripts/read-account-empty.js
+    env:
+      ACCOUNT_FIELD: password
+- assertTrue: ${output.accountInputEmpty === true}
+- evalScript: ${console.log('CP_ACCOUNT_CANARY stage=initial-password-empty')}
+- scrollUntilVisible:
+    element:
+      id: account-upgrade-password-confirm
+    direction: DOWN
+    centerElement: true
+- runScript:
+    file: ../scripts/read-account-empty.js
+    env:
+      ACCOUNT_FIELD: confirm
+- assertTrue: ${output.accountInputEmpty === true}
+- evalScript: ${console.log('CP_ACCOUNT_CANARY stage=initial-confirm-empty')}
+- scrollUntilVisible:
+    element:
+      id: account-upgrade-email
+    direction: UP
+    centerElement: true
+- tapOn:
+    id: account-upgrade-email
+- inputText: ${MAESTRO_TEST_ACCOUNT_EMAIL}
+- hideKeyboard
+- assertVisible:
+    id: account-upgrade-email
+    text: '^cyclepair-public-canary@example[.]invalid$'
+- evalScript: ${console.log('CP_ACCOUNT_CANARY stage=email-exact')}
+- scrollUntilVisible:
+    element:
+      id: account-upgrade-password
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: account-upgrade-password
+- inputText: ${MAESTRO_TEST_ACCOUNT_PASSWORD}
+- hideKeyboard
+- extendedWaitUntil:
+    visible:
+      id: account-upgrade-password
+      text: ${'^[•●*]{' + MAESTRO_TEST_ACCOUNT_PASSWORD.length + '}$'}
+    timeout: 10000
+- evalScript: ${console.log('CP_ACCOUNT_CANARY stage=password-masked')}
+- scrollUntilVisible:
+    element:
+      id: account-upgrade-password-confirm
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: account-upgrade-password-confirm
+- inputText: ${MAESTRO_TEST_ACCOUNT_PASSWORD}
+- hideKeyboard
+- extendedWaitUntil:
+    visible:
+      id: account-upgrade-password-confirm
+      text: ${'^[•●*]{' + MAESTRO_TEST_ACCOUNT_PASSWORD.length + '}$'}
+    timeout: 10000
+- evalScript: ${console.log('CP_ACCOUNT_CANARY stage=confirm-masked')}
+- scrollUntilVisible:
+    element:
+      text: 'Back|뒤로'
+    direction: UP
+    centerElement: true
+- tapOn: 'Back|뒤로'
+- assertNotVisible:
+    id: account-upgrade-email
+- evalScript: ${console.log('CP_ACCOUNT_CANARY stage=closed')}
+- tapOn: '.*(Account and recovery|계정과 복구).*'
+- assertVisible: 'Guest|게스트'
+- evalScript: ${console.log('CP_ACCOUNT_CANARY stage=reopened')}
+- scrollUntilVisible:
+    element:
+      id: account-upgrade-email
+    direction: DOWN
+    centerElement: true
+- runScript:
+    file: ../scripts/read-account-empty.js
+    env:
+      ACCOUNT_FIELD: email
+- assertTrue: ${output.accountInputEmpty === true}
+- evalScript: ${console.log('CP_ACCOUNT_CANARY stage=cleared-email')}
+- scrollUntilVisible:
+    element:
+      id: account-upgrade-password
+    direction: DOWN
+    centerElement: true
+- runScript:
+    file: ../scripts/read-account-empty.js
+    env:
+      ACCOUNT_FIELD: password
+- assertTrue: ${output.accountInputEmpty === true}
+- evalScript: ${console.log('CP_ACCOUNT_CANARY stage=cleared-password')}
+- scrollUntilVisible:
+    element:
+      id: account-upgrade-password-confirm
+    direction: DOWN
+    centerElement: true
+- runScript:
+    file: ../scripts/read-account-empty.js
+    env:
+      ACCOUNT_FIELD: confirm
+- assertTrue: ${output.accountInputEmpty === true}
+- evalScript: ${console.log('CP_ACCOUNT_CANARY stage=cleared-confirm')}
+- scrollUntilVisible:
+    element:
+      text: 'Back|뒤로'
+    direction: UP
+    centerElement: true
+- tapOn: 'Back|뒤로'
+- assertNotVisible:
+    id: account-upgrade-email
+- evalScript: ${console.log('CP_ACCOUNT_CANARY stage=closed-again')}
+- tapOn:
+    id: tab-home
+- assertVisible:
+    id: home-record
