@@ -185,15 +185,16 @@ final class CyclePairPhysicalUITests: XCTestCase {
     private func reveal(_ control: XCUIElement) {
         for _ in 0..<12 {
             let window = app.windows.firstMatch.frame
-            if control.exists && control.isHittable && control.frame.midY < window.maxY - 90 { return }
-            let scrolls = app.scrollViews.matching(identifier: "screen-scroll").allElementsBoundByIndex
+            let scrolls = app.descendants(matching: .any).matching(identifier: "screen-scroll").allElementsBoundByIndex
             guard let scroll = scrolls.last(where: { $0.isHittable }) else {
                 XCTFail("실제 스크롤 영역을 찾을 수 없습니다.")
                 return
             }
+            let viewport = window.intersection(scroll.frame)
+            if control.exists && control.isHittable && viewport.contains(control.frame) { return }
             scroll.swipeUp(velocity: .slow)
         }
-        XCTFail("화면 요소가 탭 바에 가리지 않은 위치까지 스크롤되어야 합니다.")
+        XCTFail("화면 요소 전체가 실제 스크롤 영역 안에 표시되어야 합니다.")
     }
 
     private func wait(timeout: TimeInterval = 15, _ condition: @escaping () -> Bool) -> Bool {
