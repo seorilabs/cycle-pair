@@ -9,7 +9,7 @@ import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { DEFAULT_FLOWS, createStreamRedactor, runPhysicalIosFlow, runOwnedCommand, validateCanaryReceipt } from './physical-ios-wrapper.mjs';
-import { ACCOUNT_CANARY_SCOPE, IOS_ACCOUNT_CANARY_SCOPE, PUBLIC_ACCOUNT_CANARY } from './private-e2e-input.mjs';
+import { ACCOUNT_CANARY_SCOPE, IOS_ACCOUNT_CANARY_SCOPE, PUBLIC_ACCOUNT_CANARY, resolvePrivateInput, privateInputEnvironment } from './private-e2e-input.mjs';
 const APPROVED_DEVICE_ID = '00000000-0000000000000000';
 // 아래 값은 공개된 고정 가짜 값이며 실제 초대를 생성하지 않는다.
 const CANARY = 'C'.repeat(43), OTHER = 'Z'.repeat(500), RUN = 'cp-20261023010000000-abcdef', SHA = '1'.repeat(40);
@@ -391,5 +391,87 @@ for (const [flow, method] of [
   for (const file of await readdir(f.options.output)) {
     const value = await readFile(path.join(f.options.output, file), 'utf8');
     assert.ok(!value.includes(input.email)); assert.ok(!value.includes(input.password));
+  }
+});
+
+
+const lifecycleMethods = {
+  'email-verification-request': 'testEmailVerificationRequested',
+  'email-verification-refresh': 'testEmailVerificationRefreshed',
+  'password-reset-request': 'testPasswordResetRequested',
+  'password-reset-old-rejected': 'testPasswordResetOldPasswordRejected',
+  'password-reset-login': 'testPasswordResetLogin',
+};
+test('계정 수명주기는 고정한 앱 UI 메서드와 기존 account receipt만 사용한다', () => {
+  for (const [name, method] of Object.entries(lifecycleMethods)) {
+    const flow = DEFAULT_FLOWS[name];
+    assert.equal(flow?.method, method);
+    assert.equal(flow.className, 'CyclePairCoordinatedUITests');
+    assert.equal(flow.ready, true);
+    if (name.startsWith('email-')) {
+      assert.equal(flow.requiresAccountCanary, true);
+      assert.equal(flow.secret, false);
+      assert.deepEqual(resolvePrivateInput(flow, undefined).values, {});
+    } else assert.equal(flow.inputKind, 'account');
+  }
+});
+test('reset 요청은 기존 strict 계정 객체를 검증하되 helper에 비밀번호를 전달하지 않는다', () => {
+  const input = { kind: 'account', email: 'lifecycle-public@example.invalid', password: 'Public-Lifecycle!7' };
+  const resolved = resolvePrivateInput({ inputKind: 'account' }, input);
+  assert.deepEqual(privateInputEnvironment(resolved, 'ios', 'password-reset-request'), {
+    CYCLEPAIR_TEST_ACCOUNT_EMAIL: input.email,
+  });
+  for (const flow of ['password-reset-old-rejected', 'password-reset-login'])
+    assert.deepEqual(privateInputEnvironment(resolved, 'ios', flow), {
+      CYCLEPAIR_TEST_ACCOUNT_EMAIL: input.email, CYCLEPAIR_TEST_ACCOUNT_PASSWORD: input.password,
+    });
+  for (const invalid of [{ kind: 'account', email: input.email }, { ...input, purpose: 'reset' }])
+    assert.throws(() => resolvePrivateInput({ inputKind: 'account' }, invalid));
+});
+for (const [flow, method] of Object.entries(lifecycleMethods)) test(`${flow}는 필요한 env만 private plist에 넣고 입력 원문을 지운다`, async () => {
+  const f = await fixture();
+  const email = 'lifecycle-public@example.invalid', password = 'Public-Lifecycle!7';
+  const verification = flow.startsWith('email-');
+  const input = verification ? undefined : { kind: 'account', email, password };
+  const x = fake({ inspect: async ({ prepared, args }) => {
+    const env = prepared.EnvironmentVariables;
+    assert.equal(env.CYCLEPAIR_SECRET_INPUT_VALIDATED, '1');
+    assert.equal(env.CYCLEPAIR_TEST_ACCOUNT_EMAIL, verification ? undefined : email);
+    assert.equal(env.CYCLEPAIR_TEST_ACCOUNT_PASSWORD,
+      verification || flow === 'password-reset-request' ? undefined : password);
+    assert.ok(args.includes(`-only-testing:CyclePairPhysicalUITests/CyclePairCoordinatedUITests/${method}`));
+    assert.ok(!JSON.stringify(x.calls).includes(email));
+    assert.ok(!JSON.stringify(x.calls).includes(password));
+    assert.ok(!JSON.stringify(env).includes('host-only-public-redaction'));
+  }, execute: async options => {
+    options.onStdout(Buffer.from(`host-only-public-redaction ${email} ${password} lifecycle-pub...`));
+    return { code: 0, signal: null };
+  } });
+  const result = await runPhysicalIosFlow({ ...f.options, flow, privateInput: input,
+    allowSecretExecution: true, secretTransportValidated: true,
+    redactionValues: [email, password, 'host-only-public-redaction'] }, x);
+  assert.equal(result.passed, true);
+  assert.equal(result.privateRawRemoved, true);
+  assert.equal(result.diagnosticOnly, false);
+  await gone(x.plist()); await gone(x.bundle());
+  for (const file of await readdir(f.options.output)) {
+    const text = await readFile(path.join(f.options.output, file), 'utf8');
+    for (const secret of [email, password, 'host-only-public-redaction', 'lifecycle-pub...']) assert.ok(!text.includes(secret));
+  }
+});
+test('입력이 없는 이메일 흐름도 account canary 없이 실제 Xcode를 시작하지 않는다', async () => {
+  for (const flow of ['email-verification-request', 'email-verification-refresh']) {
+    const f = await fixture();
+    await assert.rejects(runPhysicalIosFlow({ ...f.options, flow, executePhysical: true,
+      redactionValues: ['lifecycle-public@example.invalid'] }), /비공개 작업 공간 절대 경로 필요/);
+    await gone(f.options.output);
+  }
+});
+test('host-only 가림값은 올바른 문자열 배열이어야 하며 UI 입력으로 바뀌지 않는다', async () => {
+  for (const redactionValues of [null, 'public', [null], [''], ['\ud800']]) {
+    const f = await fixture(), x = fake();
+    await assert.rejects(runPhysicalIosFlow({ ...f.options, redactionValues }, x));
+    assert.equal(x.calls.length, 0);
+    await gone(f.options.output);
   }
 });

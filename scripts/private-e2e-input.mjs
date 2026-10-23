@@ -33,11 +33,13 @@ export function resolvePrivateInput(flow, input) {
   return { kind, values, secrets: Object.values(values) };
 }
 
-export function privateInputEnvironment(input, platform) {
+export function privateInputEnvironment(input, platform, flowName) {
   if (!['ios', 'android'].includes(platform)) throw new Error('지원하지 않는 입력 플랫폼');
   const prefix = platform === 'ios' ? 'CYCLEPAIR_TEST_' : 'MAESTRO_TEST_';
   if (input.kind === 'none') return {};
-  return input.kind === 'account'
-    ? { [`${prefix}ACCOUNT_EMAIL`]: input.values.email, [`${prefix}ACCOUNT_PASSWORD`]: input.values.password }
-    : { [`${prefix}INVITATION`]: input.values.code };
+  if (input.kind === 'account') {
+    const fields = flowName === 'password-reset-request' ? ['email'] : ['email', 'password'];
+    return Object.fromEntries(fields.map(field => [`${prefix}ACCOUNT_${field.toUpperCase()}`, input.values[field]]));
+  }
+  return { [`${prefix}INVITATION`]: input.values.code };
 }

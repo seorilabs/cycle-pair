@@ -21,6 +21,11 @@ export const DEFAULT_FLOWS = Object.freeze({
   'account-logout': { method: 'testAccountLogout', className: 'CyclePairCoordinatedUITests', inputKind: 'account', secret: true, ready: true },
   'account-login': { method: 'testAccountLogin', className: 'CyclePairCoordinatedUITests', inputKind: 'account', secret: true, ready: true },
   'account-reauthenticate': { method: 'testAccountReauthenticate', className: 'CyclePairCoordinatedUITests', inputKind: 'account', secret: true, ready: true },
+  'email-verification-request': { method: 'testEmailVerificationRequested', className: 'CyclePairCoordinatedUITests', requiresAccountCanary: true, secret: false, ready: true },
+  'email-verification-refresh': { method: 'testEmailVerificationRefreshed', className: 'CyclePairCoordinatedUITests', requiresAccountCanary: true, secret: false, ready: true },
+  'password-reset-request': { method: 'testPasswordResetRequested', className: 'CyclePairCoordinatedUITests', inputKind: 'account', secret: true, ready: true },
+  'password-reset-old-rejected': { method: 'testPasswordResetOldPasswordRejected', className: 'CyclePairCoordinatedUITests', inputKind: 'account', secret: true, ready: true },
+  'password-reset-login': { method: 'testPasswordResetLogin', className: 'CyclePairCoordinatedUITests', inputKind: 'account', secret: true, ready: true },
   'invitation-accept': { method: 'testInvitationAccept', className: 'CyclePairCoordinatedUITests', inputKind: 'invitation', secret: true, ready: true },
   'sharing-private': { method: 'testSharingPrivate', className: 'CyclePairCoordinatedUITests', secret: false, ready: true },
   'partner-received': { method: 'testPartnerReceived', className: 'CyclePairCoordinatedUITests', secret: false, ready: true },
@@ -266,7 +271,12 @@ export async function runPhysicalIosFlow(options, dependencies = {}) {
   if (flow.secret !== Boolean(options.privateInput)) throw new Error('flow와 비밀 입력 범위가 다릅니다');
   if (!fake && options.executePhysical !== true) throw new Error('실제 실행은 명시적으로 선택해야 합니다');
   // 공개 canary도 향후 비밀 입력과 같은 exact-value 가림 경로를 검증한다.
-  const secrets = input.secrets;
+  const hostRedactions = options.redactionValues === undefined ? [] : options.redactionValues;
+  if (!Array.isArray(hostRedactions) || hostRedactions.some(value => typeof value !== 'string' || !value || !value.isWellFormed()))
+    throw new Error('host 전용 가림값은 올바른 문자열 배열이어야 합니다');
+  if (flow.requiresAccountCanary && hostRedactions.length === 0)
+    throw new Error('기존 계정 화면의 host 전용 가림값이 필요합니다');
+  const secrets = [...input.secrets, ...hostRedactions];
   for (const value of [options.baseXctestrun, options.ownership, options.output])
     if (secrets.some(secret => typeof value === 'string' && value.includes(secret)))
       throw new Error('파일 경로에 비밀값을 넣을 수 없습니다');
@@ -295,7 +305,7 @@ export async function runPhysicalIosFlow(options, dependencies = {}) {
   const accountOwnershipSHA256 = digest(await readFile(account));
   if (!/^[a-f0-9]{40}$/.test(options.candidateSha || '') || options.candidateSha !== manifest.installedSourceSha)
     throw new Error('설치 후보와 요청 후보가 다릅니다');
-  if (input.kind === 'account' && options.privateInput && !fake)
+  if (((input.kind === 'account' && options.privateInput) || flow.requiresAccountCanary) && !fake)
     await validateCanaryReceipt({ receipt: options.inputValidation, baseXctestrun: base, ownership: ownershipPath,
       candidateSha: options.candidateSha, privateRoot, purpose: 'account' });
   const redactors = { stdout: createStreamRedactor(secrets), stderr: createStreamRedactor(secrets) };
@@ -333,8 +343,8 @@ export async function runPhysicalIosFlow(options, dependencies = {}) {
   try {
     const environment = { CYCLEPAIR_PHYSICAL_UI_APPROVED: '1', CYCLEPAIR_SYNTHETIC_INSTALLATION: '1',
       CYCLEPAIR_TEST_RUN_ID: options.runId, CYCLEPAIR_CAPTURE_SAFE_SCREENS: '0',
-      CYCLEPAIR_TEST_FLOW: options.flow, ...privateInputEnvironment(input, 'ios') };
-    if (options.privateInput) {
+      CYCLEPAIR_TEST_FLOW: options.flow, ...privateInputEnvironment(input, 'ios', options.flow) };
+    if (options.privateInput || flow.requiresAccountCanary) {
       environment.CYCLEPAIR_SECRET_INPUT_VALIDATED = '1';
     }
     let preparation = '';

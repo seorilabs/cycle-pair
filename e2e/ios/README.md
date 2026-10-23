@@ -73,6 +73,11 @@ xcodebuild build-for-testing \
 | `account-logout` | 로그아웃 취소와 확인, 정상 로그아웃 뒤 재실행에서 로그인 화면 유지 |
 | `account-login` | 정상 로그인 화면에 비공개 입력 후 홈과 재실행 로그인 상태 |
 | `account-reauthenticate` | 현재 비밀번호 확인, 완료 문구와 입력 비움, 홈 복귀 |
+| `email-verification-request` | 미인증 상태 새로고침, 메일 재전송 요청과 미인증 유지 |
+| `email-verification-refresh` | 외부 인증 완료 후 앱 새로고침, 인증됨과 재실행 복원 |
+| `password-reset-request` | 로그인과 복구 화면 왕복, 이메일만 입력해 복구 메일 요청 |
+| `password-reset-old-rejected` | 외부 재설정 완료 후 이전 비밀번호 로그인 거절, 정상 화면 전환으로 초안 비움 |
+| `password-reset-login` | 새 비밀번호 정상 로그인과 재실행 Home 복원 |
 | `invitation-accept` | 비공개 초대 입력, 실제 연결, 기본 비공개 미리보기와 저장 |
 | `sharing-private` | 이미 열린 공유 화면에서 기본 비공개 확인과 저장 |
 | `partner-received` | 공유받은 감정과 도움, 공유하지 않은 합성 메모 부재 |
@@ -91,6 +96,10 @@ xcodebuild build-for-testing \
 잘못된 UTF-16 입력은 자식 실행과 임시 자료 생성 전에 거절하며, 출력 가림기도 그전에 준비한다.
 
 네 계정 흐름은 같은 후보, helper, manifest와 소유 계정에 묶인 공개 계정 canary가 실제 통과한 뒤에만 비공개 입력으로 실행한다. 게스트 전환은 현재 소유 자료를 유지하는 작업이며 로그아웃은 동기화가 완료된 계정에서만 실행한다. 전환과 로그인 결과는 정상 UI에서만 확인하고 직접 Auth나 저장 자료를 쓰지 않는다. 전환 뒤 이메일 인증은 별도 미실행 상태로 남는다. 로그인 복원은 홈과 세션 복원 확인이며 기존 합성 기록 전체의 동일성은 따로 대조한다. 비밀번호 재설정, 이메일 action, 내보내기와 삭제는 이 네 메서드에 포함되지 않는다. helper 빌드와 mock process 검사는 실제 인증 통과가 아니다. 실패 시 추가 제출이나 자동 재시도를 하지 않는다.
+
+새 수명주기 메서드는 앱 UI 구간만 수행한다. 외부 이메일 인증 action과 비밀번호 변경은 구현하지 않았고 Safari, OOB 전달이나 실제 메일 수신 성공으로 세지 않는다. `email-verification-refresh` 전에는 별도로 승인한 외부 인증 단계가 완료돼야 하며, `password-reset-old-rejected`와 `password-reset-login` 전에도 외부 재설정이 완료돼야 한다. 이 전제가 없으면 UI 단언이 실패하며 서버 값을 주입해 성공을 만들지 않는다. 이전 비밀번호와 새 비밀번호는 실행별 기존 account 객체 하나로 따로 전달한다. 전체 기록과 UID 보존은 별도 읽기 대조가 필요하며 Home 표시만으로 같은 계정임을 단정하지 않는다.
+
+두 verification 흐름에도 같은 account 목적 `inputValidation` receipt가 필요하다. `privateInput`은 없고 현재 소유 계정의 알려진 이메일 등을 `redactionValues` 문자열 배열로 호스트에만 제공한다. 이 배열은 로그 가림에만 사용하며 private plist, 자식 환경과 결과 JSON에 저장하지 않는다. `password-reset-request`는 기존 `{kind,email,password}` 입력을 검증하고 두 값 모두 가리되 helper plist에는 이메일만 보낸다. Swift 입력 gate도 이 흐름에 비밀번호가 들어오면 거절한다. 나머지 두 reset 로그인 흐름에는 해당 단계의 이메일과 비밀번호만 보낸다. 별도 purpose 필드나 URL 입력 타입은 추가하지 않는다.
 
 공개 계정 canary는 코드에 고정한 공개값만 사용하며 외부 입력을 거절한다. iOS에서 보안 입력란의 비어 있지 않은 마스크 값을 확인한다. 마스크 수를 입력 길이로 해석하지 않으며 정확한 비밀번호 입력이나 인증 성공을 증명하지 않는다. iOS 근거의 `secureFieldEvidence`는 `masked-nonempty-only`이고 Android의 `masked-length-only` 근거와 구분한다. 이전 범위의 iOS 근거는 새 계약에서 거절한다. 결과의 `canaryScope`도 `passwordExactInputValidated=false`, `authenticationSucceeded=false`, `submitted=false`를 유지한다. 향후 첫 비공개 계정 입력에는 목적이 같은 canary의 후보, helper, manifest와 소유 계정 파일 지문이 일치하고 원시 자료가 정리된 `inputValidation` 근거가 필요하다. 정상 UI 인증 성공은 이후 계정 흐름에서 별도로 확인한다. 공개 canary 자체에는 인증 성공을 요구하지 않는다.
 

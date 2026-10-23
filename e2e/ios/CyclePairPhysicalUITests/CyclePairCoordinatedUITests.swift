@@ -32,6 +32,11 @@ final class CyclePairCoordinatedUITests: XCTestCase {
             "testAccountLogout": "account-logout",
             "testAccountLogin": "account-login",
             "testAccountReauthenticate": "account-reauthenticate",
+            "testEmailVerificationRequested": "email-verification-request",
+            "testEmailVerificationRefreshed": "email-verification-refresh",
+            "testPasswordResetRequested": "password-reset-request",
+            "testPasswordResetOldPasswordRejected": "password-reset-old-rejected",
+            "testPasswordResetLogin": "password-reset-login",
             "testInvitationAccept": "invitation-accept",
             "testSharingPrivate": "sharing-private",
             "testPartnerReceived": "partner-received",
@@ -60,7 +65,20 @@ final class CyclePairCoordinatedUITests: XCTestCase {
                   environment["CYCLEPAIR_TEST_ACCOUNT_PASSWORD"] == Self.publicAccountPassword else {
                 throw PreparationError.actualAccountInputNotAllowed
             }
-        } else if ["account-upgrade", "account-logout", "account-login", "account-reauthenticate"].contains(flow) {
+        } else if ["email-verification-request", "email-verification-refresh"].contains(flow) {
+            guard environment["CYCLEPAIR_SECRET_INPUT_VALIDATED"] == "1",
+                  (environment["CYCLEPAIR_TEST_ACCOUNT_EMAIL"] ?? "").isEmpty,
+                  (environment["CYCLEPAIR_TEST_ACCOUNT_PASSWORD"] ?? "").isEmpty else {
+                throw PreparationError.actualAccountInputNotAllowed
+            }
+        } else if flow == "password-reset-request" {
+            guard environment["CYCLEPAIR_SECRET_INPUT_VALIDATED"] == "1",
+                  !(environment["CYCLEPAIR_TEST_ACCOUNT_EMAIL"] ?? "").isEmpty,
+                  (environment["CYCLEPAIR_TEST_ACCOUNT_PASSWORD"] ?? "").isEmpty else {
+                throw PreparationError.secretInputNotValidated
+            }
+        } else if ["account-upgrade", "account-logout", "account-login", "account-reauthenticate",
+                   "password-reset-old-rejected", "password-reset-login"].contains(flow) {
             guard environment["CYCLEPAIR_SECRET_INPUT_VALIDATED"] == "1",
                   !(environment["CYCLEPAIR_TEST_ACCOUNT_EMAIL"] ?? "").isEmpty,
                   !(environment["CYCLEPAIR_TEST_ACCOUNT_PASSWORD"] ?? "").isEmpty else {
@@ -229,6 +247,11 @@ final class CyclePairCoordinatedUITests: XCTestCase {
     }
 
     func testAccountLogin() {
+        signInAndObserveRestore()
+        print("CP_ACCOUNT_AUTH action=login uiCompleted=true coldRestartHome=true")
+    }
+
+    private func signInAndObserveRestore() {
         XCTAssertTrue(element("account-login-submit").waitForExistence(timeout: 120), "정상 로그아웃된 로그인 화면이 선행 조건입니다.")
         let environment = ProcessInfo.processInfo.environment
         let email = app.textFields.matching(NSPredicate(format: "label IN %@", ["Sign-in email", "로그인 이메일"])).firstMatch
@@ -241,7 +264,6 @@ final class CyclePairCoordinatedUITests: XCTestCase {
         XCTAssertTrue(element("home-record").waitForExistence(timeout: 60), "정상 로그인 뒤 홈이 열려야 합니다.")
         restartForObservation()
         XCTAssertTrue(element("home-record").waitForExistence(timeout: 120), "재실행 뒤 로그인 상태가 복원되어야 합니다.")
-        print("CP_ACCOUNT_AUTH action=login uiCompleted=true coldRestartHome=true")
     }
 
     func testAccountReauthenticate() {
@@ -261,6 +283,105 @@ final class CyclePairCoordinatedUITests: XCTestCase {
         closeAccountCanary()
         tap("tab-home")
         print("CP_ACCOUNT_AUTH action=reauthenticate uiCompleted=true passwordCleared=true")
+    }
+
+    func testEmailVerificationRequested() {
+        openAccountSettings()
+        XCTAssertTrue(text(["Unverified", "미인증"]).exists, "미인증 소유 계정이 선행 조건입니다.")
+        let refresh = button(["Refresh verification status", "인증 여부 새로고침"])
+        reveal(refresh); refresh.tap()
+        let pending = text(["Email not yet verified. Open the email link and check again.",
+                            "아직 인증되지 않았습니다. 메일의 링크를 연 뒤 다시 확인해 주세요."])
+        XCTAssertTrue(pending.waitForExistence(timeout: 60), "외부 인증 전 새로고침은 미인증 안내를 표시해야 합니다.")
+        let sent = text(["Verification email sent again.", "인증 메일을 다시 보냈습니다."])
+        XCTAssertFalse(sent.exists, "기존 발송 안내를 이번 성공으로 세지 않습니다.")
+        let resend = button(["Resend verification email", "인증 메일 다시 보내기"])
+        reveal(resend); resend.tap()
+        XCTAssertTrue(sent.waitForExistence(timeout: 60), "앱의 메일 요청 완료 안내가 있어야 합니다.")
+        XCTAssertTrue(text(["Unverified", "미인증"]).exists, "요청만으로 인증 완료가 되면 안 됩니다.")
+        closeAccountCanary(); tap("tab-home")
+        print("CP_ACCOUNT_LIFECYCLE action=verification-request requested=true deliveryVerified=false")
+    }
+
+    func testEmailVerificationRefreshed() {
+        // 외부 메일 action은 이 메서드에서 수행하지 않는다.
+        openAccountSettings()
+        let refresh = button(["Refresh verification status", "인증 여부 새로고침"])
+        XCTAssertTrue(refresh.waitForExistence(timeout: 15), "아직 새로고침하지 않은 인증 화면이 필요합니다.")
+        reveal(refresh); refresh.tap()
+        let verified = text(["Verified", "인증됨"])
+        XCTAssertTrue(verified.waitForExistence(timeout: 60), "외부 인증 뒤 앱 새로고침으로 인증됨을 표시해야 합니다.")
+        XCTAssertTrue(text(["Email verification confirmed.", "이메일 인증을 확인했습니다."]).exists)
+        XCTAssertFalse(refresh.exists)
+        XCTAssertFalse(button(["Resend verification email", "인증 메일 다시 보내기"]).exists)
+        closeAccountCanary(); tap("tab-home")
+        restartForObservation()
+        openAccountSettings()
+        XCTAssertTrue(verified.exists, "정상 재실행 뒤에도 인증됨을 유지해야 합니다.")
+        XCTAssertFalse(refresh.exists)
+        closeAccountCanary(); tap("tab-home")
+        print("CP_ACCOUNT_LIFECYCLE action=verification-refresh verified=true coldRestartVerified=true")
+    }
+
+    func testPasswordResetRequested() {
+        XCTAssertTrue(element("account-login-submit").waitForExistence(timeout: 120), "로그아웃한 소유 계정의 로그인 화면이 필요합니다.")
+        let email = signInEmail()
+        XCTAssertTrue(email.exists && emptyAccountField(email), "기존 이메일 입력을 덮어쓰지 않습니다.")
+        tapButton(["Forgot password", "비밀번호를 잊었어요"])
+        XCTAssertTrue(element("account-reset-submit").waitForExistence(timeout: 15))
+        XCTAssertFalse(signInPassword().exists, "재설정 요청에는 비밀번호 입력이 없어야 합니다.")
+        tapButton(["Back to sign in", "로그인으로 돌아가기"])
+        XCTAssertTrue(element("account-login-submit").waitForExistence(timeout: 15))
+        XCTAssertTrue(emptyAccountField(signInPassword()))
+        tapButton(["Forgot password", "비밀번호를 잊었어요"])
+        fillEmptyAccountField(email, ProcessInfo.processInfo.environment["CYCLEPAIR_TEST_ACCOUNT_EMAIL"] ?? "")
+        dismissAccountKeyboard()
+        let submit = element("account-reset-submit")
+        reveal(submit); submit.tap()
+        XCTAssertTrue(text(["If this email is registered, a password reset email will be sent.",
+                            "등록된 계정이라면 비밀번호 재설정 메일이 전송됩니다."]).waitForExistence(timeout: 60),
+                      "계정 존재 여부를 공개하지 않는 발송 안내가 있어야 합니다.")
+        XCTAssertFalse(signInPassword().exists)
+        XCTAssertFalse(element("home-record").exists)
+        tapButton(["Back to sign in", "로그인으로 돌아가기"])
+        XCTAssertTrue(element("account-login-submit").waitForExistence(timeout: 15))
+        XCTAssertTrue(emptyAccountField(signInPassword()))
+        print("CP_ACCOUNT_LIFECYCLE action=password-reset-request requested=true deliveryVerified=false")
+    }
+
+    func testPasswordResetOldPasswordRejected() {
+        // 외부 서비스에서 재설정을 완료한 뒤에만 이 흐름을 실행한다.
+        XCTAssertTrue(element("account-login-submit").waitForExistence(timeout: 120), "정상 로그인 화면이 필요합니다.")
+        let environment = ProcessInfo.processInfo.environment
+        fillEmptyAccountField(signInEmail(), environment["CYCLEPAIR_TEST_ACCOUNT_EMAIL"] ?? "")
+        fillEmptyAccountField(signInPassword(), environment["CYCLEPAIR_TEST_ACCOUNT_PASSWORD"] ?? "")
+        dismissAccountKeyboard()
+        let submit = element("account-login-submit")
+        reveal(submit); submit.tap()
+        XCTAssertTrue(text(["Email or password is incorrect.", "이메일 또는 비밀번호가 올바르지 않습니다."]).waitForExistence(timeout: 60),
+                      "이전 비밀번호의 정상 로그인 요청을 거절해야 합니다.")
+        XCTAssertTrue(submit.exists)
+        XCTAssertFalse(element("home-record").exists)
+        // 자신의 실패 입력은 앱의 정상 모드 전환으로만 비운다.
+        tapButton(["Forgot password", "비밀번호를 잊었어요"])
+        XCTAssertTrue(element("account-reset-submit").waitForExistence(timeout: 15))
+        tapButton(["Back to sign in", "로그인으로 돌아가기"])
+        XCTAssertTrue(signInPassword().waitForExistence(timeout: 15))
+        XCTAssertTrue(emptyAccountField(signInPassword()), "이전 비밀번호 초안을 비워야 합니다.")
+        print("CP_ACCOUNT_LIFECYCLE action=password-reset-old-rejected rejected=true draftCleared=true")
+    }
+
+    func testPasswordResetLogin() {
+        signInAndObserveRestore()
+        print("CP_ACCOUNT_LIFECYCLE action=password-reset-login authenticated=true coldRestartHome=true")
+    }
+
+    private func signInEmail() -> XCUIElement {
+        app.textFields.matching(NSPredicate(format: "label IN %@", ["Sign-in email", "로그인 이메일"])).firstMatch
+    }
+
+    private func signInPassword() -> XCUIElement {
+        app.secureTextFields.matching(NSPredicate(format: "label IN %@", ["Sign-in password", "로그인 비밀번호"])).firstMatch
     }
 
     private func openAccountSettings() {
