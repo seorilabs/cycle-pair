@@ -543,6 +543,7 @@ export function SettingsScreen() {
               }}
             />
             <SettingLink
+              testID="privacy-open"
               title={l('개인정보와 데이터 관리 안내')}
               description={l('수집·공유·알림·진단·내보내기·삭제 동작 확인')}
               onPress={() => setPrivacyVisible(true)}

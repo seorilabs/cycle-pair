@@ -36,6 +36,54 @@ final class CyclePairPhysicalUITests: XCTestCase {
         safeScreenshot("home-cold")
     }
 
+    func testDiagnosticsConsentSurvivesColdRestart() {
+        openNotificationsAndPrivacy()
+        guard let original = diagnosticsValue() else { return }
+        print("CP_DIAGNOSTICS initial=\(original)")
+        setDiagnostics(!original)
+        coldHome()
+        openNotificationsAndPrivacy()
+        XCTAssertEqual(diagnosticsValue(), !original, "진단 동의 변경이 재실행 뒤 유지되어야 합니다.")
+
+        setDiagnostics(original)
+        coldHome()
+        openNotificationsAndPrivacy()
+        XCTAssertEqual(diagnosticsValue(), original, "원래 진단 동의가 재실행 뒤 복원되어야 합니다.")
+        print("CP_DIAGNOSTICS restored=\(original)")
+        tapButton(["Back", "뒤로"])
+        tap("tab-home")
+        XCTAssertTrue(element("home-record").waitForExistence(timeout: 30))
+    }
+
+    func testPrivacyNoticeCanBeReadAndClosed() {
+        openNotificationsAndPrivacy()
+        let entry = element("privacy-open")
+        reveal(entry)
+        entry.tap()
+        XCTAssertTrue(element("privacy-center").waitForExistence(timeout: 30), "개인정보 안내가 열려야 합니다.")
+        let title = app.staticTexts.matching(NSPredicate(format: "label IN %@", [
+            "You control your records and sharing", "내 기록과 공유를 직접 통제해요"
+        ])).firstMatch
+        reveal(title, scrollIdentifier: "privacy-scroll")
+        assertAccessible(title)
+        let consent = app.staticTexts.matching(NSPredicate(format:
+            "label CONTAINS %@ OR label CONTAINS %@", "Health data consent", "민감정보 동의")).firstMatch
+        reveal(consent, scrollIdentifier: "privacy-scroll")
+        assertAccessible(consent)
+        XCTAssertTrue(consent.label.contains("2026-08-09-v1"), "현재 민감정보 동의 버전을 읽을 수 있어야 합니다.")
+        let rights = app.staticTexts.matching(NSPredicate(format:
+            "label CONTAINS %@ OR label CONTAINS %@",
+            "After confirming your current password in account settings", "계정 설정에서 내 데이터를")).firstMatch
+        reveal(rights, scrollIdentifier: "privacy-scroll")
+        assertAccessible(rights)
+        tap("privacy-close")
+        XCTAssertTrue(wait { !self.element("privacy-center").exists }, "확인 뒤 안내를 닫아야 합니다.")
+        XCTAssertTrue(element("diagnostics-toggle").exists, "원래 알림과 개인정보 설정으로 돌아와야 합니다.")
+        tapButton(["Back", "뒤로"])
+        tap("tab-home")
+        XCTAssertTrue(element("home-record").waitForExistence(timeout: 30))
+    }
+
     func testLanguageChangeSurvivesColdRestart() {
         openLanguage()
         let original = ["system", "ko", "en"].first {
@@ -155,6 +203,37 @@ final class CyclePairPhysicalUITests: XCTestCase {
         control.tap()
     }
 
+    private func openNotificationsAndPrivacy() {
+        tap("tab-settings")
+        let section = app.buttons.matching(NSPredicate(format:
+            "label CONTAINS %@ OR label CONTAINS %@", "Notifications and privacy", "알림과 개인정보")).firstMatch
+        XCTAssertTrue(section.waitForExistence(timeout: 15))
+        reveal(section)
+        section.tap()
+        XCTAssertTrue(element("diagnostics-toggle").waitForExistence(timeout: 30))
+    }
+
+    private func diagnosticsValue() -> Bool? {
+        let control = element("diagnostics-toggle")
+        reveal(control)
+        XCTAssertTrue(wait { control.isEnabled }, "진단 설정 처리가 완료되어야 합니다.")
+        guard let value = control.value as? String, value == "0" || value == "1" else {
+            XCTFail("진단 동의의 켜짐과 꺼짐 상태를 읽을 수 있어야 합니다.")
+            return nil
+        }
+        return value == "1"
+    }
+
+    private func setDiagnostics(_ enabled: Bool) {
+        guard let current = diagnosticsValue() else { return }
+        XCTAssertNotEqual(current, enabled, "반전 또는 원복 전 상태가 기대와 같아야 합니다.")
+        let control = element("diagnostics-toggle")
+        control.tap()
+        XCTAssertTrue(wait(timeout: 30) {
+            control.isEnabled && (control.value as? String) == (enabled ? "1" : "0")
+        }, "진단 동의 선택이 실제 화면에 적용되어야 합니다.")
+    }
+
     private func openLanguage() {
         tap("tab-settings")
         let language = app.buttons.matching(NSPredicate(format: "label CONTAINS %@ OR label CONTAINS %@", "Language", "언어")).firstMatch
@@ -182,10 +261,10 @@ final class CyclePairPhysicalUITests: XCTestCase {
         XCTAssertTrue(control.isHittable, "접근성 요소의 화면 위치를 사용할 수 있어야 합니다.")
     }
 
-    private func reveal(_ control: XCUIElement) {
+    private func reveal(_ control: XCUIElement, scrollIdentifier: String = "screen-scroll") {
         for _ in 0..<12 {
             let window = app.windows.firstMatch.frame
-            let scrolls = app.descendants(matching: .any).matching(identifier: "screen-scroll").allElementsBoundByIndex
+            let scrolls = app.descendants(matching: .any).matching(identifier: scrollIdentifier).allElementsBoundByIndex
             guard let scroll = scrolls.last(where: { $0.isHittable }) else {
                 XCTFail("실제 스크롤 영역을 찾을 수 없습니다.")
                 return
