@@ -1169,10 +1169,10 @@ describe("pair lifecycle callables", () => {
     expect(new Date(ticket.expiresAt).toISOString()).toBe(
       ticket.expiresAt,
     );
-    expect(ticket.downloadUrl).toMatch(
-      /^http:\/\/127\.0\.0\.1:5301\/demo-cyclepair\/asia-northeast3\/downloadAccountDataExport#token=[A-Za-z0-9_-]{43}$/,
-    );
     const exportToken = exportTokenFromTicket(ticket);
+    expect(ticket.downloadUrl).toBe(
+      `${functionsHttpUrl("downloadAccountDataExport")}#token=${exportToken}`,
+    );
     const exportTokenHash = createHash("sha256")
       .update(exportToken)
       .digest("hex");
