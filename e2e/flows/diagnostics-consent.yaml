@@ -1,0 +1,174 @@
+appId: ${APP_ID}
+---
+- assertTrue: ${APP_ID === 'com.seorilabs.cyclepair.qa'}
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: home-record
+    timeout: 60000
+- tapOn:
+    id: tab-settings
+- scrollUntilVisible:
+    element:
+      text: '.*(Notifications and privacy|알림과 개인정보).*'
+    direction: DOWN
+    centerElement: true
+- tapOn: '.*(Notifications and privacy|알림과 개인정보).*'
+- scrollUntilVisible:
+    element:
+      text: 'Anonymous diagnostics|익명 진단 데이터'
+    direction: DOWN
+    centerElement: true
+- extendedWaitUntil:
+    visible:
+      text: 'Anonymous diagnostics|익명 진단 데이터'
+      enabled: true
+    timeout: 30000
+- evalScript: ${output.diagnosticsInitial = null}
+- runFlow:
+    when:
+      visible:
+        text: 'Anonymous diagnostics|익명 진단 데이터'
+        checked: true
+    commands:
+      - evalScript: ${output.diagnosticsInitial = true}
+- runFlow:
+    when:
+      visible:
+        text: 'Anonymous diagnostics|익명 진단 데이터'
+        checked: false
+    commands:
+      - evalScript: ${output.diagnosticsInitial = false}
+- assertTrue: ${typeof output.diagnosticsInitial === 'boolean'}
+- evalScript: ${console.log('CP_DIAGNOSTICS initial=' + output.diagnosticsInitial)}
+- takeScreenshot: safe/diagnostics-initial
+- runFlow:
+    when:
+      true: ${output.diagnosticsInitial === true}
+    commands:
+      - tapOn:
+          text: 'Anonymous diagnostics|익명 진단 데이터'
+          checked: true
+          enabled: true
+      - extendedWaitUntil:
+          visible:
+            text: 'Anonymous diagnostics|익명 진단 데이터'
+            checked: false
+            enabled: true
+          timeout: 30000
+- runFlow:
+    when:
+      true: ${output.diagnosticsInitial === false}
+    commands:
+      - tapOn:
+          text: 'Anonymous diagnostics|익명 진단 데이터'
+          checked: false
+          enabled: true
+      - extendedWaitUntil:
+          visible:
+            text: 'Anonymous diagnostics|익명 진단 데이터'
+            checked: true
+            enabled: true
+          timeout: 30000
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: home-record
+    timeout: 60000
+- tapOn:
+    id: tab-settings
+- scrollUntilVisible:
+    element:
+      text: '.*(Notifications and privacy|알림과 개인정보).*'
+    direction: DOWN
+    centerElement: true
+- tapOn: '.*(Notifications and privacy|알림과 개인정보).*'
+- scrollUntilVisible:
+    element:
+      text: 'Anonymous diagnostics|익명 진단 데이터'
+    direction: DOWN
+    centerElement: true
+- runFlow:
+    when:
+      true: ${output.diagnosticsInitial === true}
+    commands:
+      - assertVisible:
+          text: 'Anonymous diagnostics|익명 진단 데이터'
+          checked: false
+          enabled: true
+- runFlow:
+    when:
+      true: ${output.diagnosticsInitial === false}
+    commands:
+      - assertVisible:
+          text: 'Anonymous diagnostics|익명 진단 데이터'
+          checked: true
+          enabled: true
+- takeScreenshot: safe/diagnostics-inverted-restored
+- tapOn:
+    text: 'Anonymous diagnostics|익명 진단 데이터'
+    enabled: true
+- runFlow:
+    when:
+      true: ${output.diagnosticsInitial === true}
+    commands:
+      - extendedWaitUntil:
+          visible:
+            text: 'Anonymous diagnostics|익명 진단 데이터'
+            checked: true
+            enabled: true
+          timeout: 30000
+- runFlow:
+    when:
+      true: ${output.diagnosticsInitial === false}
+    commands:
+      - extendedWaitUntil:
+          visible:
+            text: 'Anonymous diagnostics|익명 진단 데이터'
+            checked: false
+            enabled: true
+          timeout: 30000
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: home-record
+    timeout: 60000
+- tapOn:
+    id: tab-settings
+- scrollUntilVisible:
+    element:
+      text: '.*(Notifications and privacy|알림과 개인정보).*'
+    direction: DOWN
+    centerElement: true
+- tapOn: '.*(Notifications and privacy|알림과 개인정보).*'
+- scrollUntilVisible:
+    element:
+      text: 'Anonymous diagnostics|익명 진단 데이터'
+    direction: DOWN
+    centerElement: true
+- runFlow:
+    when:
+      true: ${output.diagnosticsInitial === true}
+    commands:
+      - assertVisible:
+          text: 'Anonymous diagnostics|익명 진단 데이터'
+          checked: true
+          enabled: true
+- runFlow:
+    when:
+      true: ${output.diagnosticsInitial === false}
+    commands:
+      - assertVisible:
+          text: 'Anonymous diagnostics|익명 진단 데이터'
+          checked: false
+          enabled: true
+- evalScript: ${console.log('CP_DIAGNOSTICS restored=' + output.diagnosticsInitial)}
+- takeScreenshot: safe/diagnostics-restored
+- tapOn: 'Back|뒤로'
+- tapOn:
+    id: tab-home
+- assertVisible:
+    id: home-record
