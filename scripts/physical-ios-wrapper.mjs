@@ -288,6 +288,7 @@ export async function runPhysicalIosFlow(options, dependencies = {}) {
     throw new Error('승인한 소유 synthetic physical iOS manifest 필요');
   const account = await ownedPath(privateRoot, manifest.accountOwnershipPath);
   await assertPrivateFile(account);
+  const accountOwnershipSHA256 = digest(await readFile(account));
   if (!/^[a-f0-9]{40}$/.test(options.candidateSha || '') || options.candidateSha !== manifest.installedSourceSha)
     throw new Error('설치 후보와 요청 후보가 다릅니다');
   if (input.kind === 'account' && options.privateInput && !fake)
@@ -315,7 +316,7 @@ export async function runPhysicalIosFlow(options, dependencies = {}) {
     diagnosticOnly: Boolean(dependencies.flowDefinitions), runId: options.runId, startedAt: new Date().toISOString(),
     ownershipManifestSHA256: digest(manifestBytes), formalUIRounds: 0, fullL3: false,
     privateInputKind: input.kind, privateInputProvided: Boolean(options.privateInput),
-    accountOwnershipSHA256: digest(await readFile(account)),
+    accountOwnershipSHA256,
     ...(flow.canaryPurpose === 'account' ? { canaryScope: ACCOUNT_CANARY_SCOPE } : {}),
     passed: false, status: 'failed',
     automaticRetry: false, attachmentPolicy: { system: 'keepNever', user: 'keepNever' } };

@@ -56,6 +56,8 @@ test('account values are child-only env and both output streams are redacted', a
 
 test('wrong kind, missing and extra fields fail before any spawn', () => {
   const good = { kind: 'account', email: 'public-fake@example.invalid', password: 'public-fake-password' };
+  let spawned = 0;
+  const mustNotSpawn = () => { spawned++; throw new Error('unexpected spawn'); };
   for (const input of [undefined, { ...good, kind: 'invitation' }, { ...good, email: '' }, { ...good, extra: 'public-fake' }]) {
     assert.throws(() => resolvePrivateInput({ inputKind: 'account' }, input));
   }
@@ -63,10 +65,11 @@ test('wrong kind, missing and extra fields fail before any spawn', () => {
   for (const options of [
     { inputKind: 'account', privateInput: good, env: {}, stdio: 'inherit' },
     { env: { MAESTRO_TEST_ACCOUNT_PASSWORD: 'public-fake-stale' } },
-  ]) assert.throws(() => spawnMaestroFlow('public-fake', [], options, controlUrl, () => assert.fail('must not spawn')));
+  ]) assert.throws(() => spawnMaestroFlow('public-fake', [], options, controlUrl, mustNotSpawn));
   assert.throws(() => spawnMaestroFlow('public-fake', ['-e', `PASSWORD=${good.password}`],
     { inputKind: 'account', privateInput: good, env: {}, stdio: ['ignore', 'pipe', 'pipe'] }, controlUrl,
-    () => assert.fail('must not spawn')));
+    mustNotSpawn));
+  assert.equal(spawned, 0);
 });
 
 test('synchronous spawn errors cannot expose private input in their message or stack', () => {
