@@ -80,6 +80,21 @@ final class CyclePairPhysicalUITests: XCTestCase {
         XCTAssertTrue(wait { !self.element("privacy-center").exists }, "확인 뒤 안내를 닫아야 합니다.")
         XCTAssertTrue(element("diagnostics-toggle").exists, "원래 알림과 개인정보 설정으로 돌아와야 합니다.")
         tapButton(["Back", "뒤로"])
+        let about = app.buttons.matching(NSPredicate(format:
+            "label CONTAINS %@ OR label CONTAINS %@", "About", "앱 안내")).firstMatch
+        reveal(about)
+        about.tap()
+        let aboutEntry = app.buttons.matching(NSPredicate(format:
+            "label CONTAINS %@ OR label CONTAINS %@", "View privacy information", "개인정보 안내 보기")).firstMatch
+        reveal(aboutEntry)
+        aboutEntry.tap()
+        XCTAssertTrue(element("privacy-center").waitForExistence(timeout: 30), "앱 안내에서도 개인정보 안내가 열려야 합니다.")
+        reveal(title, scrollIdentifier: "privacy-scroll")
+        assertAccessible(title)
+        tap("privacy-close")
+        XCTAssertTrue(wait { !self.element("privacy-center").exists }, "앱 안내에서 연 개인정보 안내도 닫혀야 합니다.")
+        XCTAssertTrue(aboutEntry.waitForExistence(timeout: 15), "원래 앱 안내 화면으로 돌아와야 합니다.")
+        tapButton(["Back", "뒤로"])
         tap("tab-home")
         XCTAssertTrue(element("home-record").waitForExistence(timeout: 30))
     }

@@ -254,6 +254,13 @@ export function SettingsScreen() {
     );
   }
 
+  const privacyDetail = privacyVisible
+    ? {
+        content: <PrivacyCenter onClose={() => setPrivacyVisible(false)} />,
+        onClose: () => setPrivacyVisible(false),
+      }
+    : undefined;
+
   return (
     <Screen contentStyle={styles.content}>
       <Text style={styles.title}>{l('설정')}</Text>
@@ -474,16 +481,7 @@ export function SettingsScreen() {
           } · ${state.diagnosticsEnabled ? l('진단 허용') : l('진단 안 함')}`}
           expanded={openSection === 'notifications'}
           onPress={() => toggleSection('notifications')}
-          detail={
-            privacyVisible
-              ? {
-                  content: (
-                    <PrivacyCenter onClose={() => setPrivacyVisible(false)} />
-                  ),
-                  onClose: () => setPrivacyVisible(false),
-                }
-              : undefined
-          }
+          detail={privacyDetail}
         >
           <Card style={styles.rowsCard}>
             <ToggleRow
@@ -657,6 +655,7 @@ export function SettingsScreen() {
           summary={l('개인정보 · 비의료 고지')}
           expanded={openSection === 'about'}
           onPress={() => toggleSection('about')}
+          detail={privacyDetail}
         >
           <Card style={styles.aboutCard}>
             <Text style={styles.aboutTitle}>{l('건강 정보 이용 안내')}</Text>

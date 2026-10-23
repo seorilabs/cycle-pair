@@ -932,56 +932,89 @@ describe('CyclePair mobile app', () => {
     expect(view.getByLabelText('조용한 시간 시작').props.value).toBe('22:00');
   });
 
-  it('개인정보 안내는 하나의 창에서 열고 닫을 때 알림 설정 초안을 보존한다', async () => {
-    await AsyncStorage.setItem(
-      '@cyclepair/app-state/v1',
-      JSON.stringify({
-        schemaVersion: 4,
-        onboardingComplete: true,
-        neutralNotifications: true,
-        notificationQuietHours: { start: '22:00', end: '08:00' },
-        diagnosticsEnabled: false,
-      }),
-    );
-    const backend: CyclePairBackend = {
-      ...previewCyclePairBackend,
-      async loadPrivateSetup() {
-        return {
-          recordsCycle: false,
-          consentAcceptedAt: '2026-08-14T00:00:00.000Z',
-          consentVersion: SENSITIVE_HEALTH_CONSENT_VERSION,
-        };
-      },
-    };
-    const view = await render(<App backend={backend} />);
-    const visibleModals = () =>
-      view.container.queryAll(
-        node => node.type === 'Modal' && node.props.visible,
+  it.each(['알림과 개인정보', '앱 안내'])(
+    '개인정보 안내는 %s의 같은 창에서 열고 안전영역과 돌아갈 화면을 보존한다',
+    async entrypoint => {
+      jest
+        .spyOn(
+          jest.requireMock('react-native-safe-area-context'),
+          'useSafeAreaInsets',
+        )
+        .mockReturnValue({ top: 44, bottom: 34, left: 7, right: 11 });
+      await AsyncStorage.setItem(
+        '@cyclepair/app-state/v1',
+        JSON.stringify({
+          schemaVersion: 4,
+          onboardingComplete: true,
+          neutralNotifications: true,
+          notificationQuietHours: { start: '22:00', end: '08:00' },
+          diagnosticsEnabled: false,
+        }),
       );
-    await waitFor(() => expect(view.getByText('나의 오늘')).toBeTruthy());
-    await fireEvent.press(view.getByLabelText('설정'));
-    await fireEvent.press(view.getByText('알림과 개인정보'));
-    expect(visibleModals()).toHaveLength(1);
-    await fireEvent.changeText(
-      view.getByLabelText('조용한 시간 시작'),
-      '21:30',
-    );
-    await fireEvent.press(view.getByTestId('privacy-open'));
-    expect(visibleModals()).toHaveLength(1);
-    expect(view.getByText('내 기록과 공유를 직접 통제해요')).toBeTruthy();
-    expect(
-      view.getByText(new RegExp(SENSITIVE_HEALTH_CONSENT_VERSION)),
-    ).toBeTruthy();
-    await fireEvent(visibleModals()[0], 'requestClose');
-    expect(view.queryByTestId('privacy-center')).toBeNull();
-    expect(view.getByLabelText('조용한 시간 시작').props.value).toBe('21:30');
-    expect(view.getByTestId('diagnostics-toggle').props.value).toBe(false);
-    await fireEvent.press(view.getByTestId('privacy-open'));
-    await fireEvent.press(view.getByTestId('privacy-close'));
-    expect(view.queryByTestId('privacy-center')).toBeNull();
-    expect(visibleModals()).toHaveLength(1);
-    expect(view.getByLabelText('조용한 시간 시작').props.value).toBe('21:30');
-  });
+      const backend: CyclePairBackend = {
+        ...previewCyclePairBackend,
+        async loadPrivateSetup() {
+          return {
+            recordsCycle: false,
+            consentAcceptedAt: '2026-08-14T00:00:00.000Z',
+            consentVersion: SENSITIVE_HEALTH_CONSENT_VERSION,
+          };
+        },
+      };
+      const view = await render(<App backend={backend} />);
+      const visibleModals = () =>
+        view.container.queryAll(
+          node => node.type === 'Modal' && node.props.visible,
+        );
+      await waitFor(() => expect(view.getByText('나의 오늘')).toBeTruthy());
+      await fireEvent.press(view.getByLabelText('설정'));
+      await fireEvent.press(view.getByText(entrypoint));
+      expect(visibleModals()).toHaveLength(1);
+      if (entrypoint === '알림과 개인정보')
+        await fireEvent.changeText(
+          view.getByLabelText('조용한 시간 시작'),
+          '21:30',
+        );
+      await fireEvent.press(
+        entrypoint === '알림과 개인정보'
+          ? view.getByTestId('privacy-open')
+          : view.getByText('개인정보 안내 보기'),
+      );
+      expect(visibleModals()).toHaveLength(1);
+      expect(view.getByText('내 기록과 공유를 직접 통제해요')).toBeTruthy();
+      expect(view.getByTestId('privacy-center')).toHaveStyle({
+        paddingTop: 44,
+        paddingBottom: 34,
+        paddingLeft: 7,
+        paddingRight: 11,
+      });
+      expect(
+        view.getByText(new RegExp(SENSITIVE_HEALTH_CONSENT_VERSION)),
+      ).toBeTruthy();
+      await fireEvent(visibleModals()[0], 'requestClose');
+      expect(view.queryByTestId('privacy-center')).toBeNull();
+      if (entrypoint === '알림과 개인정보')
+        expect(view.getByLabelText('조용한 시간 시작').props.value).toBe(
+          '21:30',
+        );
+      else expect(view.getByText('건강 정보 이용 안내')).toBeTruthy();
+      if (entrypoint === '알림과 개인정보')
+        expect(view.getByTestId('diagnostics-toggle').props.value).toBe(false);
+      await fireEvent.press(
+        entrypoint === '알림과 개인정보'
+          ? view.getByTestId('privacy-open')
+          : view.getByText('개인정보 안내 보기'),
+      );
+      await fireEvent.press(view.getByTestId('privacy-close'));
+      expect(view.queryByTestId('privacy-center')).toBeNull();
+      expect(visibleModals()).toHaveLength(1);
+      if (entrypoint === '알림과 개인정보')
+        expect(view.getByLabelText('조용한 시간 시작').props.value).toBe(
+          '21:30',
+        );
+      else expect(view.getByText('건강 정보 이용 안내')).toBeTruthy();
+    },
+  );
 
   it('초기 동기화는 알리지 않고 상대의 새 공유 기록은 메시지 박스와 토스트로 알린다', async () => {
     await AsyncStorage.setItem(

@@ -1,6 +1,7 @@
 import { useI18n } from '../i18n/I18nProvider';
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCyclePair } from '../app/CyclePairStore';
 import { colors, spacing } from '../theme';
 import { Card, PrimaryButton } from './Ui';
@@ -17,13 +18,25 @@ function PolicySection({ title, body }: { title: string; body: string }) {
 
 export function PrivacyCenter({ onClose }: { onClose(): void }) {
   const { l, locale } = useI18n();
+  const insets = useSafeAreaInsets();
   const { state } = useCyclePair();
   const consentDate = state.sensitiveDataConsentAcceptedAt
     ? new Date(state.sensitiveDataConsentAcceptedAt).toLocaleDateString(locale)
     : l('아직 동의하지 않음');
 
   return (
-    <View style={styles.container} testID="privacy-center">
+    <View
+      style={[
+        styles.container,
+        {
+          paddingTop: insets.top,
+          paddingBottom: insets.bottom,
+          paddingLeft: insets.left,
+          paddingRight: insets.right,
+        },
+      ]}
+      testID="privacy-center"
+    >
       <ScrollView
         testID="privacy-scroll"
         contentContainerStyle={styles.content}

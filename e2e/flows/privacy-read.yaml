@@ -43,3 +43,31 @@ appId: ${APP_ID}
     id: tab-home
 - assertVisible:
     id: home-record
+- tapOn:
+    id: tab-settings
+- scrollUntilVisible:
+    element:
+      text: 'About|앱 안내'
+    direction: DOWN
+    centerElement: true
+- tapOn: 'About|앱 안내'
+- scrollUntilVisible:
+    element:
+      text: 'View privacy information|개인정보 안내 보기'
+    direction: DOWN
+    centerElement: true
+- tapOn: 'View privacy information|개인정보 안내 보기'
+- assertVisible:
+    id: privacy-center
+- assertVisible: 'You control your records and sharing|내 기록과 공유를 직접 통제해요'
+- takeScreenshot: safe/privacy-about
+- tapOn:
+    id: privacy-close
+- assertNotVisible:
+    id: privacy-center
+- assertVisible: 'View privacy information|개인정보 안내 보기'
+- tapOn: 'Back|뒤로'
+- tapOn:
+    id: tab-home
+- assertVisible:
+    id: home-record

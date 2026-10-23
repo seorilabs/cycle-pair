@@ -9,7 +9,7 @@
 | `testColdHomeExposesAccessibleControls` | 앱 종료와 실행, 홈 기록 버튼, 기본 탭의 접근성 이름과 누를 수 있는 위치 |
 | `testLanguageChangeSurvivesColdRestart` | 설정에서 영어와 한국어 선택, 각 언어로 재실행 복원, 성공 시 원래 언어 선택으로 복귀 |
 | `testDiagnosticsConsentSurvivesColdRestart` | 진단 동의 상태를 읽어 반전, 재실행 유지, 원래 상태로 복원 후 재실행 유지 |
-| `testPrivacyNoticeCanBeReadAndClosed` | 개인정보 안내의 제목과 동의 버전, 스크롤한 권리 안내, 닫은 뒤 원래 설정 화면 |
+| `testPrivacyNoticeCanBeReadAndClosed` | 알림 설정과 앱 안내에서 개인정보 안내 열기, 제목과 동의 버전, 스크롤한 권리 안내, 닫은 뒤 원래 화면 |
 | `testRecordSurvivesColdRestart` | 감정과 원하는 도움 선택, 추가 입력 펼치기, 합성 메모 입력, 한 번에 저장, 재실행, 달력의 기록 상세에서 원문 확인 |
 
 앱 내부 함수 호출, 직접 서버 쓰기, 앱 저장 자료 초기화, 로그인 우회는 없다. 메모는 실행 ID에 `-note`를 붙인 합성 문자열이다. 다른 메모가 이미 있으면 덮어쓰지 않고 실패한다. 테스트 실패 시 기록과 화면은 남으며 자동 삭제하거나 재설정하지 않는다. 언어 또는 진단 동의 테스트가 도중 실패하면 마지막 선택이 남을 수 있다. 진단 동의 시험은 성공했을 때 원래 상태로 돌아오며, 실패 자료의 실제 상태를 확인하기 전에 자동으로 다시 실행하지 않는다.
