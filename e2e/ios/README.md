@@ -60,46 +60,27 @@ xcodebuild build-for-testing \
 
 ## 인계 후 물리 iPhone 실행
 
-테스트 프로세스는 다음 환경값을 모두 요구한다. 누락되면 앱 실행 전에 실패한다.
+`pnpm test:e2e:dev`와 `pnpm test:e2e:live`가 실제 iPhone에는 `scripts/physical-ios-wrapper.mjs`를 사용한다. [기기 manifest와 명령](../../docs/qa/native-development.md#실행-대상과-결과)에 따라 실행한다. 앱 설치, 계정 소유권과 첫 화면 상태는 실행 전에 실제로 확인한다. 기본 전체 여정은 첫 안내를 선행 조건으로 삼으며 기존 설치 자료를 지우지 않는다.
 
-- `CYCLEPAIR_PHYSICAL_UI_APPROVED=1`: 현재 기기 사용 범위가 승인되었음을 주 실행자가 확인.
-- `CYCLEPAIR_SYNTHETIC_INSTALLATION=1`: 설치 앱과 계정이 이번 실행의 합성 자료 전용임을 확인.
-- `CYCLEPAIR_TEST_RUN_ID`: `cp-`와 숫자 17자리, 하이픈, 소문자 16진수 6자리 형식의 실행 ID.
-- `CYCLEPAIR_CAPTURE_SAFE_SCREENS=1`: 선택 사항. 허용된 홈과 합성 기록 상세만 명시적으로 첨부. 기본은 첨부하지 않는다.
+| 추가 XCTest 흐름 | 실제 동작 |
+|---|---|
+| `start` | 첫 안내의 예시, 동의와 첫 설정 저장, 홈 도착 |
+| `invitation-canary` | 공개 시험 문자열 입력, 원문 일치 확인, 연결 없이 닫기 |
+| `invitation-accept` | 비공개 초대 입력, 실제 연결, 기본 비공개 미리보기와 저장 |
+| `sharing-private` | 이미 열린 공유 화면에서 기본 비공개 확인과 저장 |
+| `partner-received` | 공유받은 감정과 도움, 공유하지 않은 합성 메모 부재 |
+| `event-received` | 같은 실행의 공동 일정 원문 |
+| `partner-revoked` | 재실행 뒤 회수한 감정과 도움 부재 |
+| `disconnected-restart` | 재실행 뒤 연결 카드와 해당 화면의 이전 합성 자료 부재 |
 
-호스트 셸의 환경값이 기기의 XCTest 프로세스로 자동 전달된다고 가정하지 않는다. 생성된 `.xctestrun`을 **동일한 `Build/Products` 폴더**에 실행별로 복사하고 `EnvironmentVariables`에 값을 전달한다. `__TESTROOT__` 상대 경로가 유지되어야 한다. 현재 생성 형식의 대상 키는 `CyclePairPhysicalUITests`다.
+새 클래스는 흐름과 메서드의 일치, 승인, 합성 계정, 실행 ID를 확인한다. 이미 열린 공유 화면을 요구하는 `sharing-private` 외에는 앱을 정상 종료하고 다시 실행해 자동화가 실제 창에 연결되도록 한다. 기존 앱이 foreground여도 `activate()`만으로는 창을 읽지 못한 실제 실패와 정상 재실행 뒤 회복을 확인했다. 이 과정은 계정과 저장된 기록을 보존하며 미저장 입력은 이어받지 않는다. 초기화나 서버 쓰기로 화면을 건너뛰지 않는다. 각 메서드의 확인 범위를 전체 기능, 캐시 정리 전체 또는 원격 푸시 통과로 넓히지 않는다.
 
-```python
-import os, pathlib, plistlib
+래퍼가 실행별 private `.xctestrun`을 만들고 환경값을 전달한다. 원본 plist와 알려지지 않은 타입을 보존하며 `__TESTROOT__`만 원본 산출물 디렉터리로 바꾼다. 실제 UDID를 고정 destination으로 사용하고 Simulator와 기본 destination을 거절한다. 실패 시 자동 재시도하지 않는다.
 
-source = pathlib.Path(os.environ["CYCLEPAIR_XCTESTRUN_SOURCE"])
-run_id = os.environ["CYCLEPAIR_TEST_RUN_ID"]
-data = plistlib.loads(source.read_bytes())
-target = data["CyclePairPhysicalUITests"]
-environment = target.setdefault("EnvironmentVariables", {})
-for name in ["CYCLEPAIR_PHYSICAL_UI_APPROVED", "CYCLEPAIR_SYNTHETIC_INSTALLATION",
-             "CYCLEPAIR_TEST_RUN_ID", "CYCLEPAIR_CAPTURE_SAFE_SCREENS"]:
-    if name in os.environ:
-        environment[name] = os.environ[name]
-destination = source.with_name(source.stem + "-" + run_id + ".xctestrun")
-with destination.open("xb") as file:
-    file.write(plistlib.dumps(data))
-destination.chmod(0o600)
-```
+기본 키는 `CYCLEPAIR_PHYSICAL_UI_APPROVED=1`, `CYCLEPAIR_SYNTHETIC_INSTALLATION=1`, `CYCLEPAIR_TEST_RUN_ID`다. 실행 ID 형식은 `cp-`와 숫자17자리, 하이픈, 소문자16진수6자리다. coordinated 메서드에는 `CYCLEPAIR_TEST_FLOW`도 전달한다. 초대 값은 CLI 인수나 xcodebuild 프로세스 환경에 넣지 않고 비공개 plist의 `CYCLEPAIR_TEST_INVITATION`으로만 전달한다. `CYCLEPAIR_SECRET_INPUT_VALIDATED=1`은 같은 후보와 도우미에서 공개 입력 시험이 실제 통과하고 원시 자료가 정리된 경우에만 전달한다.
 
-기기 인계를 받은 주 실행자만 다음 명령을 실행한다. UDID와 실행별 `.xctestrun`, 결과 경로는 필수다. 이 명령은 runner를 설치하고 실제 앱을 종료, 실행, 조작한다. 자동 재시도나 자료 초기화 옵션을 추가하지 않는다.
+`typeText`는 원시 XCTest activity에 값을 기록할 수 있다. 모든 흐름에서 `CYCLEPAIR_CAPTURE_SAFE_SCREENS=0`, System/User attachment `keepNever`, diagnostics 수집 `never`를 강제한다. stdout와 stderr는 UTF-8와 chunk 경계를 보존하며 초대, 공개 시험 문자열과 XCTest가 줄여 남긴 입력 앞부분을 가린다. 원시 console은 저장하지 않고 hash만 남긴다. `xcresulttool` 요약은 메모리에서 가려 보존한다. 정확히1 PASS, 0 FAIL, 0 SKIP, 0 expected failure와 선택한 물리 기기 일치를 모두 확인한다.
 
-```sh
-xcodebuild test-without-building \
-  -xctestrun "${CYCLEPAIR_XCTESTRUN:?}" \
-  -destination "id=${CYCLEPAIR_IOS_DEVICE_ID:?}" \
-  -parallel-testing-enabled NO \
-  -maximum-concurrent-test-device-destinations 1 \
-  -resultBundlePath "${CYCLEPAIR_UI_RESULT_BUNDLE:?}"
-```
-
-한 기능만 실행하려면 `-only-testing:CyclePairPhysicalUITests/CyclePairPhysicalUITests/testColdHomeExposesAccessibleControls`처럼 메서드를 명시한다. 전체 세 메서드의 통과도 승인된 전체 L3나 UI 검수 회차의 다른 항목을 면제하지 않는다.
-
-결과 폴더는 0700, 파일은 0600으로 제한한다. XCTest 자체의 실패 첨부와 `.xcresult`에는 화면 내용이 포함될 수 있다. 원본은 비공개 위치에 보존하고, 공개 근거에는 허용 화면만 골라 복사한다. 로그인, 초대, 토큰 화면을 캡처하거나 전체 접근성 트리를 로그로 출력하지 않는다.
+실행은 각자 만든 process group만 정리한다. 그룹 종료를 확인한 뒤 비공개 임시 plist와 원시 xcresult를 제거하며, 실패해도 가린 원본과 hash를 보존한다. 그룹 종료를 확인하지 못하면 통과를 거절하고 비공개 원시 자료를 보존해 조율자에게 인계한다. 기존 ADB, Metro와 Firebase를 종료하지 않는다. 이 래퍼의 통과는 한 흐름의 결과이며 공식 독립 UI 검수와 전체 L3 판정은 별도 원장에서 확인한다.
 
 공식 참고: [Apple의 build-for-testing과 test-without-building](https://developer.apple.com/library/archive/technotes/tn2339/_index.html), [개발 프로파일](https://developer.apple.com/help/account/provisioning-profiles/create-a-development-provisioning-profile/), [Appium 실기기 준비 조건](https://appium.github.io/appium-xcuitest-driver/latest/getting-started/device-setup/).
