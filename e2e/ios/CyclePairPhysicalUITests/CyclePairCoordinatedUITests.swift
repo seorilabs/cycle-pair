@@ -289,7 +289,6 @@ final class CyclePairCoordinatedUITests: XCTestCase {
             XCTFail("검증된 입력과 확인란이 필요합니다.")
             return
         }
-        reveal(field)
         let observedValue = field.value
         let placeholder = field.placeholderValue
         let text = observedValue as? String ?? ""
@@ -299,6 +298,8 @@ final class CyclePairCoordinatedUITests: XCTestCase {
                 value: observedValue, placeholder: placeholder))
         switch action {
         case .type:
+            dismissAccountKeyboard()
+            reveal(field)
             field.tap(); field.typeText(value)
         case .preserveMasked:
             // 이번 입력 전에 빈 칸이 비밀번호 입력 중 채워진 경우만 보존한다.
