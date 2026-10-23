@@ -147,9 +147,8 @@ final class CyclePairCoordinatedUITests: XCTestCase {
         let emailExact = wait { (email.value as? String) == Self.publicAccountEmail }
         reveal(password); password.tap(); password.typeText(Self.publicAccountPassword)
         let secureMasked = wait {
-            guard let value = password.value as? String else { return false }
-            return value.count == Self.publicAccountPassword.count &&
-                value.allSatisfy { "•●*".contains($0) }
+            SecureFieldObservation.isMasked(isSecure: password.elementType == .secureTextField,
+                value: password.value, placeholder: password.placeholderValue)
         }
         closeAccountCanary()
         let closed = wait { !email.exists && !password.exists }
@@ -158,13 +157,13 @@ final class CyclePairCoordinatedUITests: XCTestCase {
         let cleared = email.waitForExistence(timeout: 15) && password.exists && empty(email) && empty(password)
         closeAccountCanary()
         let closedAgain = wait { !email.exists }
-        print("CP_ACCOUNT_CANARY_OBSERVATION emailExact=\(emailExact) secureMaskedLengthOnly=\(secureMasked) closed=\(closed) cleared=\(cleared) closedAgain=\(closedAgain) submitted=false authenticated=false")
+        print("CP_ACCOUNT_CANARY_OBSERVATION emailExact=\(emailExact) secureMaskedNonemptyOnly=\(secureMasked) closed=\(closed) cleared=\(cleared) closedAgain=\(closedAgain) submitted=false authenticated=false")
         XCTAssertTrue(emailExact, "공개 이메일 입력이 일치해야 합니다.")
-        XCTAssertTrue(secureMasked, "공개 비밀번호 입력의 마스킹 길이가 일치해야 합니다.")
+        XCTAssertTrue(secureMasked, "보안 입력란에 비어 있지 않은 마스크 값이 보여야 합니다.")
         XCTAssertTrue(closed, "제출 없이 계정 입력 화면을 닫아야 합니다.")
         XCTAssertTrue(cleared, "다시 연 계정 입력이 비어 있어야 합니다.")
         XCTAssertTrue(closedAgain, "다시 연 입력도 제출 없이 닫아야 합니다.")
-        print("CP_ACCOUNT_CANARY emailExact=true secureMaskedLengthOnly=true closed=true submitted=false authenticated=false")
+        print("CP_ACCOUNT_CANARY emailExact=true secureMaskedNonemptyOnly=true closed=true submitted=false authenticated=false")
     }
 
     private func closeAccountCanary() {

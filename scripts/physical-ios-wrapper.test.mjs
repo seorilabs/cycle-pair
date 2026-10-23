@@ -9,7 +9,7 @@ import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { DEFAULT_FLOWS, createStreamRedactor, runPhysicalIosFlow, runOwnedCommand, validateCanaryReceipt } from './physical-ios-wrapper.mjs';
-import { ACCOUNT_CANARY_SCOPE, PUBLIC_ACCOUNT_CANARY } from './private-e2e-input.mjs';
+import { ACCOUNT_CANARY_SCOPE, IOS_ACCOUNT_CANARY_SCOPE, PUBLIC_ACCOUNT_CANARY } from './private-e2e-input.mjs';
 const APPROVED_DEVICE_ID = '00000000-0000000000000000';
 // 아래 값은 공개된 고정 가짜 값이며 실제 초대를 생성하지 않는다.
 const CANARY = 'C'.repeat(43), OTHER = 'Z'.repeat(500), RUN = 'cp-20261023010000000-abcdef', SHA = '1'.repeat(40);
@@ -142,7 +142,8 @@ test('계정 공개 canary는 제한된 범위와 제출없는 메서드에만 �
   }, summary: { testFailures: [], publicEmail: PUBLIC_ACCOUNT_CANARY.email, publicPassword: PUBLIC_ACCOUNT_CANARY.password } });
   const result = await runPhysicalIosFlow({ ...f.options, flow: 'account-input-canary' }, x);
   assert.equal(result.passed, true);
-  assert.deepEqual(result.canaryScope, ACCOUNT_CANARY_SCOPE);
+  assert.deepEqual(result.canaryScope, IOS_ACCOUNT_CANARY_SCOPE);
+  assert.equal(result.canaryScope.secureFieldEvidence, 'masked-nonempty-only');
   assert.equal(result.canaryScope.passwordExactInputValidated, false);
   assert.equal(result.canaryScope.authenticationSucceeded, false);
   assert.equal(result.canaryScope.submitted, false);
@@ -178,13 +179,13 @@ test('계정 canary 근거는 목적과 소유 계정에 결속하고 인증 성
   const record = { executionMode: 'physical', flow: 'account-input-canary', passed: true,
     testIdentifier: 'CyclePairCoordinatedUITests/testAccountInputCanary', diagnosticOnly: false,
     sourceSha: SHA, requestedCandidateSha: SHA, ownershipManifestSHA256: await hash(f.ownership),
-    accountOwnershipSHA256: await hash(f.manifest.accountOwnershipPath), canaryScope: ACCOUNT_CANARY_SCOPE,
+    accountOwnershipSHA256: await hash(f.manifest.accountOwnershipPath), canaryScope: IOS_ACCOUNT_CANARY_SCOPE,
     plistPreparation: { sourceSHA256: await hash(f.base), testBundleExecutableSHA256: await hash(f.helper) },
     summaryDeviceMatches: true, ownedXcodebuildGroupCleaned: true, privateRawRemoved: true,
     counts: { totalTestCount: 1, passedTests: 1, failedTests: 0, skippedTests: 0, expectedFailures: 0 } };
   const options = { purpose: 'account', receipt, baseXctestrun: f.base, ownership: f.ownership, candidateSha: SHA, privateRoot: f.dir };
-  for (const patch of [{ flow: 'invitation-canary' }, { accountOwnershipSHA256: '0'.repeat(64) },
-    ...['submitted', 'authenticationSucceeded', 'passwordExactInputValidated'].map(key => ({ canaryScope: { ...ACCOUNT_CANARY_SCOPE, [key]: true } }))]) {
+  for (const patch of [{ canaryScope: ACCOUNT_CANARY_SCOPE }, { flow: 'invitation-canary' }, { accountOwnershipSHA256: '0'.repeat(64) },
+    ...['submitted', 'authenticationSucceeded', 'passwordExactInputValidated'].map(key => ({ canaryScope: { ...IOS_ACCOUNT_CANARY_SCOPE, [key]: true } }))]) {
     await writeFile(receipt, JSON.stringify({ ...record, ...patch }), { mode: 0o600 });
     await assert.rejects(validateCanaryReceipt(options));
   }
