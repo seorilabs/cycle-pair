@@ -14,6 +14,7 @@ import {
   openDeviceForwarders,
   validateDeviceHost,
 } from "./device-emulator-forwarding.mjs";
+import { prepareEmulatorCommand, emulatorStatusLine } from "./development-emulator-logs.mjs";
 const root = process.cwd();
 const project = JSON.parse(
   await readFile("apps/mobile/firebase-environments.json", "utf8")
@@ -95,35 +96,19 @@ try {
     await writeFile(localFiles[i], files[i], { flag: "wx", mode: 0o600 });
     owned.push(i);
   }
-  child = spawn(
-    "pnpm",
-    [
-      "--dir",
-      "firebase",
-      "exec",
-      "firebase",
-      "--config",
-      "../firebase.json",
-      "emulators:start",
-      "--only",
-      "auth,firestore,functions",
-      "--project",
-      project,
-      ...(importDirectory ? ["--import", importDirectory] : []),
-    ],
-    {
-      cwd: root,
-      env: {
-        ...process.env,
-        GOOGLE_APPLICATION_CREDENTIALS: credentials,
-        CLOUDSDK_CONFIG: temporary,
-        ENFORCE_APP_CHECK: "false",
-      },
-      stdio: ["inherit", "pipe", "pipe"],
-    }
-  );
-  // Auth emulator may print email action links. Never retain those links or
-  // opaque credentials in the operator's terminal or execution log.
+  const launch = await prepareEmulatorCommand({ root, directory: temporary, project, importDirectory });
+  child = spawn(launch.command, launch.args, {
+    cwd: launch.cwd,
+    env: {
+      ...process.env,
+      GOOGLE_APPLICATION_CREDENTIALS: credentials,
+      CLOUDSDK_CONFIG: temporary,
+      ENFORCE_APP_CHECK: "false",
+    },
+    stdio: ["inherit", "pipe", "pipe"],
+  });
+  // Auth output and the CLI's own debug files are separate channels.
+  // Raw files go to the null device; stdout emits only fixed status metadata.
   for (const stream of [child.stdout, child.stderr]) {
     let pending = "";
     stream.on("data", (chunk) => {
@@ -151,18 +136,8 @@ try {
               child.kill("SIGINT");
             });
         }
-        if (/oobCode|verifyEmail\?|resetPassword\?/i.test(line)) {
-          console.log("[email action link omitted]");
-          continue;
-        }
-        console.log(
-          line
-            .replace(
-              /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g,
-              "[token omitted]"
-            )
-            .replace(/\b[A-Za-z0-9_-]{43,}\b/g, "[opaque value omitted]")
-        );
+        const status = emulatorStatusLine(line);
+        if (status) console.log(status);
       }
     });
   }

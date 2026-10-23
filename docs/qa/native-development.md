@@ -84,3 +84,10 @@ Maestro의 Android 문자 입력과 내부 붙여넣기는 선택한 키보드 �
 최근 구현 중간 결과와 원본 실패, 마켓 재조회는 [2026-10-22 기록](2026-10-22-native-authoring-status.md)에 정리합니다. 승인된 [iOS 저장 패치와 보존 이관](../design/2026-10-22-native-launch/keychain-repair.md)을 적용했고, 기존 설치를 지우지 않은 재실행과 원문 복원을 작성자가 확인했습니다. JavaScript만 갱신한 이전 네이티브 바이너리는 시작을 거부하므로 네이티브 앱도 재빌드해야 합니다. 독립 UI 검수는 시작하지 않았습니다.
 
 검수 대기 중에는 소유 Emulator 자료를 저장소 밖으로 내보내고 `cyclepair-qa-owned.json`에 `app: "cycle-pair"`, 해당 `projectId`, `syntheticOnly: true`를 기록합니다. 재개는 `pnpm start:emulators --import <소유 스냅샷>`을 사용합니다. 실행기는 이 표식과 Firebase 내보내기 메타데이터를 확인하며, 다른 앱 자료와 저장소 안 스냅샷을 거부합니다. 이 명령은 운영 Firebase에 자료를 복원하지 않습니다.
+
+
+### 개발 인증 로그 보호
+
+개발 실행기는 설치된 Firebase CLI를 새 전용 디렉터리에서 실행한다. `firebase-debug.log`와 `firestore-debug.log`는 null 장치로 연결해 원문을 보관하지 않는다. CLI 출력도 원문을 전달하지 않고 고정된 준비 상태만 기록한다. 따라서 SDK가 출력하는 이메일, 짧은 비밀번호나 인증 action 링크를 길이 기반 가림에 의존해 남기지 않는다. SDK 상세 원문 로그가 없으므로 기동 실패는 종료 코드, 준비 상태와 실제 포트 점검으로 구분한다. 현재 실행 대상은 macOS와 Linux다.
+
+설정은 소스의 절대 `firebase.json`을 사용하며 Functions와 Rules 경로, 기존 설치된 도구와 외부 합성 스냅샷은 유지한다. 종료하면 작업 전용 링크와 임시 디렉터리를 정리한다. 기존 소스 디렉터리의 로그를 덮어쓰거나 삭제하지 않는다. 이전 실행기를 새 실행기로 바꿀 때는 소유 합성 계정과 Firestore 스냅샷을 먼저 보존하고 원래 프로세스만 종료한다.

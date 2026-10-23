@@ -47,3 +47,23 @@ test("the local network purpose is included only in generated Debug app metadata
   const plist = await readFile("apps/mobile/ios/CyclePair/Info.plist", "utf8");
   assert.doesNotMatch(plist, /NSLocalNetworkUsageDescription/);
 });
+
+
+for (const name of ['Debug', 'Release']) {
+  test(`first iOS launch targets iPhone in ${name}`, async () => {
+    const project = await readFile('apps/mobile/ios/CyclePair.xcodeproj/project.pbxproj', 'utf8');
+    const identifier = name === 'Debug' ? '13B07F941A680F5B00A75B9A' : '13B07F951A680F5B00A75B9A';
+    const settings = project.match(new RegExp(`${identifier} /\\* ${name} \\*/ = \\{[\\s\\S]*?buildSettings = \\{([\\s\\S]*?)\\n\\t\\t\\t\\};`))?.[1] ?? '';
+    assert.match(settings, /TARGETED_DEVICE_FAMILY = "?1"?;/);
+  });
+}
+
+test('iPhone-only listing has no active iPad screenshots or requirements', async () => {
+  const listing = JSON.parse(await readFile('app-store/app-store.config.json', 'utf8'));
+  assert.deepEqual(listing.assets.ipadScreenshots13, []);
+  const assets = JSON.parse(await readFile('release/registration-assets.json', 'utf8'));
+  assert.equal(assets.items.some(item => item.kind === 'ipad-13'), false);
+  assert.equal(assets.rules.some(rule => rule.kind === 'ipad-13'), false);
+  const plist = await readFile('apps/mobile/ios/CyclePair/Info.plist', 'utf8');
+  assert.doesNotMatch(plist, /UISupportedInterfaceOrientations~ipad/);
+});
