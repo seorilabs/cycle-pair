@@ -8,9 +8,11 @@
 		110000000000000000000002 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CyclePairPhysicalUITests.swift; sourceTree = "<group>"; };
 		110000000000000000000018 = {isa = PBXBuildFile; fileRef = 110000000000000000000019; };
 		110000000000000000000019 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CyclePairCoordinatedUITests.swift; sourceTree = "<group>"; };
+		110000000000000000000020 = {isa = PBXBuildFile; fileRef = 110000000000000000000021; };
+		110000000000000000000021 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecureFieldObservation.swift; sourceTree = "<group>"; };
 		110000000000000000000003 = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CyclePairPhysicalUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		110000000000000000000004 = {isa = PBXGroup; children = (110000000000000000000005, 110000000000000000000006); sourceTree = "<group>"; };
-		110000000000000000000005 = {isa = PBXGroup; children = (110000000000000000000002, 110000000000000000000019); path = CyclePairPhysicalUITests; sourceTree = "<group>"; };
+		110000000000000000000005 = {isa = PBXGroup; children = (110000000000000000000002, 110000000000000000000019, 110000000000000000000021); path = CyclePairPhysicalUITests; sourceTree = "<group>"; };
 		110000000000000000000006 = {isa = PBXGroup; children = (110000000000000000000003); name = Products; sourceTree = "<group>"; };
 		110000000000000000000007 = {
 			isa = PBXNativeTarget;
@@ -38,7 +40,7 @@
 			targets = (110000000000000000000007);
 		};
 		110000000000000000000009 = {isa = XCConfigurationList; buildConfigurations = (110000000000000000000014, 110000000000000000000015); defaultConfigurationIsVisible = 0; defaultConfigurationName = Debug; };
-		110000000000000000000010 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (110000000000000000000001, 110000000000000000000018); runOnlyForDeploymentPostprocessing = 0; };
+		110000000000000000000010 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (110000000000000000000001, 110000000000000000000018, 110000000000000000000020); runOnlyForDeploymentPostprocessing = 0; };
 		110000000000000000000011 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 		110000000000000000000012 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 		110000000000000000000013 = {isa = XCConfigurationList; buildConfigurations = (110000000000000000000016, 110000000000000000000017); defaultConfigurationIsVisible = 0; defaultConfigurationName = Debug; };

@@ -68,7 +68,7 @@ xcodebuild build-for-testing \
 |---|---|
 | `start` | 첫 안내의 예시, 동의와 첫 설정 저장, 홈 도착 |
 | `invitation-canary` | 공개 시험 문자열 입력, 원문 일치 확인, 연결 없이 닫기 |
-| `account-input-canary` | 빈 게스트 계정 입력란에 공개 이메일과 비밀번호 입력, 이메일 일치와 secure 필드 마스킹 길이 확인, 제출 없이 닫고 입력 정리 확인 |
+| `account-input-canary` | 빈 게스트 계정 입력란에 공개 이메일과 비밀번호 입력, 이메일 일치와 secure 필드의 비어 있지 않은 마스크 값 확인, 제출 없이 닫고 입력 정리 확인 |
 | `account-upgrade` | 정상 UI에서 소유 게스트를 이메일 계정으로 전환, 미인증과 재인증 입력 표시, 홈 복귀 |
 | `account-logout` | 로그아웃 취소와 확인, 정상 로그아웃 뒤 재실행에서 로그인 화면 유지 |
 | `account-login` | 정상 로그인 화면에 비공개 입력 후 홈과 재실행 로그인 상태 |
@@ -92,10 +92,24 @@ xcodebuild build-for-testing \
 
 네 계정 흐름은 같은 후보, helper, manifest와 소유 계정에 묶인 공개 계정 canary가 실제 통과한 뒤에만 비공개 입력으로 실행한다. 게스트 전환은 현재 소유 자료를 유지하는 작업이며 로그아웃은 동기화가 완료된 계정에서만 실행한다. 전환과 로그인 결과는 정상 UI에서만 확인하고 직접 Auth나 저장 자료를 쓰지 않는다. 전환 뒤 이메일 인증은 별도 미실행 상태로 남는다. 로그인 복원은 홈과 세션 복원 확인이며 기존 합성 기록 전체의 동일성은 따로 대조한다. 비밀번호 재설정, 이메일 action, 내보내기와 삭제는 이 네 메서드에 포함되지 않는다. helper 빌드와 mock process 검사는 실제 인증 통과가 아니다. 실패 시 추가 제출이나 자동 재시도를 하지 않는다.
 
-공개 계정 canary는 코드에 고정한 공개값만 사용하며 외부 입력을 거절한다. 비밀번호의 마스킹과 길이 확인은 정확한 비밀번호 입력이나 인증 성공을 증명하지 않는다. 결과의 `canaryScope`도 `passwordExactInputValidated=false`, `authenticationSucceeded=false`, `submitted=false`를 유지한다. 향후 첫 비공개 계정 입력에는 목적이 같은 canary의 후보, helper, manifest와 소유 계정 파일 지문이 일치하고 원시 자료가 정리된 `inputValidation` 근거가 필요하다. 정상 UI 인증 성공은 이후 계정 흐름에서 별도로 확인한다. 공개 canary 자체에는 인증 성공을 요구하지 않는다.
+공개 계정 canary는 코드에 고정한 공개값만 사용하며 외부 입력을 거절한다. iOS에서 보안 입력란의 비어 있지 않은 마스크 값을 확인한다. 마스크 수를 입력 길이로 해석하지 않으며 정확한 비밀번호 입력이나 인증 성공을 증명하지 않는다. iOS 근거의 `secureFieldEvidence`는 `masked-nonempty-only`이고 Android의 `masked-length-only` 근거와 구분한다. 이전 범위의 iOS 근거는 새 계약에서 거절한다. 결과의 `canaryScope`도 `passwordExactInputValidated=false`, `authenticationSucceeded=false`, `submitted=false`를 유지한다. 향후 첫 비공개 계정 입력에는 목적이 같은 canary의 후보, helper, manifest와 소유 계정 파일 지문이 일치하고 원시 자료가 정리된 `inputValidation` 근거가 필요하다. 정상 UI 인증 성공은 이후 계정 흐름에서 별도로 확인한다. 공개 canary 자체에는 인증 성공을 요구하지 않는다.
 
 `typeText`는 원시 XCTest activity에 값을 기록할 수 있다. 모든 흐름에서 `CYCLEPAIR_CAPTURE_SAFE_SCREENS=0`, System/User attachment `keepNever`, diagnostics 수집 `never`를 강제한다. stdout와 stderr는 UTF-8와 chunk 경계를 보존하며 초대, 이메일, 짧은 비밀번호, JSON 또는 URL 이스케이프와 XCTest가 줄여 남긴 입력 앞부분을 가린다. 예외 메시지도 같은 값 가림을 거친다. 값별 hash는 남기지 않는다. 원시 console은 저장하지 않고 전체 stream hash만 남긴다. `xcresulttool` 요약은 메모리에서 가려 보존한다. 정확히1 PASS, 0 FAIL, 0 SKIP, 0 expected failure와 선택한 물리 기기 일치를 모두 확인한다.
 
 실행은 각자 만든 process group만 정리한다. 그룹 종료를 확인한 뒤 비공개 임시 plist와 원시 xcresult를 제거하며, 실패해도 가린 원본과 hash를 보존한다. 그룹 종료를 확인하지 못하면 통과를 거절하고 비공개 원시 자료를 보존해 조율자에게 인계한다. 기존 ADB, Metro와 Firebase를 종료하지 않는다. 이 래퍼의 통과는 한 흐름의 결과이며 공식 독립 UI 검수와 전체 L3 판정은 별도 원장에서 확인한다.
 
 공식 참고: [Apple의 build-for-testing과 test-without-building](https://developer.apple.com/library/archive/technotes/tn2339/_index.html), [개발 프로파일](https://developer.apple.com/help/account/provisioning-profiles/create-a-development-provisioning-profile/), [Appium 실기기 준비 조건](https://appium.github.io/appium-xcuitest-driver/latest/getting-started/device-setup/).
+
+
+## 마스크 관찰 조건의 로컬 검사
+
+실제 Swift 판정 함수를 macOS에서 컴파일해 빈 값, 잘못된 타입, 평문, placeholder와 비보안 입력란을 거절하고 한 개 또는 여러 마스크 값을 허용하는지 확인한다. 기기나 Simulator를 사용하지 않는다. 이 검사는 정상 UI 인증이나 기기 입력을 대신하지 않는다.
+
+```sh
+canary_test_dir=$(mktemp -d)
+xcrun swiftc -module-cache-path "$canary_test_dir/cache" \
+  e2e/ios/CyclePairPhysicalUITests/SecureFieldObservation.swift \
+  e2e/ios/tests/SecureFieldObservationTests.swift -o "$canary_test_dir/test"
+"$canary_test_dir/test"
+rm -r "$canary_test_dir"
+```
