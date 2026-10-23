@@ -4,6 +4,7 @@ appId: ${APP_ID}
     element:
       id: record-save
     direction: DOWN
+- assertNotVisible: 'Open debugger to view warnings\.'
 - tapOn:
     id: record-save
 - extendedWaitUntil:
