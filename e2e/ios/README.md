@@ -122,3 +122,33 @@ xcrun swiftc -module-cache-path "$canary_test_dir/cache" \
 "$canary_test_dir/test"
 rm -r "$canary_test_dir"
 ```
+
+
+## 이메일 action, 내보내기와 마지막 삭제 준비
+
+`email-verification-browser`는 새 Private 탭에만 검증된 인증 링크를 입력하고 이번 탭의 `Close This Tab`만 사용한다. Safari 전체 종료, 기존 URL 덮어쓰기, 탭 전체 닫기와 기록 삭제는 하지 않는다. 현재 Safari의 탭 메뉴, 새 Private 탭, 주소 입력과 탭 닫기 선택자는 아직 실제 관찰하지 않았으므로 `ready=false`다. 실제 비밀 링크를 쓰기 전에 공개 비변경 URL로 이 경계를 확인해야 한다. 현재 Swift의 성공 문구 확인은 설치된 Auth Emulator의 verifyEmail JSON에 한정하고 운영 hosted handler 화면은 미구현, 미실행이다.
+
+보호 입력은 정확히 `{kind: 'action-link', url}`이다. 허용 query는 `mode=verifyEmail`, `oobCode`, `apiKey`와 선택 `lang=ko|en`뿐이다. 반복 query, unknown key, fragment, URL 계정 정보, reset mode와 continueUrl은 거절한다. URL과 코드, API 식별값은 기존 stream 가림기에 추가해 전체, URL 인코딩과 줄임 prefix를 가린다. helper에는 `CYCLEPAIR_TEST_ACTION_URL`만 보내고 이메일과 비밀번호는 보내지 않는다. 이전 action env가 있는 base는 거절한다. 같은 account receipt와 현재 계정의 host-only 가림값이 필요하다.
+
+실제 전송 전 manifest의 `authActionOrigin`, `authActionApiKey`에 URL을 결속한다. emulator는 LAN private IPv4의 HTTP9399와 `/emulator/action`, service는 `firebaseProjectId`에 해당하는 기본 `https://<project>.firebaseapp.com`과 `/__/auth/action`만 허용한다. 임의 호스트나 다른 프로젝트 API 식별값은 허용하지 않는다. 이 manifest 필드를 추가하면 hash가 바뀌므로 같은 새 manifest의 account canary가 필요하다. OOB 수집과 적용, 서비스 호출, 비밀번호 재설정 링크 전달은 이 helper에 포함하지 않는다.
+
+`account-delete`는 현재 표시된 소유 이메일 일치, 최근 재인증 없는 삭제 거절, 정상 비밀번호 재인증, 삭제 취소, 최종 확인과 재실행 gate를 확인한다. 호출자는 마지막 소유 UID와 다른 계정 보존을 읽기로 고정한 후 `allowAccountDeletion: true`를 명시해야 한다. helper에도 실행별 삭제 승인 env를 별도로 보낸다. UID 집합과 내 기록 삭제, 상대 캐시 제거는 이 UI gate만으로 통과시키지 않고 별도 실제 읽기와 상대 UI로 확인한다. 실패 후 자동 재시도와 새 게스트 시작은 없다.
+
+### 비출시 runner의 Files 노출
+
+Xcode27.1에서 `INFOPLIST_KEY_UIFileSharingEnabled=YES`와 `INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace=YES`를 generic 빌드 인자로 줘도 생성된 runner APPL에는 두 키가 없었다. 테스트 BNDL만 수정해서는 Files 노출 준비가 되지 않는다. [Apple의 Files 노출 조건](https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/LaunchServicesKeys.html)에 따라 두 키는 실제 runner APPL에 적용한다.
+
+`prepare_export_runner.py`는 새 소유 generic 빌드의 정확한 `physicalqa.xctrunner` APPL만 대상으로 한다. credentials preflight 후 기존 signer, wildcard profile, Team, entitlement와 strict 서명을 확인하고, 원본 Info와 outer 실행 파일, CodeResources 및 서명 지문을 새 비공개 증적 경로에 보존한다. 두 Files 키를 넣고 원래 entitlements로 outer runner만 다시 서명한다. 제품 앱, 내부 테스트 번들과 canonical 캐시는 변경하지 않는다. 중복 실행, 다른 bundle이나 profile, symlink와 사용 중인 경로는 거절하며 서명 실패 시 원본을 복원하고 결과를 남긴다.
+
+```sh
+python3 -B e2e/ios/prepare_export_runner.py \
+  --runner "$CYCLEPAIR_QA_ROOT/owned-build/Build/Products/Debug-iphoneos/CyclePairPhysicalUITests-Runner.app" \
+  --private-root "$CYCLEPAIR_QA_ROOT/owned-build" \
+  --evidence "$CYCLEPAIR_QA_ROOT/owned-build/files-configuration"
+```
+
+이 구성은 비출시 테스트 host의 파일 수신용이며 제품 권한을 바꾸는 임시 우회가 아니다. 해당 host의 검수가 끝나면 소유 runner 자료를 NAS 정책으로 보존하고 재생성 가능한 빌드 캐시를 정리한다. 후처리와 새 빌드의 최종 outer tree를 `testHostTreeSHA256`로 receipt에 결속한다. Info, 서명이나 내부 파일이 바뀌면 이전 canary는 거절하므로 **후처리 뒤 새 account canary**가 필요하다.
+
+`account-export-request`도 아직 `ready=false`다. 구성된 runner에 자신의 `Documents/CyclePairExports/<runID>`를 만들고, 앱의 최근 재인증 거절, 정상 재인증, 요청과 브라우저 시작 표시까지만 구현했다. 이 메서드는 실제 파일 저장이나 단회 재사용 거절을 통과시키지 않는다. Files의 소유 runID 폴더 선택과 정확한 JSON 저장, 제품에서 다시 열어 재사용 거절을 확인하는 실제 UI는 공개 선택자 진단 후 별도로 이어야 한다. 구성 키와 strict 서명 통과를 Files UI 관찰로 해석하지 않는다.
+
+정상 Files UI로 저장한 해당 runner의 **정확한 한 파일만** 앱 고유 도메인에서 복사한 뒤 `verifyExportFileContent`로 읽는다. 이 함수는 소유 비공개 경로와 파일명, schema1, 실행 시각 범위, 정책 한도와 독립적으로 읽은 소유 서버 자료 전체를 메모리에서 대조한다. 결과에는 원문, UID와 건강 자료 없이 bool, 개수, 파일 증적 hash만 남긴다. 항상 `uiDownloadVerified=false`를 반환하므로 파일 검사를 브라우저 UI 성공으로 주입할 수 없다. Safari 전체 container, 다른 다운로드와 다른 계정 자료는 읽거나 정리하지 않는다. 이 전체 흐름은 아직 실제 미실행이다.

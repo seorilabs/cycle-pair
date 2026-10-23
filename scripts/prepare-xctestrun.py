@@ -5,6 +5,8 @@ import os
 import pathlib
 import plistlib
 import sys
+sys.dont_write_bytecode = True
+from ios_helper_fingerprint import tree_sha256
 
 
 def main():
@@ -42,13 +44,14 @@ def main():
         raise ValueError('지원하지 않는 test executable')
     helper_hash = hashlib.sha256((bundle / executable_name).read_bytes()).hexdigest()
     fingerprint = {'sourceSHA256': hashlib.sha256(original).hexdigest(),
-                   'testBundleExecutableSHA256': helper_hash}
+                   'testBundleExecutableSHA256': helper_hash,
+                   'testHostTreeSHA256': tree_sha256(host)}
     if request.get('inspectOnly') is True:
         print(json.dumps(fingerprint))
         return
     environment = target.setdefault('EnvironmentVariables', {})
     # 이전 실행의 비밀값을 새 실행에 이어받지 않는다.
-    if any(any(part in key for part in ['INVITATION', 'SECRET', 'PASSWORD', 'ACCOUNT_EMAIL']) and key.startswith('CYCLEPAIR_')
+    if any(any(part in key for part in ['INVITATION', 'SECRET', 'PASSWORD', 'ACCOUNT_EMAIL', 'ACTION_URL']) and key.startswith('CYCLEPAIR_')
            for key in environment):
         raise ValueError('이전 비밀 환경변수가 있는 base는 거절')
     environment = {key: value for key, value in environment.items()

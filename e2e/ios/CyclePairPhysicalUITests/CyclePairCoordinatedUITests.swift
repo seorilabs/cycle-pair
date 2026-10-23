@@ -37,6 +37,9 @@ final class CyclePairCoordinatedUITests: XCTestCase {
             "testPasswordResetRequested": "password-reset-request",
             "testPasswordResetOldPasswordRejected": "password-reset-old-rejected",
             "testPasswordResetLogin": "password-reset-login",
+            "testEmailVerificationBrowserAction": "email-verification-browser",
+            "testAccountDeleted": "account-delete",
+            "testAccountExportRequested": "account-export-request",
             "testInvitationAccept": "invitation-accept",
             "testSharingPrivate": "sharing-private",
             "testPartnerReceived": "partner-received",
@@ -60,7 +63,16 @@ final class CyclePairCoordinatedUITests: XCTestCase {
                 throw PreparationError.actualInvitationNotAllowed
             }
         }
-        if flow == "account-input-canary" {
+        if flow == "email-verification-browser" {
+            guard environment["CYCLEPAIR_SECRET_INPUT_VALIDATED"] == "1",
+                  let value = environment["CYCLEPAIR_TEST_ACTION_URL"], !value.isEmpty,
+                  (environment["CYCLEPAIR_TEST_ACCOUNT_EMAIL"] ?? "").isEmpty,
+                  (environment["CYCLEPAIR_TEST_ACCOUNT_PASSWORD"] ?? "").isEmpty else {
+                throw PreparationError.secretInputNotValidated
+            }
+        } else if !(environment["CYCLEPAIR_TEST_ACTION_URL"] ?? "").isEmpty {
+            throw PreparationError.actualAccountInputNotAllowed
+        } else if flow == "account-input-canary" {
             guard environment["CYCLEPAIR_TEST_ACCOUNT_EMAIL"] == Self.publicAccountEmail,
                   environment["CYCLEPAIR_TEST_ACCOUNT_PASSWORD"] == Self.publicAccountPassword else {
                 throw PreparationError.actualAccountInputNotAllowed
@@ -78,7 +90,7 @@ final class CyclePairCoordinatedUITests: XCTestCase {
                 throw PreparationError.secretInputNotValidated
             }
         } else if ["account-upgrade", "account-logout", "account-login", "account-reauthenticate",
-                   "password-reset-old-rejected", "password-reset-login"].contains(flow) {
+                   "password-reset-old-rejected", "password-reset-login", "account-delete", "account-export-request"].contains(flow) {
             guard environment["CYCLEPAIR_SECRET_INPUT_VALIDATED"] == "1",
                   !(environment["CYCLEPAIR_TEST_ACCOUNT_EMAIL"] ?? "").isEmpty,
                   !(environment["CYCLEPAIR_TEST_ACCOUNT_PASSWORD"] ?? "").isEmpty else {
@@ -87,6 +99,9 @@ final class CyclePairCoordinatedUITests: XCTestCase {
         } else if !(environment["CYCLEPAIR_TEST_ACCOUNT_EMAIL"] ?? "").isEmpty ||
                   !(environment["CYCLEPAIR_TEST_ACCOUNT_PASSWORD"] ?? "").isEmpty {
             throw PreparationError.actualAccountInputNotAllowed
+        }
+        if flow == "account-delete" && environment["CYCLEPAIR_ACCOUNT_DELETION_APPROVED"] != "1" {
+            throw PreparationError.secretInputNotValidated
         }
         if flow == "sharing-private" {
             // This flow explicitly requires the already-open sharing screen.
@@ -376,6 +391,113 @@ final class CyclePairCoordinatedUITests: XCTestCase {
         print("CP_ACCOUNT_LIFECYCLE action=password-reset-login authenticated=true coldRestartHome=true")
     }
 
+    func testEmailVerificationBrowserAction() throws {
+        let value = ProcessInfo.processInfo.environment["CYCLEPAIR_TEST_ACTION_URL"] ?? ""
+        guard let url = URLComponents(string: value), url.path == "/emulator/action",
+              url.queryItems?.filter({ $0.name == "mode" }).map({ $0.value }) == ["verifyEmail"] else {
+            throw PreparationError.secretInputNotValidated
+        }
+        let safari = XCUIApplication(bundleIdentifier: "com.apple.mobilesafari")
+        safari.activate() // Safari를 종료하거나 기존 탭을 초기화하지 않는다.
+        let tabs = safari.buttons.matching(NSPredicate(format: "label IN %@", ["Tabs", "Show Tabs", "탭", "탭 보기"])).firstMatch
+        guard tabs.waitForExistence(timeout: 15), tabs.isHittable else {
+            throw PreparationError.browserSelectorsNotObserved
+        }
+        tabs.press(forDuration: 1.2)
+        let newPrivate = safari.buttons.matching(NSPredicate(format: "label IN %@", ["New Private Tab", "새로운 개인정보 보호 탭"])).firstMatch
+        guard newPrivate.waitForExistence(timeout: 10), newPrivate.isHittable else {
+            throw PreparationError.browserSelectorsNotObserved
+        }
+        newPrivate.tap() // 새 탭을 만들기 전에는 URL을 입력하지 않는다.
+        let address = safari.textFields.matching(identifier: "URL").firstMatch
+        guard address.waitForExistence(timeout: 15), address.isHittable else {
+            throw PreparationError.browserSelectorsNotObserved
+        }
+        let current = address.value as? String ?? ""
+        guard current.isEmpty || current == address.placeholderValue else {
+            throw PreparationError.browserSelectorsNotObserved
+        }
+        address.tap(); address.typeText(value + "\n")
+        let success = safari.staticTexts.matching(NSPredicate(format: "label CONTAINS %@",
+            "The email has been successfully verified.")).firstMatch
+        XCTAssertTrue(success.waitForExistence(timeout: 60), "현재 구현은 Auth Emulator의 인증 완료 표시를 확인합니다.")
+        // 미관찰 선택자는 ready=false다. 성공해도 기존 다른 탭을 닫지 않는다.
+        tabs.press(forDuration: 1.2)
+        let close = safari.buttons.matching(NSPredicate(format: "label IN %@", ["Close This Tab", "이 탭 닫기"])).firstMatch
+        XCTAssertTrue(close.waitForExistence(timeout: 10) && close.isHittable, "이번 새 탭만 닫을 수 있어야 합니다.")
+        close.tap()
+        app.activate()
+        print("CP_ACCOUNT_LIFECYCLE action=verification-browser localHandlerVerified=true")
+    }
+
+    func testAccountDeleted() {
+        openAccountSettings()
+        let owner = ProcessInfo.processInfo.environment["CYCLEPAIR_TEST_ACCOUNT_EMAIL"] ?? ""
+        XCTAssertTrue(text([owner]).exists, "삭제 전 표시된 소유 이메일 계정이 일치해야 합니다.")
+        let delete = button(["Permanently delete account and records", "계정과 서버 데이터 영구 삭제"])
+        reveal(delete); delete.tap()
+        XCTAssertTrue(text(["Confirm your current password before deleting your account.",
+                            "계정 삭제 전에 현재 비밀번호를 다시 확인해 주세요."]).exists)
+        XCTAssertFalse(app.alerts.firstMatch.exists, "최근 재인증 전에는 최종 삭제창을 열면 안 됩니다.")
+        reauthenticateOpenAccount()
+        reveal(delete); delete.tap()
+        let alert = app.alerts.firstMatch
+        XCTAssertTrue(alert.waitForExistence(timeout: 10))
+        XCTAssertTrue(alert.staticTexts.matching(NSPredicate(format: "label IN %@",
+            ["Permanently delete account and data?", "계정과 데이터를 영구 삭제할까요?"])).firstMatch.exists)
+        alert.buttons.matching(NSPredicate(format: "label IN %@", ["Cancel", "취소"])).firstMatch.tap()
+        XCTAssertTrue(wait { !alert.exists })
+        XCTAssertTrue(text([owner]).exists, "취소 뒤 소유 계정을 유지해야 합니다.")
+        reveal(delete); delete.tap()
+        XCTAssertTrue(alert.waitForExistence(timeout: 10))
+        alert.buttons.matching(NSPredicate(format: "label IN %@", ["Delete permanently", "영구 삭제"])).firstMatch.tap()
+        XCTAssertTrue(element("account-login-submit").waitForExistence(timeout: 90), "정상 삭제 뒤 로그인 화면을 표시해야 합니다.")
+        XCTAssertTrue(text(["Your account and records on this device have been deleted.",
+                            "계정과 이 기기에 저장된 데이터를 삭제했습니다."]).exists)
+        XCTAssertFalse(element("home-record").exists)
+        restartForObservation(waitingFor: "account-login-submit")
+        XCTAssertFalse(element("home-record").exists)
+        print("CP_ACCOUNT_LIFECYCLE action=delete uiGate=true coldGate=true serverDeletionIndependentlyVerified=false")
+    }
+
+    func testAccountExportRequested() throws {
+        // runner 구성과 Safari/Files 공개 선택자 진단이 완료되기 전에는 wrapper도 ready=false다.
+        guard Bundle.main.object(forInfoDictionaryKey: "UIFileSharingEnabled") as? Bool == true,
+              Bundle.main.object(forInfoDictionaryKey: "LSSupportsOpeningDocumentsInPlace") as? Bool == true else {
+            throw PreparationError.exportInboxNotConfigured
+        }
+        let inbox = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("CyclePairExports").appendingPathComponent(runID)
+        guard !FileManager.default.fileExists(atPath: inbox.path) else { throw PreparationError.exportInboxNotConfigured }
+        try FileManager.default.createDirectory(at: inbox, withIntermediateDirectories: true)
+        openAccountSettings()
+        let export = button(["Download my data as JSON", "내 데이터 JSON 다운로드"])
+        reveal(export); export.tap()
+        XCTAssertTrue(text(["Confirm your current password before exporting data.",
+                            "데이터 내보내기 전에 현재 비밀번호를 다시 확인해 주세요."]).exists)
+        reauthenticateOpenAccount()
+        reveal(export); export.tap() // 제품의 Linking.openURL을 통해 정상 브라우저로 이동한다.
+        let safari = XCUIApplication(bundleIdentifier: "com.apple.mobilesafari")
+        XCTAssertTrue(wait(timeout: 60) { safari.state == .runningForeground })
+        let started = safari.staticTexts.matching(NSPredicate(format: "label IN %@",
+            ["The download has started. This link cannot be used again.", "다운로드를 시작했습니다. 이 링크는 다시 사용할 수 없습니다."])).firstMatch
+        XCTAssertTrue(started.waitForExistence(timeout: 60), "앱 요청과 브라우저 다운로드 시작은 별도 단계입니다.")
+        // 이 메서드는 앱 요청과 시작 표시까지만 담당한다. Files 저장과 실제 파일 대조는 후속 단계다.
+        app.activate()
+        print("CP_ACCOUNT_LIFECYCLE action=export-request browserStarted=true fileReadbackVerified=false")
+    }
+
+    private func reauthenticateOpenAccount() {
+        let password = app.secureTextFields.matching(NSPredicate(format: "label IN %@",
+            ["Current password for verification", "재인증 비밀번호"])).firstMatch
+        fillEmptyAccountField(password, ProcessInfo.processInfo.environment["CYCLEPAIR_TEST_ACCOUNT_PASSWORD"] ?? "")
+        dismissAccountKeyboard()
+        let submit = button(["Confirm password", "비밀번호 확인"])
+        reveal(submit); submit.tap()
+        XCTAssertTrue(text(["Identity confirmed for this session.", "이 세션에서 본인 확인이 완료되었습니다."]).waitForExistence(timeout: 60))
+        XCTAssertTrue(wait { self.emptyAccountField(password) })
+    }
+
     private func signInEmail() -> XCUIElement {
         app.textFields.matching(NSPredicate(format: "label IN %@", ["Sign-in email", "로그인 이메일"])).firstMatch
     }
@@ -607,5 +729,7 @@ final class CyclePairCoordinatedUITests: XCTestCase {
         case actualInvitationNotAllowed
         case secretInputNotValidated
         case actualAccountInputNotAllowed
+        case browserSelectorsNotObserved
+        case exportInboxNotConfigured
     }
 }

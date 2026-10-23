@@ -18,6 +18,7 @@ const fakeFlows = { ...DEFAULT_FLOWS, 'invitation-accept': { ...DEFAULT_FLOWS['i
 let index = 0;
 const py = (script, args = []) => execFileSync('/usr/bin/python3', ['-c', script, ...args], { encoding: 'utf8' });
 const exec = promisify(execFile);
+const baseFingerprint = source => JSON.parse(execFileSync('/usr/bin/python3', [new URL('./prepare-xctestrun.py', import.meta.url).pathname], { input: JSON.stringify({ source, inspectOnly: true }), encoding: 'utf8' }));
 async function fixture(binary = false) {
   const dir = path.join(root, `case-${index++}`); await mkdir(dir, { mode: 0o700 });
   const base = path.join(dir, 'base.xctestrun');
@@ -180,7 +181,7 @@ test('계정 canary 근거는 목적과 소유 계정에 결속하고 인증 성
     testIdentifier: 'CyclePairCoordinatedUITests/testAccountInputCanary', diagnosticOnly: false,
     sourceSha: SHA, requestedCandidateSha: SHA, ownershipManifestSHA256: await hash(f.ownership),
     accountOwnershipSHA256: await hash(f.manifest.accountOwnershipPath), canaryScope: IOS_ACCOUNT_CANARY_SCOPE,
-    plistPreparation: { sourceSHA256: await hash(f.base), testBundleExecutableSHA256: await hash(f.helper) },
+    plistPreparation: baseFingerprint(f.base),
     summaryDeviceMatches: true, ownedXcodebuildGroupCleaned: true, privateRawRemoved: true,
     counts: { totalTestCount: 1, passedTests: 1, failedTests: 0, skippedTests: 0, expectedFailures: 0 } };
   const options = { purpose: 'account', receipt, baseXctestrun: f.base, ownership: f.ownership, candidateSha: SHA, privateRoot: f.dir };
@@ -192,6 +193,10 @@ test('계정 canary 근거는 목적과 소유 계정에 결속하고 인증 성
   await writeFile(receipt, JSON.stringify(record), { mode: 0o600 });
   assert.equal(await validateCanaryReceipt(options), true);
   await assert.rejects(validateCanaryReceipt({ ...options, purpose: 'invitation' }));
+  const outerInfo = path.join(f.dir, 'Debug-iphoneos/Runner.app/Info.plist');
+  await writeFile(outerInfo, 'public outer runner plist change');
+  await assert.rejects(validateCanaryReceipt(options), 'outer runner 변경 뒤 이전 canary는 거절해야 함');
+  await rm(outerInfo);
   await writeFile(f.manifest.accountOwnershipPath, '{"syntheticOnly":true,"newGuest":true}');
   await assert.rejects(validateCanaryReceipt(options));
 });
@@ -271,7 +276,7 @@ test('공개 입력 근거의 후보, 설치와 signed helper가 같아야 초�
   const original = { executionMode: 'physical', flow: 'invitation-canary', passed: true,
     testIdentifier: 'CyclePairCoordinatedUITests/testInvitationInputCanary', diagnosticOnly: false,
     sourceSha: SHA, requestedCandidateSha: SHA, ownershipManifestSHA256: await hash(f.ownership),
-    plistPreparation: { sourceSHA256: await hash(f.base), testBundleExecutableSHA256: await hash(f.helper) }, summaryDeviceMatches: true,
+    plistPreparation: baseFingerprint(f.base), summaryDeviceMatches: true,
     ownedXcodebuildGroupCleaned: true, privateRawRemoved: true,
     counts: { totalTestCount: 1, passedTests: 1, failedTests: 0, skippedTests: 0, expectedFailures: 0 } };
   const receipt = path.join(f.dir, 'canary.json');
@@ -474,4 +479,89 @@ test('host-only 가림값은 올바른 문자열 배열이어야 하며 UI 입�
     assert.equal(x.calls.length, 0);
     await gone(f.options.output);
   }
+});
+
+
+const publicAction = 'http://192.168.1.24:9399/emulator/action?mode=verifyEmail&oobCode=public_oob_20261023&apiKey=public-api-key&lang=ko';
+test('인증 URL은 고정 action-link 필드와 해당 flow mode만 허용한다', () => {
+  const flow = { inputKind: 'action-link', actionMode: 'verifyEmail' };
+  const input = resolvePrivateInput(flow, { kind: 'action-link', url: publicAction });
+  assert.deepEqual(privateInputEnvironment(input, 'ios'), { CYCLEPAIR_TEST_ACTION_URL: publicAction });
+  assert.ok(input.secrets.includes(publicAction));
+  assert.ok(input.secrets.includes('public_oob_20261023'));
+  for (const url of [publicAction.replace('verifyEmail', 'resetPassword'),
+    publicAction + '&continueUrl=https://other.invalid', publicAction + '&mode=verifyEmail',
+    publicAction + '#private', publicAction.replace('192.168.1.24', 'user:pass@192.168.1.24'),
+    publicAction.replace('public_oob_20261023', 'bad%20code'), publicAction.replace('lang=ko', 'lang=fr')])
+    assert.throws(() => resolvePrivateInput(flow, { kind: 'action-link', url }));
+  assert.throws(() => resolvePrivateInput(flow, { kind: 'action-link', url: publicAction, mode: 'verifyEmail' }));
+});
+test('action URL과 코드의 URL 인코딩 및 줄임 prefix도 모든 chunk에서 가린다', () => {
+  const input = resolvePrivateInput({ inputKind: 'action-link', actionMode: 'verifyEmail' }, { kind: 'action-link', url: publicAction });
+  for (const value of [publicAction, encodeURIComponent(publicAction), 'public_oob_20261023']) {
+    for (const shown of [value, value.slice(0, 12) + '...', value.slice(0, 12) + '…']) {
+      for (let boundary = 0; boundary <= shown.length; boundary++) {
+        const r = createStreamRedactor(input.secrets);
+        assert.equal(r.push(shown.slice(0, boundary)) + r.push(shown.slice(boundary)) + r.end(), '[redacted]');
+      }
+    }
+  }
+});
+test('미관찰 Safari 흐름은 실행 준비 완료가 아니며 삭제에는 별도 실행 승인이 필요하다', async () => {
+  assert.equal(DEFAULT_FLOWS['email-verification-browser']?.ready, false);
+  assert.equal(DEFAULT_FLOWS['account-delete']?.destructive, true);
+  const f = await fixture(), x = fake();
+  await assert.rejects(runPhysicalIosFlow({ ...f.options, flow: 'account-delete',
+    privateInput: { kind: 'account', ...PUBLIC_ACCOUNT_CANARY }, allowSecretExecution: true,
+    secretTransportValidated: true }, x));
+  assert.equal(x.calls.length, 0);
+});
+for (const [backend, origin, projectId, validUrl] of [
+  ['emulator', 'http://192.168.1.24:9399', undefined, publicAction],
+  ['service', 'https://cyclepair-public.firebaseapp.com', 'cyclepair-public',
+    'https://cyclepair-public.firebaseapp.com/__/auth/action?mode=verifyEmail&oobCode=public_oob_20261023&apiKey=public-api-key&lang=en'],
+]) test(`${backend} action은 receipt에 묶인 manifest origin과 고정 경로로만 전달된다`, async () => {
+  const f = await fixture();
+  const manifest = { ...f.manifest, backend, authActionOrigin: origin, authActionApiKey: 'public-api-key', firebaseProjectId: projectId };
+  await writeFile(f.options.ownership, JSON.stringify(manifest), { mode: 0o600 });
+  const x = fake({ inspect: async ({ prepared, args }) => {
+    assert.equal(prepared.EnvironmentVariables.CYCLEPAIR_TEST_ACTION_URL, validUrl);
+    assert.ok(!('CYCLEPAIR_TEST_ACCOUNT_EMAIL' in prepared.EnvironmentVariables));
+    assert.ok(!('CYCLEPAIR_TEST_ACCOUNT_PASSWORD' in prepared.EnvironmentVariables));
+    assert.ok(!JSON.stringify(x.calls).includes(validUrl));
+    assert.ok(args.includes('-only-testing:CyclePairPhysicalUITests/CyclePairCoordinatedUITests/testEmailVerificationBrowserAction'));
+  } });
+  const flowDefinitions = { ...DEFAULT_FLOWS, 'email-verification-browser': {
+    ...DEFAULT_FLOWS['email-verification-browser'], ready: true } };
+  const result = await runPhysicalIosFlow({ ...f.options, backend, flow: 'email-verification-browser',
+    privateInput: { kind: 'action-link', url: validUrl }, allowSecretExecution: true,
+    secretTransportValidated: true, redactionValues: ['public-owner@example.invalid'] }, { ...x, flowDefinitions });
+  assert.equal(result.passed, true);
+  assert.equal(result.diagnosticOnly, true);
+  await gone(x.plist()); await gone(x.bundle());
+  for (const badUrl of [validUrl.replace(new URL(validUrl).hostname, 'other.invalid'),
+    validUrl.replace(new URL(validUrl).pathname, '/other/action'), validUrl.replace('public-api-key', 'other-api-key')]) {
+    const b = await fixture();
+    await writeFile(b.options.ownership, JSON.stringify({ ...b.manifest, backend, authActionOrigin: origin, authActionApiKey: 'public-api-key', firebaseProjectId: projectId }));
+    const noSpawn = fake();
+    await assert.rejects(runPhysicalIosFlow({ ...b.options, backend, flow: 'email-verification-browser',
+      privateInput: { kind: 'action-link', url: badUrl }, allowSecretExecution: true,
+      secretTransportValidated: true, redactionValues: ['public-owner@example.invalid'] }, { ...noSpawn, flowDefinitions }));
+    assert.equal(noSpawn.calls.length, 0);
+  }
+});
+
+test('삭제 승인과 새 action 입력은 실행별로만 전달하고 stale base URL은 거절한다', async () => {
+  const f = await fixture(), x = fake({ inspect: async ({ prepared }) => {
+    assert.equal(prepared.EnvironmentVariables.CYCLEPAIR_ACCOUNT_DELETION_APPROVED, '1');
+    assert.ok(!('CYCLEPAIR_TEST_ACTION_URL' in prepared.EnvironmentVariables));
+  } });
+  const result = await runPhysicalIosFlow({ ...f.options, flow: 'account-delete',
+    privateInput: { kind: 'account', ...PUBLIC_ACCOUNT_CANARY }, allowAccountDeletion: true,
+    allowSecretExecution: true, secretTransportValidated: true }, x);
+  assert.equal(result.passed, true); assert.equal(result.privateRawRemoved, true);
+  const b = await fixture(), noSpawn = fake();
+  py("import plistlib,sys;p=sys.argv[1];d=plistlib.load(open(p,'rb'));d['CyclePairPhysicalUITests']['EnvironmentVariables']['CYCLEPAIR_TEST_ACTION_URL']='public-stale-action';open(p,'wb').write(plistlib.dumps(d))", [b.base]);
+  const rejected = await runPhysicalIosFlow(b.options, noSpawn);
+  assert.equal(rejected.passed, false); assert.equal(noSpawn.calls.length, 0); assert.equal(rejected.privateRawRemoved, true);
 });

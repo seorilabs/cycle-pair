@@ -5,7 +5,7 @@ import { lstat, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } fro
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { StringDecoder } from 'node:string_decoder';
-import { resolvePrivateInput, privateInputEnvironment, IOS_ACCOUNT_CANARY_SCOPE } from './private-e2e-input.mjs';
+import { resolvePrivateInput, privateInputEnvironment, assertActionLinkOrigin, IOS_ACCOUNT_CANARY_SCOPE } from './private-e2e-input.mjs';
 
 const TARGET = 'CyclePairPhysicalUITests';
 export const DEFAULT_FLOWS = Object.freeze({
@@ -26,6 +26,9 @@ export const DEFAULT_FLOWS = Object.freeze({
   'password-reset-request': { method: 'testPasswordResetRequested', className: 'CyclePairCoordinatedUITests', inputKind: 'account', secret: true, ready: true },
   'password-reset-old-rejected': { method: 'testPasswordResetOldPasswordRejected', className: 'CyclePairCoordinatedUITests', inputKind: 'account', secret: true, ready: true },
   'password-reset-login': { method: 'testPasswordResetLogin', className: 'CyclePairCoordinatedUITests', inputKind: 'account', secret: true, ready: true },
+  'email-verification-browser': { method: 'testEmailVerificationBrowserAction', className: 'CyclePairCoordinatedUITests', inputKind: 'action-link', actionMode: 'verifyEmail', requiresAccountCanary: true, secret: true, ready: false },
+  'account-export-request': { method: 'testAccountExportRequested', className: 'CyclePairCoordinatedUITests', inputKind: 'account', secret: true, ready: false },
+  'account-delete': { method: 'testAccountDeleted', className: 'CyclePairCoordinatedUITests', inputKind: 'account', destructive: true, secret: true, ready: true },
   'invitation-accept': { method: 'testInvitationAccept', className: 'CyclePairCoordinatedUITests', inputKind: 'invitation', secret: true, ready: true },
   'sharing-private': { method: 'testSharingPrivate', className: 'CyclePairCoordinatedUITests', secret: false, ready: true },
   'partner-received': { method: 'testPartnerReceived', className: 'CyclePairCoordinatedUITests', secret: false, ready: true },
@@ -126,6 +129,7 @@ export async function validateCanaryReceipt({ receipt, baseXctestrun, ownership,
   if (record.executionMode !== 'physical' || record.flow !== expected[0] || record.passed !== true ||
       record.testIdentifier !== expected[1] || record.diagnosticOnly !== false ||
       record.plistPreparation?.testBundleExecutableSHA256 !== fingerprint.testBundleExecutableSHA256 ||
+      record.plistPreparation?.testHostTreeSHA256 !== fingerprint.testHostTreeSHA256 ||
       record.sourceSha !== candidateSha || record.requestedCandidateSha !== candidateSha ||
       record.ownershipManifestSHA256 !== digest(await readFile(manifestFile)) ||
       record.plistPreparation?.sourceSHA256 !== digest(await readFile(base)) ||
@@ -264,6 +268,7 @@ export async function runPhysicalIosFlow(options, dependencies = {}) {
     throw new Error('명시한 물리 iPhone UDID만 허용하며 destination 재정의는 거절합니다');
   if (!/^cp-\d{17}-[a-f0-9]{6}$/.test(options.runId)) throw new Error('합성 실행 ID 형식 필요');
   if (!flow.ready) throw new Error('UI helper 계약과 canary 검증이 준비되지 않은 flow');
+  if (flow.destructive && options.allowAccountDeletion !== true) throw new Error('최종 소유 계정 삭제의 명시적 실행 승인이 필요합니다');
   if (flow.secret && (!options.allowSecretExecution || !options.secretTransportValidated))
     throw new Error('비밀 flow는 공개 canary와 입력 경로 검증이 선행되어야 합니다');
   if (options.invitation !== undefined) throw new Error('typed private input을 사용해야 합니다');
@@ -300,6 +305,7 @@ export async function runPhysicalIosFlow(options, dependencies = {}) {
       runtime.createdFor !== 'cycle-pair-native-launch' ||
       !/^[a-f0-9]{40}$/.test(manifest.installedSourceSha || ''))
     throw new Error('승인한 소유 synthetic physical iOS manifest 필요');
+  if (input.kind === 'action-link') assertActionLinkOrigin(input, options.backend, manifest);
   const account = await ownedPath(privateRoot, manifest.accountOwnershipPath);
   await assertPrivateFile(account);
   const accountOwnershipSHA256 = digest(await readFile(account));
@@ -347,6 +353,7 @@ export async function runPhysicalIosFlow(options, dependencies = {}) {
     if (options.privateInput || flow.requiresAccountCanary) {
       environment.CYCLEPAIR_SECRET_INPUT_VALIDATED = '1';
     }
+    if (flow.destructive) environment.CYCLEPAIR_ACCOUNT_DELETION_APPROVED = '1';
     let preparation = '';
     const prepared = await runOwnedCommand('/usr/bin/python3', [fileURLToPath(new URL('./prepare-xctestrun.py', import.meta.url))], {
       input: JSON.stringify({ source: base, destination: privatePlist, environment, identifier: `${className}/${flow.method}` }),
