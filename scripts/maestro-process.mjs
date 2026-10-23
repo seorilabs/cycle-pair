@@ -1,7 +1,15 @@
 import { spawn } from 'node:child_process';
 import { Transform } from 'node:stream';
-import { resolvePrivateInput, privateInputEnvironment } from './private-e2e-input.mjs';
+import { resolvePrivateInput, privateInputEnvironment, PUBLIC_ACCOUNT_CANARY } from './private-e2e-input.mjs';
 import { createStreamRedactor } from './physical-ios-wrapper.mjs';
+
+export function androidAccountCanaryOptions({ flow, authoring, scope, backend, runtimes }) {
+  if (!flow?.split(',').includes('account-input-canary') || runtimes[0]?.platform !== 'android') return {};
+  if (flow !== 'account-input-canary' || !authoring || scope !== 'solo' || backend !== 'emulator' ||
+      runtimes.length !== 1 || runtimes[0].appId !== 'com.seorilabs.cyclepair.qa')
+    throw new Error('공개 Android 계정 canary는 로컬 QA의 SOLO authoring만 허용합니다');
+  return { inputKind: 'account', privateInput: { kind: 'account', ...PUBLIC_ACCOUNT_CANARY } };
+}
 
 export function spawnMaestroFlow(binary, args, options, controlUrl, spawnProcess = spawn) {
   const { privateInput, inputKind = 'none', ...childOptions } = options;

@@ -17,7 +17,9 @@ import path from "node:path";
 import { tmpdir } from "node:os";
 import { validatePhysicalRuntime, assertPhysicalAndroidState } from './physical-e2e-runtime.mjs';
 import { runPhysicalIosFlow, validateCanaryReceipt } from './physical-ios-wrapper.mjs';
-import { spawnMaestroFlow } from './maestro-process.mjs';
+import { spawnMaestroFlow, androidAccountCanaryOptions } from './maestro-process.mjs';
+import { ACCOUNT_CANARY_SCOPE } from './private-e2e-input.mjs';
+import { finished } from 'node:stream/promises';
 const exec = promisify(execFile);
 const { values } = parseArgs({
   options: {
@@ -67,6 +69,7 @@ if (ownership.runtimes.some(runtime => runtime.platform === 'ios') && !values['i
 if (values.scope === 'pair' && ownership.runtimes.some(runtime => runtime.platform === 'ios') &&
     (ownership.runtimes[0].platform !== 'android' || ownership.runtimes[1].platform !== 'ios'))
   throw new Error('The mixed pair controller sends from Android actor 0 to iPhone actor 1');
+const androidAccountInput = androidAccountCanaryOptions({ ...values, runtimes: ownership.runtimes });
 for (const runtime of ownership.runtimes) {
   validatePhysicalRuntime(runtime);
   if (values.backend === 'service' && runtime.appId.endsWith('.qa'))
@@ -105,6 +108,8 @@ const runId =
     "hex"
   )}`;
 const secretValues = new Set();
+for (const value of [androidAccountInput.privateInput?.email, androidAccountInput.privateInput?.password])
+  if (value) secretValues.add(value);
 let invitation;
 let iosInputValidation = values['ios-input-validation'];
 const controlKey = randomBytes(24).toString("hex");
@@ -246,6 +251,7 @@ async function runFlow(actor, name, featureIds) {
       ],
       {
         cwd: root,
+        ...androidAccountInput,
         env: {
           ...process.env,
           MAESTRO_CLI_NO_ANALYTICS: "true",
@@ -284,6 +290,7 @@ async function runFlow(actor, name, featureIds) {
       child.once("error", reject);
       child.once("exit", (status) => resolve(status ?? 1));
     });
+    await Promise.all([finished(child.stdout), finished(child.stderr)]);
     clearTimeout(flowTimeout);
     await safeProgress;
     await writeFile(path.join(output, `${actor}-${name}.log`), redact(log), {
@@ -308,7 +315,7 @@ async function runFlow(actor, name, featureIds) {
           await copyFile(file, path.join(destination, entry.name));
       }
     }
-    await retainSafeCaptures(path.join(temporary, "output"));
+    if (name !== 'account-input-canary') await retainSafeCaptures(path.join(temporary, "output"));
   } finally {
     clearTimeout(flowTimeout);
     activeChild = undefined;
@@ -321,6 +328,7 @@ async function runFlow(actor, name, featureIds) {
     passed: code === 0,
     startedAt,
     completedAt: new Date().toISOString(),
+    ...(name === 'account-input-canary' ? { canaryScope: ACCOUNT_CANARY_SCOPE, screenshotsRetained: false } : {}),
   });
   console.log(`${name}, actor ${actor}: ${code === 0 ? "PASS" : "FAIL"}`);
   if (code !== 0)

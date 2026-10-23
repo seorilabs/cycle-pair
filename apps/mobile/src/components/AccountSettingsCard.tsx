@@ -20,6 +20,7 @@ function AccountInput({
   placeholder,
   email = false,
   currentPassword = false,
+  testID,
 }: {
   accessibilityLabel: string;
   value: string;
@@ -27,6 +28,7 @@ function AccountInput({
   placeholder: string;
   email?: boolean;
   currentPassword?: boolean;
+  testID?: string;
 }) {
   const { state } = useAccount();
   return (
@@ -47,6 +49,7 @@ function AccountInput({
       textContentType={
         email ? 'emailAddress' : currentPassword ? 'password' : 'newPassword'
       }
+      testID={testID}
       value={value}
     />
   );
@@ -216,6 +219,7 @@ export function AccountSettingsCard() {
           </Text>
           <AccountInput
             accessibilityLabel={l('계정 전환 이메일')}
+            testID="account-upgrade-email"
             email
             onChangeText={setEmail}
             placeholder="name@example.com"
@@ -223,12 +227,14 @@ export function AccountSettingsCard() {
           />
           <AccountInput
             accessibilityLabel={l('계정 전환 비밀번호')}
+            testID="account-upgrade-password"
             onChangeText={setPassword}
             placeholder={l('비밀번호 8자 이상')}
             value={password}
           />
           <AccountInput
             accessibilityLabel={l('계정 전환 비밀번호 확인')}
+            testID="account-upgrade-password-confirm"
             onChangeText={setPasswordConfirm}
             placeholder={l('비밀번호 다시 입력')}
             value={passwordConfirm}

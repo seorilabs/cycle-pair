@@ -1,0 +1,130 @@
+appId: ${APP_ID}
+---
+- assertTrue: ${APP_ID === 'com.seorilabs.cyclepair.qa'}
+- assertTrue: ${MAESTRO_TEST_ACCOUNT_EMAIL === 'cyclepair-public-canary@example.invalid'}
+- assertTrue: ${MAESTRO_TEST_ACCOUNT_PASSWORD === 'CyclePair-Public-Canary!2026'}
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: home-record
+    timeout: 60000
+- tapOn:
+    id: tab-settings
+- scrollUntilVisible:
+    element:
+      text: '.*(Account and recovery|계정과 복구).*'
+    direction: DOWN
+    centerElement: true
+- tapOn: '.*(Account and recovery|계정과 복구).*'
+- assertVisible: 'Guest|게스트'
+- scrollUntilVisible:
+    element:
+      id: account-upgrade-email
+    direction: DOWN
+    centerElement: true
+- assertVisible:
+    id: account-upgrade-email
+    text: '^(name@example[.]com)?$'
+- scrollUntilVisible:
+    element:
+      id: account-upgrade-password
+    direction: DOWN
+    centerElement: true
+- assertVisible:
+    id: account-upgrade-password
+    text: '^(Password, at least 8 characters|비밀번호 8자 이상)?$'
+- scrollUntilVisible:
+    element:
+      id: account-upgrade-password-confirm
+    direction: DOWN
+    centerElement: true
+- assertVisible:
+    id: account-upgrade-password-confirm
+    text: '^(Enter password again|비밀번호 다시 입력)?$'
+- scrollUntilVisible:
+    element:
+      id: account-upgrade-email
+    direction: UP
+    centerElement: true
+- tapOn:
+    id: account-upgrade-email
+- inputText: ${MAESTRO_TEST_ACCOUNT_EMAIL}
+- hideKeyboard
+- assertVisible:
+    id: account-upgrade-email
+    text: '^cyclepair-public-canary@example[.]invalid$'
+- scrollUntilVisible:
+    element:
+      id: account-upgrade-password
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: account-upgrade-password
+- inputText: ${MAESTRO_TEST_ACCOUNT_PASSWORD}
+- hideKeyboard
+- extendedWaitUntil:
+    visible:
+      id: account-upgrade-password
+      text: ${'^[•●*]{' + MAESTRO_TEST_ACCOUNT_PASSWORD.length + '}$'}
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: account-upgrade-password-confirm
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: account-upgrade-password-confirm
+- inputText: ${MAESTRO_TEST_ACCOUNT_PASSWORD}
+- hideKeyboard
+- extendedWaitUntil:
+    visible:
+      id: account-upgrade-password-confirm
+      text: ${'^[•●*]{' + MAESTRO_TEST_ACCOUNT_PASSWORD.length + '}$'}
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      text: 'Back|뒤로'
+    direction: UP
+    centerElement: true
+- tapOn: 'Back|뒤로'
+- assertNotVisible:
+    id: account-upgrade-email
+- tapOn: '.*(Account and recovery|계정과 복구).*'
+- assertVisible: 'Guest|게스트'
+- scrollUntilVisible:
+    element:
+      id: account-upgrade-email
+    direction: DOWN
+    centerElement: true
+- assertVisible:
+    id: account-upgrade-email
+    text: '^(name@example[.]com)?$'
+- scrollUntilVisible:
+    element:
+      id: account-upgrade-password
+    direction: DOWN
+    centerElement: true
+- assertVisible:
+    id: account-upgrade-password
+    text: '^(Password, at least 8 characters|비밀번호 8자 이상)?$'
+- scrollUntilVisible:
+    element:
+      id: account-upgrade-password-confirm
+    direction: DOWN
+    centerElement: true
+- assertVisible:
+    id: account-upgrade-password-confirm
+    text: '^(Enter password again|비밀번호 다시 입력)?$'
+- scrollUntilVisible:
+    element:
+      text: 'Back|뒤로'
+    direction: UP
+    centerElement: true
+- tapOn: 'Back|뒤로'
+- assertNotVisible:
+    id: account-upgrade-email
+- tapOn:
+    id: tab-home
+- assertVisible:
+    id: home-record
