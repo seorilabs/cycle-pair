@@ -12,6 +12,8 @@ export const DEFAULT_FLOWS = Object.freeze({
   'cold-home': { method: 'testColdHomeExposesAccessibleControls', secret: false, ready: true },
   language: { method: 'testLanguageChangeSurvivesColdRestart', secret: false, ready: true },
   record: { method: 'testRecordSurvivesColdRestart', secret: false, ready: true },
+  'diagnostics-consent': { method: 'testDiagnosticsConsentSurvivesColdRestart', secret: false, ready: true },
+  'privacy-read': { method: 'testPrivacyNoticeCanBeReadAndClosed', secret: false, ready: true },
   'invitation-canary': { method: 'testInvitationInputCanary', className: 'CyclePairCoordinatedUITests', secret: false, ready: true },
   'invitation-accept': { method: 'testInvitationAccept', className: 'CyclePairCoordinatedUITests', secret: true, ready: true },
   'sharing-private': { method: 'testSharingPrivate', className: 'CyclePairCoordinatedUITests', secret: false, ready: true },

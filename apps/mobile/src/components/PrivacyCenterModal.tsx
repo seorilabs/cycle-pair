@@ -35,8 +35,8 @@ export function PrivacyCenterModal({
       presentationStyle="pageSheet"
       visible={visible}
     >
-      <View style={styles.container}>
-        <ScrollView contentContainerStyle={styles.content}>
+      <View style={styles.container} testID="privacy-center">
+        <ScrollView testID="privacy-scroll" contentContainerStyle={styles.content}>
           <Text style={styles.eyebrow}>{l('사이클 페어 데이터 안내')}</Text>
           <Text style={styles.title}>
             {l('내 기록과 공유를 직접 통제해요')}
@@ -85,7 +85,7 @@ export function PrivacyCenterModal({
           </Text>
         </ScrollView>
         <View style={styles.footer}>
-          <PrimaryButton label={l('확인')} onPress={onClose} />
+          <PrimaryButton testID="privacy-close" label={l('확인')} onPress={onClose} />
         </View>
       </View>
     </Modal>

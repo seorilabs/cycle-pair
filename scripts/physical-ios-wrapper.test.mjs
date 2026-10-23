@@ -214,6 +214,22 @@ test('공개 canary도 같은 exact 값 가림 경로를 쓰고 지정한 coordi
  const f=await fixture(),x=fake({publicCanary:true,inspect:async({prepared,args})=>{assert.equal(prepared.EnvironmentVariables.CYCLEPAIR_TEST_FLOW,'invitation-canary');assert.deepEqual(prepared.OnlyTestIdentifiers,['CyclePairCoordinatedUITests/testInvitationInputCanary']);assert.ok(args.includes('-only-testing:CyclePairPhysicalUITests/CyclePairCoordinatedUITests/testInvitationInputCanary'));}});const r=await runPhysicalIosFlow({...f.options,flow:'invitation-canary'},x);assert.equal(r.passed,true);assert.ok(!(await readFile(path.join(f.options.output,'xcodebuild.redacted.log'),'utf8')).includes('cyclepair-canary-20261023'));await safeArtifacts(f.options.output);
 });
 
+for (const [flow, method] of [
+  ['diagnostics-consent', 'testDiagnosticsConsentSurvivesColdRestart'],
+  ['privacy-read', 'testPrivacyNoticeCanBeReadAndClosed'],
+]) test(`${flow}는 홈 시험으로 대체하지 않고 해당 화면 메서드만 실행한다`, async () => {
+  const f = await fixture(), x = fake({ inspect: async ({ prepared, args }) => {
+    assert.deepEqual(prepared.OnlyTestIdentifiers, [`CyclePairPhysicalUITests/${method}`]);
+    assert.ok(args.includes(`-only-testing:CyclePairPhysicalUITests/CyclePairPhysicalUITests/${method}`));
+  } });
+  const result = await runPhysicalIosFlow({ ...f.options, flow }, x);
+  assert.equal(result.passed, true);
+  assert.equal(result.testIdentifier, `CyclePairPhysicalUITests/${method}`);
+  assert.equal(result.diagnosticOnly, false);
+  assert.equal(result.privateRawRemoved, true);
+  await safeArtifacts(f.options.output);
+});
+
  test('진단 selector로 바꾼 흐름은 엄격 입력 성공 근거가 될 수 없다', async () => {
   const f = await fixture(), x = fake();
   const result = await runPhysicalIosFlow({ ...f.options, flow: 'invitation-canary' }, {
