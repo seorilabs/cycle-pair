@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { observeAccountInputEmpty } from './android-account-ui.mjs';
+import { observeAccountInputEmpty, allowsRecordNoteObservation } from './android-account-ui.mjs';
 import { runOwnedCommand } from './physical-ios-wrapper.mjs';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
@@ -186,7 +186,30 @@ test('Android 기록은 전체 선택 실패나 삭제 후 nonempty를 통과해
       http: { get: () => response } }), error => !error.message.includes('public-existing-note'));
   }
   const runner = await readFile('scripts/run-native-e2e.mjs', 'utf8');
-  assert.match(runner, /activeAndroidFlow\?\.name === 'record'/);
+  assert.match(runner, /allowsRecordNoteObservation\(activeAndroidFlow\?\.name\)/);
   assert.match(runner, /observeRecordNoteEmpty\(\{ runtime: activeAndroidFlow.runtime, driverPort: activeAndroidFlow.driverPort/);
-  assert.match(runner, /inputKind === 'account' \|\| name === 'record' \? await selectMaestroDriverPort/);
+  assert.match(runner, /inputKind === 'account' \|\| allowsRecordNoteObservation\(name\) \? await selectMaestroDriverPort/);
+});
+
+
+test('기록 관찰 predicate는 기록과 기록을 포함한 solo 흐름만 허용한다', () => {
+  for (const name of ['record', 'solo-record-language']) assert.equal(allowsRecordNoteObservation(name), true);
+  for (const name of [undefined, null, '', 'cold-home', 'record-restored', 'account-input-canary', 'public-other', '../record'])
+    assert.equal(allowsRecordNoteObservation(name), false);
+});
+
+test('공통 predicate가 실제 endpoint 조건과 driverPort 선택 양쪽에 연결된다', async () => {
+  const runner = await readFile('scripts/run-native-e2e.mjs', 'utf8');
+  const endpoint = /if \(request.url === .*record-note-empty` && request.method === 'GET' && (.+)\) \{/.exec(runner)?.[1];
+  const port = /const driverPort = (.+) \? await selectMaestroDriverPort\(\) : undefined;/.exec(runner)?.[1];
+  assert.ok(endpoint); assert.ok(port);
+  assert.match(await readFile('e2e/flows/solo-record-language.yaml', 'utf8'), /- runFlow: record.yaml/);
+  for (const name of ['record', 'solo-record-language', 'cold-home', 'record-restored', undefined]) {
+    const context = { name, activeAndroidFlow: name ? { name } : undefined,
+      androidAccountInput: {}, allowsRecordNoteObservation };
+    const expected = name === 'record' || name === 'solo-record-language';
+    assert.deepEqual({ endpoint: vm.runInNewContext(endpoint, context), driverPort: vm.runInNewContext(port, context) },
+      { endpoint: expected, driverPort: expected });
+  }
+  assert.equal(vm.runInNewContext(port, { name: 'account-input-canary', androidAccountInput: {inputKind: 'account'}, allowsRecordNoteObservation }), true);
 });

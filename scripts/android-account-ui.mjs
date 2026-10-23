@@ -61,3 +61,7 @@ export function observeAccountInputEmpty(options, dependencies = {}) {
 export function observeRecordNoteEmpty(options, dependencies = {}) {
   return observeInputEmpty({ ...options, field: 'record-note' }, dependencies, true);
 }
+
+export function allowsRecordNoteObservation(flow) {
+  return flow === 'record' || flow === 'solo-record-language';
+}

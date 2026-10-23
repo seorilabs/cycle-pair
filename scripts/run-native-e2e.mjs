@@ -17,7 +17,7 @@ import { tmpdir } from "node:os";
 import { validatePhysicalRuntime, assertPhysicalAndroidState } from './physical-e2e-runtime.mjs';
 import { runPhysicalIosFlow, validateCanaryReceipt, runOwnedCommand } from './physical-ios-wrapper.mjs';
 import { spawnMaestroFlow, androidAccountCanaryOptions, selectMaestroDriverPort } from './maestro-process.mjs';
-import { observeAccountInputEmpty, observeRecordNoteEmpty, ANDROID_ACCOUNT_INPUT_FIELDS } from './android-account-ui.mjs';
+import { observeAccountInputEmpty, observeRecordNoteEmpty, allowsRecordNoteObservation, ANDROID_ACCOUNT_INPUT_FIELDS } from './android-account-ui.mjs';
 import { androidAuthRequested, androidAccountBinding, loadAndroidAccountInput, makeAndroidAccountCanaryReceipt, removeAndroidRawAfterGroup } from './physical-android-account.mjs';
 import { ACCOUNT_CANARY_SCOPE } from './private-e2e-input.mjs';
 import { finished } from 'node:stream/promises';
@@ -123,7 +123,7 @@ const accountObservation = new AbortController();
 let activeAndroidFlow;
 const controlKey = randomBytes(24).toString("hex");
 const server = createServer(async (request, response) => {
-  if (request.url === `/${controlKey}/record-note-empty` && request.method === 'GET' && activeAndroidFlow?.name === 'record') {
+  if (request.url === `/${controlKey}/record-note-empty` && request.method === 'GET' && allowsRecordNoteObservation(activeAndroidFlow?.name)) {
     try {
       const result = await observeRecordNoteEmpty({ runtime: activeAndroidFlow.runtime, driverPort: activeAndroidFlow.driverPort, signal: accountObservation.signal });
       response.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }).end(JSON.stringify(result));
@@ -262,7 +262,7 @@ async function runFlow(actor, name, featureIds) {
   let ownedMaestroGroupCleaned = true;
   let privateRawRemoved = false;
   try {
-    const driverPort = androidAccountInput.inputKind === 'account' || name === 'record' ? await selectMaestroDriverPort() : undefined;
+    const driverPort = androidAccountInput.inputKind === 'account' || allowsRecordNoteObservation(name) ? await selectMaestroDriverPort() : undefined;
     activeAndroidFlow = { runtime, name, driverPort };
     let child;
     let safeProgress = Promise.resolve();
