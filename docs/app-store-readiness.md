@@ -1,5 +1,7 @@
 # App Store readiness
 
+2026-10-23 첫 출시는 iPhone 지원으로 승인됐다. 현재 승인 범위와 테스트 계획은 [네이티브 출시 설계](design/2026-10-22-native-launch/design.md)를 따른다. iPad QA와 스크린샷, Plus 신규 판매는 이번 출시의 요구가 아니다. 아래 Xcode Cloud와 구독 항목은 이전 준비 이력이며 현재 완료 판정으로 사용하지 않는다. 새 후보의 archive, 업로드, 처리와 공개는 각각 재확인한다.
+
 현재 상태는 App Store Connect 앱과 Xcode Cloud workflow 구성 완료, 첫 정상
 TestFlight 빌드 대기다. 기계 판독 source of truth는
 [app-store.config.json](../app-store/app-store.config.json)이다.
@@ -77,7 +79,7 @@ Health 데이터 공유는 사용자 제어 기능의 본질이므로 review not
 - [x] App Store Connect 구독 그룹·상품 생성과 가격·무료 체험 readback: 2026-08-11 API로 `Cycle Pair Plus`, 월간·연간 175개 지역, KRW 3,900·29,000, 1주 무료 체험 확인
 - [ ] 구독 상품 review screenshot과 심사 메타데이터 보완 (`MISSING_METADATA`)
 - [ ] 실제 iPhone screenshots
-- [ ] universal target iPad QA와 13-inch iPad screenshots
+- 이번 첫 출시는 iPhone 대상이며 iPad QA와13인치 스크린샷은 제외됨
 - [ ] archive와 TestFlight 처리 완료
 - [ ] App Attest capability가 포함된 provisioning과 production Firebase App Check provider·Firestore/Callable 강제 live 검증
 - [ ] 2인 TestFlight 테스트
