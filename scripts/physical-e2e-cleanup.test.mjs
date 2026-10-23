@@ -7,7 +7,7 @@ import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 
 const exec = promisify(execFile);
-for (const termination of ['failure', 'signal']) test(`UI ${termination} restores the keyboard and only the reverse routes it created`, async () => {
+for (const termination of ['failure', 'signal', 'routes-removed']) test(`UI ${termination} restores the keyboard and only the reverse routes it created`, async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'cyclepair-device-cleanup-test-'));
   try {
     const stateFile = path.join(directory, 'state.json');
@@ -35,16 +35,21 @@ const fs = require('node:fs');
 const file = process.env.CYCLEPAIR_FAKE_ADB_STATE;
 const state = JSON.parse(fs.readFileSync(file, 'utf8'));
 state.subtypeObservedDuringUI = state.subtype;
+if (process.env.CYCLEPAIR_FAKE_UI_TERMINATION === 'routes-removed') {
+  for (const port of [8081,9399,8380,5301]) delete state.routes['tcp:'+port];
+}
 fs.writeFileSync(file, JSON.stringify(state));
 if (process.env.CYCLEPAIR_FAKE_UI_TERMINATION === 'signal') {
   process.kill(process.ppid, 'SIGTERM');
   setTimeout(() => process.exit(7), 1000);
-} else process.exit(7);
+} else process.exit(process.env.CYCLEPAIR_FAKE_UI_TERMINATION === 'routes-removed' ? 0 : 7);
 `, {mode: 0o700});
     const manifest = path.join(directory, 'runtime.json');
     await writeFile(manifest, JSON.stringify({app: 'cycle-pair', backend: 'emulator', adb, runtimes: [{platform: 'android', kind: 'physical', deviceId: 'synthetic-device', appId: 'com.seorilabs.cyclepair.qa', createdFor: 'cycle-pair-native-launch', authorized: true, appData: 'synthetic', keyboard: {inputMethod: 'synthetic.keyboard/IME', asciiSubtype: '20'}}]}));
     const output = path.join(directory, 'output');
-    await assert.rejects(exec(process.execPath, ['scripts/run-native-e2e.mjs', '--backend', 'emulator', '--scope', 'solo', '--authoring', '--flow', 'cold-home', '--ownership', manifest, '--output', output, '--maestro', maestro], {env: {...process.env, CYCLEPAIR_FAKE_ADB_STATE: stateFile, CYCLEPAIR_FAKE_UI_TERMINATION: termination}, timeout: 30_000}));
+    const execution = exec(process.execPath, ['scripts/run-native-e2e.mjs', '--backend', 'emulator', '--scope', 'solo', '--authoring', '--flow', 'cold-home', '--ownership', manifest, '--output', output, '--maestro', maestro], {env: {...process.env, CYCLEPAIR_FAKE_ADB_STATE: stateFile, CYCLEPAIR_FAKE_UI_TERMINATION: termination}, timeout: 30_000});
+    if (termination === 'routes-removed') await execution;
+    else await assert.rejects(execution);
     const state = JSON.parse(await readFile(stateFile, 'utf8'));
     assert.equal(state.subtypeObservedDuringUI, '20');
     assert.equal(state.subtype, '10');
@@ -52,7 +57,12 @@ if (process.env.CYCLEPAIR_FAKE_UI_TERMINATION === 'signal') {
     assert.deepEqual(state.routes, {'tcp:9999': 'tcp:9998'});
     const report = JSON.parse(await readFile(path.join(output, 'journey.json'), 'utf8'));
     assert.equal(report.passed, false);
-    assert.equal(report.executedScenariosPassed, false);
+    assert.equal(report.executedScenariosPassed, termination === 'routes-removed');
+    assert.equal(report.reversePortsRestored, true);
+    if (termination === 'routes-removed') {
+      assert.equal(report.reversePortObservations.length, 4);
+      assert.ok(report.reversePortObservations.every(item => item.status === 'already-absent'));
+    }
     assert.equal(report.keyboardSubtypesRestored, true);
   } finally { await rm(directory, {recursive: true, force: true}); }
 });

@@ -21,6 +21,7 @@ import { observeAccountInputEmpty, observeRecordNoteEmpty, allowsRecordNoteObser
 import { androidAuthRequested, androidAccountBinding, loadAndroidAccountInput, makeAndroidAccountCanaryReceipt, removeAndroidRawAfterGroup } from './physical-android-account.mjs';
 import { ACCOUNT_CANARY_SCOPE } from './private-e2e-input.mjs';
 import { finished } from 'node:stream/promises';
+import { restoreOwnedReversePorts } from './android-reverse-cleanup.mjs';
 const exec = promisify(execFile);
 const { values } = parseArgs({
   options: {
@@ -183,6 +184,7 @@ const createdReversePorts = [];
 const keyboardStates = [];
 let keyboardSubtypesRestored = true;
 let reversePortsRestored = true;
+let reversePortObservations = [];
 let activeChild;
 let cancelledBy;
 for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => {
@@ -552,9 +554,12 @@ try {
       process.exitCode = 1;
     }
   }
-  for (const {deviceId, socket} of createdReversePorts) {
-    await exec(ownership.adb || 'adb', ['-s', deviceId, 'reverse', '--remove', socket])
-      .catch(() => { reversePortsRestored = false; failed ??= 'Unable to restore an owned Android reverse connection'; process.exitCode = 1; });
+  const reverseCleanup = await restoreOwnedReversePorts({adb: ownership.adb || 'adb', routes: createdReversePorts, exec});
+  reversePortsRestored = reverseCleanup.restored;
+  reversePortObservations = reverseCleanup.observations;
+  if (!reversePortsRestored) {
+    failed ??= 'Unable to restore an owned Android reverse connection';
+    process.exitCode = 1;
   }
   await new Promise((resolve) => server.close(resolve));
   const report = {
@@ -569,6 +574,7 @@ try {
     scenarios,
     keyboardSubtypesRestored,
     reversePortsRestored,
+    reversePortObservations,
     cancelledBy: cancelledBy ?? null,
     executedScenariosPassed: !failed,
     passed: false,
