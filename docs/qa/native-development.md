@@ -26,6 +26,8 @@ iPhone 앱에는 같은 Mac의8081 포트에서 `CYCLEPAIR_DEV_BACKEND=emulator 
 
 ## 실행 대상과 결과
 
+초대 중계 주소는 명령 인자 대신 Maestro 자식 프로세스의 `MAESTRO_CONTROL_URL` 환경변수로 전달한다. [Maestro의 `MAESTRO_` 변수 지원](https://docs.maestro.dev/maestro-flows/flow-control-and-logic/parameters-and-constants)을 사용하며 부모 환경은 바꾸지 않는다.
+
 저장소 밖 비공개 JSON에 대상과 승인 범위를 기록한다. 아래 `appData: synthetic`은 설치 상태를 확인한 뒤에만 기입한다. 자동 실행기는 자료 초기화를 허용하지 않는다.
 
 ```json
