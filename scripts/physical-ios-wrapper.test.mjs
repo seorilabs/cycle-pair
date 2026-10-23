@@ -361,3 +361,34 @@ for (const [flow, method] of [
   assert.equal(result.diagnosticOnly, true);
   assert.equal(result.testIdentifier, 'CyclePairCoordinatedUITests/testPublicInputMethodComparison');
  });
+
+for (const [flow, method] of [
+  ['account-upgrade', 'testAccountUpgrade'],
+  ['account-logout', 'testAccountLogout'],
+  ['account-login', 'testAccountLogin'],
+  ['account-reauthenticate', 'testAccountReauthenticate'],
+]) test(`${flow}는 계정 입력을 보호하고 단일 정상 UI 메서드만 실행한다`, async () => {
+  const f = await fixture();
+  const input = { kind: 'account', email: 'public-auth-flow@example.invalid', password: 'Public-Auth-Flow!7' };
+  const x = fake({ inspect: async ({ prepared, args }) => {
+    assert.equal(prepared.EnvironmentVariables.CYCLEPAIR_TEST_ACCOUNT_EMAIL, input.email);
+    assert.equal(prepared.EnvironmentVariables.CYCLEPAIR_TEST_ACCOUNT_PASSWORD, input.password);
+    assert.equal(prepared.EnvironmentVariables.CYCLEPAIR_SECRET_INPUT_VALIDATED, '1');
+    assert.ok(args.includes(`-only-testing:CyclePairPhysicalUITests/CyclePairCoordinatedUITests/${method}`));
+    assert.ok(!JSON.stringify(x.calls).includes(input.email));
+    assert.ok(!JSON.stringify(x.calls).includes(input.password));
+  }, execute: async options => {
+    options.onStdout(Buffer.from(`type ${input.email} ${input.password}`));
+    return { code: 0, signal: null };
+  } });
+  const result = await runPhysicalIosFlow({ ...f.options, flow, privateInput: input,
+    allowSecretExecution: true, secretTransportValidated: true }, x);
+  assert.equal(result.passed, true);
+  assert.equal(result.testIdentifier, `CyclePairCoordinatedUITests/${method}`);
+  assert.equal(result.privateRawRemoved, true);
+  await gone(x.plist()); await gone(x.bundle());
+  for (const file of await readdir(f.options.output)) {
+    const value = await readFile(path.join(f.options.output, file), 'utf8');
+    assert.ok(!value.includes(input.email)); assert.ok(!value.includes(input.password));
+  }
+});

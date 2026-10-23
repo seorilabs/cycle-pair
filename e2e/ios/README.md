@@ -69,6 +69,10 @@ xcodebuild build-for-testing \
 | `start` | 첫 안내의 예시, 동의와 첫 설정 저장, 홈 도착 |
 | `invitation-canary` | 공개 시험 문자열 입력, 원문 일치 확인, 연결 없이 닫기 |
 | `account-input-canary` | 빈 게스트 계정 입력란에 공개 이메일과 비밀번호 입력, 이메일 일치와 secure 필드 마스킹 길이 확인, 제출 없이 닫고 입력 정리 확인 |
+| `account-upgrade` | 정상 UI에서 소유 게스트를 이메일 계정으로 전환, 미인증과 재인증 입력 표시, 홈 복귀 |
+| `account-logout` | 로그아웃 취소와 확인, 정상 로그아웃 뒤 재실행에서 로그인 화면 유지 |
+| `account-login` | 정상 로그인 화면에 비공개 입력 후 홈과 재실행 로그인 상태 |
+| `account-reauthenticate` | 현재 비밀번호 확인, 완료 문구와 입력 비움, 홈 복귀 |
 | `invitation-accept` | 비공개 초대 입력, 실제 연결, 기본 비공개 미리보기와 저장 |
 | `sharing-private` | 이미 열린 공유 화면에서 기본 비공개 확인과 저장 |
 | `partner-received` | 공유받은 감정과 도움, 공유하지 않은 합성 메모 부재 |
@@ -82,9 +86,11 @@ xcodebuild build-for-testing \
 
 기본 키는 `CYCLEPAIR_PHYSICAL_UI_APPROVED=1`, `CYCLEPAIR_SYNTHETIC_INSTALLATION=1`, `CYCLEPAIR_TEST_RUN_ID`다. 실행 ID 형식은 `cp-`와 숫자17자리, 하이픈, 소문자16진수6자리다. coordinated 메서드에는 `CYCLEPAIR_TEST_FLOW`도 전달한다. 초대 값은 CLI 인수나 xcodebuild 프로세스 환경에 넣지 않고 비공개 plist의 `CYCLEPAIR_TEST_INVITATION`으로만 전달한다. `CYCLEPAIR_SECRET_INPUT_VALIDATED=1`은 같은 후보와 도우미에서 공개 입력 시험이 실제 통과하고 원시 자료가 정리된 경우에만 전달한다.
 
-래퍼 입력은 `privateInput: { kind: 'invitation', code }` 또는 `{ kind: 'account', email, password }`로 종류를 지정한다. 계정 값은 비공개 plist의 `CYCLEPAIR_TEST_ACCOUNT_EMAIL`, `CYCLEPAIR_TEST_ACCOUNT_PASSWORD`로만 전달한다. Android 준비 함수 `spawnMaestroFlow`도 같은 typed 입력을 받으며 child 전용 `MAESTRO_TEST_ACCOUNT_EMAIL`, `MAESTRO_TEST_ACCOUNT_PASSWORD`와 가린 출력 stream을 사용한다. 실제 계정 제출 흐름과 Android 계정 화면 흐름은 아직 제공하지 않는다.
+래퍼 입력은 `privateInput: { kind: 'invitation', code }` 또는 `{ kind: 'account', email, password }`로 종류를 지정한다. 계정 값은 비공개 plist의 `CYCLEPAIR_TEST_ACCOUNT_EMAIL`, `CYCLEPAIR_TEST_ACCOUNT_PASSWORD`로만 전달한다. Android 준비 함수 `spawnMaestroFlow`도 같은 typed 입력을 받으며 child 전용 `MAESTRO_TEST_ACCOUNT_EMAIL`, `MAESTRO_TEST_ACCOUNT_PASSWORD`와 가린 출력 stream을 사용한다. 계정 제출 흐름은 `runPhysicalIosFlow`의 위 네 iOS 메서드로 제공하며 비공개 입력을 CLI로 받지 않는다. Android 계정 화면 흐름은 별도 구현 대상이다.
 
 잘못된 UTF-16 입력은 자식 실행과 임시 자료 생성 전에 거절하며, 출력 가림기도 그전에 준비한다.
+
+네 계정 흐름은 같은 후보, helper, manifest와 소유 계정에 묶인 공개 계정 canary가 실제 통과한 뒤에만 비공개 입력으로 실행한다. 게스트 전환은 현재 소유 자료를 유지하는 작업이며 로그아웃은 동기화가 완료된 계정에서만 실행한다. 전환과 로그인 결과는 정상 UI에서만 확인하고 직접 Auth나 저장 자료를 쓰지 않는다. 전환 뒤 이메일 인증은 별도 미실행 상태로 남는다. 로그인 복원은 홈과 세션 복원 확인이며 기존 합성 기록 전체의 동일성은 따로 대조한다. 비밀번호 재설정, 이메일 action, 내보내기와 삭제는 이 네 메서드에 포함되지 않는다. helper 빌드와 mock process 검사는 실제 인증 통과가 아니다. 실패 시 추가 제출이나 자동 재시도를 하지 않는다.
 
 공개 계정 canary는 코드에 고정한 공개값만 사용하며 외부 입력을 거절한다. 비밀번호의 마스킹과 길이 확인은 정확한 비밀번호 입력이나 인증 성공을 증명하지 않는다. 결과의 `canaryScope`도 `passwordExactInputValidated=false`, `authenticationSucceeded=false`, `submitted=false`를 유지한다. 향후 첫 비공개 계정 입력에는 목적이 같은 canary의 후보, helper, manifest와 소유 계정 파일 지문이 일치하고 원시 자료가 정리된 `inputValidation` 근거가 필요하다. 정상 UI 인증 성공은 이후 계정 흐름에서 별도로 확인한다. 공개 canary 자체에는 인증 성공을 요구하지 않는다.
 

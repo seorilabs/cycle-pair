@@ -28,6 +28,10 @@ final class CyclePairCoordinatedUITests: XCTestCase {
             "testStartFromOnboarding": "start",
             "testInvitationInputCanary": "invitation-canary",
             "testAccountInputCanary": "account-input-canary",
+            "testAccountUpgrade": "account-upgrade",
+            "testAccountLogout": "account-logout",
+            "testAccountLogin": "account-login",
+            "testAccountReauthenticate": "account-reauthenticate",
             "testInvitationAccept": "invitation-accept",
             "testSharingPrivate": "sharing-private",
             "testPartnerReceived": "partner-received",
@@ -55,6 +59,12 @@ final class CyclePairCoordinatedUITests: XCTestCase {
             guard environment["CYCLEPAIR_TEST_ACCOUNT_EMAIL"] == Self.publicAccountEmail,
                   environment["CYCLEPAIR_TEST_ACCOUNT_PASSWORD"] == Self.publicAccountPassword else {
                 throw PreparationError.actualAccountInputNotAllowed
+            }
+        } else if ["account-upgrade", "account-logout", "account-login", "account-reauthenticate"].contains(flow) {
+            guard environment["CYCLEPAIR_SECRET_INPUT_VALIDATED"] == "1",
+                  !(environment["CYCLEPAIR_TEST_ACCOUNT_EMAIL"] ?? "").isEmpty,
+                  !(environment["CYCLEPAIR_TEST_ACCOUNT_PASSWORD"] ?? "").isEmpty else {
+                throw PreparationError.secretInputNotValidated
             }
         } else if !(environment["CYCLEPAIR_TEST_ACCOUNT_EMAIL"] ?? "").isEmpty ||
                   !(environment["CYCLEPAIR_TEST_ACCOUNT_PASSWORD"] ?? "").isEmpty {
@@ -147,8 +157,13 @@ final class CyclePairCoordinatedUITests: XCTestCase {
         reveal(account); account.tap()
         let cleared = email.waitForExistence(timeout: 15) && password.exists && empty(email) && empty(password)
         closeAccountCanary()
-        XCTAssertTrue(emailExact && secureMasked && closed && cleared && wait { !email.exists },
-            "공개 이메일 정확입력, 비밀번호 마스킹 길이, 입력 정리와 제출없는 닫기만 검증합니다.")
+        let closedAgain = wait { !email.exists }
+        print("CP_ACCOUNT_CANARY_OBSERVATION emailExact=\(emailExact) secureMaskedLengthOnly=\(secureMasked) closed=\(closed) cleared=\(cleared) closedAgain=\(closedAgain) submitted=false authenticated=false")
+        XCTAssertTrue(emailExact, "공개 이메일 입력이 일치해야 합니다.")
+        XCTAssertTrue(secureMasked, "공개 비밀번호 입력의 마스킹 길이가 일치해야 합니다.")
+        XCTAssertTrue(closed, "제출 없이 계정 입력 화면을 닫아야 합니다.")
+        XCTAssertTrue(cleared, "다시 연 계정 입력이 비어 있어야 합니다.")
+        XCTAssertTrue(closedAgain, "다시 연 입력도 제출 없이 닫아야 합니다.")
         print("CP_ACCOUNT_CANARY emailExact=true secureMaskedLengthOnly=true closed=true submitted=false authenticated=false")
     }
 
@@ -159,6 +174,117 @@ final class CyclePairCoordinatedUITests: XCTestCase {
             app.swipeDown(velocity: .slow)
         }
         XCTFail("계정 입력을 제출하지 않고 닫아야 합니다.")
+    }
+
+    func testAccountUpgrade() {
+        openAccountSettings()
+        let environment = ProcessInfo.processInfo.environment
+        fillEmptyAccountField(accountEmail(), environment["CYCLEPAIR_TEST_ACCOUNT_EMAIL"] ?? "")
+        fillEmptyAccountField(accountPassword(), environment["CYCLEPAIR_TEST_ACCOUNT_PASSWORD"] ?? "")
+        let confirmation = app.secureTextFields.matching(NSPredicate(format: "label IN %@",
+            ["Confirm new account password", "계정 전환 비밀번호 확인"])).firstMatch
+        fillEmptyAccountField(confirmation, environment["CYCLEPAIR_TEST_ACCOUNT_PASSWORD"] ?? "")
+        let submit = element("account-upgrade-submit")
+        dismissAccountKeyboard()
+        reveal(submit); submit.tap()
+        let verification = app.secureTextFields.matching(NSPredicate(format: "label IN %@",
+            ["Current password for verification", "재인증 비밀번호"])).firstMatch
+        XCTAssertTrue(verification.waitForExistence(timeout: 60), "계정 전환 뒤 재인증 입력을 표시해야 합니다.")
+        XCTAssertFalse(submit.exists, "게스트 전환 입력이 남으면 안 됩니다.")
+        XCTAssertTrue(text(["Unverified", "미인증"]).exists, "전환 뒤 아직 이메일 인증 전임을 표시해야 합니다.")
+        closeAccountCanary()
+        tap("tab-home")
+        XCTAssertTrue(element("home-record").waitForExistence(timeout: 30))
+        print("CP_ACCOUNT_AUTH action=upgrade uiCompleted=true emailVerified=false")
+    }
+
+    func testAccountLogout() {
+        openAccountSettings()
+        let signOut = button(["Sign out", "로그아웃"])
+        reveal(signOut); signOut.tap()
+        let alert = app.alerts.firstMatch
+        XCTAssertTrue(alert.waitForExistence(timeout: 10), "로그아웃 확인창이 있어야 합니다.")
+        alert.buttons.matching(NSPredicate(format: "label IN %@", ["Cancel", "취소"])).firstMatch.tap()
+        XCTAssertTrue(wait { !alert.exists }, "취소하면 계정 화면에 남아야 합니다.")
+        XCTAssertTrue(signOut.exists)
+        reveal(signOut); signOut.tap()
+        XCTAssertTrue(alert.waitForExistence(timeout: 10))
+        alert.buttons.matching(NSPredicate(format: "label IN %@", ["Sign out", "로그아웃"])).firstMatch.tap()
+        XCTAssertTrue(element("account-login-submit").waitForExistence(timeout: 60), "정상 로그아웃 뒤 로그인 화면이 있어야 합니다.")
+        restartForObservation(waitingFor: "account-login-submit")
+        XCTAssertTrue(element("account-login-submit").exists, "재실행 뒤 로그아웃 상태가 유지되어야 합니다.")
+        XCTAssertFalse(element("home-record").exists, "로그아웃 뒤 기존 기록의 홈이 노출되면 안 됩니다.")
+        print("CP_ACCOUNT_AUTH action=logout uiCompleted=true coldRestartGate=true")
+    }
+
+    func testAccountLogin() {
+        XCTAssertTrue(element("account-login-submit").waitForExistence(timeout: 120), "정상 로그아웃된 로그인 화면이 선행 조건입니다.")
+        let environment = ProcessInfo.processInfo.environment
+        let email = app.textFields.matching(NSPredicate(format: "label IN %@", ["Sign-in email", "로그인 이메일"])).firstMatch
+        let password = app.secureTextFields.matching(NSPredicate(format: "label IN %@", ["Sign-in password", "로그인 비밀번호"])).firstMatch
+        fillEmptyAccountField(email, environment["CYCLEPAIR_TEST_ACCOUNT_EMAIL"] ?? "")
+        fillEmptyAccountField(password, environment["CYCLEPAIR_TEST_ACCOUNT_PASSWORD"] ?? "")
+        dismissAccountKeyboard()
+        let submit = element("account-login-submit")
+        reveal(submit); submit.tap()
+        XCTAssertTrue(element("home-record").waitForExistence(timeout: 60), "정상 로그인 뒤 홈이 열려야 합니다.")
+        restartForObservation()
+        XCTAssertTrue(element("home-record").waitForExistence(timeout: 120), "재실행 뒤 로그인 상태가 복원되어야 합니다.")
+        print("CP_ACCOUNT_AUTH action=login uiCompleted=true coldRestartHome=true")
+    }
+
+    func testAccountReauthenticate() {
+        openAccountSettings()
+        let notice = text(["Identity confirmed for this session.", "이 세션에서 본인 확인이 완료되었습니다."])
+        XCTAssertFalse(notice.exists, "이전 재인증 결과를 새 성공으로 세지 않습니다.")
+        let password = app.secureTextFields.matching(NSPredicate(format: "label IN %@",
+            ["Current password for verification", "재인증 비밀번호"])).firstMatch
+        fillEmptyAccountField(password, ProcessInfo.processInfo.environment["CYCLEPAIR_TEST_ACCOUNT_PASSWORD"] ?? "")
+        dismissAccountKeyboard()
+        let submit = button(["Confirm password", "비밀번호 확인"])
+        reveal(submit); submit.tap()
+        XCTAssertTrue(notice.waitForExistence(timeout: 60), "정상 재인증 완료를 표시해야 합니다.")
+        reveal(notice)
+        XCTAssertTrue(notice.isHittable)
+        XCTAssertTrue(wait { self.emptyAccountField(password) }, "재인증 뒤 입력한 비밀번호를 비워야 합니다.")
+        closeAccountCanary()
+        tap("tab-home")
+        print("CP_ACCOUNT_AUTH action=reauthenticate uiCompleted=true passwordCleared=true")
+    }
+
+    private func openAccountSettings() {
+        XCTAssertTrue(element("home-record").waitForExistence(timeout: 120), "소유 합성 계정의 홈이 선행 조건입니다.")
+        tap("tab-settings")
+        let account = app.buttons.matching(NSPredicate(format: "label CONTAINS %@ OR label CONTAINS %@",
+            "Account and recovery", "계정과 복구")).firstMatch
+        reveal(account); account.tap()
+    }
+
+    private func accountEmail() -> XCUIElement {
+        app.textFields.matching(NSPredicate(format: "label IN %@", ["New account email", "계정 전환 이메일"])).firstMatch
+    }
+
+    private func accountPassword() -> XCUIElement {
+        app.secureTextFields.matching(NSPredicate(format: "label IN %@", ["New account password", "계정 전환 비밀번호"])).firstMatch
+    }
+
+    private func emptyAccountField(_ field: XCUIElement) -> Bool {
+        let value = field.value as? String ?? ""
+        return value.isEmpty || value == field.placeholderValue
+    }
+
+    private func fillEmptyAccountField(_ field: XCUIElement, _ value: String) {
+        XCTAssertTrue(field.waitForExistence(timeout: 15), "정상 계정 입력란이 있어야 합니다.")
+        guard !value.isEmpty && emptyAccountField(field) else {
+            XCTFail("빈 입력란과 검증된 비공개 입력만 허용합니다.")
+            return
+        }
+        reveal(field); field.tap(); field.typeText(value)
+    }
+
+    private func dismissAccountKeyboard() {
+        let done = element("keyboard-done")
+        if done.exists && done.isHittable { done.tap() }
     }
 
     func testInvitationAccept() {
@@ -257,10 +383,10 @@ final class CyclePairCoordinatedUITests: XCTestCase {
         XCTAssertTrue(element("tab-partner").waitForExistence(timeout: 30), "공유 저장 뒤 기본 탐색으로 돌아와야 합니다.")
     }
 
-    private func restartForObservation() {
+    private func restartForObservation(waitingFor identifier: String = "tab-partner") {
         if app.state != .notRunning { app.terminate() }
         app.launch()
-        XCTAssertTrue(element("tab-partner").waitForExistence(timeout: 120), "자료를 보존한 재실행 뒤 기본 탐색이 있어야 합니다.")
+        XCTAssertTrue(element(identifier).waitForExistence(timeout: 120), "자료를 보존한 재실행 뒤 기대한 화면이 있어야 합니다.")
     }
 
     private func text(_ labels: [String]) -> XCUIElement {
