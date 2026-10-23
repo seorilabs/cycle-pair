@@ -17,26 +17,27 @@ appId: ${APP_ID}
 - tapOn: '.*(Notifications and privacy|알림과 개인정보).*'
 - scrollUntilVisible:
     element:
-      text: 'Anonymous diagnostics|익명 진단 데이터'
+      id: diagnostics-toggle
     direction: DOWN
     centerElement: true
 - extendedWaitUntil:
     visible:
-      text: 'Anonymous diagnostics|익명 진단 데이터'
+      id: diagnostics-toggle
       enabled: true
     timeout: 30000
 - evalScript: ${output.diagnosticsInitial = null}
 - runFlow:
     when:
       visible:
-        text: 'Anonymous diagnostics|익명 진단 데이터'
+        id: diagnostics-toggle
         checked: true
     commands:
       - evalScript: ${output.diagnosticsInitial = true}
 - runFlow:
     when:
+      true: ${output.diagnosticsInitial === null}
       visible:
-        text: 'Anonymous diagnostics|익명 진단 데이터'
+        id: diagnostics-toggle
         checked: false
     commands:
       - evalScript: ${output.diagnosticsInitial = false}
@@ -48,12 +49,12 @@ appId: ${APP_ID}
       true: ${output.diagnosticsInitial === true}
     commands:
       - tapOn:
-          text: 'Anonymous diagnostics|익명 진단 데이터'
+          id: diagnostics-toggle
           checked: true
           enabled: true
       - extendedWaitUntil:
           visible:
-            text: 'Anonymous diagnostics|익명 진단 데이터'
+            id: diagnostics-toggle
             checked: false
             enabled: true
           timeout: 30000
@@ -62,12 +63,12 @@ appId: ${APP_ID}
       true: ${output.diagnosticsInitial === false}
     commands:
       - tapOn:
-          text: 'Anonymous diagnostics|익명 진단 데이터'
+          id: diagnostics-toggle
           checked: false
           enabled: true
       - extendedWaitUntil:
           visible:
-            text: 'Anonymous diagnostics|익명 진단 데이터'
+            id: diagnostics-toggle
             checked: true
             enabled: true
           timeout: 30000
@@ -87,7 +88,7 @@ appId: ${APP_ID}
 - tapOn: '.*(Notifications and privacy|알림과 개인정보).*'
 - scrollUntilVisible:
     element:
-      text: 'Anonymous diagnostics|익명 진단 데이터'
+      id: diagnostics-toggle
     direction: DOWN
     centerElement: true
 - runFlow:
@@ -95,7 +96,7 @@ appId: ${APP_ID}
       true: ${output.diagnosticsInitial === true}
     commands:
       - assertVisible:
-          text: 'Anonymous diagnostics|익명 진단 데이터'
+          id: diagnostics-toggle
           checked: false
           enabled: true
 - runFlow:
@@ -103,12 +104,12 @@ appId: ${APP_ID}
       true: ${output.diagnosticsInitial === false}
     commands:
       - assertVisible:
-          text: 'Anonymous diagnostics|익명 진단 데이터'
+          id: diagnostics-toggle
           checked: true
           enabled: true
 - takeScreenshot: safe/diagnostics-inverted-restored
 - tapOn:
-    text: 'Anonymous diagnostics|익명 진단 데이터'
+    id: diagnostics-toggle
     enabled: true
 - runFlow:
     when:
@@ -116,7 +117,7 @@ appId: ${APP_ID}
     commands:
       - extendedWaitUntil:
           visible:
-            text: 'Anonymous diagnostics|익명 진단 데이터'
+            id: diagnostics-toggle
             checked: true
             enabled: true
           timeout: 30000
@@ -126,7 +127,7 @@ appId: ${APP_ID}
     commands:
       - extendedWaitUntil:
           visible:
-            text: 'Anonymous diagnostics|익명 진단 데이터'
+            id: diagnostics-toggle
             checked: false
             enabled: true
           timeout: 30000
@@ -146,7 +147,7 @@ appId: ${APP_ID}
 - tapOn: '.*(Notifications and privacy|알림과 개인정보).*'
 - scrollUntilVisible:
     element:
-      text: 'Anonymous diagnostics|익명 진단 데이터'
+      id: diagnostics-toggle
     direction: DOWN
     centerElement: true
 - runFlow:
@@ -154,7 +155,7 @@ appId: ${APP_ID}
       true: ${output.diagnosticsInitial === true}
     commands:
       - assertVisible:
-          text: 'Anonymous diagnostics|익명 진단 데이터'
+          id: diagnostics-toggle
           checked: true
           enabled: true
 - runFlow:
@@ -162,7 +163,7 @@ appId: ${APP_ID}
       true: ${output.diagnosticsInitial === false}
     commands:
       - assertVisible:
-          text: 'Anonymous diagnostics|익명 진단 데이터'
+          id: diagnostics-toggle
           checked: false
           enabled: true
 - evalScript: ${console.log('CP_DIAGNOSTICS restored=' + output.diagnosticsInitial)}
