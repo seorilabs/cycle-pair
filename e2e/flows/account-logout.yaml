@@ -1,0 +1,43 @@
+appId: ${APP_ID}
+---
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: home-record
+    timeout: 60000
+- tapOn:
+    id: tab-settings
+- tapOn: '.*(Account and recovery|계정과 복구).*'
+- assertNotVisible: '^Guest$|^게스트$'
+- scrollUntilVisible:
+    element:
+      text: 'Sign out|로그아웃'
+    direction: DOWN
+    centerElement: true
+- tapOn: 'Sign out|로그아웃'
+- tapOn:
+    id: android:id/button2
+    text: 'Cancel|취소'
+- assertVisible: 'Sign out|로그아웃'
+- assertNotVisible:
+    id: account-login-submit
+- tapOn: 'Sign out|로그아웃'
+- tapOn:
+    id: android:id/button1
+    text: 'Sign out|로그아웃'
+- extendedWaitUntil:
+    visible:
+      id: account-login-submit
+    timeout: 60000
+- assertNotVisible:
+    id: home-record
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: account-login-submit
+    timeout: 60000
+- assertNotVisible:
+    id: home-record
+- evalScript: ${console.log('CP_ACCOUNT_AUTH action=logout uiCompleted=true coldRestartGate=true')}

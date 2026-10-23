@@ -14,7 +14,7 @@ function frame(text) {
   prefix.writeUInt32BE(proto.length, 1);
   return Buffer.concat([prefix, proto]);
 }
-async function fakeAdb(work, { grpcStatus = '0', response = frame(xml), rejectTransport = false, stall = false } = {}) {
+async function fakeAdb(work, { grpcStatus = '0', response = frame(xml), rejectTransport = false, stall = false, driverPort = 7001 } = {}) {
   const commands = [], sockets = new Set(), sessions = new Set();
   const h2 = http2.createServer();
   h2.on('session', session => { sessions.add(session); session.on('error', () => {}); session.on('close', () => sessions.delete(session)); });
@@ -44,7 +44,8 @@ async function fakeAdb(work, { grpcStatus = '0', response = frame(xml), rejectTr
         if (rejectTransport) { socket.end('FAIL0000'); return; }
         if (count === 1) { socket.write('OKAY'); continue; }
         socket.off('data', read);
-        if (command === 'tcp:7001') { socket.write('OKAY'); h2.emit('connection', socket); }
+        if (command === `tcp:${driverPort}`) { socket.write('OKAY'); h2.emit('connection', socket); }
+        else if (command.startsWith('tcp:')) socket.end('FAIL0000');
         else socket.end('OKAYpublic-fake-foreground');
         return;
       }
@@ -78,7 +79,7 @@ async function fakeAdb(work, { grpcStatus = '0', response = frame(xml), rejectTr
 test('고정 단일serial과 기존UI service만 읽고 같은 가짜서버를 유지한다', async () => {
   await fakeAdb(async (dependencies, commands) => {
     for (const hierarchy of [false, true, true]) {
-      const result = await readAccountUiService({ deviceId: 'public-fake-device', hierarchy }, dependencies);
+      const result = await readAccountUiService({ deviceId: 'public-fake-device', hierarchy, driverPort: 7001 }, dependencies);
       assert.equal(result, hierarchy ? xml : 'public-fake-foreground');
     }
     assert.deepEqual(commands, ['host:transport:public-fake-device', 'shell:dumpsys activity activities',
@@ -87,13 +88,31 @@ test('고정 단일serial과 기존UI service만 읽고 같은 가짜서버를 �
   });
 });
 
+test('CLI가 선택한 소유 driver port를 읽으며 SDK 기본7001로 연결하지 않는다', async () => {
+  await fakeAdb(async (dependencies, commands) => {
+    assert.equal(await readAccountUiService({ deviceId: 'public-fake-device', hierarchy: true, driverPort: 32457 }, dependencies), xml);
+    assert.ok(commands.includes('tcp:32457'));
+    assert.ok(!commands.includes('tcp:7001'));
+  }, { driverPort: 32457 });
+});
+
+test('소유 hierarchy endpoint가 없거나 잘못되면 ADB 연결 전에 거절한다', async () => {
+  for (const driverPort of [undefined, 0, 65536, 1.5, '32457']) {
+    let connections = 0;
+    await assert.rejects(readAccountUiService({ deviceId: 'public-fake-device', hierarchy: true, driverPort },
+      { createConnection() { connections++; throw new Error('연결하면 안 됨'); } }),
+    { message: 'QA UI driver observation unavailable' });
+    assert.equal(connections, 0);
+  }
+});
+
 test('전송거부, RPC실패, 압축/잘못된frame은 원문 없는 오류로 거절한다', async () => {
   const compressed = frame(xml); compressed[0] = 1;
   for (const options of [{ rejectTransport: true }, { grpcStatus: '13' }, { response: compressed },
     { response: Buffer.from('public-fake-sensitive-error') },
     { response: Buffer.concat([frame(xml), frame(xml)]) }, { response: Buffer.alloc(4 * 1024 * 1024 + 1, 65) }])
     await fakeAdb(async dependencies => {
-      await assert.rejects(readAccountUiService({ deviceId: 'public-fake-device', hierarchy: true }, dependencies),
+      await assert.rejects(readAccountUiService({ deviceId: 'public-fake-device', hierarchy: true, driverPort: 7001 }, dependencies),
         { message: 'QA UI driver observation unavailable' });
     }, options);
 });
@@ -101,7 +120,7 @@ test('전송거부, RPC실패, 압축/잘못된frame은 원문 없는 오류로 
 test('취소는 자기연결만 닫고 새서버시작이나 복구를 하지 않는다', async () => {
   await fakeAdb(async dependencies => {
     const abort = new AbortController();
-    const promise = readAccountUiService({ deviceId: 'public-fake-device', hierarchy: true, signal: abort.signal }, dependencies);
+    const promise = readAccountUiService({ deviceId: 'public-fake-device', hierarchy: true, driverPort: 7001, signal: abort.signal }, dependencies);
     setTimeout(() => abort.abort(), 20);
     await assert.rejects(promise, { message: 'QA UI driver observation unavailable' });
   }, { stall: true });
@@ -110,7 +129,7 @@ test('취소는 자기연결만 닫고 새서버시작이나 복구를 하지 �
 
 test('절대 시간제한은 지연된 가짜서버 연결만 닫고 원문을 내보내지 않는다', async () => {
   await fakeAdb(async dependencies => {
-    await assert.rejects(readAccountUiService({ deviceId: 'public-fake-device', hierarchy: true }, dependencies),
+    await assert.rejects(readAccountUiService({ deviceId: 'public-fake-device', hierarchy: true, driverPort: 7001 }, dependencies),
       { message: 'QA UI driver observation unavailable' });
   }, { stall: true });
 });

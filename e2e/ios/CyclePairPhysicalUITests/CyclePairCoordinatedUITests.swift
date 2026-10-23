@@ -134,11 +134,14 @@ final class CyclePairCoordinatedUITests: XCTestCase {
         account.tap()
         let email = app.textFields.matching(NSPredicate(format: "label IN %@", ["New account email", "계정 전환 이메일"])).firstMatch
         let password = app.secureTextFields.matching(NSPredicate(format: "label IN %@", ["New account password", "계정 전환 비밀번호"])).firstMatch
+        let confirmation = accountConfirmation()
         func empty(_ field: XCUIElement) -> Bool {
             let value = field.value as? String ?? ""
             return value.isEmpty || value == field.placeholderValue
         }
-        guard email.waitForExistence(timeout: 15), password.exists, empty(email), empty(password) else {
+        let confirmationInitiallyEmpty = confirmation.waitForExistence(timeout: 15) && empty(confirmation)
+        guard email.waitForExistence(timeout: 15), password.exists,
+              empty(email), empty(password), confirmationInitiallyEmpty else {
             closeAccountCanary()
             XCTFail("기존 입력이 없는 게스트 전환 입력란만 사용합니다.")
             return
@@ -150,11 +153,14 @@ final class CyclePairCoordinatedUITests: XCTestCase {
             SecureFieldObservation.isMasked(isSecure: password.elementType == .secureTextField,
                 value: password.value, placeholder: password.placeholderValue)
         }
+        fillFreshAccountConfirmation(confirmation, Self.publicAccountPassword,
+                                     initiallyEmpty: confirmationInitiallyEmpty)
         closeAccountCanary()
         let closed = wait { !email.exists && !password.exists }
         // 닫기 후 다시 열어 입력이 지워졌는지 확인한다. 계정 만들기는 누르지 않는다.
         reveal(account); account.tap()
-        let cleared = email.waitForExistence(timeout: 15) && password.exists && empty(email) && empty(password)
+        let cleared = email.waitForExistence(timeout: 15) && password.exists && confirmation.exists &&
+            empty(email) && empty(password) && empty(confirmation)
         closeAccountCanary()
         let closedAgain = wait { !email.exists }
         print("CP_ACCOUNT_CANARY_OBSERVATION emailExact=\(emailExact) secureMaskedNonemptyOnly=\(secureMasked) closed=\(closed) cleared=\(cleared) closedAgain=\(closedAgain) submitted=false authenticated=false")
@@ -178,11 +184,17 @@ final class CyclePairCoordinatedUITests: XCTestCase {
     func testAccountUpgrade() {
         openAccountSettings()
         let environment = ProcessInfo.processInfo.environment
+        let confirmation = accountConfirmation()
+        let confirmationInitiallyEmpty = confirmation.waitForExistence(timeout: 15) && emptyAccountField(confirmation)
+        guard accountEmail().waitForExistence(timeout: 15), accountPassword().exists, confirmation.exists,
+              emptyAccountField(accountEmail()), emptyAccountField(accountPassword()), confirmationInitiallyEmpty else {
+            XCTFail("입력 전에 비어 있는 소유 게스트 전환 폼이 필요합니다.")
+            return
+        }
         fillEmptyAccountField(accountEmail(), environment["CYCLEPAIR_TEST_ACCOUNT_EMAIL"] ?? "")
         fillEmptyAccountField(accountPassword(), environment["CYCLEPAIR_TEST_ACCOUNT_PASSWORD"] ?? "")
-        let confirmation = app.secureTextFields.matching(NSPredicate(format: "label IN %@",
-            ["Confirm new account password", "계정 전환 비밀번호 확인"])).firstMatch
-        fillEmptyAccountField(confirmation, environment["CYCLEPAIR_TEST_ACCOUNT_PASSWORD"] ?? "")
+        fillFreshAccountConfirmation(confirmation, environment["CYCLEPAIR_TEST_ACCOUNT_PASSWORD"] ?? "",
+                                     initiallyEmpty: confirmationInitiallyEmpty)
         let submit = element("account-upgrade-submit")
         dismissAccountKeyboard()
         reveal(submit); submit.tap()
@@ -265,6 +277,36 @@ final class CyclePairCoordinatedUITests: XCTestCase {
 
     private func accountPassword() -> XCUIElement {
         app.secureTextFields.matching(NSPredicate(format: "label IN %@", ["New account password", "계정 전환 비밀번호"])).firstMatch
+    }
+
+    private func accountConfirmation() -> XCUIElement {
+        app.secureTextFields.matching(NSPredicate(format: "label IN %@",
+            ["Confirm new account password", "계정 전환 비밀번호 확인"])).firstMatch
+    }
+
+    private func fillFreshAccountConfirmation(_ field: XCUIElement, _ value: String, initiallyEmpty: Bool) {
+        guard !value.isEmpty, field.waitForExistence(timeout: 15) else {
+            XCTFail("검증된 입력과 확인란이 필요합니다.")
+            return
+        }
+        reveal(field)
+        let observedValue = field.value
+        let placeholder = field.placeholderValue
+        let text = observedValue as? String ?? ""
+        let action = SecureFieldObservation.confirmationAction(initiallyEmpty: initiallyEmpty,
+            isSecure: field.elementType == .secureTextField, isEmpty: text.isEmpty || text == placeholder,
+            isMasked: SecureFieldObservation.isMasked(isSecure: field.elementType == .secureTextField,
+                value: observedValue, placeholder: placeholder))
+        switch action {
+        case .type:
+            field.tap(); field.typeText(value)
+        case .preserveMasked:
+            // 이번 입력 전에 빈 칸이 비밀번호 입력 중 채워진 경우만 보존한다.
+            // 마스크는 원문 일치 근거가 아니며 정상 제출과 후속 로그인으로 확인한다.
+            break
+        case .reject:
+            XCTFail("처음 빈 확인란의 새 보안 입력만 허용합니다.")
+        }
     }
 
     private func emptyAccountField(_ field: XCUIElement) -> Bool {

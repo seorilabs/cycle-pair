@@ -4,10 +4,28 @@ import { once } from 'node:events';
 import { PassThrough } from 'node:stream';
 import test from 'node:test';
 import { runInNewContext } from 'node:vm';
-import { spawnMaestroFlow } from './maestro-process.mjs';
+import { spawnMaestroFlow, selectMaestroDriverPort } from './maestro-process.mjs';
 import { resolvePrivateInput } from './private-e2e-input.mjs';
 
 const controlUrl = 'http://127.0.0.1:12345/public-fake-control-key';
+
+test('OS가 고른 소유 endpoint를 CLI에 명시하고 spawn 전용 옵션에서는 제거한다', async () => {
+  const driverPort = await selectMaestroDriverPort();
+  assert.ok(Number.isInteger(driverPort) && driverPort > 0 && driverPort <= 65535);
+  const args = Object.freeze(['--platform=android', '--device', 'public-fake-device', 'test', 'public-fake.yaml']);
+  spawnMaestroFlow('public-fake-maestro', args, { env: {}, driverPort }, controlUrl,
+    (_binary, actualArgs, settings) => {
+      assert.deepEqual(actualArgs, [`--driver-host-port=${driverPort}`, ...args]);
+      assert.equal('driverPort' in settings, false);
+      assert.equal(settings.env.MAESTRO_CONTROL_URL, controlUrl);
+      return {};
+    });
+  for (const port of [0, 65536, 1.5, '32457'])
+    assert.throws(() => spawnMaestroFlow('public-fake', args, { env: {}, driverPort: port }, controlUrl,
+      () => assert.fail('잘못된 endpoint로 spawn하면 안 됨')));
+  assert.throws(() => spawnMaestroFlow('public-fake', ['--driver-host-port=12345', ...args],
+    { env: {}, driverPort }, controlUrl, () => assert.fail('endpoint를 덮어쓰면 안 됨')));
+});
 
 test('control URL is child environment only and public argv stays intact', () => {
   const args = Object.freeze(['test', '-e', 'APP_ID=public.fake', '-e', 'SYNTHETIC_NOTE=public-fake-note']);

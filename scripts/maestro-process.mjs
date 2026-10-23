@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import { Transform } from 'node:stream';
+import { createServer } from 'node:net';
 import { resolvePrivateInput, privateInputEnvironment, PUBLIC_ACCOUNT_CANARY } from './private-e2e-input.mjs';
 import { createStreamRedactor } from './physical-ios-wrapper.mjs';
 
@@ -11,8 +12,21 @@ export function androidAccountCanaryOptions({ flow, authoring, scope, backend, r
   return { inputKind: 'account', privateInput: { kind: 'account', ...PUBLIC_ACCOUNT_CANARY } };
 }
 
+export async function selectMaestroDriverPort() {
+  const server = createServer();
+  try {
+    await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
+    return server.address().port;
+  } finally {
+    if (server.listening) await new Promise(resolve => server.close(resolve));
+  }
+}
+
 export function spawnMaestroFlow(binary, args, options, controlUrl, spawnProcess = spawn) {
-  const { privateInput, inputKind = 'none', ...childOptions } = options;
+  const { privateInput, inputKind = 'none', driverPort, ...childOptions } = options;
+  if (driverPort !== undefined && (!Number.isInteger(driverPort) || driverPort < 1 || driverPort > 65535 ||
+      args.some(arg => /^--driver-host-port(?:=|$)/.test(arg)))) throw new Error('소유 Maestro driver port가 올바르지 않습니다');
+  const driverArgs = driverPort === undefined ? args : [`--driver-host-port=${driverPort}`, ...args];
   if (['MAESTRO_TEST_ACCOUNT_EMAIL', 'MAESTRO_TEST_ACCOUNT_PASSWORD', 'MAESTRO_TEST_INVITATION']
     .some(key => options.env?.[key] !== undefined)) throw new Error('입력은 부모 환경 대신 typed private input으로 전달해야 합니다');
   const input = resolvePrivateInput({ inputKind }, privateInput);
@@ -24,7 +38,7 @@ export function spawnMaestroFlow(binary, args, options, controlUrl, spawnProcess
     ? ['stdout', 'stderr'].map(name => [name, createStreamRedactor(input.secrets)]) : []);
   let child;
   try {
-    child = spawnProcess(binary, args, {
+    child = spawnProcess(binary, driverArgs, {
       ...childOptions,
       env: { ...childOptions.env, ...privateInputEnvironment(input, 'android'), MAESTRO_CONTROL_URL: controlUrl },
     });

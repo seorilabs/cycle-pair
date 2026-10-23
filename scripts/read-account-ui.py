@@ -9,8 +9,15 @@ IDS = {
     "confirm": "account-upgrade-password-confirm",
 }
 PACKAGE = "com.seorilabs.cyclepair.qa"
+LABELS = {
+    "login-email": (["Sign-in email", "로그인 이메일"], False),
+    "login-password": (["Sign-in password", "로그인 비밀번호"], True),
+    "reauth-password": (["Current password for verification", "재인증 비밀번호"], True),
+}
 try:
-    field = IDS[sys.argv[1]]
+    requested = sys.argv[1]
+    if requested not in IDS and requested not in LABELS:
+        raise ValueError()
     raw = sys.stdin.read(4 * 1024 * 1024 + 1)
     if len(raw) > 4 * 1024 * 1024 or "<!" in raw:
         raise ValueError()
@@ -18,8 +25,15 @@ try:
     if start < 0 or end < start:
         raise ValueError()
     tree = ET.fromstring(raw[start:end + len("</hierarchy>")])
-    nodes = [node for node in tree.iter("node")
-             if node.get("resource-id") in (field, PACKAGE + ":id/" + field)]
+    if requested in IDS:
+        field = IDS[requested]
+        nodes = [node for node in tree.iter("node")
+                 if node.get("resource-id") in (field, PACKAGE + ":id/" + field)]
+    else:
+        labels, secure = LABELS[requested]
+        nodes = [node for node in tree.iter("node") if node.get("content-desc") in labels]
+        if len(nodes) != 1 or nodes[0].get("class") != "android.widget.EditText" or nodes[0].get("password") != str(secure).lower():
+            raise ValueError()
     if len(nodes) != 1 or nodes[0].get("package") != PACKAGE or "text" not in nodes[0].attrib:
         raise ValueError()
     print(json.dumps({"empty": nodes[0].get("text") == ""}))

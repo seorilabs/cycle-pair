@@ -1,0 +1,41 @@
+appId: ${APP_ID}
+---
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: account-login-submit
+    timeout: 60000
+- runScript:
+    file: ../scripts/read-account-empty.js
+    env:
+      ACCOUNT_FIELD: login-email
+- assertTrue: ${output.accountInputEmpty === true}
+- tapOn: 'Sign-in email|로그인 이메일'
+- inputText: ${MAESTRO_TEST_ACCOUNT_EMAIL}
+- hideKeyboard
+- assertVisible:
+    text: ${'^\\Q' + MAESTRO_TEST_ACCOUNT_EMAIL + '\\E$'}
+- runScript:
+    file: ../scripts/read-account-empty.js
+    env:
+      ACCOUNT_FIELD: login-password
+- assertTrue: ${output.accountInputEmpty === true}
+- tapOn: 'Sign-in password|로그인 비밀번호'
+- inputText: ${MAESTRO_TEST_ACCOUNT_PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: account-login-submit
+- extendedWaitUntil:
+    visible:
+      id: home-record
+    timeout: 60000
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: home-record
+    timeout: 60000
+- assertNotVisible:
+    id: account-login-submit
+- evalScript: ${console.log('CP_ACCOUNT_AUTH action=login uiCompleted=true coldRestartHome=true')}

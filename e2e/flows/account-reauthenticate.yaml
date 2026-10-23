@@ -1,0 +1,50 @@
+appId: ${APP_ID}
+---
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: home-record
+    timeout: 60000
+- tapOn:
+    id: tab-settings
+- tapOn: '.*(Account and recovery|계정과 복구).*'
+- assertNotVisible: 'Identity confirmed for this session[.]|이 세션에서 본인 확인이 완료되었습니다[.]'
+- scrollUntilVisible:
+    element:
+      text: 'Current password for verification|재인증 비밀번호'
+    direction: DOWN
+    centerElement: true
+- runScript:
+    file: ../scripts/read-account-empty.js
+    env:
+      ACCOUNT_FIELD: reauth-password
+- assertTrue: ${output.accountInputEmpty === true}
+- tapOn: 'Current password for verification|재인증 비밀번호'
+- inputText: ${MAESTRO_TEST_ACCOUNT_PASSWORD}
+- hideKeyboard
+- tapOn: 'Confirm password|비밀번호 확인'
+- extendedWaitUntil:
+    visible: 'Identity confirmed for this session[.]|이 세션에서 본인 확인이 완료되었습니다[.]'
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      text: 'Current password for verification|재인증 비밀번호'
+    direction: UP
+    centerElement: true
+- runScript:
+    file: ../scripts/read-account-empty.js
+    env:
+      ACCOUNT_FIELD: reauth-password
+- assertTrue: ${output.accountInputEmpty === true}
+- scrollUntilVisible:
+    element:
+      text: 'Back|뒤로'
+    direction: UP
+    centerElement: true
+- tapOn: 'Back|뒤로'
+- tapOn:
+    id: tab-home
+- assertVisible:
+    id: home-record
+- evalScript: ${console.log('CP_ACCOUNT_AUTH action=reauthenticate uiCompleted=true passwordCleared=true')}

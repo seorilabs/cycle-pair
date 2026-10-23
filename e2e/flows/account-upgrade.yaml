@@ -1,0 +1,86 @@
+appId: ${APP_ID}
+---
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: home-record
+    timeout: 60000
+- tapOn:
+    id: tab-settings
+- tapOn: '.*(Account and recovery|계정과 복구).*'
+- assertVisible: 'Guest|게스트'
+- scrollUntilVisible:
+    element:
+      id: account-upgrade-email
+    direction: DOWN
+    centerElement: true
+- runScript:
+    file: ../scripts/read-account-empty.js
+    env:
+      ACCOUNT_FIELD: email
+- assertTrue: ${output.accountInputEmpty === true}
+- tapOn:
+    id: account-upgrade-email
+- inputText: ${MAESTRO_TEST_ACCOUNT_EMAIL}
+- hideKeyboard
+- assertVisible:
+    id: account-upgrade-email
+    text: ${'^\\Q' + MAESTRO_TEST_ACCOUNT_EMAIL + '\\E$'}
+- scrollUntilVisible:
+    element:
+      id: account-upgrade-password
+    direction: DOWN
+    centerElement: true
+- runScript:
+    file: ../scripts/read-account-empty.js
+    env:
+      ACCOUNT_FIELD: password
+- assertTrue: ${output.accountInputEmpty === true}
+- tapOn:
+    id: account-upgrade-password
+- inputText: ${MAESTRO_TEST_ACCOUNT_PASSWORD}
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: account-upgrade-password-confirm
+    direction: DOWN
+    centerElement: true
+- runScript:
+    file: ../scripts/read-account-empty.js
+    env:
+      ACCOUNT_FIELD: confirm
+- assertTrue: ${output.accountInputEmpty === true}
+- tapOn:
+    id: account-upgrade-password-confirm
+- inputText: ${MAESTRO_TEST_ACCOUNT_PASSWORD}
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: account-upgrade-submit
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: account-upgrade-submit
+- extendedWaitUntil:
+    visible: 'Current password for verification|재인증 비밀번호'
+    timeout: 60000
+- assertNotVisible:
+    id: account-upgrade-submit
+- scrollUntilVisible:
+    element:
+      text: 'Unverified|미인증'
+    direction: UP
+    centerElement: true
+- assertVisible: 'Unverified|미인증'
+- scrollUntilVisible:
+    element:
+      text: 'Back|뒤로'
+    direction: UP
+    centerElement: true
+- tapOn: 'Back|뒤로'
+- tapOn:
+    id: tab-home
+- assertVisible:
+    id: home-record
+- evalScript: ${console.log('CP_ACCOUNT_AUTH action=upgrade uiCompleted=true emailVerified=false')}
