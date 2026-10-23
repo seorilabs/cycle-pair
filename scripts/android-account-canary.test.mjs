@@ -45,6 +45,9 @@ test('화면 흐름은 같은 입력 ID의 빈값과 마스킹을 확인하고 �
   assert.match(flow, /MAESTRO_TEST_ACCOUNT_PASSWORD === 'CyclePair-Public-Canary!2026'/);
   assert.match(flow, /Guest\|게스트/);
   assert.match(flow, /\[•●\*\]/);
+  for (const stage of ['initial-email-empty', 'initial-password-empty', 'initial-confirm-empty', 'email-exact',
+    'password-masked', 'confirm-masked', 'closed', 'reopened', 'cleared-email', 'cleared-password', 'cleared-confirm', 'closed-again'])
+    assert.ok(flow.includes(`CP_ACCOUNT_CANARY stage=${stage}`));
   assert.doesNotMatch(flow, /account-upgrade-submit|takeScreenshot|copyTextFrom|pasteText|clearState|clearKeychain|openLink|runScript/);
   const taps = [...flow.matchAll(/^- tapOn: (.+)$|^- tapOn:\n    id: (.+)$/gm)].map(match => match[1] || match[2]);
   assert.equal(taps.length, [...flow.matchAll(/^- tapOn/gm)].length);
