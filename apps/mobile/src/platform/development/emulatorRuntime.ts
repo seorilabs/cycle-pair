@@ -16,7 +16,7 @@ import {
 } from '@react-native-firebase/functions';
 import { createFirebaseAccountAdapter } from '../account/FirebaseAccountAdapter';
 import { migrateDeviceOnlyStorage } from '../local/migrateDeviceOnlyStorage';
-import { NativeModules, Platform } from 'react-native';
+import { LogBox, NativeModules, Platform } from 'react-native';
 import { emulatorHost } from './emulatorHost';
 export { isolatedServices as runtimeServices } from './isolatedServices';
 // Metro selects this module only for a development bundle with an explicit
@@ -48,6 +48,8 @@ export async function initializeRuntime(): Promise<boolean> {
     'emulator',
     Boolean(getAuth(app).currentUser),
   );
+  // RN의 디버거 안내가 저장 버튼을 가리지 않게 한다. 앱 경고와 오류 출력은 유지한다.
+  LogBox.ignoreLogs([/^Open debugger to view warnings\.$/]);
   await migrateDeviceOnlyStorage();
   connectAuthEmulator(getAuth(app), `http://${host}:9399`, {
     disableWarnings: true,
