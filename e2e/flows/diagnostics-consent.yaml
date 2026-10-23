@@ -1,0 +1,175 @@
+appId: ${APP_ID}
+---
+- assertTrue: ${APP_ID === 'com.seorilabs.cyclepair.qa'}
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: home-record
+    timeout: 60000
+- tapOn:
+    id: tab-settings
+- scrollUntilVisible:
+    element:
+      text: '.*(Notifications and privacy|알림과 개인정보).*'
+    direction: DOWN
+    centerElement: true
+- tapOn: '.*(Notifications and privacy|알림과 개인정보).*'
+- scrollUntilVisible:
+    element:
+      id: diagnostics-toggle
+    direction: DOWN
+    centerElement: true
+- extendedWaitUntil:
+    visible:
+      id: diagnostics-toggle
+      enabled: true
+    timeout: 30000
+- evalScript: ${output.diagnosticsInitial = null}
+- runFlow:
+    when:
+      visible:
+        id: diagnostics-toggle
+        checked: true
+    commands:
+      - evalScript: ${output.diagnosticsInitial = true}
+- runFlow:
+    when:
+      true: ${output.diagnosticsInitial === null}
+      visible:
+        id: diagnostics-toggle
+        checked: false
+    commands:
+      - evalScript: ${output.diagnosticsInitial = false}
+- assertTrue: ${typeof output.diagnosticsInitial === 'boolean'}
+- evalScript: ${console.log('CP_DIAGNOSTICS initial=' + output.diagnosticsInitial)}
+- takeScreenshot: safe/diagnostics-initial
+- runFlow:
+    when:
+      true: ${output.diagnosticsInitial === true}
+    commands:
+      - tapOn:
+          id: diagnostics-toggle
+          checked: true
+          enabled: true
+      - extendedWaitUntil:
+          visible:
+            id: diagnostics-toggle
+            checked: false
+            enabled: true
+          timeout: 30000
+- runFlow:
+    when:
+      true: ${output.diagnosticsInitial === false}
+    commands:
+      - tapOn:
+          id: diagnostics-toggle
+          checked: false
+          enabled: true
+      - extendedWaitUntil:
+          visible:
+            id: diagnostics-toggle
+            checked: true
+            enabled: true
+          timeout: 30000
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: home-record
+    timeout: 60000
+- tapOn:
+    id: tab-settings
+- scrollUntilVisible:
+    element:
+      text: '.*(Notifications and privacy|알림과 개인정보).*'
+    direction: DOWN
+    centerElement: true
+- tapOn: '.*(Notifications and privacy|알림과 개인정보).*'
+- scrollUntilVisible:
+    element:
+      id: diagnostics-toggle
+    direction: DOWN
+    centerElement: true
+- runFlow:
+    when:
+      true: ${output.diagnosticsInitial === true}
+    commands:
+      - assertVisible:
+          id: diagnostics-toggle
+          checked: false
+          enabled: true
+- runFlow:
+    when:
+      true: ${output.diagnosticsInitial === false}
+    commands:
+      - assertVisible:
+          id: diagnostics-toggle
+          checked: true
+          enabled: true
+- takeScreenshot: safe/diagnostics-inverted-restored
+- tapOn:
+    id: diagnostics-toggle
+    enabled: true
+- runFlow:
+    when:
+      true: ${output.diagnosticsInitial === true}
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: diagnostics-toggle
+            checked: true
+            enabled: true
+          timeout: 30000
+- runFlow:
+    when:
+      true: ${output.diagnosticsInitial === false}
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: diagnostics-toggle
+            checked: false
+            enabled: true
+          timeout: 30000
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: home-record
+    timeout: 60000
+- tapOn:
+    id: tab-settings
+- scrollUntilVisible:
+    element:
+      text: '.*(Notifications and privacy|알림과 개인정보).*'
+    direction: DOWN
+    centerElement: true
+- tapOn: '.*(Notifications and privacy|알림과 개인정보).*'
+- scrollUntilVisible:
+    element:
+      id: diagnostics-toggle
+    direction: DOWN
+    centerElement: true
+- runFlow:
+    when:
+      true: ${output.diagnosticsInitial === true}
+    commands:
+      - assertVisible:
+          id: diagnostics-toggle
+          checked: true
+          enabled: true
+- runFlow:
+    when:
+      true: ${output.diagnosticsInitial === false}
+    commands:
+      - assertVisible:
+          id: diagnostics-toggle
+          checked: false
+          enabled: true
+- evalScript: ${console.log('CP_DIAGNOSTICS restored=' + output.diagnosticsInitial)}
+- takeScreenshot: safe/diagnostics-restored
+- tapOn: 'Back|뒤로'
+- tapOn:
+    id: tab-home
+- assertVisible:
+    id: home-record

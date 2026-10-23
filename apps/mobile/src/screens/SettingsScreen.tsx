@@ -528,6 +528,7 @@ export function SettingsScreen() {
               </View>
             ) : null}
             <ToggleRow
+              testID="diagnostics-toggle"
               title={l('익명 진단 데이터')}
               description={
                 diagnosticsBusy
