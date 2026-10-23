@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Platform, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useCyclePair } from '../app/CyclePairStore';
 import { buildInviteExpiryPresentation } from '../app/inviteExpiryPresentation';
 import {
@@ -173,6 +173,9 @@ export function InviteScreen() {
                       testID="invite-input"
                       autoCapitalize="none"
                       autoCorrect={false}
+                      keyboardType={
+                        Platform.OS === 'ios' ? 'ascii-capable' : 'default'
+                      }
                       maxLength={43}
                       placeholder={t('Paste your invitation code')}
                       placeholderTextColor={colors.textSubtle}
