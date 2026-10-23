@@ -26,7 +26,7 @@ appId: ${APP_ID}
 - hideKeyboard
 - assertVisible:
     id: account-upgrade-email
-    text: ${'^\\Q' + MAESTRO_TEST_ACCOUNT_EMAIL + '\\E$'}
+    text: ${'^\\Q' + MAESTRO_TEST_ACCOUNT_EMAIL + '\\E'}$
 - scrollUntilVisible:
     element:
       id: account-upgrade-password
