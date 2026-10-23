@@ -15,7 +15,7 @@ appId: ${APP_ID}
 - inputText: ${MAESTRO_TEST_ACCOUNT_EMAIL}
 - hideKeyboard
 - assertVisible:
-    text: ${'^\\Q' + MAESTRO_TEST_ACCOUNT_EMAIL + '\\E$'}
+    text: ${'^\\Q' + MAESTRO_TEST_ACCOUNT_EMAIL + '\\E'}$
 - runScript:
     file: ../scripts/read-account-empty.js
     env:

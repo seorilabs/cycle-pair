@@ -1,0 +1,21 @@
+appId: ${APP_ID}
+---
+- tapOn:
+    id: record-note
+- runScript: ../scripts/read-record-empty.js
+- runFlow:
+    when:
+      true: ${output.recordNoteEmpty === false}
+    commands:
+      - longPressOn:
+          id: record-note
+      - runFlow:
+          when:
+            notVisible: 'Select All|Select all|전체 선택|모두 선택'
+          commands:
+            - tapOn: 'More options|옵션 더보기'
+      - assertVisible: 'Select All|Select all|전체 선택|모두 선택'
+      - tapOn: 'Select All|Select all|전체 선택|모두 선택'
+      - eraseText: 1
+- runScript: ../scripts/read-record-empty.js
+- assertTrue: ${output.recordNoteEmpty === true}

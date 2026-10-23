@@ -1,4 +1,4 @@
-"""소유 QA 입력 하나의 빈값 여부만 반환한다. 원문과 예외는 출력하지 않는다."""
+"""승인된 실행의 고정 입력 하나가 비었는지만 반환한다. 원문과 예외는 출력하지 않는다."""
 import json
 import sys
 import xml.etree.ElementTree as ET
@@ -16,7 +16,11 @@ LABELS = {
 }
 try:
     requested = sys.argv[1]
-    if requested not in IDS and requested not in LABELS:
+    package = sys.argv[2]
+    record_note = requested == "record-note"
+    if package not in (PACKAGE, "com.seorilabs.cyclepair") or (not record_note and package != PACKAGE):
+        raise ValueError()
+    if not record_note and requested not in IDS and requested not in LABELS:
         raise ValueError()
     raw = sys.stdin.read(4 * 1024 * 1024 + 1)
     if len(raw) > 4 * 1024 * 1024 or "<!" in raw:
@@ -25,16 +29,18 @@ try:
     if start < 0 or end < start:
         raise ValueError()
     tree = ET.fromstring(raw[start:end + len("</hierarchy>")])
-    if requested in IDS:
-        field = IDS[requested]
+    if requested in IDS or record_note:
+        field = "record-note" if record_note else IDS[requested]
         nodes = [node for node in tree.iter("node")
-                 if node.get("resource-id") in (field, PACKAGE + ":id/" + field)]
+                 if node.get("resource-id") in (field, package + ":id/" + field)]
     else:
         labels, secure = LABELS[requested]
         nodes = [node for node in tree.iter("node") if node.get("content-desc") in labels]
         if len(nodes) != 1 or nodes[0].get("class") != "android.widget.EditText" or nodes[0].get("password") != str(secure).lower():
             raise ValueError()
-    if len(nodes) != 1 or nodes[0].get("package") != PACKAGE or "text" not in nodes[0].attrib:
+    if record_note and (len(nodes) != 1 or nodes[0].get("class") != "android.widget.EditText" or nodes[0].get("password") != "false"):
+        raise ValueError()
+    if len(nodes) != 1 or nodes[0].get("package") != package or "text" not in nodes[0].attrib:
         raise ValueError()
     print(json.dumps({"empty": nodes[0].get("text") == ""}))
 except Exception:

@@ -162,13 +162,20 @@ test('Auth4 YAML은 실제 UI 입력과 완료를 사용하고 캡처와 내부�
 });
 
 
-test('이메일 selector의 JS 평가가 Java 정규식 literal quoting을 보존한다', async () => {
+test('이메일 selector는 Env 치환 경계와 외부 끝 anchor, JS literal quoting을 보존한다', async () => {
   const email = 'public.fake+tag@example.invalid';
   for (const name of ['account-upgrade', 'account-login']) {
     const flow = await readFile(`e2e/flows/${name}.yaml`, 'utf8');
     const expression = flow.split('\n').find(line => line.includes('text: ${') && line.includes('MAESTRO_TEST_ACCOUNT_EMAIL'));
     assert.ok(expression, name);
-    const source = expression.slice(expression.indexOf('${') + 2, expression.lastIndexOf('}'));
-    assert.equal(runInNewContext(source, {MAESTRO_TEST_ACCOUNT_EMAIL: email}), String.raw`^\Q${email}\E$`, name);
+    const selector = expression.slice(expression.indexOf('${'));
+    // Maestro Env의 ([^$]*)는 표현식 안의 $를 허용하지 않는다.
+    const matches = [...selector.matchAll(/\$\{([^$]*)\}/g)];
+    assert.equal(matches.length, 1, name);
+    assert.equal(matches[0].index, 0, name);
+    const suffix = selector.slice(matches[0][0].length);
+    assert.equal(suffix, '$', name);
+    assert.equal(runInNewContext(matches[0][1], {MAESTRO_TEST_ACCOUNT_EMAIL: email}) + suffix,
+      String.raw`^\Q${email}\E$`, name);
   }
 });
