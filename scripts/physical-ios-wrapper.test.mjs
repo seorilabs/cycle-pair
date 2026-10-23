@@ -23,11 +23,16 @@ async function fixture(binary = false) {
   py(`import plistlib,sys,pathlib,datetime
 p=pathlib.Path(sys.argv[1]); d={'CyclePairPhysicalUITests':{'IsUITestBundle':True,'TestHostPath':'__TESTROOT__/Debug-iphoneos/Runner.app','TestBundlePath':'__TESTHOST__/PlugIns/Test.xctest','EnvironmentVariables':{'NORMAL':'preserve','CYCLEPAIR_TEST_RUN_ID':'stale'},'SystemAttachmentLifetime':'keepAlways','UserAttachmentLifetime':'keepAlways','UnknownData':b'abc','UnknownDate':datetime.datetime(2026,10,23)},'__xctestrun_metadata__':{'FormatVersion':1}}; p.write_bytes(plistlib.dumps(d,fmt=plistlib.FMT_BINARY if sys.argv[2]=='true' else plistlib.FMT_XML,sort_keys=False))`, [base, String(binary)]);
   await chmod(base, 0o600);
+  const bundle = path.join(dir, 'Debug-iphoneos/Runner.app/PlugIns/Test.xctest');
+  await mkdir(bundle, { recursive: true, mode: 0o700 });
+  py("import pathlib,plistlib,sys;pathlib.Path(sys.argv[1]).write_bytes(plistlib.dumps({'CFBundleExecutable':'Test'}))", [path.join(bundle, 'Info.plist')]);
+  const helper = path.join(bundle, 'Test');
+  await writeFile(helper, 'synthetic UI helper binary');
   const account = path.join(dir, 'owned-account.json'); await writeFile(account, '{"syntheticOnly":true}', { mode: 0o600 });
   const manifest = { app: 'cycle-pair', backend: 'emulator', installedSourceSha: SHA, accountOwnershipPath: account,
     runtimes: [{ platform: 'ios', kind: 'physical', deviceId: APPROVED_DEVICE_ID, appId: 'com.seorilabs.cyclepair', createdFor: 'cycle-pair-native-launch', authorized: true, appData: 'synthetic', allowAppDataReset: false }] };
   const ownership = path.join(dir, 'owned.json'); await writeFile(ownership, JSON.stringify(manifest), { mode: 0o600 });
-  return { dir, base, manifest, ownership, options: { privateRoot: dir, backend: 'emulator', baseXctestrun: base, ownership, deviceId: APPROVED_DEVICE_ID, flow: 'cold-home', runId: RUN, output: path.join(dir, 'output'), candidateSha: SHA } };
+  return { dir, base, helper, manifest, ownership, options: { privateRoot: dir, backend: 'emulator', baseXctestrun: base, ownership, deviceId: APPROVED_DEVICE_ID, flow: 'cold-home', runId: RUN, output: path.join(dir, 'output'), candidateSha: SHA } };
 }
 function summary(patch = {}) { return { result: 'Passed', totalTestCount: 1, passedTests: 1, failedTests: 0, skippedTests: 0, expectedFailures: 0, testFailures: [], devicesAndConfigurations: [{ device: { deviceId: APPROVED_DEVICE_ID, platform: 'iOS' } }], ...patch }; }
 function fake(overrides = {}) {
@@ -142,13 +147,16 @@ test('공개 입력 근거의 후보, 설치와 signed helper가 같아야 초�
   const f = await fixture();
   const hash = async file => createHash('sha256').update(await readFile(file)).digest('hex');
   const original = { executionMode: 'physical', flow: 'invitation-canary', passed: true,
+    testIdentifier: 'CyclePairCoordinatedUITests/testInvitationInputCanary', diagnosticOnly: false,
     sourceSha: SHA, requestedCandidateSha: SHA, ownershipManifestSHA256: await hash(f.ownership),
-    plistPreparation: { sourceSHA256: await hash(f.base) }, summaryDeviceMatches: true,
+    plistPreparation: { sourceSHA256: await hash(f.base), testBundleExecutableSHA256: await hash(f.helper) }, summaryDeviceMatches: true,
     ownedXcodebuildGroupCleaned: true, privateRawRemoved: true,
     counts: { totalTestCount: 1, passedTests: 1, failedTests: 0, skippedTests: 0, expectedFailures: 0 } };
   const receipt = path.join(f.dir, 'canary.json');
   const options = { receipt, baseXctestrun: f.base, ownership: f.ownership, candidateSha: SHA, privateRoot: f.dir };
-  for (const patch of [{executionMode: 'injected-fake'}, {passed: false}, {sourceSha: '2'.repeat(40)},
+  for (const patch of [{testIdentifier: 'CyclePairCoordinatedUITests/testPublicInputMethodComparison'},
+    {testIdentifier: undefined}, {diagnosticOnly: true}, {diagnosticOnly: undefined},
+    {executionMode: 'injected-fake'}, {passed: false}, {sourceSha: '2'.repeat(40)},
     {ownershipManifestSHA256: '3'.repeat(64)}, {plistPreparation: {sourceSHA256: '4'.repeat(64)}},
     {privateRawRemoved: false}, {ownedXcodebuildGroupCleaned: false}, {counts: {...original.counts, skippedTests: 1}}]) {
     await writeFile(receipt, JSON.stringify({...original, ...patch}), {mode: 0o600});
@@ -156,6 +164,9 @@ test('공개 입력 근거의 후보, 설치와 signed helper가 같아야 초�
   }
   await writeFile(receipt, JSON.stringify(original), {mode: 0o600});
   assert.equal(await validateCanaryReceipt(options), true);
+  // The plist stays byte-identical while a reused build cache replaces the helper.
+  await writeFile(f.helper, 'different synthetic UI helper binary');
+  await assert.rejects(validateCanaryReceipt(options));
 });
 for (const binary of [false,true]) test(`${binary?'binary':'XML'} 형식과 원본, TESTROOT 해석을 보존한다`, async()=>{
   const f=await fixture(binary),original=await readFile(f.base);
@@ -202,3 +213,14 @@ test.after(async()=>rm(root,{recursive:true,force:true}));
 test('공개 canary도 같은 exact 값 가림 경로를 쓰고 지정한 coordinated 메서드 하나를 선택한다',async()=>{
  const f=await fixture(),x=fake({publicCanary:true,inspect:async({prepared,args})=>{assert.equal(prepared.EnvironmentVariables.CYCLEPAIR_TEST_FLOW,'invitation-canary');assert.deepEqual(prepared.OnlyTestIdentifiers,['CyclePairCoordinatedUITests/testInvitationInputCanary']);assert.ok(args.includes('-only-testing:CyclePairPhysicalUITests/CyclePairCoordinatedUITests/testInvitationInputCanary'));}});const r=await runPhysicalIosFlow({...f.options,flow:'invitation-canary'},x);assert.equal(r.passed,true);assert.ok(!(await readFile(path.join(f.options.output,'xcodebuild.redacted.log'),'utf8')).includes('cyclepair-canary-20261023'));await safeArtifacts(f.options.output);
 });
+
+ test('진단 selector로 바꾼 흐름은 엄격 입력 성공 근거가 될 수 없다', async () => {
+  const f = await fixture(), x = fake();
+  const result = await runPhysicalIosFlow({ ...f.options, flow: 'invitation-canary' }, {
+    ...x, flowDefinitions: { ...DEFAULT_FLOWS, 'invitation-canary': {
+      ...DEFAULT_FLOWS['invitation-canary'], method: 'testPublicInputMethodComparison' } }
+  });
+  assert.equal(result.passed, true, '진단 자체의 완료 결과는 보존한다');
+  assert.equal(result.diagnosticOnly, true);
+  assert.equal(result.testIdentifier, 'CyclePairCoordinatedUITests/testPublicInputMethodComparison');
+ });

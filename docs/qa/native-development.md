@@ -56,6 +56,8 @@ pnpm test:e2e:dev --scope pair --ownership <비공개작업공간/두기기.json
 
 혼합 연결 실행은 실제 초대를 만들기 전에 iPhone 초대 입력란에 공개 문자열을 넣고 닫는 시험을 먼저 수행한다. 같은 후보, manifest와 signed 도우미의 1 PASS, 0 FAIL, 0 SKIP 및 원시 파일 정리가 확인돼야 실제 초대를 입력한다. 이 결과는 `result.json`이며 재개할 때만 `--ios-input-validation <같은조건의result.json>`으로 지정한다. 초대는 Android의 실제 화면에서 읽어 메모리로 전달하고 private `.xctestrun`에만 넣는다. XCTest가 출력한 입력 activity는 가린 로그와 원시 해시만 보존하고 원시 결과와 임시 plist는 제거한다. iPhone에서 자동 첨부는 모두 끈다. 두 기기의 단계별 결과와 XCTest 요약은 같은 실행 원장에 남는다.
 
+공개 입력 성공 근거는 `CyclePairCoordinatedUITests/testInvitationInputCanary`의 기본 실행만 허용한다. 별도 진단 메서드로 바꾼 실행은 진단 자체가 완료돼도 초대 입력 근거로 쓰지 않는다. 재개할 때는 plist뿐 아니라 실제 XCTest 실행 파일의 SHA-256도 대조한다. 같은 빌드 경로에서 도우미를 다시 빌드했다면 공개 입력 시험부터 새로 실행한다.
+
 Maestro의 Android 문자 입력과 내부 붙여넣기는 선택한 키보드 언어에 따라 영문을 자모로 입력할 수 있다. 사전 확인으로 기존 영문 입력 subtype을 확인한 경우에만 해당 runtime에 `keyboard: {"inputMethod": "<기존 IME ID>", "asciiSubtype": "<관찰한 영문 subtype 정수>"}`를 추가한다. 실행기는 기본 키보드 앱을 바꾸지 않으며 시작 당시 subtype을 보존하고 완료, 실패와 SIGINT 또는 SIGTERM 중단 뒤 복원한다. 모르는 값이나 다른 기본 키보드이면 변경하지 않고 중단한다. 기록은 저장 전에 입력 원문도 검사한다. 새 키보드를 설치하지 않는다.
 
 `executedScenariosPassed`는 실행한 여정만 설명한다. 현재 실행기는 전체 L3 통과를 선언하지 않고 `passed: false`를 유지한다. 미실행인 계정 복구와 삭제, 초대 만료와 재사용, 실제 원격 푸시와 접근성을 추가로 실행해야 한다. 독립 검수는 별도 사전 계획과 후보 SHA를 남긴 뒤 시작한다.

@@ -10,7 +10,7 @@ import sys
 def main():
     request = json.load(sys.stdin)
     source = pathlib.Path(request['source'])
-    destination = pathlib.Path(request['destination'])
+    destination = pathlib.Path(request['destination']) if not request.get('inspectOnly') else None
     original = source.read_bytes()
     binary = original.startswith(b'bplist00')
     data = plistlib.loads(original)
@@ -33,6 +33,19 @@ def main():
 
     data = rebase(data)
     target = data[target_name]
+    # A reused build cache can replace the helper without changing the plist.
+    host = target['TestHostPath']
+    bundle = pathlib.Path(target['TestBundlePath'].replace('__TESTHOST__', host))
+    info = plistlib.loads((bundle / 'Info.plist').read_bytes())
+    executable_name = info['CFBundleExecutable']
+    if not isinstance(executable_name, str) or pathlib.Path(executable_name).name != executable_name:
+        raise ValueError('지원하지 않는 test executable')
+    helper_hash = hashlib.sha256((bundle / executable_name).read_bytes()).hexdigest()
+    fingerprint = {'sourceSHA256': hashlib.sha256(original).hexdigest(),
+                   'testBundleExecutableSHA256': helper_hash}
+    if request.get('inspectOnly') is True:
+        print(json.dumps(fingerprint))
+        return
     environment = target.setdefault('EnvironmentVariables', {})
     # 이전 실행의 비밀값을 새 실행에 이어받지 않는다.
     if any(('INVITATION' in key or 'SECRET' in key) and key.startswith('CYCLEPAIR_')
@@ -55,7 +68,7 @@ def main():
     with os.fdopen(fd, 'wb') as output:
         output.write(encoded)
     print(json.dumps({'format': 'binary' if binary else 'xml',
-                      'sourceSHA256': hashlib.sha256(original).hexdigest(),
+                      **fingerprint,
                       'testRootRebased': True,
                       'systemAttachmentLifetime': 'keepNever',
                       'userAttachmentLifetime': 'keepNever'}))
