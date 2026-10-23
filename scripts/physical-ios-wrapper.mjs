@@ -5,7 +5,7 @@ import { lstat, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } fro
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { StringDecoder } from 'node:string_decoder';
-import { resolvePrivateInput, privateInputEnvironment, ACCOUNT_CANARY_SCOPE } from './private-e2e-input.mjs';
+import { resolvePrivateInput, privateInputEnvironment, IOS_ACCOUNT_CANARY_SCOPE } from './private-e2e-input.mjs';
 
 const TARGET = 'CyclePairPhysicalUITests';
 export const DEFAULT_FLOWS = Object.freeze({
@@ -132,7 +132,7 @@ export async function validateCanaryReceipt({ receipt, baseXctestrun, ownership,
     const account = await ownedPath(root, manifest.accountOwnershipPath);
     await assertPrivateFile(account);
     if (record.accountOwnershipSHA256 !== digest(await readFile(account)) ||
-        Object.entries(ACCOUNT_CANARY_SCOPE).some(([key, value]) => record.canaryScope?.[key] !== value))
+        Object.entries(IOS_ACCOUNT_CANARY_SCOPE).some(([key, value]) => record.canaryScope?.[key] !== value))
       throw new Error('같은 소유 계정과 제한된 계정 canary 범위가 필요합니다');
   }
   return true;
@@ -321,7 +321,7 @@ export async function runPhysicalIosFlow(options, dependencies = {}) {
     ownershipManifestSHA256: digest(manifestBytes), formalUIRounds: 0, fullL3: false,
     privateInputKind: input.kind, privateInputProvided: Boolean(options.privateInput),
     accountOwnershipSHA256,
-    ...(flow.canaryPurpose === 'account' ? { canaryScope: ACCOUNT_CANARY_SCOPE } : {}),
+    ...(flow.canaryPurpose === 'account' ? { canaryScope: IOS_ACCOUNT_CANARY_SCOPE } : {}),
     passed: false, status: 'failed',
     automaticRetry: false, attachmentPolicy: { system: 'keepNever', user: 'keepNever' } };
   let summaryText = '', summaryStderr = '', summaryCode, failure;

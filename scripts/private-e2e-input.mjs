@@ -7,6 +7,10 @@ export const ACCOUNT_CANARY_SCOPE = Object.freeze({
   passwordExactInputValidated: false, authenticationSucceeded: false, submitted: false,
 });
 
+export const IOS_ACCOUNT_CANARY_SCOPE = Object.freeze({
+  ...ACCOUNT_CANARY_SCOPE, secureFieldEvidence: 'masked-nonempty-only',
+});
+
 export function resolvePrivateInput(flow, input) {
   if (flow.canaryPurpose === 'account') {
     if (input !== undefined) throw new Error('공개 계정 canary에 비공개 입력을 줄 수 없습니다');
