@@ -27,7 +27,7 @@ function harness({ xml = hierarchy(node('')), before = foreground, after = foreg
     throw new Error('실제 adb 실행은 허용하지 않음');
   } };
 }
-const observe = (dependencies, patch = {}) => observeAccountInputEmpty({ runtime, field: 'email', ...patch }, dependencies);
+const observe = (dependencies, patch = {}) => observeAccountInputEmpty({ runtime, field: 'email', driverPort: 32457, ...patch }, dependencies);
 
 test('UI 빈값은 hint가 아니라 실제 text로 판정하며 원문은 parser stdin으로만 보낸다', async () => {
   for (const text of ['', 'public-existing-draft', 'name@example.com']) {
@@ -36,6 +36,7 @@ test('UI 빈값은 hint가 아니라 실제 text로 판정하며 원문은 parse
     assert.equal(fake.calls.length, 4);
     assert.equal(fake.calls[1].ui.hierarchy, true);
     assert.equal(fake.calls[1].ui.deviceId, runtime.deviceId);
+    assert.equal(fake.calls[1].ui.driverPort, 32457);
     assert.equal(fake.calls[3].options.input, xml);
     assert.equal(JSON.stringify(fake.calls.map(call => call.args)).includes(xml), false);
   }
@@ -62,7 +63,7 @@ test('QA 전면을 XML 전후 확인하고 다른 앱, 불명확한 전면과 ca
 });
 
 test('원본 앱과 미승인 대상, 알 수 없는 필드는 어떤 command도 실행하지 않는다', async () => {
-  for (const patch of [{ field: 'arbitrary' }, { runtime: { ...runtime, appId: 'com.seorilabs.cyclepair' } },
+  for (const patch of [{ driverPort: undefined }, { driverPort: 0 }, { driverPort: '32457' }, { field: 'arbitrary' }, { runtime: { ...runtime, appId: 'com.seorilabs.cyclepair' } },
     { runtime: { ...runtime, authorized: false } }, { runtime: { ...runtime, platform: 'ios' } }]) {
     const fake = harness();
     await assert.rejects(observe(fake, patch));
@@ -113,4 +114,15 @@ test('Maestro가 UiAutomation을 점유해도 별도 uiautomator를 실행하지
     },
   };
   assert.deepEqual(await observe(dependencies), { empty: true });
+});
+
+test('로그인과 재인증의 기존 고정 label은 EditText와 secure 속성까지 확인해 빈값만 읽는다', async () => {
+  for (const [field, label, secure] of [['login-email', 'Sign-in email', false],
+    ['login-password', '로그인 비밀번호', true], ['reauth-password', 'Current password for verification', true]]) {
+    const content = `<node package="${appId}" class="android.widget.EditText" content-desc="${label}" password="${secure}" text=""/>`;
+    assert.deepEqual(await observe(harness({xml: hierarchy(content)}), {field}), {empty: true});
+    for (const bad of [content + content, content.replace('android.widget.EditText', 'android.widget.TextView'),
+      content.replace(`password="${secure}"`, `password="${!secure}"`), content.replace(appId, 'public.other')])
+      await assert.rejects(observe(harness({xml: hierarchy(bad)}), {field}));
+  }
 });

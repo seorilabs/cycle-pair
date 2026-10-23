@@ -23,7 +23,23 @@ struct SecureFieldObservationTests {
                 failed += 1
             }
         }
-        print("Secure field observation: \(cases.count - failed) passed, \(failed) failed")
+        let confirmations: [(String, Bool, Bool, Bool, Bool, SecureFieldObservation.ConfirmationAction)] = [
+            ("fresh empty confirmation", true, true, true, false, .type),
+            ("filled during own password input", true, true, false, true, .preserveMasked),
+            ("preexisting masked input", false, true, false, true, .reject),
+            ("preexisting empty input without preflight", false, true, true, false, .reject),
+            ("unexpected plaintext", true, true, false, false, .reject),
+            ("nonsecure empty input", true, false, true, false, .reject),
+            ("nonsecure masked input", true, false, false, true, .reject),
+        ]
+        for (name, initial, secure, empty, masked, expected) in confirmations {
+            if SecureFieldObservation.confirmationAction(initiallyEmpty: initial, isSecure: secure,
+                isEmpty: empty, isMasked: masked) != expected {
+                print("FAIL: \(name)")
+                failed += 1
+            }
+        }
+        print("Secure field observation: \(cases.count + confirmations.count - failed) passed, \(failed) failed")
         if failed > 0 { exit(1) }
     }
 }

@@ -26,9 +26,9 @@ function decodeHierarchy(bytes) {
   return bytes.subarray(offset).toString('utf8');
 }
 
-/** 기존 5037과 기본 Maestro 7001을 읽기만 한다. server start/list/forward나 새 instrumentation은 없다. */
-export async function readAccountUiService({ deviceId, hierarchy = false, signal }, dependencies = {}) {
-  if (signal?.aborted) throw new Error(ERROR);
+/** 기존 5037에서 소유 Maestro invocation에 명시한 port만 읽는다. server start/list/forward는 없다. */
+export async function readAccountUiService({ deviceId, hierarchy = false, driverPort, signal }, dependencies = {}) {
+  if (signal?.aborted || (hierarchy && (!Number.isInteger(driverPort) || driverPort < 1 || driverPort > 65535))) throw new Error(ERROR);
   const socket = (dependencies.createConnection || createConnection)({ host: '127.0.0.1', port: 5037 });
   const abort = () => socket.destroy(new Error(ERROR));
   const timer = setTimeout(abort, 15_000);
@@ -37,7 +37,7 @@ export async function readAccountUiService({ deviceId, hierarchy = false, signal
   const cleanup = () => { clearTimeout(timer); signal?.removeEventListener('abort', abort); };
   socket.once('close', cleanup); signal?.addEventListener('abort', abort, { once: true });
   try {
-    for (const command of [`host:transport:${deviceId}`, hierarchy ? 'tcp:7001' : 'shell:dumpsys activity activities']) {
+    for (const command of [`host:transport:${deviceId}`, hierarchy ? `tcp:${driverPort}` : 'shell:dumpsys activity activities']) {
       socket.write(Buffer.from(Buffer.byteLength(command).toString(16).padStart(4, '0') + command));
       await readStatus(socket);
     }

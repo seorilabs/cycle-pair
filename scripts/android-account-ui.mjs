@@ -4,7 +4,7 @@ import { readAccountUiService } from './account-ui-driver.mjs';
 import { runOwnedCommand } from './physical-ios-wrapper.mjs';
 
 const PACKAGE = 'com.seorilabs.cyclepair.qa';
-const FIELDS = ['email', 'password', 'confirm'];
+export const ANDROID_ACCOUNT_INPUT_FIELDS = Object.freeze(['email', 'password', 'confirm', 'login-email', 'login-password', 'reauth-password']);
 const ERROR = 'QA 계정 입력의 빈값을 확인하지 못했습니다';
 
 function assertForeground(value) {
@@ -13,7 +13,7 @@ function assertForeground(value) {
 }
 
 /** 정상 UI의 고정 ID 하나만 관찰한다. 원시 stdout/stderr를 반환하거나 예외에 붙이지 않는다. */
-export async function observeAccountInputEmpty({ runtime, field, signal }, dependencies = {}) {
+export async function observeAccountInputEmpty({ runtime, field, driverPort, signal }, dependencies = {}) {
   const command = dependencies.runCommand || runOwnedCommand;
   const readUiService = dependencies.readUiService || readAccountUiService;
   const controller = new AbortController();
@@ -37,8 +37,9 @@ export async function observeAccountInputEmpty({ runtime, field, signal }, depen
   }
   try {
     validatePhysicalRuntime(runtime);
-    if (runtime.platform !== 'android' || runtime.appId !== PACKAGE || !FIELDS.includes(field)) throw new Error(ERROR);
-    const observation = { deviceId: runtime.deviceId, signal: combinedSignal };
+    if (runtime.platform !== 'android' || runtime.appId !== PACKAGE || !ANDROID_ACCOUNT_INPUT_FIELDS.includes(field) ||
+        !Number.isInteger(driverPort) || driverPort < 1 || driverPort > 65535) throw new Error(ERROR);
+    const observation = { deviceId: runtime.deviceId, driverPort, signal: combinedSignal };
     assertForeground(await readUiService(observation));
     const xml = await readUiService({ ...observation, hierarchy: true });
     assertForeground(await readUiService(observation));

@@ -10,15 +10,15 @@ import {
   writeFile,
   appendFile,
   readdir,
-  rm,
   copyFile,
 } from "node:fs/promises";
 import path from "node:path";
 import { tmpdir } from "node:os";
 import { validatePhysicalRuntime, assertPhysicalAndroidState } from './physical-e2e-runtime.mjs';
-import { runPhysicalIosFlow, validateCanaryReceipt } from './physical-ios-wrapper.mjs';
-import { spawnMaestroFlow, androidAccountCanaryOptions } from './maestro-process.mjs';
-import { observeAccountInputEmpty } from './android-account-ui.mjs';
+import { runPhysicalIosFlow, validateCanaryReceipt, runOwnedCommand } from './physical-ios-wrapper.mjs';
+import { spawnMaestroFlow, androidAccountCanaryOptions, selectMaestroDriverPort } from './maestro-process.mjs';
+import { observeAccountInputEmpty, ANDROID_ACCOUNT_INPUT_FIELDS } from './android-account-ui.mjs';
+import { androidAuthRequested, androidAccountBinding, loadAndroidAccountInput, makeAndroidAccountCanaryReceipt, removeAndroidRawAfterGroup } from './physical-android-account.mjs';
 import { ACCOUNT_CANARY_SCOPE } from './private-e2e-input.mjs';
 import { finished } from 'node:stream/promises';
 const exec = promisify(execFile);
@@ -31,6 +31,8 @@ const { values } = parseArgs({
     "ios-xctestrun": { type: "string" },
     "ios-input-validation": { type: "string" },
     "private-root": { type: "string" },
+    "android-account-input": { type: "string" },
+    "android-account-input-validation": { type: "string" },
     authoring: { type: "boolean", default: false },
     scope: { type: "string", default: "pair" },
     flow: { type: "string" },
@@ -70,7 +72,19 @@ if (ownership.runtimes.some(runtime => runtime.platform === 'ios') && !values['i
 if (values.scope === 'pair' && ownership.runtimes.some(runtime => runtime.platform === 'ios') &&
     (ownership.runtimes[0].platform !== 'android' || ownership.runtimes[1].platform !== 'ios'))
   throw new Error('The mixed pair controller sends from Android actor 0 to iPhone actor 1');
-const androidAccountInput = androidAccountCanaryOptions({ ...values, runtimes: ownership.runtimes });
+const androidAuth = androidAuthRequested({ ...values, runtimes: ownership.runtimes,
+  inputFile: values['android-account-input'], receipt: values['android-account-input-validation'] });
+let androidAccountInput = androidAccountCanaryOptions({ ...values, runtimes: ownership.runtimes });
+const { stdout: revision } = await exec("git", ["rev-parse", "HEAD"]);
+const { stdout: dirty } = await exec("git", ["status", "--porcelain", "--untracked-files=no"]);
+if (dirty.trim() && !values.authoring)
+  throw new Error("Commit the source before a release-eligible execution");
+const androidBindingOptions = { ownership: path.resolve(values.ownership), candidateSha: revision.trim(),
+  privateRoot: path.resolve(values['private-root'] || path.dirname(values.ownership)), maestro: values.maestro, sourceRoot: root };
+if (androidAuth) androidAccountInput = await loadAndroidAccountInput({ ...androidBindingOptions,
+  inputFile: values['android-account-input'], receipt: values['android-account-input-validation'] });
+const androidCanaryBinding = values.flow === 'account-input-canary' && ownership.runtimes[0].platform === 'android'
+  ? await androidAccountBinding(androidBindingOptions) : undefined;
 for (const runtime of ownership.runtimes) {
   validatePhysicalRuntime(runtime);
   if (values.backend === 'service' && runtime.appId.endsWith('.qa'))
@@ -89,14 +103,6 @@ for (const runtime of ownership.runtimes) {
     assertPhysicalAndroidState(state, stdout);
   }
 }
-const { stdout: revision } = await exec("git", ["rev-parse", "HEAD"]);
-const { stdout: dirty } = await exec("git", [
-  "status",
-  "--porcelain",
-  "--untracked-files=no",
-]);
-if (dirty.trim() && !values.authoring)
-  throw new Error("Commit the source before a release-eligible execution");
 await mkdir(output, { recursive: true, mode: 0o700 });
 if (
   values["run-id"] &&
@@ -114,12 +120,13 @@ for (const value of [androidAccountInput.privateInput?.email, androidAccountInpu
 let invitation;
 let iosInputValidation = values['ios-input-validation'];
 const accountObservation = new AbortController();
+let accountDriverPort;
 const controlKey = randomBytes(24).toString("hex");
 const server = createServer(async (request, response) => {
-  const field = ['email', 'password', 'confirm'].find(name => request.url === `/${controlKey}/account-empty/${name}`);
+  const field = ANDROID_ACCOUNT_INPUT_FIELDS.find(name => request.url === `/${controlKey}/account-empty/${name}`);
   if (field && androidAccountInput.inputKind === 'account' && request.method === 'GET') {
     try {
-      const result = await observeAccountInputEmpty({ runtime: ownership.runtimes[0], field, signal: accountObservation.signal });
+      const result = await observeAccountInputEmpty({ runtime: ownership.runtimes[0], field, driverPort: accountDriverPort, signal: accountObservation.signal });
       response.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }).end(JSON.stringify(result));
     } catch {
       response.writeHead(409).end('QA account input observation unavailable');
@@ -166,6 +173,7 @@ const scenarios = [];
 const createdReversePorts = [];
 const keyboardStates = [];
 let keyboardSubtypesRestored = true;
+let reversePortsRestored = true;
 let activeChild;
 let cancelledBy;
 for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => {
@@ -242,11 +250,22 @@ async function runFlow(actor, name, featureIds) {
   const startedAt = new Date().toISOString();
   let log = "";
   let code = 1;
-  let flowTimeout;
+  let ownedMaestroGroupCleaned = true;
+  let privateRawRemoved = false;
   try {
-    const child = spawnMaestroFlow(
-      values.maestro,
-      [
+    accountDriverPort = androidAccountInput.inputKind === 'account' ? await selectMaestroDriverPort() : undefined;
+    let child;
+    let safeProgress = Promise.resolve();
+    const consume = () => {
+      let pending = '';
+      return chunk => {
+        log += chunk; pending += chunk;
+        const lines = pending.split('\n'); pending = lines.pop();
+        if (lines.length) safeProgress = safeProgress.then(() => appendFile(
+          path.join(output, `${actor}-${name}.progress.log`), redact(lines.join('\n') + '\n'), { mode: 0o600 }));
+      };
+    };
+    const result = await runOwnedCommand(values.maestro, [
         `--platform=${runtime.platform}`,
         "--device",
         runtime.deviceId,
@@ -261,10 +280,8 @@ async function runFlow(actor, name, featureIds) {
         "-e",
         `SYNTHETIC_EVENT=${runId}-event`,
         `e2e/flows/${name}.yaml`,
-      ],
-      {
+      ], {
         cwd: root,
-        ...androidAccountInput,
         env: {
           ...process.env,
           MAESTRO_CLI_NO_ANALYTICS: "true",
@@ -275,36 +292,18 @@ async function runFlow(actor, name, featureIds) {
             process.env.MAESTRO_OPTS || ""
           } -Duser.home=${temporary}/state`,
         },
-        stdio: ["ignore", "pipe", "pipe"],
-      },
-      controlUrl
-    );
-    activeChild = child;
-    let safeProgress = Promise.resolve();
-    for (const stream of [child.stdout, child.stderr]) {
-      let pending = "";
-      stream.on("data", (chunk) => {
-        log += chunk;
-        pending += chunk;
-        const lines = pending.split("\n");
-        pending = lines.pop();
-        if (lines.length)
-          safeProgress = safeProgress.then(() =>
-            appendFile(
-              path.join(output, `${actor}-${name}.progress.log`),
-              redact(lines.join("\n") + "\n"),
-              { mode: 0o600 }
-            )
-          );
+        timeoutMs: 300_000, signal: accountObservation.signal,
+        onStdout: consume(), onStderr: consume(),
+        spawnImpl(binary, args, options) {
+          child = spawnMaestroFlow(binary, args, { ...options, ...androidAccountInput, driverPort: accountDriverPort }, controlUrl);
+          child.once('spawn', () => { ownedMaestroGroupCleaned = false; });
+          activeChild = child;
+          return child;
+        },
       });
-    }
-    flowTimeout = setTimeout(() => child.kill("SIGTERM"), 300_000);
-    code = await new Promise((resolve, reject) => {
-      child.once("error", reject);
-      child.once("exit", (status) => resolve(status ?? 1));
-    });
+    ownedMaestroGroupCleaned = result.ownedGroupCleaned;
+    code = result.code === 0 && !result.timedOut && ownedMaestroGroupCleaned ? 0 : 1;
     await Promise.all([finished(child.stdout), finished(child.stderr)]);
-    clearTimeout(flowTimeout);
     await safeProgress;
     await writeFile(path.join(output, `${actor}-${name}.log`), redact(log), {
       mode: 0o600,
@@ -328,11 +327,13 @@ async function runFlow(actor, name, featureIds) {
           await copyFile(file, path.join(destination, entry.name));
       }
     }
-    if (name !== 'account-input-canary') await retainSafeCaptures(path.join(temporary, "output"));
+    if (androidAccountInput.inputKind !== 'account') await retainSafeCaptures(path.join(temporary, "output"));
   } finally {
-    clearTimeout(flowTimeout);
+    accountDriverPort = undefined;
     activeChild = undefined;
-    await rm(temporary, { recursive: true, force: true });
+    privateRawRemoved = await removeAndroidRawAfterGroup(temporary, ownedMaestroGroupCleaned);
+    if (!privateRawRemoved) await writeFile(path.join(output, `${actor}-${name}.private-raw-retained.json`),
+      JSON.stringify({path: temporary, reason: '소유 process group 정리 실패. 원시 자료는 비공개로 보존하고 추가 실행을 중단합니다'}), {mode: 0o600});
   }
   scenarios.push({
     id: name,
@@ -341,7 +342,10 @@ async function runFlow(actor, name, featureIds) {
     passed: code === 0,
     startedAt,
     completedAt: new Date().toISOString(),
-    ...(name === 'account-input-canary' ? { canaryScope: ACCOUNT_CANARY_SCOPE, screenshotsRetained: false } : {}),
+    ownedMaestroGroupCleaned, privateRawRemoved,
+    ...(androidAccountInput.inputKind === 'account' ? { screenshotsRetained: false } : {}),
+    ...(name === 'account-input-canary' ? { canaryScope: ACCOUNT_CANARY_SCOPE,
+      observedStages: [...new Set([...log.matchAll(/CP_ACCOUNT_CANARY stage=([a-z-]+)/g)].map(match => match[1]))] } : {}),
   });
   console.log(`${name}, actor ${actor}: ${code === 0 ? "PASS" : "FAIL"}`);
   if (code !== 0)
@@ -540,7 +544,7 @@ try {
   }
   for (const {deviceId, socket} of createdReversePorts) {
     await exec(ownership.adb || 'adb', ['-s', deviceId, 'reverse', '--remove', socket])
-      .catch(() => { failed ??= 'Unable to restore an owned Android reverse connection'; process.exitCode = 1; });
+      .catch(() => { reversePortsRestored = false; failed ??= 'Unable to restore an owned Android reverse connection'; process.exitCode = 1; });
   }
   await new Promise((resolve) => server.close(resolve));
   const report = {
@@ -554,6 +558,7 @@ try {
     scope: values.scope,
     scenarios,
     keyboardSubtypesRestored,
+    reversePortsRestored,
     cancelledBy: cancelledBy ?? null,
     executedScenariosPassed: !failed,
     passed: false,
@@ -580,5 +585,14 @@ try {
     JSON.stringify(report, null, 2) + "\n",
     { mode: 0o600 }
   );
+  if (androidCanaryBinding) {
+    const scenario = scenarios.find(item => item.id === 'account-input-canary');
+    const receipt = makeAndroidAccountCanaryReceipt(androidCanaryBinding, {
+      passed: !failed && scenario?.passed === true, sourceDirty: Boolean(dirty.trim()), stages: scenario?.observedStages || [],
+      ownedMaestroGroupCleaned: scenario?.ownedMaestroGroupCleaned, privateRawRemoved: scenario?.privateRawRemoved,
+      keyboardSubtypesRestored, reversePortsRestored,
+    });
+    await writeFile(path.join(output, 'account-canary-receipt.json'), JSON.stringify(receipt, null, 2) + '\n', { mode: 0o600, flag: 'wx' });
+  }
   if (failed) console.error(failed);
 }
