@@ -4,7 +4,7 @@
 > 근거: `docs/product-spec.md`(Analytics·공유·알림 정책), `docs/security-threat-model.md`, `play-store/google-play.config.json`, `app-store/app-store.config.json`.
 
 공통 사실:
-- 광고·제3자 추적 없음, 광고 식별자 미수집, 위치 미수집, 제3자 데이터 판매 없음.
+- 광고와 제3자 추적 없음, 광고 식별자와 정밀 위치 미수집, 제3자 데이터 판매 없음. 선택적 진단에는 설치 식별자, 기기 정보와 IP 기반의 대략적인 지역이 포함된다.
 - 원본 건강 기록은 owner-private, 파트너에게는 **사용자가 켠 필드만** projection으로 제공(정확히 1인).
 - 처리 위탁: Google Firebase(Auth/Firestore/Functions/FCM/Analytics/Crashlytics/Performance), 결제는 Google Play/Apple.
 
@@ -27,13 +27,14 @@
 | 건강 정보(생리일·증상·기분·컨디션·메모) | 예 | **아니오** (아래 주1) | 앱 기능 | 선택 |
 | 사용자 생성 콘텐츠(비공개 메모·공동 일정) | 예 | 아니오 | 앱 기능 | 선택 |
 | 구매 내역(구독 entitlement) | 예 | 아니오 | 앱 기능 | 선택(구독 시) |
+| 대략적인 위치(IP 기반 지역) | 예 | 아니오 | 분석 | 선택(진단을 켠 경우) |
 | 앱 상호작용(비민감 이벤트) | 예 | 아니오 | 분석 | 선택 |
 | 크래시 로그·진단 | 예 | 아니오 | 분석/앱 기능 | 선택 |
 | 기기/기타 ID(FCM 토큰·Firebase installation ID) | 예 | 아니오 | 앱 기능(알림), 보안·부정사용 방지 | 필수/선택은 기능별 선언 참조 |
 
 > **공유 판단 근거**: Firebase는 앱 개발자를 대신 처리하는 service provider이고, 파트너 projection과 시스템 공유는 사용자가 명시적으로 시작하는 전송이다. Google Play Data safety의 service provider·user initiated action 예외에 따라 위 표는 "공유=아니오"로 작성했다. 제출 직전에 [Google Play 공식 정의](https://support.google.com/googleplay/android-developer/answer/10787469?hl=en)를 다시 확인한다. 비민감 이벤트·크래시는 Firebase로 전송되므로 "수집"에는 포함한다.
 
-미수집으로 신고: 위치, 광고 식별자, 연락처, 문자/통화 로그, 사진/동영상 등.
+미수집으로 신고: 정밀 위치, 광고 식별자, 연락처, 문자/통화 로그, 사진과 동영상 등. 위치 권한 유무와 관계없이 IP 기반 대략적인 지역은 수집으로 신고한다.
 
 ---
 
@@ -45,13 +46,18 @@
   - Contact Info — 이메일 주소(이메일 로그인 사용 시)
   - Identifiers — User ID(인증·Pair 연결)
   - Purchases — 구독 entitlement
-- **Data Not Linked to You** (분석 목적):
-  - Usage Data — 비민감 Product Interaction 이벤트(민감값·cyclePhase 없음)
-  - Diagnostics — 크래시·성능(PII·자유 텍스트 없음)
+  - User Content — 비공개 메모와 공동 일정
+  - Identifiers — Device ID, 알림과 보안에 필요한 설치 식별자 및 선택적 진단의 app-instance ID
+- **Data Linked to You** (선택적 분석 목적):
+  - Coarse Location — IP 기반 대략적인 지역
+  - Usage Data — 비민감 Product Interaction 이벤트, 건강 정보와 자유 텍스트 제외
+  - Diagnostics — 크래시와 기기 진단, 건강 정보와 자유 텍스트 제외
 
 심사 노트 연계(이미 config에 초안 존재): owner-private 원본 vs 선택형 partner projection 분리, 동의 회수 흐름, 비의료·비피임, 중립 알림.
 
-> 참고: `app-store/app-store.config.json`의 `appPrivacy.dataTypes`가 위와 정합한다. `productInteraction`·`crashAndPerformance`는 identity에 결합하지 않으므로 "Not Linked"로 매핑했다. Firebase Analytics의 app-instance ID 결합 수준에 대해 보수적으로 판단하려면 "Usage/Diagnostics = Linked"로 올릴 수 있으나, tracking=no·비민감 원칙은 동일하다.
+> 설치 식별자로 특정 기기의 자료를 묶는 Firebase SDK 동작을 반영해 사용과 진단을 Linked로 작성한다. 이메일이나 계정 UID를 보내지 않는다는 이유만으로 Not Linked로 신고하지 않는다. 광고 추적과 사용자 또는 기기에 대한 자료 연결은 별개이며 tracking=no는 유지한다.
+
+2026-10-24 구현 대조: [Firebase Analytics 데이터 신고](https://support.google.com/analytics/answer/11582702?hl=en), [Firebase 설치 식별자](https://firebase.google.com/support/privacy/manage-iids), [Apple 사용자 연결 정의](https://developer.apple.com/app-store/app-privacy-details/). 현재 초안이며 사용자 검토와 실제 콘솔 저장을 마치기 전에는 완료로 표시하지 않는다.
 
 ---
 

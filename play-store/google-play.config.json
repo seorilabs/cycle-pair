@@ -80,7 +80,8 @@
       "app-interactions",
       "crash-logs",
       "diagnostics",
-      "device-or-other-ids"
+      "device-or-other-ids",
+      "approximate-location"
     ]
   },
   "monetization": {

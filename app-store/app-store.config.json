@@ -112,23 +112,52 @@
       },
       "productInteraction": {
         "collected": true,
-        "linkedToUser": false,
+        "linkedToUser": true,
         "optionalConsent": true,
         "purposes": [
           "analytics"
         ],
         "usedForTracking": false,
-        "notes": "no sensitive values or cycle phase"
+        "notes": "no sensitive values or cycle phase; Firebase installation or app-instance identifiers may link diagnostics to a device"
       },
       "crashAndPerformance": {
         "collected": true,
-        "linkedToUser": false,
+        "linkedToUser": true,
         "optionalConsent": true,
         "purposes": [
           "analytics"
         ],
         "usedForTracking": false,
-        "notes": "no PII or free text"
+        "notes": "no PII or free text; Firebase installation or app-instance identifiers may link diagnostics to a device"
+      },
+      "deviceId": {
+        "collected": true,
+        "linkedToUser": true,
+        "purposes": [
+          "appFunctionality",
+          "analytics"
+        ],
+        "usedForTracking": false,
+        "notes": "FCM, App Check and optional diagnostics installation identifiers; no advertising identifiers"
+      },
+      "coarseLocation": {
+        "collected": true,
+        "linkedToUser": true,
+        "optionalConsent": true,
+        "purposes": [
+          "analytics"
+        ],
+        "usedForTracking": false,
+        "notes": "Approximate region derived from IP by optional Analytics; no precise location access"
+      },
+      "otherUserContent": {
+        "collected": true,
+        "linkedToUser": true,
+        "purposes": [
+          "appFunctionality"
+        ],
+        "usedForTracking": false,
+        "notes": "Private notes and explicitly shared pair calendar entries"
       }
     }
   },
