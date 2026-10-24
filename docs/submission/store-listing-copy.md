@@ -1,6 +1,6 @@
 # 스토어 listing 문구 초안 (사이클 페어)
 
-> 상태: **초안 — 검수·상표 검토 전**. 확정 후 `play-store/google-play.config.json`·`app-store/app-store.config.json`의 해당 필드에 붙여넣는다.
+> 상태: 과거 문구 초안. 현재 입력 정본은 `play-store/google-play.config.json`과 `app-store/app-store.config.json`이며, 신고 준비와 남은 확인은 `release/market-declarations.md`를 따른다. 이 문서의 과거 출시 안내를 현재 후보에 붙여넣지 않는다.
 > 원칙(심사 안전): 의료·진단·피임 판단이나 정확한 배란일 표현 금지. 별도 동의한 가임 가능 시기는 주기 기반 참고 정보로만 설명하고, 광고·추적 없음과 "내가 허용한 만큼만 공유"를 유지한다. `docs/product-spec.md` 기준.
 > 사업 결정값(가격·구독 상품·체험)은 여기서 확정하지 않는다.
 

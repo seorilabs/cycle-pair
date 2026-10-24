@@ -33,8 +33,8 @@
       "en-US": "Share your cycle and today's condition with your partner — only what you choose. Originals stay yours. No ads, no tracking. Prepare together."
     },
     "description": {
-      "ko-KR": "사이클 페어는 주기를 기록하는 사람과 가까운 한 사람이, 생리주기와 그날의 컨디션을 '내가 허용한 만큼만' 나누며 함께 대비하도록 돕는 커플 케어 앱입니다. 이 앱은 의료기기가 아니며 질환을 진단·치료·치유·예방하지 않고, 피임 또는 임신 가능성 판단에 사용할 수 없습니다.\n\n■ 두 사람을 위한 설계\n- 정확히 두 명이 서로 수락해 연결되는 대칭형 Pair\n- 연결 전에도 나만의 기록을 쓸 수 있어요\n\n■ 내가 정하는 공유\n- 생리 시작·종료일, 증상, 기분, 컨디션, 도움 선호를 기록\n- 필드별로 공유를 켜고 끌 수 있고, 기본값은 전부 비공개\n- 파트너에게는 내가 켠 정보만 전달돼요(원본은 나만 볼 수 있어요)\n\n■ 함께 준비\n- 다음 생리 예정일을 참고용으로 표시(개인차가 있으며 의료·피임 판단에 쓰지 않아요)\n- 공동 캘린더와 기념일, 두 가지 고정 메시지로 보내는 파트너 넛지\n\n■ 프라이버시 우선\n- 잠금화면 알림은 건강정보를 드러내지 않는 중립 문구\n- 광고 없음, 제3자 추적 없음, 데이터 판매 없음\n- 언제든 데이터 내보내기·계정 삭제·연결 해제",
-      "en-US": "Cycle Pair helps someone who tracks their cycle and one close partner prepare together — sharing menstrual cycle and daily condition only as much as you allow. It is not a medical device and does not diagnose, treat, cure, or prevent any medical condition. It must not be used for contraceptive or pregnancy-likelihood decisions.\n\nBuilt for two\n- A symmetric Pair of exactly two people who both accept the connection\n- Keep private records even before connecting\n\nYou control sharing\n- Log period start/end, symptoms, mood, condition, and help preferences\n- Turn sharing on or off per field; everything is private by default\n- Your partner sees only what you enable — originals stay yours\n\nPrepare together\n- See your next expected period as reference only (individual variation applies; not for medical or contraceptive decisions)\n- Shared calendar, anniversaries, and two fixed partner nudges\n\nPrivacy first\n- Neutral lock-screen notifications that never reveal health details\n- No ads, no third-party tracking, no data sales\n- Export data, delete your account, or disconnect anytime"
+      "ko-KR": "사이클 페어는 주기를 기록하는 사람과 가까운 한 사람이, 생리주기와 그날의 컨디션을 '내가 허용한 만큼만' 나누며 함께 대비하도록 돕는 커플 케어 앱입니다. 이 앱은 의료기기가 아니며 질환을 진단·치료·치유·예방하지 않고, 피임 또는 임신 가능성 판단에 사용할 수 없습니다. 의료 조언, 진단이나 치료가 필요하면 의료 전문가와 상담하세요.\n\n■ 두 사람을 위한 설계\n- 정확히 두 명이 서로 수락해 연결되는 대칭형 Pair\n- 연결 전에도 나만의 기록을 쓸 수 있어요\n\n■ 내가 정하는 공유\n- 생리 시작·종료일, 증상, 기분, 컨디션, 도움 선호를 기록\n- 필드별로 공유를 켜고 끌 수 있고, 기본값은 전부 비공개\n- 파트너에게는 내가 켠 정보만 전달돼요(원본은 나만 볼 수 있어요)\n\n■ 함께 준비\n- 다음 생리 예정일을 참고용으로 표시(개인차가 있으며 의료·피임 판단에 쓰지 않아요)\n- 공동 캘린더와 기념일, 두 가지 고정 메시지로 보내는 파트너 넛지\n\n■ 프라이버시 우선\n- 잠금화면 알림은 건강정보를 드러내지 않는 중립 문구\n- 광고 없음, 제3자 추적 없음, 데이터 판매 없음\n- 언제든 데이터 내보내기·계정 삭제·연결 해제",
+      "en-US": "Cycle Pair helps someone who tracks their cycle and one close partner prepare together — sharing menstrual cycle and daily condition only as much as you allow. It is not a medical device and does not diagnose, treat, cure, or prevent any medical condition. It must not be used for contraceptive or pregnancy-likelihood decisions. Consult a healthcare professional for medical advice, diagnosis or treatment.\n\nBuilt for two\n- A symmetric Pair of exactly two people who both accept the connection\n- Keep private records even before connecting\n\nYou control sharing\n- Log period start/end, symptoms, mood, condition, and help preferences\n- Turn sharing on or off per field; everything is private by default\n- Your partner sees only what you enable — originals stay yours\n\nPrepare together\n- See your next expected period as reference only (individual variation applies; not for medical or contraceptive decisions)\n- Shared calendar, anniversaries, and two fixed partner nudges\n\nPrivacy first\n- Neutral lock-screen notifications that never reveal health details\n- No ads, no third-party tracking, no data sales\n- Export data, delete your account, or disconnect anytime"
     },
     "keywords": {
       "ko-KR": "주기,생리주기,커플,파트너,컨디션,기분,공유,캘린더,커플앱,함께,케어,기념일",
@@ -182,9 +182,9 @@
     "contactPhone": "stored-in-app-store-connect-only"
   },
   "testFlight": {
-    "betaAppDescription": "두 명이 서로 다른 계정과 기기로 초대, 공유, 회수, 연결 해제를 검증하는 사이클 페어 내부 테스트",
+    "betaAppDescription": "혼자 기록하고 선택한 항목만 한 사람과 공유하는 Cycle Pair. 현재 후보의 실제 서비스 연결과 원격 알림 등 플랫폼 기능을 확인하는 내부 테스트.",
     "feedbackEmail": "cs@seorilabs.com",
-    "twoPersonTestStatus": "missing-v1.0.0-build-1000000-two-person-test"
+    "twoPersonTestStatus": "missing-current-candidate-platform-validation"
   },
   "monetization": {
     "model": "free",
@@ -249,7 +249,7 @@
     "appStoreConnectApp": "App Store Connect API 재조회(2026-08-11): app 6792393652와 Xcode Cloud product D071BF40-979E-4D7D-A7C5-2202072488D5, workflow 6310D1DD-4A04-4E5C-8B17-B86D7A744D09를 확인했다. Cycle Pair Plus group 22301912에 monthly 6800260737(ONE_MONTH, KRW 3,900)과 yearly 6800263234(ONE_YEAR, KRW 29,000)을 생성했으며 각 175개 지역 UPFRONT 가격과 1주 FREE_TRIAL을 확인했다. 두 상품은 review screenshot 미등록으로 MISSING_METADATA다.",
     "appPrivacyReview": "missing: App Store Connect save/readback required",
     "ageRating": "missing: questionnaire and 18+ override save/readback required",
-    "testFlightTwoPersonTest": "missing: v1.0.0 build 1000000 two-person device QA required",
-    "deploymentApproval": "missing: release deployment approval required"
+    "testFlightTwoPersonTest": "현재 1.1.0 후보의 개발 검수와 TestFlight 설치본의 실제 플랫폼 검증은 구분한다. 후자는 미실행이며 필요 항목의 기기 사용은 별도 승인 대상이다.",
+    "deploymentApproval": "사용자가 두 마켓 공개까지 론칭 진행을 지시함. 기기 사용은 별도 승인 대상이며, 검수와 마켓의 실제 저장 및 제출 결과는 아직 완료로 표시하지 않음."
   }
 }
