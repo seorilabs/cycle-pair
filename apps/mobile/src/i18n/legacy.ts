@@ -1,7 +1,7 @@
 export const legacyEnglish: Readonly<Record<string, string>> = {
   ' · 동의일 ': ', consented on ',
-  '사용 및 오류 정보는 따로 동의한 경우에만 수집해요. 계정과 연결 식별자, 날짜, 건강 정보, 직접 쓴 글은 보내지 않아요.':
-    'Analytics and Crashlytics run only with your separate consent. We send allowlisted action names and fixed error codes, without user IDs, pair IDs, dates, health values or free text.',
+  '사용 및 오류 정보는 진단을 켠 경우에 수집해요. 설치 식별자, 기기 정보와 IP 주소로 추정한 대략적인 지역이 포함될 수 있어요. 계정과 Pair 식별자, 생리일, 건강 정보와 직접 쓴 글은 보내지 않아요.':
+    'Usage and error information is collected when you enable diagnostics. It may include installation identifiers, device information and an approximate region inferred from your IP address. We do not send account or Pair identifiers, period dates, health information or free text.',
   '다시 로그인해 기록을 이어서 사용할 수 있어요.':
     'Your sign-in is managed securely.',
   'JSON 내보내기는 이메일 계정 전환 후 사용할 수 있습니다.':
@@ -50,8 +50,8 @@ export const legacyEnglish: Readonly<Record<string, string>> = {
   '계정 전환 이메일': 'New account email',
   '계정 전환 중…': 'Creating account…',
   '계정 확인 중': 'Checking account',
-  '계정, 주기 시작·종료, 기분, 증상, 에너지, 컨디션, 원하는 도움과 직접 작성한 메모를 기능 제공에 필요한 범위로 저장합니다. 위치와 광고 식별자는 수집하지 않습니다.':
-    'We store your account, period dates, feelings, symptoms, energy, condition, help preferences and notes as needed to provide these features. We do not collect location or advertising identifiers.',
+  '계정, 주기 시작과 종료일, 기분, 증상, 에너지, 컨디션, 원하는 도움과 메모를 기능 제공에 필요한 범위로 저장합니다. 정밀 위치와 광고 식별자는 수집하지 않습니다.':
+    'We store your account, period dates, feelings, symptoms, energy, condition, help preferences and notes as needed to provide these features. We do not collect precise location or advertising identifiers.',
   '계정과 데이터를 영구 삭제할까요?': 'Permanently delete account and data?',
   '계정과 복구': 'Account and recovery',
   '계정과 서버 데이터 영구 삭제': 'Permanently delete account and records',
@@ -147,8 +147,8 @@ export const legacyEnglish: Readonly<Record<string, string>> = {
   '무엇을 저장하나요?': 'What is stored?',
   미인증: 'Unverified',
   '민감정보 동의 ': 'Health data consent ',
-  '민감정보 없이 허용된 이벤트와 고정 오류 코드만 전송':
-    'Allowlisted events and fixed error codes, without sensitive information',
+  '설치 식별자와 대략적인 지역이 포함된 사용 및 오류 정보':
+    'Usage and error information, including installation identifiers and an approximate region',
   '민감한 작업 전 비밀번호 확인': 'Confirm password for protected actions',
   '버전 {v0}': 'Version {v0}',
   '변경사항 저장': 'Save changes',
@@ -245,7 +245,7 @@ export const legacyEnglish: Readonly<Record<string, string>> = {
   '이전 계정과 분리된 빈 기록으로 다시 시작할 수도 있어요.':
     'You can also start again with empty records, separate from your previous account.',
   '이전 달': 'Previous month',
-  '익명 진단 데이터': 'Anonymous diagnostics',
+  '사용 및 오류 진단': 'Usage and error diagnostics',
   '인증 메일 다시 보내기': 'Resend verification email',
   '인증 여부 새로고침': 'Refresh verification status',
   인증됨: 'Verified',

@@ -548,11 +548,11 @@ export function SettingsScreen() {
             ) : null}
             <ToggleRow
               testID="diagnostics-toggle"
-              title={l('익명 진단 데이터')}
+              title={l('사용 및 오류 진단')}
               description={
                 diagnosticsBusy
                   ? l('진단 수집 설정을 적용하고 있어요.')
-                  : l('민감정보 없이 허용된 이벤트와 고정 오류 코드만 전송')
+                  : l('설치 식별자와 대략적인 지역이 포함된 사용 및 오류 정보')
               }
               value={state.diagnosticsEnabled}
               disabled={diagnosticsBusy}

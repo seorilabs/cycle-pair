@@ -53,7 +53,7 @@ export function PrivacyCenter({ onClose }: { onClose(): void }) {
         <PolicySection
           title={l('무엇을 저장하나요?')}
           body={l(
-            '계정, 주기 시작·종료, 기분, 증상, 에너지, 컨디션, 원하는 도움과 직접 작성한 메모를 기능 제공에 필요한 범위로 저장합니다. 위치와 광고 식별자는 수집하지 않습니다.',
+            '계정, 주기 시작과 종료일, 기분, 증상, 에너지, 컨디션, 원하는 도움과 메모를 기능 제공에 필요한 범위로 저장합니다. 정밀 위치와 광고 식별자는 수집하지 않습니다.',
           )}
         />
         <PolicySection
@@ -71,7 +71,7 @@ export function PrivacyCenter({ onClose }: { onClose(): void }) {
         <PolicySection
           title={l('진단 데이터')}
           body={l(
-            '사용 및 오류 정보는 따로 동의한 경우에만 수집해요. 계정과 연결 식별자, 날짜, 건강 정보, 직접 쓴 글은 보내지 않아요.',
+            '사용 및 오류 정보는 진단을 켠 경우에 수집해요. 설치 식별자, 기기 정보와 IP 주소로 추정한 대략적인 지역이 포함될 수 있어요. 계정과 Pair 식별자, 생리일, 건강 정보와 직접 쓴 글은 보내지 않아요.',
           )}
         />
         <PolicySection

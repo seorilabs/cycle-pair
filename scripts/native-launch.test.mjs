@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile, access} from 'node:fs/promises';
+import {createRequire} from 'node:module';
+import path from 'node:path';
 
 test('native release has no AppsInToss install or deployment target', async () => {
   const root = JSON.parse(await readFile('package.json', 'utf8'));
@@ -66,4 +68,41 @@ test('iPhone-only listing has no active iPad screenshots or requirements', async
   assert.equal(assets.rules.some(rule => rule.kind === 'ipad-13'), false);
   const plist = await readFile('apps/mobile/ios/CyclePair/Info.plist', 'utf8');
   assert.doesNotMatch(plist, /UISupportedInterfaceOrientations~ipad/);
+});
+
+
+test('advertising identifiers stay disabled when optional diagnostics are enabled', async () => {
+  const requireMobile = createRequire(new URL('../apps/mobile/package.json', import.meta.url));
+  const sdkSchema = JSON.parse(await readFile(path.join(
+    path.dirname(requireMobile.resolve('@react-native-firebase/app/package.json')),
+    'firebase-schema.json',
+  ), 'utf8'));
+  const flags = [
+    'google_analytics_adid_collection_enabled',
+    'analytics_default_allow_ad_storage',
+    'analytics_default_allow_ad_user_data',
+    'analytics_default_allow_ad_personalization_signals',
+    'google_analytics_registration_with_ad_network_enabled',
+  ];
+  for (const file of ['firebase.json', 'apps/mobile/firebase.json']) {
+    const config = JSON.parse(await readFile(file, 'utf8'))['react-native'];
+    for (const flag of flags) {
+      assert.ok(Object.hasOwn(sdkSchema.properties['react-native'].properties, flag),
+        `Installed Firebase SDK must recognize ${flag}`);
+      assert.equal(config[flag], false, `${file}: ${flag}`);
+    }
+    assert.equal(config.analytics_auto_collection_enabled, false);
+  }
+});
+
+test('advertising permissions from transitive SDK manifests are removed', async () => {
+  const manifest = await readFile('apps/mobile/android/app/src/main/AndroidManifest.xml', 'utf8');
+  const removals = [...manifest.matchAll(/<uses-permission\b[^>]*>/g)]
+    .filter(([tag]) => /tools:node="remove"/.test(tag))
+    .map(([tag]) => tag.match(/android:name="([^"]+)"/)?.[1]);
+  for (const permission of [
+    'com.google.android.gms.permission.AD_ID',
+    'android.permission.ACCESS_ADSERVICES_AD_ID',
+    'android.permission.ACCESS_ADSERVICES_ATTRIBUTION',
+  ]) assert.ok(removals.includes(permission), `Merged manifest must exclude ${permission}`);
 });

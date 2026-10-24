@@ -16,6 +16,11 @@ const EXPECTED_CONFIG_PATHS = Object.freeze({
 const REQUIRED_DISABLED_DEFAULTS = Object.freeze({
   app_data_collection_default_enabled: false,
   analytics_auto_collection_enabled: false,
+  google_analytics_adid_collection_enabled: false,
+  analytics_default_allow_ad_storage: false,
+  analytics_default_allow_ad_user_data: false,
+  analytics_default_allow_ad_personalization_signals: false,
+  google_analytics_registration_with_ad_network_enabled: false,
   google_analytics_automatic_screen_reporting_enabled: false,
   crashlytics_auto_collection_enabled: false,
   crashlytics_debug_enabled: false,
