@@ -56,8 +56,22 @@ function responseFor(row, declaration) {
   if (questionId === "PSL_DATA_COLLECTION_ENCRYPTED_IN_TRANSIT") {
     return declaration.encryptedInTransit ? "TRUE" : "FALSE";
   }
-  if (questionId === "PSL_DATA_COLLECTION_USER_REQUEST_DELETE") {
-    return declaration.supportsDeletionRequest ? "TRUE" : "FALSE";
+  if (questionId === "PSL_SUPPORTED_ACCOUNT_CREATION_METHODS") {
+    return declaration.accountCreationMethods.includes(responseId) ? "TRUE" : "";
+  }
+  if (questionId === "PSL_ACM_SPECIFY") {
+    return declaration.otherAccountCreationDescription ?? "";
+  }
+  if (questionId === "PSL_ACCOUNT_DELETION_URL") {
+    return declaration.accountDeletionUrl ?? "";
+  }
+  if (questionId === "PSL_SUPPORT_DATA_DELETION_BY_USER") {
+    return responseId === (declaration.supportsDeletionRequest ? "DATA_DELETION_YES" : "DATA_DELETION_NO")
+      ? "TRUE"
+      : "";
+  }
+  if (questionId === "PSL_DATA_DELETION_URL") {
+    return declaration.dataDeletionUrl ?? "";
   }
 
   const selected = declaration.dataTypes[responseId];
@@ -98,5 +112,33 @@ const rows = parseCsv(await readFile(templatePath, "utf8"));
 if (rows[0]?.[0] !== "Question ID (machine readable)") {
   throw new Error("Google Play Data Safety template header mismatch");
 }
-for (const row of rows.slice(1)) row[2] = responseFor(row, declaration);
+const accountMethods = rows.filter(row => row[0] === "PSL_SUPPORTED_ACCOUNT_CREATION_METHODS");
+if (accountMethods.length > 0) {
+  const selected = declaration.accountCreationMethods;
+  const available = new Set(accountMethods.map(row => row[1]));
+  if (!Array.isArray(selected) || selected.length === 0 || selected.some(value => !available.has(value))) {
+    throw new Error("accountCreationMethods must select methods from the current Console template");
+  }
+  if (selected.includes("PSL_ACM_NONE") && selected.length > 1) {
+    throw new Error("accountCreationMethods cannot combine no account creation with another method");
+  }
+  if (selected.includes("PSL_ACM_OTHER") && !declaration.otherAccountCreationDescription?.trim()) {
+    throw new Error("otherAccountCreationDescription is required for guest account creation");
+  }
+  if (!selected.includes("PSL_ACM_NONE") && !declaration.accountDeletionUrl?.startsWith("https://")) {
+    throw new Error("accountDeletionUrl must be an HTTPS deletion request page");
+  }
+}
+if (rows.some(row => row[0] === "PSL_SUPPORT_DATA_DELETION_BY_USER") &&
+    typeof declaration.supportsDeletionRequest !== "boolean") {
+  throw new Error("supportsDeletionRequest must be a boolean");
+}
+if (rows.some(row => row[0] === "PSL_DATA_DELETION_URL") &&
+    declaration.supportsDeletionRequest && !declaration.dataDeletionUrl?.startsWith("https://")) {
+  throw new Error("dataDeletionUrl must describe deletion without deleting the account");
+}
+for (const row of rows.slice(1)) {
+  row[2] = responseFor(row, declaration);
+  if (row[4] !== undefined) row[4] = row[4].trimEnd();
+}
 await writeFile(path.resolve(outputPath), encodeCsv(rows));
