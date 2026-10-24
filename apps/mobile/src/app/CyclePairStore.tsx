@@ -912,7 +912,14 @@ export function CyclePairProvider({
   const [backendBusy, setBackendBusy] = useState(false);
   const [notificationBusy, setNotificationBusy] = useState(false);
   const [diagnosticsBusy, setDiagnosticsBusy] = useState(false);
-  const [backendError, setBackendError] = useState<string | null>(null);
+  const [backendFailure, setBackendFailure] = useState<{
+    message: string;
+    pairId?: string;
+  } | null>(null);
+  const backendError =
+    backendFailure?.pairId && backendFailure.pairId !== activePair?.pairId
+      ? null
+      : backendFailure?.message ?? null;
   const [inAppNotices, setInAppNotices] = useState<readonly InAppNotice[]>([]);
   const [toastNotice, setToastNotice] = useState<InAppNotice | null>(null);
   const [partnerNudgeState, setPartnerNudgeState] = useState<PartnerNudgeState>(
@@ -974,8 +981,9 @@ export function CyclePairProvider({
       surface: CrashSurface = 'startup',
       operation = 'background-sync',
       retryable = true,
+      pairId?: string,
     ) => {
-      setBackendError(backendErrorMessage(error));
+      setBackendFailure({ message: backendErrorMessage(error), pairId });
       crashReporter
         .recordFailure(failureCode(error), { surface, operation, retryable })
         .catch(() => undefined);
@@ -1319,6 +1327,17 @@ export function CyclePairProvider({
     let previousProjection: RemotePartnerProjection | null = null;
     let eventsInitialized = false;
     let previousEvents: readonly PairEvent[] = [];
+    const reportPairError = (error: unknown) => {
+      if (!active || activePairRef.current?.pairId !== activePair.pairId)
+        return;
+      reportFailure(
+        error,
+        'startup',
+        'background-sync',
+        true,
+        activePair.pairId,
+      );
+    };
     const stopProjection = backend.watchPartnerProjection(
       activePair,
       projection => {
@@ -1336,7 +1355,7 @@ export function CyclePairProvider({
           ...(projection ? { payload: projection } : {}),
         });
       },
-      reportBackendError,
+      reportPairError,
     );
     const stopSettings = backend.watchShareSettings(
       backendSession.uid,
@@ -1349,7 +1368,7 @@ export function CyclePairProvider({
             settings: settings ? fromBackendShareSettings(settings) : null,
           },
         }),
-      reportBackendError,
+      reportPairError,
     );
     const stopEvents = backend.watchPairEvents(
       activePair,
@@ -1369,7 +1388,7 @@ export function CyclePairProvider({
         previousEvents = events;
         dispatch({ type: 'SET_PAIR_EVENTS', payload: events });
       },
-      reportBackendError,
+      reportPairError,
     );
     const stopNudges = backend.watchPartnerNudgeState(
       backendSession.uid,
@@ -1377,7 +1396,7 @@ export function CyclePairProvider({
       value => {
         if (active) setPartnerNudgeState(value);
       },
-      reportBackendError,
+      reportPairError,
     );
     return () => {
       active = false;
@@ -1386,13 +1405,7 @@ export function CyclePairProvider({
       stopEvents();
       stopNudges();
     };
-  }, [
-    activePair,
-    backend,
-    backendSession,
-    enqueueInAppNotice,
-    reportBackendError,
-  ]);
+  }, [activePair, backend, backendSession, enqueueInAppNotice, reportFailure]);
 
   useEffect(() => {
     inAppNoticesRef.current = [];
@@ -1478,9 +1491,10 @@ export function CyclePairProvider({
           }
           if (!active) return;
           dispatch({ type: 'SET_NOTIFICATIONS_ENABLED', payload: false });
-          setBackendError(
-            '알림 권한이 허용되지 않았습니다. 기기 설정에서 다시 켤 수 있어요.',
-          );
+          setBackendFailure({
+            message:
+              '알림 권한이 허용되지 않았습니다. 기기 설정에서 다시 켤 수 있어요.',
+          });
           return;
         }
         // Refresh can write a device registration. Subscribe only after both
@@ -1554,7 +1568,7 @@ export function CyclePairProvider({
         return;
       }
       setBackendBusy(true);
-      setBackendError(null);
+      setBackendFailure(null);
       dispatch({ type: 'SET_SYNC_STATUS', payload: 'syncing' });
       try {
         if (payload.consentVersion !== SENSITIVE_HEALTH_CONSENT_VERSION) {
@@ -1607,7 +1621,7 @@ export function CyclePairProvider({
         return false;
       }
       setBackendBusy(true);
-      setBackendError(null);
+      setBackendFailure(null);
       dispatch({ type: 'SET_SYNC_STATUS', payload: 'syncing' });
       try {
         const write = await backend.savePrivateSetup(
@@ -1650,7 +1664,7 @@ export function CyclePairProvider({
   );
   const createInvite = useCallback(async () => {
     setBackendBusy(true);
-    setBackendError(null);
+    setBackendFailure(null);
     try {
       setInvite(await backend.createPairInvite(state.isLogger));
       await analytics
@@ -1665,7 +1679,7 @@ export function CyclePairProvider({
   const acceptInvite = useCallback(
     async (inviteToken: string) => {
       setBackendBusy(true);
-      setBackendError(null);
+      setBackendFailure(null);
       try {
         await backend.acceptPairInvite(inviteToken, state.isLogger);
         await analytics
@@ -1719,7 +1733,7 @@ export function CyclePairProvider({
         return;
       }
       setBackendBusy(true);
-      setBackendError(null);
+      setBackendFailure(null);
       dispatch({ type: 'SET_SYNC_STATUS', payload: 'syncing' });
       try {
         const write = await persistShareSettings(nextSettings);
@@ -1799,7 +1813,7 @@ export function CyclePairProvider({
     if (!state.paired || !state.sharingPairId || state.stage !== 'sharing')
       return;
     setBackendBusy(true);
-    setBackendError(null);
+    setBackendFailure(null);
     dispatch({ type: 'SET_SYNC_STATUS', payload: 'syncing' });
     try {
       const write = await persistShareSettings(state.shareSettings);
@@ -1835,7 +1849,7 @@ export function CyclePairProvider({
   const retryDailyHistory = useCallback(async () => {
     if (!backendSession) return;
     setDailyHistoryStatus('loading');
-    setBackendError(null);
+    setBackendFailure(null);
     try {
       const logs = await backend.syncDailyLogs(backendSession.uid);
       dispatch({
@@ -1895,7 +1909,7 @@ export function CyclePairProvider({
         : state.seed;
       const mutationId = createMutationId('daily');
       setBackendBusy(true);
-      setBackendError(null);
+      setBackendFailure(null);
       dispatch({ type: 'SET_SYNC_STATUS', payload: 'syncing' });
       try {
         const write = await backend.saveDailyLog(
@@ -1971,7 +1985,7 @@ export function CyclePairProvider({
       }
       const mutationId = createMutationId('daily-delete');
       setBackendBusy(true);
-      setBackendError(null);
+      setBackendFailure(null);
       dispatch({ type: 'SET_SYNC_STATUS', payload: 'syncing' });
       try {
         const write = await backend.deleteDailyLog(
@@ -2003,7 +2017,7 @@ export function CyclePairProvider({
       const now = new Date().toISOString();
       const existing = state.sharedEvents.find(item => item.id === event.id);
       setBackendBusy(true);
-      setBackendError(null);
+      setBackendFailure(null);
       dispatch({ type: 'SET_SYNC_STATUS', payload: 'syncing' });
       try {
         const write = await backend.upsertPairEvent(
@@ -2061,7 +2075,7 @@ export function CyclePairProvider({
       if (!backendSession || !pairId || !state.paired) return false;
       const mutationId = createMutationId('event-delete');
       setBackendBusy(true);
-      setBackendError(null);
+      setBackendFailure(null);
       dispatch({ type: 'SET_SYNC_STATUS', payload: 'syncing' });
       try {
         const write = await backend.deletePairEvent(
@@ -2279,7 +2293,7 @@ export function CyclePairProvider({
     };
   }, [backend, backendSession, reportBackendError]);
   const toggleNotifications = useCallback(async () => {
-    setBackendError(null);
+    setBackendFailure(null);
     if (!state.neutralNotifications) {
       dispatch({ type: 'SET_NOTIFICATIONS_ENABLED', payload: true });
       return;
@@ -2302,12 +2316,12 @@ export function CyclePairProvider({
   const updateNotificationQuietHours = useCallback(
     async (start: string, end: string) => {
       if (!LOCAL_TIME.test(start) || !LOCAL_TIME.test(end) || start === end) {
-        setBackendError(
-          '조용한 시간은 서로 다른 HH:mm 형식으로 입력해 주세요.',
-        );
+        setBackendFailure({
+          message: '조용한 시간은 서로 다른 HH:mm 형식으로 입력해 주세요.',
+        });
         return false;
       }
-      setBackendError(null);
+      setBackendFailure(null);
       dispatch({
         type: 'SET_NOTIFICATION_QUIET_HOURS',
         payload: { start, end },
@@ -2319,7 +2333,7 @@ export function CyclePairProvider({
   const toggleDiagnostics = useCallback(async () => {
     const enabled = !state.diagnosticsEnabled;
     setDiagnosticsBusy(true);
-    setBackendError(null);
+    setBackendFailure(null);
     try {
       await Promise.all([
         analytics.setEnabled(enabled),
@@ -2340,7 +2354,7 @@ export function CyclePairProvider({
       return;
     }
     setBackendBusy(true);
-    setBackendError(null);
+    setBackendFailure(null);
     try {
       await backend.revokePair(activePair.pairId);
       if (backendSession) {
@@ -2383,7 +2397,7 @@ export function CyclePairProvider({
       partnerNudgeState,
       nudgeBusy,
       nudgeFeedback,
-      clearBackendError: () => setBackendError(null),
+      clearBackendError: () => setBackendFailure(null),
       dismissToastNotice,
       openInAppNotice,
       completeOnboarding,

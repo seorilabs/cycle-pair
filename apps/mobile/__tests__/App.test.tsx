@@ -935,9 +935,8 @@ describe('CyclePair mobile app', () => {
   it.each(['알림과 개인정보', '앱 안내'])(
     '개인정보 안내는 %s의 같은 창에서 열고 안전영역과 돌아갈 화면을 보존한다',
     async entrypoint => {
-      const insetMock = jest.requireMock(
-        'react-native-safe-area-context',
-      ).useSafeAreaInsets as jest.Mock;
+      const insetMock = jest.requireMock('react-native-safe-area-context')
+        .useSafeAreaInsets as jest.Mock;
       const originalInsets = insetMock.getMockImplementation();
       insetMock.mockReturnValue({ top: 44, bottom: 34, left: 7, right: 11 });
       try {
@@ -999,7 +998,9 @@ describe('CyclePair mobile app', () => {
           );
         else expect(view.getByText('건강 정보 이용 안내')).toBeTruthy();
         if (entrypoint === '알림과 개인정보')
-          expect(view.getByTestId('diagnostics-toggle').props.value).toBe(false);
+          expect(view.getByTestId('diagnostics-toggle').props.value).toBe(
+            false,
+          );
         await fireEvent.press(
           entrypoint === '알림과 개인정보'
             ? view.getByTestId('privacy-open')
@@ -1018,6 +1019,117 @@ describe('CyclePair mobile app', () => {
       }
     },
   );
+
+  it.each(['projection', 'settings', 'events', 'nudges'] as const)(
+    '해제된 Pair의 %s 오류를 숨기고 현재 Pair의 실제 오류는 표시한다',
+    async watcher => {
+      await AsyncStorage.setItem(
+        '@cyclepair/app-state/v1',
+        JSON.stringify({ schemaVersion: 4, onboardingComplete: true }),
+      );
+      let emitMembership:
+        | Parameters<CyclePairBackend['watchActivePair']>[1]
+        | undefined;
+      const errors: Partial<Record<typeof watcher, (error: unknown) => void>> =
+        {};
+      const backend: CyclePairBackend = {
+        ...previewCyclePairBackend,
+        async loadPrivateSetup() {
+          return {
+            recordsCycle: false,
+            consentAcceptedAt: '2026-08-14T00:00:00.000Z',
+            consentVersion: SENSITIVE_HEALTH_CONSENT_VERSION,
+          };
+        },
+        watchActivePair(_uid, onValue) {
+          emitMembership = onValue;
+          onValue({ pairId: 'pair-before-revoke', partnerUid: 'partner-a' });
+          return () => undefined;
+        },
+        watchPartnerProjection(_membership, _onValue, onError) {
+          errors.projection = onError;
+          return () => undefined;
+        },
+        watchShareSettings(_uid, _pairId, _onValue, onError) {
+          errors.settings = onError;
+          return () => undefined;
+        },
+        watchPairEvents(_membership, _onValue, onError) {
+          errors.events = onError;
+          return () => undefined;
+        },
+        watchPartnerNudgeState(_uid, _membership, _onValue, onError) {
+          errors.nudges = onError;
+          return () => undefined;
+        },
+      };
+      const view = await render(<App backend={backend} />);
+      await waitFor(() => expect(errors[watcher]).toBeDefined());
+      await fireEvent.press(view.getByTestId('sharing-save'));
+      await fireEvent.press(view.getByTestId('tab-settings'));
+      const oldError = errors[watcher]!;
+      const denied = { code: 'firestore/permission-denied' };
+      await act(async () => oldError(denied));
+      expect(view.getByText('현재 계정으로 접근할 수 없습니다.')).toBeTruthy();
+      await act(async () => emitMembership?.(null));
+      await fireEvent.press(view.getByTestId('tab-settings'));
+      expect(view.queryByText('현재 계정으로 접근할 수 없습니다.')).toBeNull();
+      await act(async () => oldError(denied));
+      expect(view.queryByText('현재 계정으로 접근할 수 없습니다.')).toBeNull();
+      await act(async () =>
+        emitMembership?.({
+          pairId: 'pair-after-reconnect',
+          partnerUid: 'partner-b',
+        }),
+      );
+      await fireEvent.press(view.getByTestId('sharing-save'));
+      await fireEvent.press(view.getByTestId('tab-settings'));
+      await act(async () => oldError(denied));
+      expect(view.queryByText('현재 계정으로 접근할 수 없습니다.')).toBeNull();
+      await act(async () => errors[watcher]!(denied));
+      expect(view.getByText('현재 계정으로 접근할 수 없습니다.')).toBeTruthy();
+    },
+  );
+
+  it('Pair가 해제되어도 본인 자료의 실제 권한 오류는 숨기지 않는다', async () => {
+    await AsyncStorage.setItem(
+      '@cyclepair/app-state/v1',
+      JSON.stringify({ schemaVersion: 4, onboardingComplete: true }),
+    );
+    let emitMembership:
+      | Parameters<CyclePairBackend['watchActivePair']>[1]
+      | undefined;
+    let ownError:
+      | Parameters<CyclePairBackend['watchPendingTombstones']>[2]
+      | undefined;
+    const backend: CyclePairBackend = {
+      ...previewCyclePairBackend,
+      async loadPrivateSetup() {
+        return {
+          recordsCycle: false,
+          consentAcceptedAt: '2026-08-14T00:00:00.000Z',
+          consentVersion: SENSITIVE_HEALTH_CONSENT_VERSION,
+        };
+      },
+      watchActivePair(_uid, onValue) {
+        emitMembership = onValue;
+        onValue({ pairId: 'pair-private-error', partnerUid: 'partner-a' });
+        return () => undefined;
+      },
+      watchPendingTombstones(_uid, _onValue, onError) {
+        ownError = onError;
+        return () => undefined;
+      },
+    };
+    const view = await render(<App backend={backend} />);
+    await waitFor(() => expect(ownError).toBeDefined());
+    await fireEvent.press(view.getByTestId('sharing-save'));
+    await fireEvent.press(view.getByTestId('tab-settings'));
+    await act(async () => ownError?.({ code: 'firestore/permission-denied' }));
+    await act(async () => emitMembership?.(null));
+    await fireEvent.press(view.getByTestId('tab-settings'));
+    expect(view.getByText('현재 계정으로 접근할 수 없습니다.')).toBeTruthy();
+  });
 
   it('초기 동기화는 알리지 않고 상대의 새 공유 기록은 메시지 박스와 토스트로 알린다', async () => {
     await AsyncStorage.setItem(
