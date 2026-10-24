@@ -62,7 +62,8 @@
       "required": true,
       "purposes": [
         "PSL_APP_FUNCTIONALITY",
-        "PSL_FRAUD_PREVENTION_SECURITY"
+        "PSL_FRAUD_PREVENTION_SECURITY",
+        "PSL_ANALYTICS"
       ]
     },
     "PSL_APPROX_LOCATION": {

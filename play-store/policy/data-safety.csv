@@ -2167,7 +2167,7 @@ Data collection is required (users can't turn off this data collection)"
 PSL_DATA_USAGE_RESPONSES:PSL_DEVICE_ID:DATA_USAGE_COLLECTION_PURPOSE,PSL_APP_FUNCTIONALITY,TRUE,MULTIPLE_CHOICE,"Data usage and handling (Device or other identifiers)
 Why is this user data collected? Select all that apply.
 App functionality"
-PSL_DATA_USAGE_RESPONSES:PSL_DEVICE_ID:DATA_USAGE_COLLECTION_PURPOSE,PSL_ANALYTICS,,MULTIPLE_CHOICE,"Data usage and handling (Device or other identifiers)
+PSL_DATA_USAGE_RESPONSES:PSL_DEVICE_ID:DATA_USAGE_COLLECTION_PURPOSE,PSL_ANALYTICS,TRUE,MULTIPLE_CHOICE,"Data usage and handling (Device or other identifiers)
 Why is this user data collected? Select all that apply.
 Analytics"
 PSL_DATA_USAGE_RESPONSES:PSL_DEVICE_ID:DATA_USAGE_COLLECTION_PURPOSE,PSL_DEVELOPER_COMMUNICATIONS,,MULTIPLE_CHOICE,"Data usage and handling (Device or other identifiers)

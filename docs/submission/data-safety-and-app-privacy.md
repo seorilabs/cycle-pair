@@ -30,7 +30,7 @@
 | 대략적인 위치(IP 기반 지역) | 예 | 아니오 | 분석 | 선택(진단을 켠 경우) |
 | 앱 상호작용(비민감 이벤트) | 예 | 아니오 | 분석 | 선택 |
 | 크래시 로그·진단 | 예 | 아니오 | 분석/앱 기능 | 선택 |
-| 기기/기타 ID(FCM 토큰·Firebase installation ID) | 예 | 아니오 | 앱 기능(알림), 보안·부정사용 방지 | 필수/선택은 기능별 선언 참조 |
+| 기기/기타 ID(FCM 토큰과 Firebase 설치 식별자, app-instance ID) | 예 | 아니오 | 앱 기능(알림), 보안과 부정사용 방지, 선택적 진단 분석 | 필수/선택은 기능별 선언 참조 |
 
 > **공유 판단 근거**: Firebase는 앱 개발자를 대신 처리하는 service provider이고, 파트너 projection과 시스템 공유는 사용자가 명시적으로 시작하는 전송이다. Google Play Data safety의 service provider·user initiated action 예외에 따라 위 표는 "공유=아니오"로 작성했다. 제출 직전에 [Google Play 공식 정의](https://support.google.com/googleplay/android-developer/answer/10787469?hl=en)를 다시 확인한다. 비민감 이벤트·크래시는 Firebase로 전송되므로 "수집"에는 포함한다.
 
