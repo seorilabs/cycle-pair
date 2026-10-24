@@ -15,12 +15,42 @@
     "observability"
   ],
   "environments": [
-    "android",
-    "ios"
+    "dev"
   ],
   "redesign": true,
   "foundationRerun": true,
-  "floorOverrides": [],
+  "floorOverrides": [
+    {
+      "rule": "foundation",
+      "featureId": "records",
+      "reason": "실제 RN 화면과 입력, 기록 저장, 오프라인 대기와 재실행 복원을 개발 브라우저와 격리 저장소로 전체 실행한다. Android06의 이전 후보 통과를 새 후보 근거로 이어받지 않는다. 네이티브 보안 저장소 동작은 별도 미검증으로 남긴다."
+    },
+    {
+      "rule": "foundation",
+      "featureId": "pairing-sharing",
+      "reason": "실제 RN 두 사용자 화면에서 초대, 연결, 기본 비공개, 항목 공유와 해제를 실행하고 실제 Firebase Emulator 보안 규칙과 서버 함수를 별도 검증한다. 운영 인증과 서비스 연결은 별도로 남긴다."
+    },
+    {
+      "rule": "foundation",
+      "featureId": "account",
+      "reason": "실제 RN 화면에서 계정 전환과 오류, 재확인, 내보내기와 삭제 복구를 합성 자료 및 계정 포트 대역으로 실행한다. 실제 플랫폼 인증과 운영 계정 연결은 별도 필수 항목으로 남기며 대역 통과로 대체하지 않는다."
+    },
+    {
+      "rule": "foundation",
+      "featureId": "notifications",
+      "reason": "실제 RN 알림 설정과 권한 거절 안내, 중립 문구 및 토큰 수명주기 계약을 개발 환경에서 실행한다. 실제 OS 권한 창, FCM과 APNs 전달은 별도 미검증으로 남긴다."
+    },
+    {
+      "rule": "foundation",
+      "featureId": "privacy",
+      "reason": "실제 RN 개인정보 안내와 민감정보 동의, 기본 비공개 및 철회 흐름을 한국어와 영어 개발 화면에서 검수한다. 네이티브 저장소 및 운영 삭제는 개발 실행 통과로 대체하지 않는다."
+    },
+    {
+      "rule": "foundation",
+      "featureId": "observability",
+      "reason": "실제 RN 진단 설정과 허용 이벤트, 민감정보 배제를 개발 환경에서 실행한다. 실제 Analytics와 Crashlytics SDK 전송 및 네이티브 광고 식별자 차단은 개발 포트 대역으로 통과 처리하지 않는다."
+    }
+  ],
   "release": {
     "markets": [
       "google-play",
