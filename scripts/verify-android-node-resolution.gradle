@@ -1,0 +1,29 @@
+import groovy.json.JsonSlurper
+
+// Run from apps/mobile/android:
+// ./gradlew -I ../../../scripts/verify-android-node-resolution.gradle :app:verifyNodePackageResolution
+gradle.projectsEvaluated {
+    def app = gradle.rootProject.findProject(":app")
+    if (app == null) return
+
+    app.tasks.register("verifyNodePackageResolution") {
+        group = "verification"
+        description = "Checks the actual React Native Gradle configuration after dependency installation."
+        doLast {
+            assert app.plugins.hasPlugin("com.facebook.react")
+            def react = app.extensions.getByName("react")
+            def packageAt = { File directory ->
+                new JsonSlurper().parse(new File(directory, "package.json"))
+            }
+            assert packageAt(react.reactNativeDir.get().asFile).name == "react-native"
+            assert packageAt(react.codegenDir.get().asFile).name == "@react-native/codegen"
+            def cli = react.cliFile.get().asFile
+            assert cli.isFile()
+            assert cli.canonicalFile == new File(react.reactNativeDir.get().asFile, "cli.js").canonicalFile
+            assert gradle.includedBuilds.any { build ->
+                def manifest = new File(build.projectDir, "package.json")
+                manifest.isFile() && new JsonSlurper().parse(manifest).name == "@react-native/gradle-plugin"
+            }
+        }
+    }
+}
