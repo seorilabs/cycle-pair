@@ -2,6 +2,12 @@ import groovy.json.JsonSlurper
 
 // Run from apps/mobile/android:
 // ./gradlew -I ../../../scripts/verify-android-node-resolution.gradle :app:verifyNodePackageResolution
+def autolinkingCliPath
+gradle.settingsEvaluated { settings ->
+    if (settings.extensions.extraProperties.has("reactNativeCliPath")) {
+        autolinkingCliPath = settings.extensions.extraProperties.get("reactNativeCliPath")
+    }
+}
 gradle.projectsEvaluated {
     def app = gradle.rootProject.findProject(":app")
     if (app == null) return
@@ -20,6 +26,12 @@ gradle.projectsEvaluated {
             def cli = react.cliFile.get().asFile
             assert cli.isFile()
             assert cli.canonicalFile == new File(react.reactNativeDir.get().asFile, "cli.js").canonicalFile
+            def autolinkingCli = new File(autolinkingCliPath)
+            assert autolinkingCli.isFile()
+            def cliPackage = packageAt(autolinkingCli.parentFile.parentFile)
+            def mobilePackage = packageAt(app.rootProject.projectDir.parentFile)
+            assert cliPackage.name == "@react-native-community/cli"
+            assert cliPackage.version == mobilePackage.devDependencies["@react-native-community/cli"]
             assert gradle.includedBuilds.any { build ->
                 def manifest = new File(build.projectDir, "package.json")
                 manifest.isFile() && new JsonSlurper().parse(manifest).name == "@react-native/gradle-plugin"

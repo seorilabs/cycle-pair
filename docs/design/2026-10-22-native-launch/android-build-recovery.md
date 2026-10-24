@@ -6,7 +6,7 @@
 
 1.1.0의 Android 빌드 40089958962는 `settings.gradle`이 앱 하위 `node_modules/@react-native/gradle-plugin`을 찾다가 종료됐다. `.npmrc`의 `node-linker=hoisted`는 실제 패키지를 저장소 루트에 설치한다. 같은 오류를 깨끗한 worktree의 Gradle `help`로 재현했다.
 
-Gradle 플러그인은 앱 디렉터리에서 Node의 `require.resolve`로 찾는다. 플러그인 관리와 composite build가 같은 경로를 사용한다. 앱의 React Native와 Codegen 경로도 기존 Hermes 경로 해석 방식으로 찾는다. CLI는 React Native Gradle Plugin의 `reactNativeDir` 기반 기본값을 사용한다. 의존성 버전과 잠금 파일, 제품 화면과 저장 형식, 서명 키는 바꾸지 않는다. 임시 심볼릭 링크는 만들지 않는다.
+Gradle 플러그인은 앱 디렉터리에서 Node의 `require.resolve`로 찾는다. 플러그인 관리와 composite build가 같은 경로를 사용한다. 앱의 React Native와 Codegen 경로도 기존 Hermes 경로 해석 방식으로 찾는다. 번들 CLI는 React Native Gradle Plugin의 `reactNativeDir` 기반 기본값을 사용한다. 자동 연결은 `npx` 캐시의 다른 버전을 쓰지 않도록 프로젝트의 고정 CLI를 Node로 직접 실행한다. 의존성 버전과 잠금 파일, 제품 화면과 저장 형식, 서명 키는 바꾸지 않는다. 임시 심볼릭 링크는 만들지 않는다.
 
 ## 인수조건과 검증
 
@@ -15,5 +15,7 @@ Gradle 플러그인은 앱 디렉터리에서 Node의 `require.resolve`로 찾�
 - AC-ANDROID-3: 별도 실행자 또는 확인된 CI로 개발 환경 회귀와 필수 검사를 실행하고 로컬 코드 리뷰 후 PR로 병합한다. 기존 UI 독립 검수 3회의 원본 후보와 판정을 보존하며 새 후보 실행으로 고쳐 쓰지 않는다. 추가 화면 개편이나 기기 실행은 포함하지 않는다.
 
 실행 기록은 실제 후보 SHA, 명령, 시각, 실패와 성공, NAS 검증 목록을 남긴다. 마켓 빌드 직전에는 최신 중앙 검증기로 개발 근거를 다시 확인한다. 1.1.0 태그는 보존하고, 수정 후보는 승인된 1.1.1 태그의 버전 할당을 사용한다. Google Play는 사용자가 지정한 계정과 대상 앱을 업로드 전에 다시 확인한다.
+
+`npx`가 별도 캐시의 CLI 20.2.0을 실행하고 빈 npm 캐시와 오프라인 조건에서 실패하는 경우도 재현했다. 자동 연결 캐시를 비운 뒤 별도 빈 `npm_config_cache`와 `npm_config_offline=true` 조건으로 같은 Gradle 검사를 실행한다. 실제 자동 연결 CLI 패키지의 버전이 앱의 직접 의존성 20.1.0과 일치하는지도 검사한다.
 
 실패하면 해당 후보의 빌드와 업로드를 중단한다. 복구는 변경 커밋을 되돌리는 PR로 하며 기존 태그나 자격증명을 바꾸지 않는다.
