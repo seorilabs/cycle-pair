@@ -1,0 +1,57 @@
+# Cycle Pair 마켓 신고 준비
+
+2026-10-24 작성. 대상은 `com.seorilabs.cyclepair`, 출시 버전은 1.1.0이며 신규 Plus 판매는 꺼져 있다. 이 문서는 Console 입력 전 검토용 답안이다. 저장, 접수, 승인과 공개를 완료로 표시하지 않는다.
+
+## Google Play
+
+| 항목 | 준비 답안 | 근거와 남은 확인 |
+|---|---|---|
+| 건강 기능 | Period tracking | 개인 주기, 증상과 컨디션 기록, 주기와 가임 시기 참고 표시. 의료기기, 진단과 치료, 피임 기능으로 신고하지 않는다. |
+| 건강 기능 추가 설명 | 주기와 컨디션을 개인적으로 기록하고, 사용자가 켠 항목만 연결한 한 사람에게 공유한다. 추정치는 참고용이며 의료, 피임과 임신 가능성 판단에 사용하지 않는다. 의료 조언이 필요하면 의료 전문가와 상담한다. | 한국어와 영어 마켓 설명 및 앱의 고지와 대조한다. |
+| 건강 권한 | Health Connect, 신체 센서와 위치 권한을 사용하지 않음 | 최종 서명 AAB의 병합 manifest에서 재확인한다. 수동으로 입력한 건강 기록과 SDK의 IP 기반 대략적 지역은 서로 다른 수집이다. |
+| 광고 | 없음 | 현재 후보의 광고 식별자 수집 플래그는 꺼져 있다. 활성 구버전까지 동일하다고 판정하지 않는다. |
+| 콘텐츠 등급 | 비게임 앱, 건강과 웰니스, 두 사람의 사적 콘텐츠와 상호작용 있음 | 공개 채팅과 피드 없음. 사용자가 쓰는 메모와 공동 일정, 두 고정 메시지가 있다. IARC의 계산 등급과 국가별 결과는 질문지 저장 후 읽는다. |
+| 연령 대상 | 서비스 최소 17세 기준을 유지 | Console의 16–17, 18+ 구간으로 매핑을 확인한다. 17세 선택지가 없으므로 18세 전용으로 임의 변경하지 않는다. 앱 내 실제 제한과 서비스 약관을 함께 점검한다. |
+| 데이터 보안 | `play-store/policy/data-safety.csv`, `data-safety-declaration.json` | 수집, TLS 암호화, 삭제 요청 지원. Firebase 처리와 사용자가 명시적으로 시작한 파트너 공유는 해당 예외 기준으로 설명한다. 진단은 선택, 진단 식별자와 IP 기반 대략적 지역은 수집에 포함한다. |
+| 계정과 삭제 | 이메일 계정 및 게스트 제공. 앱 내 영구 삭제와 웹 삭제 요청 경로 있음 | `https://www.seorilabs.com/apps/cycle-pair/account-deletion/`. 최종 운영 빌드의 접근과 삭제 동작을 확인한다. |
+| 앱 접근 안내 | 복구 가능한 심사용 두 계정으로 초대와 공유 과정을 설명 | 심사용 실제 계정은 아직 등록 및 로그인 검증되지 않았다. 비밀번호를 이 문서에 저장하지 않는다. |
+
+최종 Data safety 답변은 현재 배포 중인 모든 버전을 포함해야 한다. 기존 내부 테스트 1.0.9가 교체 또는 비활성화되기 전에는 새 후보의 광고 수집 설정만으로 전체 배포본을 판단하지 않는다. 기존 트랙과 실제 버전은 다시 읽어야 한다.
+
+계정은 사용자가 지정한 `magicsih@gmail.com` 소유 앱을 대상으로 한다. 입력 전 개발자 계정의 이름, 유형과 ID, 패키지 소유권을 실시간으로 확인한다. 이 문서는 계정 확인을 대신하지 않는다.
+
+## App Store
+
+| 항목 | 준비 답안 | 근거와 남은 확인 |
+|---|---|---|
+| 건강과 웰니스 | 있음 | 주기와 컨디션, 자기 관리 목적. |
+| 의료 및 치료 정보 | 없음으로 준비 | 질환의 진단과 치료 지침을 제공하지 않는다. 일반적인 주기 추정과 케어 콘텐츠가 실제 Console 정의에 맞는지 최종 문항에서 대조한다. |
+| 사용자 생성 콘텐츠 | 있음 | 사적 메모와 공동 일정. 공개 피드 없음. |
+| 메시지와 채팅 | 직접 의사소통 있음으로 준비 | 별도 자유 채팅 화면은 없지만, 두 사람이 명시적으로 공유하는 메모와 고정 메시지가 있다. `realtimeChat: no`를 이 질문의 ‘없음’으로 옮기지 않는다. |
+| 광고, 도박, 확률형 상품 | 없음 | 신규 판매 비활성. 실제 이미지와 앱 콘텐츠에는 폭력, 성적 또는 약물 묘사 없음. |
+| 제한 없는 웹 접근 | 없음 | 지원 및 개인정보의 특정 링크만 제공하며 임의 웹 브라우징 기능 없음. |
+| 연령 등급 | 계산 결과를 확인하고 기존 18+ 상향 계획 유지 | 최소 연령의 약관과 실제 설정을 최종 확인. 계산 결과를 임의로 만들어 기록하지 않는다. |
+| App Privacy | `app-store.config.json`의 9개 자료 분류 | 계정에 연결, 추적 없음. 건강, 이메일, 사용자 ID, 개인 콘텐츠, 구입 이력, 상호작용, 오류와 성능, 기기 식별자, 대략적 지역. 진단의 선택 여부와 목적을 Console의 세부 분류에 매핑한다. |
+| 수출 규정 | 비면제 암호화 없음 | OS 보안 저장소와 HTTPS/TLS 및 Firebase 전송. 최종 바이너리와 실제 문항 재확인. |
+| 심사 계정 | 미준비 | 자격증명 목록 등록과 실제 로그인 검증 뒤 참조만 연결한다. |
+| EU 거래자 | 기존 거래자 설정 확인 필요 | 계정 소유자의 검증된 주소와 연락처만 사용. 임의 입력 금지. |
+
+App Review 안내 초안: 게스트로 혼자 기록할 수 있으며, 이메일 계정으로 전환해 기록을 복구할 수 있다. 두 시험 계정으로 초대를 수락한 뒤 공유할 항목을 각각 고른다. 기본값은 모두 비공개다. 원본은 작성자만 읽고 상대는 선택한 사본만 본다. 공유를 끄거나 연결을 해제할 수 있다. 설정에서 진단 선택, 데이터 내보내기와 영구 삭제를 제공한다. 의료기기, 진단과 치료, 피임이나 임신 가능성 판단용 앱이 아니다. Plus 신규 판매는 제공하지 않는다.
+
+## 이미지와 제출 전 확인
+
+등록 이미지는 원본 RN 화면의 개발 브라우저 실행에서 새로 캡처한다. 합성 자료만 사용하며 운영 계정이나 인증 화면을 촬영하지 않는다. Play와 App Store는 별도 크기와 언어별 목록으로 관리한다. 이 이미지로 네이티브 SDK, OS 권한, 키보드와 안전 영역 동작을 통과로 판정하지 않는다. App Store 제출 전 실제 iOS 화면과의 일치 여부를 확인한다.
+
+개발 검수 완료 후 네이티브 보안 저장소, 실제 플랫폼 인증과 알림 권한 및 FCM/APNs 중 개발 환경으로 확인할 수 없는 필수 항목을 구체적으로 좁혀 별도 기기 승인을 요청한다. 개발 환경 전체 흐름을 기기에서 그대로 반복하도록 요청하지 않는다.
+
+## 공식 기준
+
+- [Play 건강 기능 신고](https://support.google.com/googleplay/android-developer/answer/14738291?hl=en)
+- [Play 건강 콘텐츠 정책](https://support.google.com/googleplay/android-developer/answer/16679511?hl=en)
+- [Play 신고 문항과 선택값](https://developers.google.com/android-publisher/app-store-review/policy-declarations)
+- [Play 연령 대상](https://support.google.com/googleplay/android-developer/answer/9867159?hl=en)
+- [Apple 연령 등급 정의](https://developer.apple.com/help/app-store-connect/reference/app-information/age-ratings-values-and-definitions/)
+- [Apple 상향 연령 등급](https://developer.apple.com/help/app-store-connect/manage-app-information/set-an-app-age-rating/)
+- [Apple 개인정보 분류](https://developer.apple.com/app-store/app-privacy-details/)
+- [Play 등록 이미지](https://support.google.com/googleplay/android-developer/answer/9866151?hl=en)
+- [Apple 스크린샷 크기](https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications/)
