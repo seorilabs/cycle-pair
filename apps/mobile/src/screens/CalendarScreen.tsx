@@ -384,7 +384,7 @@ export function CalendarScreen() {
   return (
     <Screen contentStyle={styles.content}>
       <View style={styles.header}>
-        <View>
+        <View style={styles.headerTitle}>
           <Text style={styles.eyebrow}>
             {state.paired ? l('함께 보는 일정') : l('나만의 일정')}
           </Text>
@@ -906,10 +906,13 @@ const styles = StyleSheet.create({
   content: { paddingBottom: spacing.xl },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
+    gap: spacing.md,
     marginBottom: spacing.xl,
   },
+  headerTitle: { flexShrink: 1, minWidth: 0 },
   eyebrow: {
     color: colors.primary,
     fontSize: 12,
@@ -918,6 +921,8 @@ const styles = StyleSheet.create({
   },
   title: { color: colors.text, fontSize: 28, fontWeight: '900' },
   privateBadge: {
+    flexShrink: 0,
+    maxWidth: '100%',
     borderRadius: radius.pill,
     backgroundColor: colors.primarySoft,
     paddingHorizontal: spacing.md,
