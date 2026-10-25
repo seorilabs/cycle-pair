@@ -27,3 +27,12 @@ it('keeps a recorded day without a feeling distinct from a missing day',async()=
   expect(view.queryByText('Your story starts here')).toBeNull();
   expect(view.queryByText('Calm')).toBeNull();
 });
+
+it('uses English feeling labels in observed data and accessible summaries',async()=>{
+  const summary=observedRecordSummary([{localDate:'2026-10-25',checkIn:{emotions:['calm','affectionate'],symptoms:[],periodStarted:false,periodEnded:false}}],through);
+  const view=await render(<I18nProvider><WeekRecordCard summary={summary}/><MoodHistoryCard summary={summary} onOpenRecord={jest.fn()}/></I18nProvider>);
+  expect(view.getByLabelText(/Oct 25, 2026, Calm, Affectionate/)).toBeTruthy();
+  expect(view.getByLabelText('Calm, 1 day')).toBeTruthy();
+  expect(view.queryByText('평온')).toBeNull();
+  expect(view.queryByText('애정')).toBeNull();
+});

@@ -1,9 +1,9 @@
 export const emotionalMessages = {
-  'A little space to understand each other.': '오늘의 나를, 조금 더 다정하게.',
+  'A little space to understand each other.': '나답게,\n함께해요',
   'Small notes for yourself. Share only what feels right.':
     '나를 위한 작은 기록. 함께하고 싶은 마음만 나눠요.',
-  'Start with email': '이메일로 시작하기',
-  'Start without an account': '계정 없이 시작하기',
+  'Start with email': '이메일로 시작',
+  'Start without an account': '계정 없이 시작',
   'Connect an account later to recover guest records on another device.':
     '다른 기기에서 기록을 이어가려면 나중에 계정을 연결해 주세요.',
   'Already have an account? Sign in': '이미 계정이 있나요? 로그인',
@@ -12,7 +12,7 @@ export const emotionalMessages = {
     '이메일 계정으로 기록과 파트너 연결을 복구할 수 있어요.',
   'At least 8 characters': '8자 이상 입력해 주세요',
   'Create email account': '이메일 계정 만들기',
-  'What would you like to track?': '어떤 기록이 필요하세요?',
+  'What would you like to track?': '어떤 기록을 할까요?',
   'Start with what you need. Your records are private by default.':
     '내게 필요한 것부터 시작해요. 기록은 기본으로 나만 볼 수 있어요.',
   'Cycle and condition': '주기와 컨디션',
@@ -23,7 +23,7 @@ export const emotionalMessages = {
   'When did your last period start?': '최근 생리는 언제 시작했나요?',
   'How long is your usual cycle?': '보통 며칠 간격인가요?',
   'How many days does your period last?': '생리는 보통 며칠 하나요?',
-  'One small note is enough': '오늘은 한 가지만 남겨도 돼요',
+  'One small note is enough': '가볍게 남겨요',
   'Someone you would like to share with?': '함께 나누고 싶은 사람이 있나요?',
   'Do you have a partner code?': '받은 공유 코드가 있나요?',
   'Make it yours': '내게 맞게 시작하기',

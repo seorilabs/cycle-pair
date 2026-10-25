@@ -27,19 +27,8 @@ import {
 } from '../components/Ui';
 import { useI18n } from '../i18n/I18nProvider';
 import { colors, radius, spacing } from '../theme';
-import { AppIcon, type AppIconName } from '../components/AppArtwork';
-const emotionIcons: Record<import('../app/emotions').EmotionCode, AppIconName> =
-  {
-    calm: 'leaf',
-    happy: 'sun',
-    affectionate: 'heart',
-    anxious: 'cloud',
-    irritable: 'cloud',
-    hurt: 'cloud',
-    lonely: 'moon',
-    drained: 'cup',
-    other: 'journal',
-  };
+import { AppIcon } from '../components/AppArtwork';
+import {emotionArtwork} from '../components/emotionArtwork';
 const symptoms = ['복통', '두통', '피로', '부종', '예민함', '허리 불편'];
 const conditions: NonNullable<DailyCheckIn['condition']>[] = [
   '편안해요',
@@ -138,7 +127,7 @@ export function RecordScreen({
                 disabled && styles.disabled,
               ]}
             >
-              <AppIcon name={emotionIcons[code]} size={32} />
+              <AppIcon name={emotionArtwork[code]} size={32} />
               <Text style={[styles.label, styles.moodLabel]}>
                 {label(code)}
               </Text>

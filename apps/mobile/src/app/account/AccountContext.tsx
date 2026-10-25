@@ -169,7 +169,7 @@ export function AccountProvider({
   });
   const explicitSignOut = useRef(false);
   const intentResolved = useRef(false);
-  const registering = useRef(false);
+  const startingIdentity = useRef(false);
 
   const applyError = useCallback(
     (error: unknown) => {
@@ -224,7 +224,7 @@ export function AccountProvider({
       session => {
         if (!active) return;
         if (
-          registering.current ||
+          startingIdentity.current ||
           !intentResolved.current ||
           (explicitSignOut.current && session)
         )
@@ -411,7 +411,7 @@ export function AccountProvider({
   const registerEmail = useCallback(
     async (rawEmail: string, password: string) => {
       if (
-        registering.current ||
+        startingIdentity.current ||
         state.busy ||
         state.session ||
         state.sessionQuiesced
@@ -419,19 +419,19 @@ export function AccountProvider({
         return false;
       const email = normalizedEmail(rawEmail);
       let createdAccount = false;
+      startingIdentity.current = true;
       try {
         validateEmail(email);
         if (password.length < 8)
           throw new AccountOperationError('account/password-too-short');
-        if (await intentStorage.loadAccountDeletionIntent())
-          throw new AccountOperationError('account/deletion-recovery-active');
-        registering.current = true;
         setState(current => ({
           ...current,
           busy: true,
           error: null,
           notice: null,
         }));
+        if (await intentStorage.loadAccountDeletionIntent())
+          throw new AccountOperationError('account/deletion-recovery-active');
         await intentStorage.markExplicitlySignedOut();
         explicitSignOut.current = true;
         const session = await account.registerEmail(email, password);
@@ -458,7 +458,7 @@ export function AccountProvider({
         applyError(error);
         return false;
       } finally {
-        registering.current = false;
+        startingIdentity.current = false;
       }
     },
     [
@@ -473,17 +473,19 @@ export function AccountProvider({
   );
 
   const startGuest = useCallback(async () => {
+    if (startingIdentity.current || state.busy) return false;
+    startingIdentity.current = true;
     try {
-      const pendingIntent = await intentStorage.loadAccountDeletionIntent();
-      if (pendingIntent || state.deletionRecovery !== 'none') {
-        throw new AccountOperationError('account/deletion-recovery-active');
-      }
       setState(current => ({
         ...current,
         busy: true,
         error: null,
         notice: null,
       }));
+      const pendingIntent = await intentStorage.loadAccountDeletionIntent();
+      if (pendingIntent || state.deletionRecovery !== 'none') {
+        throw new AccountOperationError('account/deletion-recovery-active');
+      }
       const session = await account.startGuest();
       try {
         await intentStorage.clearExplicitSignOut();
@@ -506,8 +508,10 @@ export function AccountProvider({
     } catch (error) {
       applyError(error);
       return false;
+    } finally {
+      startingIdentity.current = false;
     }
-  }, [account, applyError, intentStorage, state.deletionRecovery]);
+  }, [account, applyError, intentStorage, state.busy, state.deletionRecovery]);
 
   const upgradeAnonymous = useCallback(
     async (rawEmail: string, password: string) => {

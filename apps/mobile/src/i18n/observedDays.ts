@@ -18,13 +18,19 @@ export const observedDayMessages = {
   'Today’s note': '오늘의 기록',
   'Record my day': '오늘 기록하기',
   'Edit today’s note': '오늘 기록 수정',
-  'Based on {count} days with a feeling recorded.': '기분을 남긴 {count}일을 기준으로 표시해요.',
+  'Days with a feeling recorded: {count}.': '기분을 남긴 날: {count}일.',
   'You can choose several feelings in a day, so totals may overlap.':
     '하루에 여러 마음을 고를 수 있어 합계가 겹칠 수 있어요.',
   'Your story starts here': '아직 그려지지 않은 하루들',
   'Your days will gather here as you record them.': '첫 기록을 남기면 이곳에 차곡차곡 모여요.',
-  'Write your first note': '첫 기록 남기기',
+  'Write your first note': '기록하기',
   'Your records are here. Add a feeling when it feels right.':
     '남겨둔 기록이 있어요. 마음이 내킬 때 기분도 골라보세요.',
+  'Based on your entered {days}-day cycle. Recorded cycle intervals: 0.':
+    '직접 입력한 {days}일 주기를 기준으로 한 참고 범위예요. 기록으로 확인한 주기 간격은 0개예요.',
+  'Based on 1 recorded cycle interval. Average {days} days.':
+    '기록으로 확인한 주기 간격 1개, 평균 {days}일을 기준으로 표시해요.',
+  'Based on {count} recorded cycle intervals. Average {days} days.':
+    '기록으로 확인한 주기 간격 {count}개, 평균 {days}일을 기준으로 표시해요.',
   'More than one feeling': '여러 마음을 남겼어요',
 } as const;

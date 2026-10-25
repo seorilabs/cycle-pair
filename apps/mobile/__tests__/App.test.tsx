@@ -19,8 +19,8 @@ import { createPlatformPresenceClient } from '../src/platform/presence/PlatformP
 async function render(element: React.ReactElement) {
   const view = await renderNative(element);
   await waitFor(() => expect(view.queryByLabelText('계정 확인 중')).toBeNull());
-  if (view.queryByText('계정 없이 시작하기')) {
-    await fireEvent.press(view.getByText('계정 없이 시작하기'));
+  if (view.queryByText('계정 없이 시작')) {
+    await fireEvent.press(view.getByText('계정 없이 시작'));
   }
   return view;
 }
@@ -100,9 +100,9 @@ describe('CyclePair mobile app', () => {
   it('shows email and guest choices before creating an identity on a fresh install', async () => {
     const view = await renderNative(<App backend={previewCyclePairBackend} />);
     await waitFor(() =>
-      expect(view.getByText('이메일로 시작하기')).toBeTruthy(),
+      expect(view.getByText('이메일로 시작')).toBeTruthy(),
     );
-    expect(view.getByText('계정 없이 시작하기')).toBeTruthy();
+    expect(view.getByText('계정 없이 시작')).toBeTruthy();
     expect(previewAccountAdapter.currentSession()).toBeNull();
     expect(addNetworkListener).not.toHaveBeenCalled();
   });
@@ -123,7 +123,7 @@ describe('CyclePair mobile app', () => {
       'temporary-test-password',
     );
     await expect(hardwareBack.press()).resolves.toBe(true);
-    expect(view.getByText('계정 없이 시작하기')).toBeTruthy();
+    expect(view.getByText('계정 없이 시작')).toBeTruthy();
     await expect(hardwareBack.press()).resolves.toBe(false);
     await fireEvent.press(view.getByTestId('account-email-start'));
     expect(view.getByLabelText('로그인 이메일').props.value).toBe(
@@ -849,6 +849,23 @@ describe('CyclePair mobile app', () => {
     await waitFor(() => expect(notificationClient.enable).toHaveBeenCalled());
     await waitFor(() => expect(notificationClient.disable).toHaveBeenCalled());
     expect(notificationClient.watchTokenRefresh).not.toHaveBeenCalled();
+  });
+
+  it('shows denied notification feedback inside the open notification section', async () => {
+    const notificationClient = {
+      enable: jest.fn(async () => 'denied' as const),
+      disable: jest.fn(async () => undefined),
+      disableForAccountExit: jest.fn(async () => undefined),
+      watchTokenRefresh: jest.fn(() => jest.fn()),
+      watchOpened: jest.fn(() => jest.fn()),
+    };
+    const view = await render(<App backend={previewCyclePairBackend} notificationClient={notificationClient}/>);
+    await finishSoloSetup(view);
+    await fireEvent.press(view.getByLabelText('설정'));
+    await fireEvent.press(view.getByText('알림과 개인정보'));
+    await fireEvent(view.getByLabelText('중립적인 잠금화면 알림'), 'valueChange', true);
+    await waitFor(() => expect(notificationClient.enable).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(view.getByTestId('notification-feedback')).toHaveTextContent('알림 권한이 허용되지 않았습니다. 기기 설정에서 다시 켤 수 있어요.'));
   });
 
   it.each([2, 3])(

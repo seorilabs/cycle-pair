@@ -12,12 +12,16 @@ import type {
 } from '../../domain/account/AccountPort';
 import type { AccountSessionCleanup } from '../../domain/account/AccountSessionCleanup';
 import { AccountSettingsCard } from '../../components/AccountSettingsCard';
-import { asyncStorageAccountSessionIntentStorage } from '../../platform/local/AccountSessionIntentStorage';
+import {
+  asyncStorageAccountSessionIntentStorage,
+  type AccountSessionIntentStorage,
+} from '../../platform/local/AccountSessionIntentStorage';
 import { AccountGateScreen } from '../../screens/AccountGateScreen';
 import {
   AccountProvider,
   accountErrorMessage,
   useAccount,
+  type AccountContextValue,
 } from './AccountContext';
 
 let mockAccountLocale: 'ko' | 'en' = 'ko';
@@ -149,6 +153,43 @@ function AccountHarness() {
   return state.session ? <AccountSettingsCard /> : <AccountGateScreen />;
 }
 
+function CaptureAccount({
+  capture,
+}: {
+  capture(value: AccountContextValue): void;
+}) {
+  const value = useAccount();
+  React.useEffect(() => capture(value), [capture, value]);
+  return null;
+}
+
+async function initialAccountCommands(
+  account: FakeAccountPort,
+  intentStorage: AccountSessionIntentStorage,
+) {
+  const commands = { current: null as AccountContextValue | null };
+  await render(
+    <AccountProvider account={account} intentStorage={intentStorage}>
+      <CaptureAccount
+        capture={value => {
+          commands.current = value;
+        }}
+      />
+    </AccountProvider>,
+  );
+  await waitFor(() => expect(commands.current?.state.hydrating).toBe(false));
+  return commands;
+}
+
+function startInitialAccount(
+  commands: AccountContextValue,
+  kind: 'email' | 'guest',
+) {
+  return kind === 'email'
+    ? commands.registerEmail('new@example.com', 'public-test-password')
+    : commands.startGuest();
+}
+
 function EmailLocaleHarness() {
   const {
     resendVerification,
@@ -231,6 +272,152 @@ describe('AccountProvider account flows', () => {
 
   afterEach(() => jest.restoreAllMocks());
 
+  it.each([
+    ['email', 'email'],
+    ['guest', 'guest'],
+    ['email', 'guest'],
+    ['guest', 'email'],
+  ] as const)(
+    '첫 의도 조회가 대기 중이면 %s 뒤의 %s 시작을 직렬화한다',
+    async (first, second) => {
+      const account = new FakeAccountPort(null);
+      let release!: () => void;
+      const pending = new Promise<null>(resolve => {
+        release = () => resolve(null);
+      });
+      const loadAccountDeletionIntent = jest
+        .fn()
+        .mockResolvedValueOnce(null)
+        .mockImplementation(() => pending);
+      const commands = await initialAccountCommands(account, {
+        ...asyncStorageAccountSessionIntentStorage,
+        loadAccountDeletionIntent,
+      });
+      let requests: Promise<boolean>[] = [];
+      await act(async () => {
+        requests = [
+          startInitialAccount(commands.current!, first),
+          startInitialAccount(commands.current!, second),
+        ];
+      });
+      try {
+        expect(loadAccountDeletionIntent).toHaveBeenCalledTimes(2);
+        expect(commands.current?.state.busy).toBe(true);
+        expect(commands.current?.state.session).toBeNull();
+        expect(account.startGuest).not.toHaveBeenCalled();
+        expect(account.registerEmail).not.toHaveBeenCalled();
+      } finally {
+        await act(async () => {
+          release();
+          await Promise.all(requests);
+        });
+      }
+      await expect(Promise.all(requests)).resolves.toEqual([true, false]);
+      expect(account.registerEmail).toHaveBeenCalledTimes(
+        first === 'email' ? 1 : 0,
+      );
+      expect(account.startGuest).toHaveBeenCalledTimes(
+        first === 'guest' ? 1 : 0,
+      );
+      expect(commands.current?.state.busy).toBe(false);
+      expect(commands.current?.state.error).toBeNull();
+      expect(commands.current?.state.session?.uid).toBe(
+        first === 'email' ? 'new-email-uid' : 'new-guest-uid',
+      );
+      await expect(
+        asyncStorageAccountSessionIntentStorage.wasExplicitlySignedOut(),
+      ).resolves.toBe(false);
+    },
+  );
+
+  it('초기 의도 읽기 실패 뒤에는 다른 초기 계정 작업으로 다시 시도할 수 있다', async () => {
+    const account = new FakeAccountPort(null);
+    const loadAccountDeletionIntent = jest
+      .fn()
+      .mockResolvedValueOnce(null)
+      .mockRejectedValueOnce(new Error('unreadable'))
+      .mockResolvedValue(null);
+    const markExplicitlySignedOut = jest.fn(
+      asyncStorageAccountSessionIntentStorage.markExplicitlySignedOut,
+    );
+    const commands = await initialAccountCommands(account, {
+      ...asyncStorageAccountSessionIntentStorage,
+      loadAccountDeletionIntent,
+      markExplicitlySignedOut,
+    });
+    await act(async () => {
+      expect(await commands.current!.startGuest()).toBe(false);
+    });
+    expect(commands.current?.state.busy).toBe(false);
+    expect(account.startGuest).not.toHaveBeenCalled();
+    expect(markExplicitlySignedOut).not.toHaveBeenCalled();
+    await act(async () => {
+      expect(await startInitialAccount(commands.current!, 'email')).toBe(true);
+    });
+    expect(account.registerEmail).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['invalid', 'public-test-password'],
+    ['new@example.com', 'short'],
+  ])(
+    '가입 사전 검증 실패 %s 뒤에도 게스트 시작 잠금을 해제한다',
+    async (email, password) => {
+      const account = new FakeAccountPort(null);
+      const commands = await initialAccountCommands(
+        account,
+        asyncStorageAccountSessionIntentStorage,
+      );
+      await act(async () => {
+        expect(await commands.current!.registerEmail(email, password)).toBe(
+          false,
+        );
+      });
+      expect(account.registerEmail).not.toHaveBeenCalled();
+      await act(async () => {
+        expect(await commands.current!.startGuest()).toBe(true);
+      });
+      expect(account.startGuest).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('삭제 의도가 있으면 초기 SDK와 종료 표식을 바꾸지 않고 매번 잠금을 해제한다', async () => {
+    const account = new FakeAccountPort(null);
+    const loadAccountDeletionIntent = jest
+      .fn()
+      .mockResolvedValueOnce(null)
+      .mockResolvedValue({
+        schemaVersion: 2,
+        phase: 'deletion-preparing',
+        uid: 'pending-owner',
+      });
+    const markExplicitlySignedOut = jest.fn();
+    const clearExplicitSignOut = jest.fn();
+    const clearAccountDeletionIntent = jest.fn();
+    const commands = await initialAccountCommands(account, {
+      ...asyncStorageAccountSessionIntentStorage,
+      loadAccountDeletionIntent,
+      markExplicitlySignedOut,
+      clearExplicitSignOut,
+      clearAccountDeletionIntent,
+    });
+    await act(async () => {
+      expect(await startInitialAccount(commands.current!, 'email')).toBe(false);
+    });
+    await act(async () => {
+      expect(await startInitialAccount(commands.current!, 'guest')).toBe(false);
+    });
+    expect(loadAccountDeletionIntent).toHaveBeenCalledTimes(3);
+    expect(commands.current?.state.busy).toBe(false);
+    expect(account.startGuest).not.toHaveBeenCalled();
+    expect(account.registerEmail).not.toHaveBeenCalled();
+    expect(account.signOut).not.toHaveBeenCalled();
+    expect(account.purgeLocalPrivateData).not.toHaveBeenCalled();
+    expect(markExplicitlySignedOut).not.toHaveBeenCalled();
+    expect(clearExplicitSignOut).not.toHaveBeenCalled();
+    expect(clearAccountDeletionIntent).not.toHaveBeenCalled();
+  });
+
   it('첫 진입에서는 자동 게스트 생성 없이 이메일과 게스트 선택을 기다린다', async () => {
     const account = new FakeAccountPort(null);
     const view = await render(
@@ -239,9 +426,9 @@ describe('AccountProvider account flows', () => {
       </AccountProvider>,
     );
     await waitFor(() =>
-      expect(view.getByText('이메일로 시작하기')).toBeTruthy(),
+      expect(view.getByText('이메일로 시작')).toBeTruthy(),
     );
-    expect(view.getByText('계정 없이 시작하기')).toBeTruthy();
+    expect(view.getByText('계정 없이 시작')).toBeTruthy();
     expect(account.initialize).not.toHaveBeenCalled();
     expect(account.startGuest).not.toHaveBeenCalled();
   });
@@ -263,9 +450,9 @@ describe('AccountProvider account flows', () => {
       </AccountProvider>,
     );
     await waitFor(() =>
-      expect(view.getByText('이메일로 시작하기')).toBeTruthy(),
+      expect(view.getByText('이메일로 시작')).toBeTruthy(),
     );
-    await fireEvent.press(view.getByText('이메일로 시작하기'));
+    await fireEvent.press(view.getByText('이메일로 시작'));
     await fireEvent.changeText(
       view.getByLabelText('로그인 이메일'),
       ' NEW@example.com ',
@@ -300,9 +487,9 @@ describe('AccountProvider account flows', () => {
       </AccountProvider>,
     );
     await waitFor(() =>
-      expect(view.getByText('이메일로 시작하기')).toBeTruthy(),
+      expect(view.getByText('이메일로 시작')).toBeTruthy(),
     );
-    await fireEvent.press(view.getByText('이메일로 시작하기'));
+    await fireEvent.press(view.getByText('이메일로 시작'));
     await fireEvent.changeText(
       view.getByLabelText('로그인 이메일'),
       'existing@example.com',
@@ -454,7 +641,7 @@ describe('AccountProvider account flows', () => {
     await act(async () => destructive?.onPress?.());
 
     await waitFor(() =>
-      expect(view.getByText('오늘의 나를, 조금 더 다정하게.')).toBeTruthy(),
+      expect(view.getByTestId('account-email-start')).toBeTruthy(),
     );
     expect(account.initialize).toHaveBeenCalledTimes(1);
     expect(account.signOut).toHaveBeenCalledTimes(1);
@@ -480,7 +667,7 @@ describe('AccountProvider account flows', () => {
       </AccountProvider>,
     );
     await waitFor(() =>
-      expect(reopened.getByText('오늘의 나를, 조금 더 다정하게.')).toBeTruthy(),
+      expect(reopened.getByTestId('account-email-start')).toBeTruthy(),
     );
     expect(account.initialize).toHaveBeenCalledTimes(1);
 
@@ -537,7 +724,7 @@ describe('AccountProvider account flows', () => {
     await act(async () => destructive?.onPress?.());
 
     await waitFor(() =>
-      expect(view.getByText('오늘의 나를, 조금 더 다정하게.')).toBeTruthy(),
+      expect(view.getByTestId('account-email-start')).toBeTruthy(),
     );
     expect(clearAccountDeletionIntent).not.toHaveBeenCalled();
     await expect(
@@ -551,7 +738,7 @@ describe('AccountProvider account flows', () => {
       </AccountProvider>,
     );
     await waitFor(() =>
-      expect(reopened.getByText('오늘의 나를, 조금 더 다정하게.')).toBeTruthy(),
+      expect(reopened.getByTestId('account-email-start')).toBeTruthy(),
     );
     expect(account.initialize).toHaveBeenCalledTimes(1);
   });
@@ -582,10 +769,10 @@ describe('AccountProvider account flows', () => {
     );
     await act(async () => destructive?.onPress?.());
     await waitFor(() =>
-      expect(view.getByText('오늘의 나를, 조금 더 다정하게.')).toBeTruthy(),
+      expect(view.getByTestId('account-email-start')).toBeTruthy(),
     );
 
-    await fireEvent.press(view.getByText('계정 없이 시작하기'));
+    await fireEvent.press(view.getByText('계정 없이 시작'));
     await waitFor(() => expect(view.getByText('게스트 기록')).toBeTruthy());
     expect(account.startGuest).toHaveBeenCalledTimes(1);
     expect(view.getByText('새 게스트 기록을 시작했습니다.')).toBeTruthy();
@@ -736,7 +923,7 @@ describe('AccountProvider account flows', () => {
     );
     await act(async () => destructive?.onPress?.());
     await waitFor(() =>
-      expect(view.getByText('오늘의 나를, 조금 더 다정하게.')).toBeTruthy(),
+      expect(view.getByTestId('account-email-start')).toBeTruthy(),
     );
     expect(account.deleteMyAccount).toHaveBeenCalledTimes(1);
     expect(account.beginAccountDeletion).toHaveBeenCalledTimes(1);
@@ -784,7 +971,7 @@ describe('AccountProvider account flows', () => {
     await act(async () => destructive?.onPress?.());
 
     await waitFor(() =>
-      expect(view.getByText('오늘의 나를, 조금 더 다정하게.')).toBeTruthy(),
+      expect(view.getByTestId('account-email-start')).toBeTruthy(),
     );
     expect(account.reauthenticateWithPassword).not.toHaveBeenCalled();
     expect(account.deleteMyAccount).toHaveBeenCalledTimes(1);
@@ -796,7 +983,7 @@ describe('AccountProvider account flows', () => {
       view.getByText('계정과 이 기기에 저장된 데이터를 삭제했습니다.'),
     ).toBeTruthy();
 
-    await fireEvent.press(view.getByText('계정 없이 시작하기'));
+    await fireEvent.press(view.getByText('계정 없이 시작'));
     await waitFor(() => expect(view.getByText('게스트 기록')).toBeTruthy());
     expect(account.startGuest).toHaveBeenCalledTimes(1);
   });
@@ -848,7 +1035,7 @@ describe('AccountProvider account flows', () => {
     );
     await act(async () => destructive?.onPress?.());
     await waitFor(() =>
-      expect(view.getByText('오늘의 나를, 조금 더 다정하게.')).toBeTruthy(),
+      expect(view.getByTestId('account-email-start')).toBeTruthy(),
     );
     expect(account.deleteMyAccount).toHaveBeenCalledTimes(2);
     expect(account.purgeLocalPrivateData).toHaveBeenCalledWith(
@@ -927,7 +1114,7 @@ describe('AccountProvider account flows', () => {
       </AccountProvider>,
     );
     await waitFor(() =>
-      expect(reopened.getByText('오늘의 나를, 조금 더 다정하게.')).toBeTruthy(),
+      expect(reopened.getByTestId('account-email-start')).toBeTruthy(),
     );
     expect(account.initialize).toHaveBeenCalledTimes(1);
     expect(account.purgeLocalPrivateData).toHaveBeenCalledTimes(2);
@@ -1032,7 +1219,7 @@ describe('AccountProvider account flows', () => {
     );
 
     await waitFor(() =>
-      expect(view.getByText('오늘의 나를, 조금 더 다정하게.')).toBeTruthy(),
+      expect(view.getByTestId('account-email-start')).toBeTruthy(),
     );
     expect(account.getAccountDeletionStatus).toHaveBeenCalledWith(
       'deleted-uid',

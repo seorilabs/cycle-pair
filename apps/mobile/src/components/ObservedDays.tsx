@@ -1,17 +1,12 @@
 import React from 'react';
 import {StyleSheet, Text, View} from 'react-native';
-import type {EmotionCode} from '../app/emotions';
-import {emotionLabel} from '../app/emotions';
 import type {ObservedRecordSummary} from '../app/observedRecordSummary';
 import {formatDate, useI18n} from '../i18n/I18nProvider';
 import {colors, radius, spacing} from '../theme';
 import {AppIcon} from './AppArtwork';
+import {emotionArtwork} from './emotionArtwork';
 import {Body, Card, PrimaryButton} from './Ui';
 
-export const emotionArtwork: Record<EmotionCode, React.ComponentProps<typeof AppIcon>['name']> = {
-  calm: 'leaf', happy: 'sun', affectionate: 'heart', anxious: 'cloud',
-  irritable: 'cloud', hurt: 'cloud', lonely: 'moon', drained: 'moon', other: 'journal',
-};
 export function WeekRecordCard({summary}: {summary: ObservedRecordSummary}) {
   const {t, locale, label} = useI18n();
   return (
@@ -23,7 +18,7 @@ export function WeekRecordCard({summary}: {summary: ObservedRecordSummary}) {
       <View style={styles.week}>
         {summary.days.map(day => {
           const state = day.recorded
-            ? day.emotions.length ? day.emotions.map(code => label(emotionLabel(code))).join(', ') : t('No feeling selected')
+            ? day.emotions.length ? day.emotions.map(label).join(', ') : t('No feeling selected')
             : t('No record');
           return (
             <View key={day.localDate} style={styles.day} accessible accessibilityLabel={`${formatDate(day.localDate, locale)}, ${state}`}>
@@ -60,7 +55,7 @@ export function MoodHistoryCard({summary, onOpenRecord}: {summary: ObservedRecor
       ) : (
         <View style={styles.chart}>
           {summary.emotions.map(row => {
-            const name = label(emotionLabel(row.code));
+            const name = label(row.code);
             return (
               <View key={row.code} style={styles.row} accessible accessibilityLabel={`${name}, ${row.days === 1 ? t('1 day') : t('{count} days', {count:row.days})}`}>
                 <View style={styles.barLabel}><AppIcon name={emotionArtwork[row.code]} size={19}/><Text style={styles.emotion}>{name}</Text></View>
@@ -71,7 +66,7 @@ export function MoodHistoryCard({summary, onOpenRecord}: {summary: ObservedRecor
               </View>
             );
           })}
-          <Text style={styles.range}>{t('Based on {count} days with a feeling recorded.',{count:summary.moodRecordedDays})}</Text>
+          <Text style={styles.range}>{t('Days with a feeling recorded: {count}.',{count:summary.moodRecordedDays})}</Text>
           <Text style={styles.range}>{t('You can choose several feelings in a day, so totals may overlap.')}</Text>
         </View>
       )}

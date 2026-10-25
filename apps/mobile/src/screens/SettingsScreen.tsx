@@ -484,6 +484,9 @@ export function SettingsScreen() {
           detail={privacyDetail}
         >
           <Card style={styles.rowsCard}>
+            {backendError ? (
+              <Text accessibilityRole="alert" testID="notification-feedback" style={styles.syncError}>{l(backendError)}</Text>
+            ) : null}
             <ToggleRow
               title={l('중립적인 잠금화면 알림')}
               description={
@@ -679,7 +682,7 @@ export function SettingsScreen() {
         </SettingsAccordionSection>
       </View>
 
-      {backendError ? (
+      {backendError && openSection !== 'notifications' ? (
         <Text style={styles.syncError}>{l(backendError)}</Text>
       ) : null}
     </Screen>
@@ -797,7 +800,9 @@ const styles = StyleSheet.create({
   },
   timeInput: {
     flex: 1,
-    minHeight: 44,
+    minWidth: 0,
+    width: 0,
+    minHeight: 48,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 10,

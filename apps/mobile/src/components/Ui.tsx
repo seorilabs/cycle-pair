@@ -473,6 +473,8 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     minHeight: 56,
+    borderWidth: 1,
+    borderColor: colors.primaryDark,
     borderRadius: radius.md,
     backgroundColor: colors.primaryDark,
     alignItems: 'center',
@@ -482,7 +484,7 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: { color: '#FFFFFF', fontSize: 17, fontWeight: '700' },
   secondaryButton: {
-    minHeight: 52,
+    minHeight: 56,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.primarySoft,
@@ -490,11 +492,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
   },
-  secondaryButtonCompact: { minHeight: 48, paddingHorizontal: spacing.lg },
+  secondaryButtonCompact: { minHeight: 48, paddingHorizontal: spacing.lg, paddingVertical: 0 },
   secondaryButtonText: {
     color: colors.primaryDark,
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
   },
   dangerButton: {
