@@ -2,7 +2,11 @@ import { useI18n } from '../i18n/I18nProvider';
 import { parseLocalDate } from '@cyclepair/product-core';
 import React, { useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { CycleSeed, useCyclePair } from '../app/CyclePairStore';
+import {
+  type CycleSeed,
+  type CyclePairState,
+  useCyclePair,
+} from '../app/CyclePairStore';
 import { LocalDatePickerField } from '../components/LocalDatePickerField';
 import {
   Body,
@@ -30,19 +34,36 @@ function localToday(): string {
   ].join('-');
 }
 
-export function SetupScreen() {
-  const { l } = useI18n();
-  const { state, backendBusy, backendError, completeSetup, goBack } =
-    useCyclePair();
-  const [isLogger, setLogger] = useState(state.isLogger);
-  const [hasCycleSeed, setHasCycleSeed] = useState(state.hasCycleSeed);
-  const [seed, setSeed] = useState<CycleSeed>(state.seed);
-  const [consentAccepted, setConsentAccepted] = useState(
-    hasCurrentSensitiveHealthConsent(
+export interface SetupDraft {
+  readonly isLogger: boolean;
+  readonly hasCycleSeed: boolean;
+  readonly seed: CycleSeed;
+  readonly consentAccepted: boolean;
+}
+
+export function createSetupDraft(state: CyclePairState): SetupDraft {
+  return {
+    isLogger: state.isLogger,
+    hasCycleSeed: state.hasCycleSeed,
+    seed: { ...state.seed },
+    consentAccepted: hasCurrentSensitiveHealthConsent(
       state.sensitiveDataConsentAcceptedAt,
       state.sensitiveDataConsentVersion,
     ),
-  );
+  };
+}
+
+export function SetupScreen({
+  draft,
+  onDraftChange,
+}: {
+  draft: SetupDraft;
+  onDraftChange(draft: SetupDraft): void;
+}) {
+  const { l } = useI18n();
+  const { state, backendBusy, backendError, completeSetup, goBack } =
+    useCyclePair();
+  const { isLogger, hasCycleSeed, seed, consentAccepted } = draft;
   const [saveAttempted, setSaveAttempted] = useState(false);
   const submittingRef = useRef(false);
   const roleLocked = hasCurrentSensitiveHealthConsent(
@@ -79,7 +100,7 @@ export function SetupScreen() {
   return (
     <Screen contentStyle={styles.content}>
       <View style={styles.header}>
-        <TextButton label={l('이전')} onPress={goBack} />
+        <TextButton label={l('이전')} disabled={backendBusy} onPress={goBack} />
         <Text style={styles.step}>{l('시작 설정')}</Text>
       </View>
       <Title>
@@ -100,7 +121,7 @@ export function SetupScreen() {
             disabled: roleLocked || backendBusy,
           }}
           disabled={roleLocked || backendBusy}
-          onPress={() => setLogger(true)}
+          onPress={() => onDraftChange({ ...draft, isLogger: true })}
           style={[
             styles.roleCard,
             isLogger && styles.roleCardSelected,
@@ -120,7 +141,7 @@ export function SetupScreen() {
             disabled: roleLocked || backendBusy,
           }}
           disabled={roleLocked || backendBusy}
-          onPress={() => setLogger(false)}
+          onPress={() => onDraftChange({ ...draft, isLogger: false })}
           style={[
             styles.roleCard,
             !isLogger && styles.roleCardSelected,
@@ -153,7 +174,9 @@ export function SetupScreen() {
               )}
               value={hasCycleSeed}
               disabled={backendBusy}
-              onValueChange={setHasCycleSeed}
+              onValueChange={value =>
+                onDraftChange({ ...draft, hasCycleSeed: value })
+              }
             />
             {hasCycleSeed ? (
               <>
@@ -164,7 +187,10 @@ export function SetupScreen() {
                     disabled={backendBusy}
                     maximumDate={parseLocalDate(today)}
                     onChange={lastPeriodStart =>
-                      setSeed(current => ({ ...current, lastPeriodStart }))
+                      onDraftChange({
+                        ...draft,
+                        seed: { ...seed, lastPeriodStart },
+                      })
                     }
                     testID="last-period-start-date-picker"
                     value={parseLocalDate(seed.lastPeriodStart)}
@@ -183,7 +209,10 @@ export function SetupScreen() {
                   max={45}
                   disabled={backendBusy}
                   onChange={averageCycleLength =>
-                    setSeed(current => ({ ...current, averageCycleLength }))
+                    onDraftChange({
+                      ...draft,
+                      seed: { ...seed, averageCycleLength },
+                    })
                   }
                 />
                 <Stepper
@@ -194,7 +223,10 @@ export function SetupScreen() {
                   max={10}
                   disabled={backendBusy}
                   onChange={averagePeriodLength =>
-                    setSeed(current => ({ ...current, averagePeriodLength }))
+                    onDraftChange({
+                      ...draft,
+                      seed: { ...seed, averagePeriodLength },
+                    })
                   }
                 />
               </>
@@ -230,7 +262,9 @@ export function SetupScreen() {
         testID="setup-consent"
         accessibilityState={{ checked: consentAccepted, disabled: backendBusy }}
         disabled={backendBusy}
-        onPress={() => setConsentAccepted(value => !value)}
+        onPress={() =>
+          onDraftChange({ ...draft, consentAccepted: !consentAccepted })
+        }
         style={[
           styles.consentCard,
           consentAccepted && styles.consentCardSelected,
