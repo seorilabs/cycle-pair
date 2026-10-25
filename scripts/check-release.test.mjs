@@ -1793,6 +1793,10 @@ test("무료 출시 설정 오류를 마켓마다 한 번만 보고한다", asyn
   const root = await mkdtemp(path.join(tmpdir(), "cyclepair-free-launch-drift-"));
   t.after(() => rm(root, {recursive: true, force: true}));
   await createReadyFixture(root);
+  const readiness = await readJsonFixture(root, "release/readiness.json");
+  readiness.targetMarkets.googlePlay = {included: true, ...verified()};
+  readiness.targetMarkets.appStore = {included: true, ...verified()};
+  await write(root, "release/readiness.json", readiness);
   for (const file of ["play-store/google-play.config.json", "app-store/app-store.config.json"]) {
     const config = await readJsonFixture(root, file);
     config.monetization.salesEnabled = true;
