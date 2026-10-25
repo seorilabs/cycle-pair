@@ -6,6 +6,7 @@
 - 관련 작업: [Issue #152](https://github.com/seorilabs/cycle-pair/issues/152)
 - 화면 원본: [조작 가능한 설계 미리보기](preview.html), 검수 계획: [test-plan.json](test-plan.json)
 - 선행 작업: [마켓 신고와 이미지 등록 완료](../../launch/market-registration-20261025.md), PR #151 병합
+- 2026-10-25 추가 요청: [간편로그인과 기록 복구 제안](account-design.md). 로그인 수단을 선택한 뒤 화면과 테스트 계획을 통합한다. 기존 설계 승인 질문에 소셜 인증 설정과 네이티브 검증이 포함된 것으로 간주하지 않는다.
 
 ## 목적과 관찰 근거
 
