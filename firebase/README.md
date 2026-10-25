@@ -18,11 +18,6 @@ flowchart LR
   F --> N[/users/uid/notificationDevices/tokenHash]
   P -->|meaningful shared change| M[neutral FCM to active partner]
   E -->|new mutation only| M
-  A -->|callable + store evidence| V[server subscription verification]
-  V --> G[Google subscriptionsv2]
-  V --> I[Apple JWS + Server API]
-  G --> U[/subscriptions/uid]
-  I --> U
 ```
 
 ## 데이터 경계
@@ -41,9 +36,6 @@ flowchart LR
 - `accountDeletionStates/{uid}`: 계정 삭제가 시작된 UID의 모든 쓰기와 새 Pair 연결을 차단하고 부분 실패 재시도를 가능하게 하는 서버 전용 상태. 삭제 준비 중에만 256-bit 복구 receipt 원문을 보관해 응답 유실 시 같은 Auth 사용자가 다시 받을 수 있게 하고, 삭제 시작 후에는 SHA-256 hash만 남긴다. Auth 삭제 뒤에도 완료 tombstone과 hash를 영구 유지해 만료 전 ID token의 데이터 재생성을 막고 receipt 소유 기기의 완료 조회를 허용한다.
 - `accountExportTickets/{sha256(token)}`: 5분 만료·단회 내보내기 token의 hash·owner·expiry 메타데이터만 저장, 모든 클라이언트 접근 금지
 - `accountExportStates/{uid}`: 사용자당 최신 내보내기 ticket 하나만 유지하고 재발급·계정 삭제 시 이전 ticket을 폐기하는 서버 전용 pointer
-- `subscriptions/{uid}`: Google/Apple 서버 검증 결과를 정규화한 본인 읽기·서버 쓰기 전용 snapshot
-- `purchaseStates/{uid}`: Apple `appAccountToken`과 Google `obfuscatedExternalAccountId`에 공통으로 쓰는 안정적 UUID, 본인 읽기·서버 쓰기 전용
-- `purchaseTokens/{sha256(provider:stablePurchaseId)}`: raw receipt/token 없이 cross-UID replay를 차단하는 binding, 해당 owner만 읽기·서버 쓰기 전용
 - `notificationTokens/{uid}`: 이전 schema에서 남았을 수 있는 token 문서를 계정 삭제 인벤토리가 함께 제거하는 legacy compatibility cleanup 경로. 신규 등록·갱신은 하지 않으며 현재 source of truth는 `/users/{uid}/notificationDevices/{sha256(token)}`
 
 Firestore 경로는 collection/document가 교차해야 하므로 기획서의 `/privateCycles`, `/privateDailyLogs` 표기는 실제 구현에서 마지막 record ID가 붙는 subcollection으로 해석한다.
@@ -123,7 +115,7 @@ FCM data payload는 정확히 `schemaVersion`, `type`, `destination` 세 필드�
 
 IAP와 구독 구매, 스토어 영수증 확인 및 알림 처리는 제거했다. 모든 기록 기능은 결제 상태와 무관하게 제공한다. 첫 출시는 광고도 표시하지 않으며 전면광고와 보상광고는 후속 계획이다.
 
-운영에 남아 있을 수 있는 과거 상품과 자료, 비밀값은 이 변경으로 삭제하지 않는다. 기존 계정 삭제 요청에서는 과거 구매 자료도 기존 범위로 정리한다. 새 구매 상품 생성과 결제 기능 활성화 절차는 현재 출시 범위에 없다.
+운영에 남아 있을 수 있는 과거 상품과 자료, 비밀값은 이 변경으로 삭제하지 않는다. `subscriptions`, `purchaseStates`와 `purchaseTokens`는 새로 생성하거나 클라이언트가 읽지 않으며, 기존 계정 삭제 계약의 과거 자료 정리에만 사용한다. 기존 계정 삭제 요청에서는 과거 구매 자료도 기존 범위로 정리한다. 새 구매 상품 생성과 결제 기능 활성화 절차는 현재 출시 범위에 없다.
 
 ## 내보내기·계정 삭제 계약
 
@@ -181,7 +173,7 @@ Seorilabs 조직은 Domain Restricted Sharing으로 `allUsers` IAM binding을 �
 Functions 재배포 후 다음 상태를 반드시 재확인한다.
 
 ```bash
-for service in createpairinvite acceptpairinvite revokepair acknowledgecachetombstone upsertpairevent deletepairevent requestaccountdataexport downloadaccountdataexport beginaccountdeletion getaccountdeletionstatus deletemyaccount registernotificationdevice unregisternotificationdevice getpurchaseaccounttoken verifysubscriptionpurchase handleappstoreservernotificationv2; do
+for service in createpairinvite acceptpairinvite revokepair acknowledgecachetombstone upsertpairevent deletepairevent requestaccountdataexport downloadaccountdataexport beginaccountdeletion getaccountdeletionstatus deletemyaccount registernotificationdevice unregisternotificationdevice; do
   gcloud run services update "$service" \
     --project=seorilabs-cyclepair-prod \
     --region=asia-northeast3 \
@@ -193,7 +185,7 @@ gcloud functions list --v2 \
   --regions=asia-northeast3
 ```
 
-현재 source 전체와 배포 fingerprint가 같은지는 아직 새 배포 evidence로 검증하지 않았다. 다만 2026-08-06 운영 live smoke에서 현재 Rules 문서 계약으로 Platform Custom Token, callable, 3종 projection trigger, owner-private deny, revoke·tombstone ack와 cleanup을 통과했고, 누락된 runtime `roles/datastore.user` 보정 뒤 예약 함수 3종도 모두 HTTP 200으로 확인했다. 배포 승인 전에는 나머지 HTTPS export 경계, legacy `exportMyData` 제거, FCM/APNs, 구독과 정확한 deployment source fingerprint를 계속 별도 gate로 둔다.
+현재 source 전체와 배포 fingerprint가 같은지는 아직 새 배포 evidence로 검증하지 않았다. 다만 2026-08-06 운영 live smoke에서 현재 Rules 문서 계약으로 Platform Custom Token, callable, 3종 projection trigger, owner-private deny, revoke·tombstone ack와 cleanup을 통과했고, 누락된 runtime `roles/datastore.user` 보정 뒤 예약 함수 3종도 모두 HTTP 200으로 확인했다. 배포 승인 전에는 나머지 HTTPS export 경계, legacy `exportMyData` 제거, FCM/APNs와 정확한 deployment source fingerprint를 계속 별도 gate로 둔다.
 
 실제 smoke는 prod project ID와 명시적 opt-in을 강제하며 UID, ID token, Custom Token, 초대 token을 출력하지 않는다. 플랫폼 Custom Token 발급과 Firebase 교환을 포함하고 성공과 실패 모두 생성한 플랫폼 사용자·Firebase 사용자·문서를 정리한다.
 

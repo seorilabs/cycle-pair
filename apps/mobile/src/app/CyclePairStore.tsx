@@ -235,7 +235,7 @@ function daysAgo(count: number): string {
  * 저장되는 seed의 평균 주기 길이.
  *
  * 홈 예측과 같은 도메인 식(`calculateAverageCycleLength`)을 쓴다. 다만 이 값은
- * 파트너에게 전송되는 seed라서 무료 정책의 lookback 컷오프를 적용하지 않고
+ * 파트너에게 전송되는 seed라서 화면 조회의 lookback 컷오프를 적용하지 않고
  * 관측된 전체 기록을 넘긴다. 컷오프는 화면 표시 정책이지 저장 값의 정의가
  * 아니다.
  */
