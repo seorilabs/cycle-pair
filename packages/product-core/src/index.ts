@@ -7,5 +7,4 @@ export * from "./domain/prediction.js";
 export * from "./domain/sharing.js";
 export * from "./domain/care-tips.js";
 export * from "./domain/notifications.js";
-export * from "./domain/entitlements.js";
 export * from "./ports/index.js";

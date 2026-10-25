@@ -9,8 +9,7 @@
  *
  * 그래서 이 파일이 배달 규칙을 갖되, `cycleReminderContract.test.ts`가
  * product-core 원본을 읽어 두 구현이 같은 상수와 같은 규칙을 쓰는지 고정한다.
- * 저장소가 `projection.ts`(↔ `sharing.ts`), `subscription.ts`(↔
- * `entitlements.ts`)에서 쓰는 것과 같은 경계 방식이다.
+ * 저장소가 `projection.ts`와 `sharing.ts`에서 쓰는 것과 같은 경계 방식이다.
  */
 import {isShared} from "./projection.js";
 

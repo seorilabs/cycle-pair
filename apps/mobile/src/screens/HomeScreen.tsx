@@ -2,8 +2,6 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { buildCycleViewModel } from '../app/cycleViewModel';
 import { useCyclePair } from '../app/CyclePairStore';
-import { useSubscription } from '../app/subscription/SubscriptionContext';
-import { resolveCycleFeaturePolicy } from '../app/subscription/cycleFeaturePolicy';
 import { getSafePartnerProjectionForToday } from '../app/partnerProjectionPresentation';
 import {
   Body,
@@ -21,12 +19,8 @@ import { colors, spacing } from '../theme';
 export function HomeScreen({ onOpenRecord }: { onOpenRecord(): void }) {
   const { state, setTab, dailyHistoryStatus, retryDailyHistory } =
     useCyclePair();
-  const { hasFeature } = useSubscription();
   const { t, label, locale } = useI18n();
-  const model = buildCycleViewModel(
-    state,
-    resolveCycleFeaturePolicy(hasFeature),
-  );
+  const model = buildCycleViewModel(state);
   const recorded = state.dailyHistory.some(
     entry => entry.localDate === state.currentLocalDate,
   );

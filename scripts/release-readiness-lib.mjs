@@ -106,120 +106,14 @@ function appReviewCredentialBlockers(review) {
   return blockers;
 }
 
-function parseSubscriptionPlanIds(source) {
-  if (typeof source !== "string") return [];
-  const plans = [];
-  const pattern =
-    /provider:\s*["'](google-play|app-store)["'](?:\s+as const)?,\s*productId:\s*["']([^"']+)["'](?:\s+as const)?,\s*basePlanId:\s*["']([^"']+)["'](?:\s+as const)?/g;
-  for (const match of source.matchAll(pattern)) {
-    plans.push({
-      provider: match[1],
-      productId: match[2],
-      basePlanId: match[3],
-    });
+export function freeLaunchBlockers(config) {
+  const blockers = [];
+  if (config?.monetization?.model !== "free" ||
+      config?.monetization?.downloadPrice !== "free" ||
+      config?.monetization?.salesEnabled !== false) {
+    blockers.push("무료 출시 설정 불일치");
   }
-  return plans;
-}
-
-function parseSubscriptionPlansWithPeriods(source) {
-  if (typeof source !== "string") return [];
-  const plans = [];
-  const pattern =
-    /provider:\s*["'](google-play|app-store)["'](?:\s+as const)?,\s*productId:\s*["']([^"']+)["'](?:\s+as const)?,\s*basePlanId:\s*["']([^"']+)["'](?:\s+as const)?,\s*billingPeriod:\s*["']([^"']+)["']/g;
-  for (const match of source.matchAll(pattern)) {
-    plans.push({
-      provider: match[1],
-      productId: match[2],
-      basePlanId: match[3],
-      billingPeriod: match[4],
-    });
-  }
-  return plans;
-}
-
-function configuredSubscriptionPlans(config, provider) {
-  return (config?.monetization?.subscriptionProducts ?? []).map((plan) => ({
-    provider,
-    productId: plan?.productId,
-    basePlanId: plan?.basePlanId,
-    billingPeriod: plan?.billingPeriod,
-  }));
-}
-
-function planSet(plans, { includeBillingPeriod = false } = {}) {
-  return new Set(
-    plans.map((plan) =>
-      [
-        plan.provider,
-        plan.productId,
-        plan.basePlanId,
-        ...(includeBillingPeriod ? [plan.billingPeriod] : []),
-      ].join("|")
-    )
-  );
-}
-
-function sameSet(left, right) {
-  return (
-    left.size === right.size && [...left].every((value) => right.has(value))
-  );
-}
-
-export function subscriptionContractBlockers({
-  playConfig,
-  appStoreConfig,
-  mobileCatalogSource,
-  firebaseCatalogSource,
-}) {
-  const blockers = { firebase: [], googlePlay: [], appStore: [] };
-  const playUsesSubscriptions =
-    playConfig?.monetization?.model === "premium-subscription";
-  const appStoreUsesSubscriptions =
-    appStoreConfig?.monetization?.model === "premium-subscription";
-  if (!playUsesSubscriptions && !appStoreUsesSubscriptions) return blockers;
-
-  const mobilePlans = parseSubscriptionPlansWithPeriods(mobileCatalogSource);
-  const mobilePlanIds = parseSubscriptionPlanIds(mobileCatalogSource);
-  const firebasePlanIds = parseSubscriptionPlanIds(firebaseCatalogSource);
-
-  if (!sameSet(planSet(mobilePlanIds), planSet(firebasePlanIds))) {
-    blockers.firebase.push(
-      "모바일과 Firebase 구독 product/base plan 계약 불일치"
-    );
-  }
-
-  if (playUsesSubscriptions) {
-    const configured = configuredSubscriptionPlans(playConfig, "google-play");
-    const expected = mobilePlans.filter(
-      (plan) => plan.provider === "google-play"
-    );
-    if (
-      !sameSet(
-        planSet(configured, { includeBillingPeriod: true }),
-        planSet(expected, { includeBillingPeriod: true })
-      )
-    ) {
-      blockers.googlePlay.push(
-        "Play 구독 product/base plan과 모바일 catalog 불일치"
-      );
-    }
-  }
-
-  if (appStoreUsesSubscriptions) {
-    const configured = configuredSubscriptionPlans(appStoreConfig, "app-store");
-    const expected = mobilePlans.filter(
-      (plan) => plan.provider === "app-store"
-    );
-    if (
-      !sameSet(
-        planSet(configured, { includeBillingPeriod: true }),
-        planSet(expected, { includeBillingPeriod: true })
-      )
-    ) {
-      blockers.appStore.push("App Store 구독 product와 모바일 catalog 불일치");
-    }
-  }
-
+  if (config?.appContent?.ads !== "no") blockers.push("광고 없음 신고 불일치");
   return blockers;
 }
 
@@ -1441,8 +1335,6 @@ export async function evaluateReleaseReadiness(root, {target, phase = "before-re
     iosProject,
     firebaseProjects,
     firebaseEnvironments,
-    mobileSubscriptionCatalog,
-    firebaseSubscriptionCatalog,
   ] = await Promise.all([
     readJson(root, "package.json"),
     readJson(root, "apps/mobile/package.json"),
@@ -1455,8 +1347,6 @@ export async function evaluateReleaseReadiness(root, {target, phase = "before-re
     readText(root, "apps/mobile/ios/CyclePair.xcodeproj/project.pbxproj"),
     readJson(root, ".firebaserc"),
     readJson(root, "apps/mobile/firebase-environments.json"),
-    readText(root, "apps/mobile/src/platform/purchases/subscriptionCatalog.ts"),
-    readText(root, "firebase/functions/src/domain/subscription.ts"),
   ]);
   const firebaseFingerprints = await computeFirebaseSourceFingerprints(root);
   const googlePlayTarget = targetMarketDecision(
@@ -1469,14 +1359,6 @@ export async function evaluateReleaseReadiness(root, {target, phase = "before-re
     "appStore",
     "App Store"
   );
-  const subscriptionsOff = playConfig?.monetization?.model === "free" && appStoreConfig?.monetization?.model === "free";
-  const subscriptionBlockers = subscriptionContractBlockers({
-    playConfig,
-    appStoreConfig,
-    mobileCatalogSource: mobileSubscriptionCatalog,
-    firebaseCatalogSource: firebaseSubscriptionCatalog,
-  });
-
   const architectureBlockers = [];
   if (!(await exists(root, "packages/product-core/src"))) {
     architectureBlockers.push("product-core 미구현");
@@ -1593,27 +1475,6 @@ export async function evaluateReleaseReadiness(root, {target, phase = "before-re
         ...(target === "google-play" ? [] : [["iosApnsReceived", "운영 iOS APNs 실제 수신 미검증"]]),
       ],
     }),
-    ...(subscriptionsOff || target === "app-store" ? [] : productionCapabilityEvidenceBlockers({
-      entry: firebaseReadiness?.environment?.productionGooglePlaySubscriptions,
-      expectedProjectId: projectId,
-      label: "운영 Google Play 구독 연동",
-      requiredChecks: [
-        ["developerApiVerified", "운영 Google Play Developer API 미검증"],
-        ["rtdnVerified", "운영 Google Play RTDN 미검증"],
-      ],
-    })),
-    ...(subscriptionsOff || target === "google-play" ? [] : productionCapabilityEvidenceBlockers({
-      entry: firebaseReadiness?.environment?.productionAppleSubscriptions,
-      expectedProjectId: projectId,
-      label: "운영 Apple 구독 연동",
-      requiredChecks: [
-        ["secretsVerified", "운영 Apple subscription secrets 미검증"],
-        [
-          "notificationsV2Verified",
-          "운영 App Store Server Notifications V2 미검증",
-        ],
-      ],
-    })),
     ...productionCapabilityEvidenceBlockers({
       entry: firebaseReadiness?.environment?.productionAccountExport,
       expectedProjectId: projectId,
@@ -1641,13 +1502,13 @@ export async function evaluateReleaseReadiness(root, {target, phase = "before-re
       firebaseReadiness?.environment?.appCheckEnforcement,
       projectId
     ),
-    ...subscriptionBlockers.firebase
   );
 
   }
 
   const googlePlayBlockers = [...googlePlayTarget.blockers];
   if (googlePlayTarget.included && target !== "app-store") {
+    googlePlayBlockers.push(...freeLaunchBlockers(playConfig));
     if (releasing && (playConfig === null || containsUnknown(playConfig))) {
       googlePlayBlockers.push("Play 메타데이터에 미확정 값 존재");
     }
@@ -1678,7 +1539,6 @@ export async function evaluateReleaseReadiness(root, {target, phase = "before-re
       googlePlayBlockers.push("Android release signing fail-closed gate 없음");
     }
     googlePlayBlockers.push(
-      ...subscriptionBlockers.googlePlay,
       ...(building ? [] : await androidArtifactBlockers(
         root,
         releaseEvidence?.artifacts?.googlePlaySignedAab,
@@ -1695,6 +1555,7 @@ export async function evaluateReleaseReadiness(root, {target, phase = "before-re
 
   const appStoreBlockers = [...appStoreTarget.blockers];
   if (appStoreTarget.included && target !== "google-play") {
+    appStoreBlockers.push(...freeLaunchBlockers(appStoreConfig));
     if (releasing && (appStoreConfig === null || containsUnknown(appStoreConfig))) {
       appStoreBlockers.push("App Store 메타데이터에 미확정 값 존재");
     }
@@ -1711,7 +1572,6 @@ export async function evaluateReleaseReadiness(root, {target, phase = "before-re
       );
     }
     appStoreBlockers.push(
-      ...subscriptionBlockers.appStore,
       ...(releasing ? appReviewCredentialBlockers(appStoreConfig?.review) : [])
     );
     appStoreBlockers.push(
@@ -1748,6 +1608,7 @@ export async function evaluateReleaseReadiness(root, {target, phase = "before-re
     ),
   ];
   if (googlePlayTarget.included && target !== "app-store") {
+    googlePlayBlockers.push(...freeLaunchBlockers(playConfig));
     privacyBlockers.push(
       ...evidenceBlocker(
         releaseEvidence?.policy?.googlePlayDataSafety,
@@ -1757,6 +1618,7 @@ export async function evaluateReleaseReadiness(root, {target, phase = "before-re
     );
   }
   if (appStoreTarget.included && target !== "google-play") {
+    appStoreBlockers.push(...freeLaunchBlockers(appStoreConfig));
     privacyBlockers.push(
       ...evidenceBlocker(
         releaseEvidence?.policy?.appStorePrivacy,

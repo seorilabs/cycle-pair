@@ -87,7 +87,6 @@
   "monetization": {
     "model": "free",
     "downloadPrice": "free",
-    "subscriptionProducts": [],
     "salesEnabled": false
   },
   "assets": {

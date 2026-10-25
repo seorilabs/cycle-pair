@@ -10,8 +10,7 @@ Cycle Pair의 플랫폼 독립 TypeScript 코어다. 도메인 모델, 순수 �
 - 필드 단위 `ShareSettings`와 파트너용 `PartnerProjection`
 - 자기보고 도움 선호·컨디션을 예측 국면보다 우선하는 `CareTip`
 - 잠금 화면에 건강정보를 쓰지 않는 중립 알림 일정
-- 구독 상태를 실패 폐쇄(fail-closed)로 해석하는 `Entitlement`
-- 인증·저장소·알림·결제·시계·ID 생성 adapter용 port
+- 인증·저장소·알림·시계·ID 생성 adapter용 port
 
 ## 알고리즘 가정과 제약
 
@@ -51,12 +50,6 @@ Cycle Pair의 플랫폼 독립 TypeScript 코어다. 도메인 모델, 순수 �
 
 - 기본 일정은 예측일 3일 전과 당일 오전 9시다. 이미 지난 항목은 만들지 않는다.
 - 표시 문구와 목적지는 중립적이며 `visibility: private`를 요구한다. 다만 전달 시각 자체도 민감한 추론에 사용될 수 있으므로 adapter와 서버 로그에서 최소 보관해야 한다.
-
-### 구독 권한
-
-- `active`, `trialing`, `canceled`는 유효 종료일이 오늘 이상일 때만 premium이다. grace period도 명시된 종료일까지만 인정한다.
-- 종료일이 없는 active 상태와 알 수 없는 상태는 free로 실패 폐쇄한다.
-- `multiple-connections`는 후속 버전 예약 타입일 뿐 MVP의 premium 결과에도 활성화하지 않는다. 하나의 `Pair`는 항상 서로 다른 정확히 두 명이다.
 
 ## 검증
 

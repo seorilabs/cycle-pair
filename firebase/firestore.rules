@@ -324,26 +324,6 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // Store evidence is verified and written only by Functions. The owner may
-    // read the normalized subscription and stable pseudonymous account token,
-    // but can never grant or mutate an entitlement from the client.
-    match /subscriptions/{uid} {
-      allow read: if isOwner(uid);
-      allow write: if false;
-    }
-
-    match /purchaseStates/{uid} {
-      allow read: if isOwner(uid);
-      allow write: if false;
-    }
-
-    // The document ID is sha256(provider:stablePurchaseId), never a raw receipt.
-    // A binding is visible only to its current owner and remains server-written.
-    match /purchaseTokens/{bindingId} {
-      allow read: if isSignedIn() && resource.data.uid == request.auth.uid;
-      allow write: if false;
-    }
-
     match /pairs/{pairId} {
       allow read: if isSignedIn()
         && resource.data.status == 'active'
