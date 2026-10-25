@@ -4,7 +4,7 @@
 
 ## 출시 범위
 
-Google Play와 App Store에서 전 세계 무료 공개를 준비합니다. 시스템 언어가 한국어이면 한국어, 그 외에는 영어로 시작하며 설정에서 바꿀 수 있습니다. Plus 판매와 결제 초기화는 제외합니다. 기존 무료 한도와 서버의 상품, 구독 자료는 보존합니다. AppsInToss 전용 앱과 배포는 제거했으며 외부 콘솔 등록은 변경하지 않습니다.
+Google Play와 App Store에서 전 세계 무료 공개를 준비합니다. 시스템 언어가 한국어이면 한국어, 그 외에는 영어로 시작하며 설정에서 바꿀 수 있습니다. IAP와 구독 처리 코드를 제거하고 기존 기록 기능을 무료로 제공합니다. 이번 출시는 광고도 표시하지 않으며 전면광고와 보상광고는 후속 계획입니다. 과거 운영 자료는 일괄 삭제하지 않습니다. AppsInToss 전용 앱과 배포는 제거했으며 외부 콘솔 등록은 변경하지 않습니다.
 
 Android application ID와 iOS bundle ID는 `com.seorilabs.cyclepair`입니다. `apps/mobile`은 React Native 앱, `packages/product-core`는 제품 로직, `firebase`는 개인 기록과 선택 공유를 관리합니다.
 

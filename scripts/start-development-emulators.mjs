@@ -48,11 +48,8 @@ if (values.import) {
     );
   await access(path.join(importDirectory, "firebase-export-metadata.json"));
 }
-const localFiles = [
-  "firebase/functions/.secret.local",
-  "firebase/functions/.env.local",
-];
-for (const file of localFiles) {
+const localFiles = ["firebase/functions/.env.local"];
+for (const file of ["firebase/functions/.secret.local", ...localFiles]) {
   try {
     await access(file);
     throw new Error(`Preserve existing ${file}; use a separate workspace`);
@@ -65,7 +62,6 @@ const temporary = await mkdtemp(
 );
 const credentials = path.join(temporary, "no-credentials.json");
 const files = [
-  'APPLE_IAP_PRIVATE_KEY_BASE64=ZHVtbXk=\nAPPLE_IAP_KEY_ID=emulator-test-key\nAPPLE_IAP_ISSUER_ID=00000000-0000-0000-0000-000000000000\nAPPLE_APP_ID=1\nAPPLE_IAP_ROOT_CERTIFICATES_BASE64_JSON=["ZHVtbXk="]\n',
   "ENFORCE_APP_CHECK=false\nHTTP_PROXY=http://127.0.0.1:9\nHTTPS_PROXY=http://127.0.0.1:9\nALL_PROXY=http://127.0.0.1:9\nNO_PROXY=127.0.0.1,localhost,::1\n" +
     (deviceHost ? `CYCLEPAIR_EMULATOR_DEVICE_HOST=${deviceHost}\n` : ""),
 ];

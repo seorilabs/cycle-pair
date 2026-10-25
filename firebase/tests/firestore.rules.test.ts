@@ -537,8 +537,8 @@ describe("server-only account export tickets", () => {
   });
 });
 
-describe("server-verified subscription boundary", () => {
-  test("owners can read their normalized state but no client can write it", async () => {
+describe("retired purchase data boundary", () => {
+  test("no client can read or write retired purchase data", async () => {
     await testEnv.withSecurityRulesDisabled(async context => {
       const db = context.firestore();
       await setDoc(doc(db, "subscriptions/alice"), {
@@ -563,7 +563,7 @@ describe("server-verified subscription boundary", () => {
     const anonymousDb = testEnv.unauthenticatedContext().firestore();
 
     for (const path of ["subscriptions/alice", "purchaseStates/alice"]) {
-      await assertSucceeds(getDoc(doc(ownerDb, path)));
+      await assertFails(getDoc(doc(ownerDb, path)));
       await assertFails(getDoc(doc(otherDb, path)));
       await assertFails(getDoc(doc(anonymousDb, path)));
       await assertFails(setDoc(doc(ownerDb, path), {status: "active"}));
@@ -571,7 +571,7 @@ describe("server-verified subscription boundary", () => {
       await assertFails(deleteDoc(doc(ownerDb, path)));
     }
 
-    await assertSucceeds(getDoc(doc(ownerDb, "purchaseTokens/token-hash")));
+    await assertFails(getDoc(doc(ownerDb, "purchaseTokens/token-hash")));
     await assertFails(getDoc(doc(otherDb, "purchaseTokens/token-hash")));
     await assertFails(
       setDoc(doc(ownerDb, "purchaseTokens/forged"), {uid: "alice"}),

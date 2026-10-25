@@ -140,18 +140,12 @@ importers:
 
   firebase/functions:
     dependencies:
-      '@apple/app-store-server-library':
-        specifier: 3.1.0
-        version: 3.1.0
       firebase-admin:
         specifier: 13.10.0
         version: 13.10.0
       firebase-functions:
         specifier: 7.2.5
         version: 7.2.5(firebase-admin@13.10.0)
-      googleapis:
-        specifier: 173.0.0
-        version: 173.0.0
     devDependencies:
       typescript:
         specifier: 7.0.2
@@ -170,9 +164,6 @@ importers:
         version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@25.9.5)(vite@8.1.4(@types/node@25.9.5)(terser@5.49.0)(yaml@2.9.0))
 
 packages:
-
-  '@apple/app-store-server-library@3.1.0':
-    resolution: {integrity: sha512-d26SICRz8BwCV2qPR0BSXBMxmw0NEvJLwsdREcBmCrus8NmyHw2XgOOP0fiFjcctPn/JXtmSDuGVnaHe+dqO+A==}
 
   '@babel/code-frame@7.29.7':
     resolution: {integrity: sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw==}
@@ -3105,14 +3096,6 @@ packages:
     resolution: {integrity: sha512-eAmLkjDjAFCVXg7A1unxHsLf961m6y17QFqXqAXGj/gVkKFrEICfStRfwUlGNfeCEjNRa32JEWOUTlYXPyyKvA==}
     engines: {node: '>=14'}
 
-  googleapis-common@8.0.2:
-    resolution: {integrity: sha512-5MXeQzIZaqCH7B+HJWqhQm946VARpZep6acbWSr/fcgF2cQANq7allgX+i/G0EqF0WyUxB277gtWMzRYHMl9tg==}
-    engines: {node: '>=18.0.0'}
-
-  googleapis@173.0.0:
-    resolution: {integrity: sha512-xEJJYLZ4qeenVyfzispNfRjCe9bsv7CzBv5zYFLvScOze9snJ8S9W6hjQ729CWPQt5mvn/JrcRaCHzQiukt0ng==}
-    engines: {node: '>=18'}
-
   gopd@1.2.0:
     resolution: {integrity: sha512-ZUKRh6/kUFoAiTAtTYPZJ3hw9wNxx+BIBOijnlG9PnrJsCcSjs1wyyD6vJpaYtgnzDrKYRSqf3OO6Rfa93xsRg==}
     engines: {node: '>= 0.4'}
@@ -5179,19 +5162,6 @@ packages:
     resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
 
 snapshots:
-
-  '@apple/app-store-server-library@3.1.0':
-    dependencies:
-      '@types/jsonwebtoken': 9.0.10
-      '@types/jsrsasign': 10.5.15
-      '@types/node': 25.9.5
-      '@types/node-fetch': 2.6.13
-      base64url: 3.0.1
-      jsonwebtoken: 9.0.3
-      jsrsasign: 11.1.3
-      node-fetch: 2.7.0
-    transitivePeerDependencies:
-      - encoding
 
   '@babel/code-frame@7.29.7':
     dependencies:
@@ -9132,24 +9102,6 @@ snapshots:
     optional: true
 
   google-logging-utils@1.1.3: {}
-
-  googleapis-common@8.0.2:
-    dependencies:
-      extend: 3.0.2
-      gaxios: 7.1.3
-      google-auth-library: 10.5.0
-      google-logging-utils: 1.1.3
-      qs: 6.15.3
-      url-template: 2.0.8
-    transitivePeerDependencies:
-      - supports-color
-
-  googleapis@173.0.0:
-    dependencies:
-      google-auth-library: 10.9.0
-      googleapis-common: 8.0.2
-    transitivePeerDependencies:
-      - supports-color
 
   gopd@1.2.0: {}
 

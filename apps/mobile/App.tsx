@@ -13,7 +13,6 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { CyclePairProvider } from './src/app/CyclePairStore';
 import { usePresenceLifecycle } from './src/app/usePresenceLifecycle';
 import { AccountProvider, useAccount } from './src/app/account/AccountContext';
-import { SubscriptionProvider } from './src/app/subscription/SubscriptionContext';
 import { CyclePairApp } from './src/CyclePairApp';
 import type { AccountPort } from './src/domain/account/AccountPort';
 import { previewAccountAdapter } from './src/platform/account/PreviewAccountAdapter';
@@ -25,7 +24,6 @@ import { asyncStorageCyclePairStateStorage } from './src/platform/local/CyclePai
 import type { PresenceClient } from './src/platform/presence/PresenceClient';
 import type { ProductAnalytics } from './src/platform/observability/ProductAnalytics';
 import type { SafeCrashReporter } from './src/platform/observability/SafeCrashReporter';
-import type { CyclePairPurchaseAdapter } from './src/platform/purchases/CyclePairPurchaseAdapter';
 import { AccountGateScreen } from './src/screens/AccountGateScreen';
 import { colors } from './src/theme';
 
@@ -34,13 +32,11 @@ function AccountRuntime({
   notificationClient,
   analytics,
   crashReporter,
-  purchaseClient,
 }: {
   backend: CyclePairBackend;
   notificationClient?: NotificationClient;
   analytics?: ProductAnalytics;
   crashReporter?: SafeCrashReporter;
-  purchaseClient?: CyclePairPurchaseAdapter;
 }) {
   const { l } = useI18n();
   const { state, deleteAccount } = useAccount();
@@ -107,21 +103,15 @@ function AccountRuntime({
   }
   if (!state.session) return <AccountGateScreen />;
   return (
-    <SubscriptionProvider
-      analytics={analytics}
+    <CyclePairProvider
       key={state.session.uid}
-      memberId={state.session.uid}
-      purchaseClient={purchaseClient}
+      analytics={analytics}
+      backend={backend}
+      crashReporter={crashReporter}
+      notificationClient={notificationClient}
     >
-      <CyclePairProvider
-        analytics={analytics}
-        backend={backend}
-        crashReporter={crashReporter}
-        notificationClient={notificationClient}
-      >
-        <CyclePairApp />
-      </CyclePairProvider>
-    </SubscriptionProvider>
+      <CyclePairApp />
+    </CyclePairProvider>
   );
 }
 
@@ -131,7 +121,6 @@ export function AppContent({
   notificationClient,
   analytics,
   crashReporter,
-  purchaseClient,
   presenceClient,
 }: {
   backend?: CyclePairBackend;
@@ -139,7 +128,6 @@ export function AppContent({
   notificationClient?: NotificationClient;
   analytics?: ProductAnalytics;
   crashReporter?: SafeCrashReporter;
-  purchaseClient?: CyclePairPurchaseAdapter;
   presenceClient?: PresenceClient;
 }) {
   usePresenceLifecycle(presenceClient);
@@ -167,7 +155,6 @@ export function AppContent({
           backend={backend}
           crashReporter={crashReporter}
           notificationClient={notificationClient}
-          purchaseClient={purchaseClient}
         />
       </AccountProvider>
     </SafeAreaProvider>

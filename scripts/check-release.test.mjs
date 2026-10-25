@@ -11,94 +11,8 @@ import { promisify } from "node:util";
 import {
   computeFirebaseSourceFingerprints,
   evaluateReleaseReadiness,
-  subscriptionContractBlockers,
+  freeLaunchBlockers,
 } from "./release-readiness-lib.mjs";
-
-test("store subscription products match the mobile and Firebase catalogs", () => {
-  const mobileCatalogSource = `
-    provider: 'google-play', productId: 'cyclepair_plus', basePlanId: 'monthly', billingPeriod: 'P1M',
-    provider: 'google-play', productId: 'cyclepair_plus', basePlanId: 'yearly', billingPeriod: 'P1Y',
-    provider: 'app-store', productId: 'com.seorilabs.cyclepair.plus.monthly', basePlanId: 'monthly', billingPeriod: 'P1M',
-    provider: 'app-store', productId: 'com.seorilabs.cyclepair.plus.yearly', basePlanId: 'yearly', billingPeriod: 'P1Y',
-  `;
-  const firebaseCatalogSource = `
-    provider: "google-play" as const, productId: "cyclepair_plus", basePlanId: "monthly" as const,
-    provider: "google-play" as const, productId: "cyclepair_plus", basePlanId: "yearly" as const,
-    provider: "app-store" as const, productId: "com.seorilabs.cyclepair.plus.monthly", basePlanId: "monthly" as const,
-    provider: "app-store" as const, productId: "com.seorilabs.cyclepair.plus.yearly", basePlanId: "yearly" as const,
-  `;
-  const blockers = subscriptionContractBlockers({
-    playConfig: {
-      monetization: {
-        model: "premium-subscription",
-        subscriptionProducts: [
-          {
-            productId: "cyclepair_plus",
-            basePlanId: "monthly",
-            billingPeriod: "P1M",
-          },
-          {
-            productId: "cyclepair_plus",
-            basePlanId: "yearly",
-            billingPeriod: "P1Y",
-          },
-        ],
-      },
-    },
-    appStoreConfig: {
-      monetization: {
-        model: "premium-subscription",
-        subscriptionProducts: [
-          {
-            productId: "com.seorilabs.cyclepair.plus.monthly",
-            basePlanId: "monthly",
-            billingPeriod: "P1M",
-          },
-          {
-            productId: "com.seorilabs.cyclepair.plus.yearly",
-            basePlanId: "yearly",
-            billingPeriod: "P1Y",
-          },
-        ],
-      },
-    },
-    mobileCatalogSource,
-    firebaseCatalogSource,
-  });
-
-  assert.deepEqual(blockers, { firebase: [], googlePlay: [], appStore: [] });
-
-  const drift = subscriptionContractBlockers({
-    playConfig: {
-      monetization: {
-        model: "premium-subscription",
-        subscriptionProducts: [
-          {
-            productId: "com.seorilabs.cyclepair.premium.monthly",
-            basePlanId: "monthly",
-            billingPeriod: "P1M",
-          },
-        ],
-      },
-    },
-    appStoreConfig: {
-      monetization: {
-        model: "premium-subscription",
-        subscriptionProducts: [],
-      },
-    },
-    mobileCatalogSource,
-    firebaseCatalogSource: firebaseCatalogSource.replace(
-      "cyclepair_plus",
-      "cyclepair_premium"
-    ),
-  });
-  assert.deepEqual(drift, {
-    firebase: ["모바일과 Firebase 구독 product/base plan 계약 불일치"],
-    googlePlay: ["Play 구독 product/base plan과 모바일 catalog 불일치"],
-    appStore: ["App Store 구독 product와 모바일 catalog 불일치"],
-  });
-});
 
 const execFileAsync = promisify(execFile);
 
@@ -546,8 +460,12 @@ echo "GoogleService-Info.plist"
   await write(root, "packages/product-core/src/index.ts", "export {};\n");
   await write(root, "play-store/google-play.config.json", {
     packageName: "com.seorilabs.cyclepair",
+    monetization: {model: "free", downloadPrice: "free", salesEnabled: false},
+    contentDeclarations: {ads: "no"},
   });
   await write(root, "app-store/app-store.config.json", {
+    monetization: {model: "free", downloadPrice: "free", salesEnabled: false},
+    contentDeclarations: {ads: "no"},
     bundleId: "com.seorilabs.cyclepair",
     appleTeamId: "FIXTURETEAM",
     review: {
@@ -683,18 +601,6 @@ export const value = 1;
         projectId: "cyclepair-fixture-prod",
         androidFcmReceived: true,
         iosApnsReceived: true,
-      },
-      productionGooglePlaySubscriptions: {
-        ...verified(),
-        projectId: "cyclepair-fixture-prod",
-        developerApiVerified: true,
-        rtdnVerified: true,
-      },
-      productionAppleSubscriptions: {
-        ...verified(),
-        projectId: "cyclepair-fixture-prod",
-        secretsVerified: true,
-        notificationsV2Verified: true,
       },
       productionAccountExport: {
         ...verified(),
@@ -1364,8 +1270,6 @@ test("개발 evidence를 운영 capability evidence로 재사용할 수 없다",
     "productionCallableInvokerIamConfigured",
     "productionLivePairSmoke",
     "productionNotificationDelivery",
-    "productionGooglePlaySubscriptions",
-    "productionAppleSubscriptions",
     "productionAccountExport",
   ]) {
     delete readiness.environment[key];
@@ -1385,10 +1289,6 @@ test("개발 evidence를 운영 capability evidence로 재사용할 수 없다",
     "운영 Pair smoke live evidence 없음",
     "운영 Android FCM 실제 수신 미검증",
     "운영 iOS APNs 실제 수신 미검증",
-    "운영 Google Play Developer API 미검증",
-    "운영 Google Play RTDN 미검증",
-    "운영 Apple subscription secrets 미검증",
-    "운영 App Store Server Notifications V2 미검증",
     "운영 export HTTPS invoker IAM 미검증",
     "운영 export cleanup scheduler 미검증",
     "legacy exportMyData callable 제거 미검증",
@@ -1873,4 +1773,38 @@ test('before-build inspects only the requested native target without requiring a
 test('release validation rejects excluded targets and unknown phases', async () => {
   await assert.rejects(evaluateReleaseReadiness('.', {target: 'apps-in-toss'}), /target/);
   await assert.rejects(evaluateReleaseReadiness('.', {phase: 'skip'}), /phase/);
+});
+
+test("무료 출시 설정에서 유료 판매와 광고 신고 변경을 차단한다", () => {
+  const config = {monetization: {model: "free", downloadPrice: "free", salesEnabled: false}, contentDeclarations: {ads: "no"}};
+  assert.deepEqual(freeLaunchBlockers(config), []);
+  assert.deepEqual(freeLaunchBlockers({...config, monetization: {...config.monetization, salesEnabled: true}}), ["무료 출시 설정 불일치"]);
+  assert.deepEqual(freeLaunchBlockers({...config, contentDeclarations: {ads: "yes"}}), ["광고 없음 신고 불일치"]);
+});
+
+test("실제 두 마켓 설정이 현재 무료 무광고 출시 계약과 일치한다", async () => {
+  for (const file of ["../play-store/google-play.config.json", "../app-store/app-store.config.json"]) {
+    const config = JSON.parse(await readFile(new URL(file, import.meta.url), "utf8"));
+    assert.deepEqual(freeLaunchBlockers(config), [], file);
+  }
+});
+
+test("무료 출시 설정 오류를 마켓마다 한 번만 보고한다", async t => {
+  const root = await mkdtemp(path.join(tmpdir(), "cyclepair-free-launch-drift-"));
+  t.after(() => rm(root, {recursive: true, force: true}));
+  await createReadyFixture(root);
+  const readiness = await readJsonFixture(root, "release/readiness.json");
+  readiness.targetMarkets.googlePlay = {included: true, ...verified()};
+  readiness.targetMarkets.appStore = {included: true, ...verified()};
+  await write(root, "release/readiness.json", readiness);
+  for (const file of ["play-store/google-play.config.json", "app-store/app-store.config.json"]) {
+    const config = await readJsonFixture(root, file);
+    config.monetization.salesEnabled = true;
+    await write(root, file, config);
+  }
+  const result = await evaluateReleaseReadiness(root);
+  for (const market of ["Google Play", "App Store"]) {
+    const section = result.sections.find(section => section.market === market);
+    assert.equal(section.blockers.filter(item => item === "무료 출시 설정 불일치").length, 1, market);
+  }
 });

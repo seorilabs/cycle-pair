@@ -13,23 +13,12 @@ function secretNames(value: unknown): readonly string[] {
 }
 
 describe("Gen2 function secret boundary", () => {
-  it("binds Apple IAP secrets only to Apple verification paths", () => {
+  it("has no IAP secret bindings after purchase retirement", () => {
     const bindings = Object.fromEntries(
       Object.entries(deployedFunctions)
         .map(([name, value]) => [name, secretNames(value)] as const)
         .filter(([, names]) => names.length > 0),
     );
-    const appleSecrets = [
-      "APPLE_IAP_PRIVATE_KEY_BASE64",
-      "APPLE_IAP_KEY_ID",
-      "APPLE_IAP_ISSUER_ID",
-      "APPLE_APP_ID",
-      "APPLE_IAP_ROOT_CERTIFICATES_BASE64_JSON",
-    ];
-
-    expect(bindings).toEqual({
-      handleAppStoreServerNotificationV2: appleSecrets,
-      verifySubscriptionPurchase: appleSecrets,
-    });
+    expect(bindings).toEqual({});
   });
 });

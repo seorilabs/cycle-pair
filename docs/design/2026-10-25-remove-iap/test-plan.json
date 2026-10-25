@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "level": "L3",
+  "baseline": null,
+  "changedFeatures": [
+    "home",
+    "calendar",
+    "account",
+    "pairing-sharing",
+    "privacy",
+    "settings-language",
+    "observability"
+  ],
+  "environments": [
+    "dev"
+  ],
+  "redesign": false,
+  "foundationRerun": true,
+  "floorOverrides": [],
+  "release": {
+    "markets": [
+      "google-play",
+      "app-store"
+    ],
+    "until": "public",
+    "rollout": 1
+  }
+}

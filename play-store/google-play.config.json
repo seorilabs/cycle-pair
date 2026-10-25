@@ -76,7 +76,6 @@
       "user-id",
       "health-information",
       "other-user-generated-content",
-      "purchase-history",
       "app-interactions",
       "crash-logs",
       "diagnostics",
@@ -87,7 +86,6 @@
   "monetization": {
     "model": "free",
     "downloadPrice": "free",
-    "subscriptionProducts": [],
     "salesEnabled": false
   },
   "assets": {
