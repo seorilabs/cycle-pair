@@ -1,6 +1,6 @@
 # 사이클 페어 개인정보처리방침 (내부 근거 문서)
 
-> 상태: **구현 변경안 반영 · 게시본 갱신 필요**. 현재 게시본은 `seorilabs/seorilabs-official`의 `src/lib/cyclePairPrivacyContent.ts`, 배포 commit `48882bcf1ef054212f64157e92be2fc6db984436`이며 가임 가능 시기 공유를 아직 설명하지 않는다. 게시본과 스토어 개인정보 응답을 갱신하기 전에는 이 변경을 배포하지 않는다.
+> 상태: **무료 출시 범위 게시 완료, 스토어 개인정보 응답 갱신 준비**. 게시본 정본은 `seorilabs/seorilabs-official`의 `src/lib/cyclePairPrivacyContent.ts`, 배포 commit `3a2df473e6e5d560111eda6dfff2a35a25f1f374`다. 2026-10-25 한국어와 영어 공개 페이지에서 광고와 인앱결제 없음, 구매 내역 미수집을 확인했다. 가임 가능 시기 공유는 별도 동의 항목으로 설명한다. 스토어 응답의 실제 저장과 최종 완료는 별도 확인한다.
 > 게시본과 이 문서가 어긋나면 게시본을 기준으로 이 문서를 갱신한다. 실제 구현과 어긋나면 둘 다 구현 기준으로 갱신한다.
 > 이 문서는 저장소에 문서화된 실제 데이터 처리 실태(`docs/security-threat-model.md`, `docs/google-play-readiness.md`, `docs/app-store-readiness.md`, Firebase Rules·Functions source)에서 파생했다.
 
@@ -9,6 +9,7 @@
 - 대표 연락처: cs@seorilabs.com
 - 게시 URL: https://www.seorilabs.com/apps/cycle-pair/privacy/ (en: `/en/apps/cycle-pair/privacy/`)
 - 시행일: 2026-08-09
+- 최종 수정일: 2026-10-25
 
 ## 1. 개요
 
@@ -36,7 +37,6 @@
 ## 3. 제3자 처리 위탁
 
 - Google Firebase (Auth, Firestore, Cloud Functions, Cloud Messaging, Analytics, Crashlytics, Performance, App Check): 인증·저장·서버 처리·알림·진단
-- Google Play / Apple App Store: 구독 결제 및 영수증 검증
 - 국외 이전: Firestore `(default)`가 미국 `nam5` 멀티 리전에서 처리되므로 저장 기록은 미국으로 이전된다. 위 목록 외 추가 수탁자는 없다.
 
 Cloud Functions는 서울 `asia-northeast3`, Firestore `(default)` 데이터베이스는 미국 `nam5` 멀티 리전에서 처리된다. Firebase Auth 등 전역 서비스의 처리 위치는 Google Firebase 약관과 데이터 위치 정책을 따른다. 제3자에게 마케팅·광고 목적으로 판매하거나 공유하지 않는다.
