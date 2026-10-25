@@ -65,25 +65,20 @@ Health 데이터 공유는 사용자 제어 기능의 본질이므로 review not
 ## blocker
 
 - [x] SKU
-- [x] Apple Team과 Xcode Cloud automatic signing
-- [x] App Store Connect 앱 shell
-- [x] Xcode Cloud workflow 생성 및 API trigger 계약 구성
-- [x] Xcode Cloud secret `FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64`
-- [x] support URL, privacy policy URL 게시
-- [ ] 앱 개인정보 답변
-- [ ] 연령등급
-- [ ] DSA trader 상태와 공개 연락처
-- [x] export compliance 답변안: non-exempt encryption false
-- [ ] 심사 연락처 전화번호와 로그인 review 계정
-- [x] 저장소·런타임 구독 product ID, 가격, 혜택 정합성
-- [x] App Store Connect 구독 그룹·상품 생성과 가격·무료 체험 readback: 2026-08-11 API로 `Cycle Pair Plus`, 월간·연간 175개 지역, KRW 3,900·29,000, 1주 무료 체험 확인
-- 이번 무료 출시에는 해당 없음: 과거 구독 상품 review screenshot과 심사 메타데이터는 `MISSING_METADATA`였던 준비 이력이다. 구독 검수 통과로 기록하지 않으며 무료 앱 출시의 선행 조건으로 두지 않는다.
-- [ ] 실제 iPhone screenshots
-- 이번 첫 출시는 iPhone 대상이며 iPad QA와13인치 스크린샷은 제외됨
-- [ ] archive와 TestFlight 처리 완료
-- [ ] App Attest capability가 포함된 provisioning과 production Firebase App Check provider·Firestore/Callable 강제 live 검증
-- [ ] 2인 TestFlight 테스트
-- [ ] deployment 승인과 Submit for Review
+- [x] Apple Team, 앱 shell과 Xcode Cloud 구성
+- [x] iPhone 전용 1.1.0(15) 빌드 처리와 TestFlight 내부 배포
+- [x] support URL과 개인정보 처리방침 URL 게시
+- [x] 개인정보 9개 유형 저장, 재로드 후 모든 선택값 대조와 신고 게시
+- [x] 연령 설문과 EIGHTEEN_PLUS 상향값 저장 및 재조회
+- [x] 기존 앱 거래자 선언과 Seori Labs의 DSA 활성 상태 확인
+- [x] 규제 대상 의료 기기 아님 신고 저장 및 재조회
+- [x] 비면제 암호화 없음과 무료 가격 0 확인
+- [x] 심사 연락처와 전용 심사 계정 안내 비공개 저장 및 메모리 대조
+- [x] 한국어와 영어 문구, 스크린샷 각 3장 등록 및 처리 완료
+- [ ] 실제 플랫폼 인증, App Check와 원격 알림의 필수 항목 검증
+- [ ] 최종 제출 후보의 중앙 검사, 심사 접수와 공개 확인
+
+[마켓 등록 결과](launch/market-registration-20261025.md)에 버전, 실제 저장 상태와 이미지 정본을 기록한다. 등록 스크린샷은 실제 RN 화면의 개발 환경 렌더링이며 기기 캡처 또는 네이티브 SDK 검증의 근거가 아니다. 이번 출시는 iPhone 대상이다. 과거 구독 상품은 이번 무료 출시와 연결하지 않는다.
 
 ## 심사 노트에 포함할 핵심
 

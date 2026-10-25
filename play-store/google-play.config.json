@@ -23,8 +23,8 @@
       "en-US": "A private cycle and condition sharing app for two"
     },
     "fullDescription": {
-      "ko-KR": "사이클 페어는 주기를 기록하는 사람과 가까운 한 사람이, 생리주기와 그날의 컨디션을 '내가 허용한 만큼만' 나누며 함께 대비하도록 돕는 커플 케어 앱입니다. 이 앱은 의료기기가 아니며 질환을 진단·치료·치유·예방하지 않고, 피임 또는 임신 가능성 판단에 사용할 수 없습니다. 의료 조언, 진단이나 치료가 필요하면 의료 전문가와 상담하세요.\n\n■ 두 사람을 위한 설계\n- 정확히 두 명이 서로 수락해 연결되는 대칭형 Pair\n- 연결 전에도 나만의 기록을 쓸 수 있어요\n\n■ 내가 정하는 공유\n- 생리 시작·종료일, 증상, 기분, 컨디션, 도움 선호를 기록\n- 필드별로 공유를 켜고 끌 수 있고, 기본값은 전부 비공개\n- 파트너에게는 내가 켠 정보만 전달돼요(원본은 나만 볼 수 있어요)\n\n■ 함께 준비\n- 다음 생리 예정일을 참고용으로 표시(개인차가 있으며 의료·피임 판단에 쓰지 않아요)\n- 공동 캘린더와 기념일, 두 가지 고정 메시지로 보내는 파트너 넛지\n\n■ 프라이버시 우선\n- 잠금화면 알림은 건강정보를 드러내지 않는 중립 문구\n- 광고 없음, 제3자 추적 없음, 데이터 판매 없음\n- 언제든 데이터 내보내기·계정 삭제·연결 해제",
-      "en-US": "Cycle Pair helps someone who tracks their cycle and one close partner prepare together — sharing menstrual cycle and daily condition only as much as you allow. It is not a medical device and does not diagnose, treat, cure, or prevent any medical condition. It must not be used for contraceptive or pregnancy-likelihood decisions. Consult a healthcare professional for medical advice, diagnosis or treatment.\n\nBuilt for two\n- A symmetric Pair of exactly two people who both accept the connection\n- Keep private records even before connecting\n\nYou control sharing\n- Log period start/end, symptoms, mood, condition, and help preferences\n- Turn sharing on or off per field; everything is private by default\n- Your partner sees only what you enable — originals stay yours\n\nPrepare together\n- See your next expected period as reference only (individual variation applies; not for medical or contraceptive decisions)\n- Shared calendar, anniversaries, and two fixed partner nudges\n\nPrivacy first\n- Neutral lock-screen notifications that never reveal health details\n- No ads, no third-party tracking, no data sales\n- Export data, delete your account, or disconnect anytime"
+      "ko-KR": "사이클 페어는 주기를 기록하는 사람과 가까운 한 사람이, 생리주기와 그날의 컨디션을 '내가 허용한 만큼만' 나누며 함께 대비하도록 돕는 커플 케어 앱입니다. 이 앱은 의료기기가 아니며 질환을 진단·치료·치유·예방하지 않고, 피임 또는 임신 가능성 판단에 사용할 수 없습니다. 의료 조언, 진단이나 치료가 필요하면 의료 전문가와 상담하세요.\n\n■ 두 사람을 위한 설계\n- 정확히 두 명이 서로 수락해 연결되는 대칭형 Pair\n- 연결 전에도 나만의 기록을 쓸 수 있어요\n\n■ 내가 정하는 공유\n- 생리 시작·종료일, 증상, 기분, 컨디션, 도움 선호를 기록\n- 필드별로 공유를 켜고 끌 수 있고, 기본값은 전부 비공개\n- 파트너에게는 내가 켠 정보만 전달돼요(원본은 나만 볼 수 있어요)\n\n■ 함께 준비\n- 다음 생리 예정일을 참고용으로 표시(개인차가 있으며 의료·피임 판단에 쓰지 않아요)\n- 공동 캘린더와 기념일, 두 가지 고정 메시지로 보내는 파트너 넛지\n\n■ 프라이버시 우선\n- 잠금화면 알림은 건강정보를 드러내지 않는 중립 문구\n- 광고 없음, 제3자 추적 없음, 데이터 판매 없음\n- 언제든 데이터 내보내기·계정 삭제·연결 해제\n\n무료로 이용할 수 있으며 광고와 인앱결제가 없습니다.",
+      "en-US": "Cycle Pair helps someone who tracks their cycle and one close partner prepare together — sharing menstrual cycle and daily condition only as much as you allow. It is not a medical device and does not diagnose, treat, cure, or prevent any medical condition. It must not be used for contraceptive or pregnancy-likelihood decisions. Consult a healthcare professional for medical advice, diagnosis or treatment.\n\nBuilt for two\n- A symmetric Pair of exactly two people who both accept the connection\n- Keep private records even before connecting\n\nYou control sharing\n- Log period start/end, symptoms, mood, condition, and help preferences\n- Turn sharing on or off per field; everything is private by default\n- Your partner sees only what you enable — originals stay yours\n\nPrepare together\n- See your next expected period as reference only (individual variation applies; not for medical or contraceptive decisions)\n- Shared calendar, anniversaries, and two fixed partner nudges\n\nPrivacy first\n- Neutral lock-screen notifications that never reveal health details\n- No ads, no third-party tracking, no data sales\n- Export data, delete your account, or disconnect anytime\n\nFree to use, with no ads or in-app purchases."
     },
     "video": {
       "ko-KR": null,
@@ -50,7 +50,7 @@
     "fertilityOrContraception": "yes-cycle-based-fertility-window-reference-not-contraception",
     "userGeneratedContent": "yes-private-pair-notes-and-events",
     "realtimeChat": "no",
-    "dataSafety": "prepared-free-no-iap-pending-user-review",
+    "dataSafety": "console-saved-readback-matched-pending-market-review",
     "dataSafetyCsv": "play-store/policy/data-safety.csv",
     "dataSafetyDeclaration": "play-store/policy/data-safety-declaration.json",
     "contentRating": "iarc-questionnaire-saved-review-pending",
@@ -92,26 +92,22 @@
   },
   "assets": {
     "playIcon": "play-store/assets/icon-512.png",
-    "featureGraphic": "play-store/assets/feature-graphic-1024x500.png",
+    "featureGraphic": "play-store/assets/ko/feature-graphic-1024x500.png",
     "phoneScreenshots": [
-      "play-store/assets/phone-1-home-1080x1920.png",
-      "play-store/assets/phone-2-sharing-1080x1920.png",
-      "play-store/assets/phone-3-partner-1080x1920.png"
+      "play-store/assets/ko/home.png",
+      "play-store/assets/ko/record.png",
+      "play-store/assets/ko/owner-sharing-default.png"
     ],
-    "sevenInchTabletScreenshots": [
-      "play-store/assets/tablet7-1-home-1080x1920.png",
-      "play-store/assets/tablet7-2-partner-1080x1920.png"
-    ],
-    "tenInchTabletScreenshots": [
-      "play-store/assets/tablet10-1-home-1440x2560.png",
-      "play-store/assets/tablet10-2-partner-1440x2560.png"
-    ]
+    "sevenInchTabletScreenshots": [],
+    "tenInchTabletScreenshots": []
   },
   "manualEvidence": {
-    "playConsoleApp": "Android Publisher API v3 재조회(2026-08-11): com.seorilabs.cyclepair 앱과 tracks=production/beta/alpha/internal, listings=ko-KR·en-US를 확인했다. cyclepair_plus의 monthly(P1M, KRW 3,900)·yearly(P1Y, KRW 29,000) base plan과 각 free-trial(P7D) offer는 173개 지역 ACTIVE다. 업로드된 bundle은 기존 versionCode 1008뿐이며 v1.0.0/1000000 candidate artifact는 아직 없다.",
-    "dataSafetyReview": "missing: 무료, 광고 없음, IAP 없음 범위에서 구매 이력을 제외한 답안의 사용자 검토와 Console 최종 저장 및 재조회가 필요하다. 이전 10개 분류의 임시 저장 기록은 이 변경의 완료 근거로 사용하지 않는다.",
+    "playConsoleApp": "2026-10-25 magicsih@gmail.com, SeoriLabs 개인 계정 7593567020638200144에서 com.seorilabs.cyclepair 소유를 확인했다. Android 1.1.1(1000108)은 내부 테스트 제공 중이며 무료, 광고 없음, IAP 없음으로 등록을 진행한다. 과거 구독 상품은 이번 출시와 연결하지 않는다.",
+    "dataSafetyReview": "2026-10-25 무료, 광고 없음, IAP 없음의 9개 수집 분류를 최종 저장했다. 페이지 재로드 후 다시 내보낸 CSV의 응답 782개가 준비한 정본과 모두 일치했다. 구매 이력은 제외했다. Google의 심사 승인과 공개는 별도다.",
     "contentRating": "2026-10-25 비게임 IARC 설문지를 저장하고 사용자 상호작용 및 초대된 사람만의 접근을 신고했다. 마켓의 검토와 공개는 별도다.",
     "internalTwoPersonTest": "현재 1.1.0 후보의 독립 개발 화면 및 두 계정 검수 결과는 저장소 밖의 후보별 근거에서 확인한다. 운영 인증과 원격 알림 등 실제 플랫폼 검증은 별도이며 기기 사용 승인은 포함하지 않는다.",
-    "deploymentApproval": "사용자가 두 마켓 공개까지 론칭 진행을 지시함. 기기 사용은 별도 승인 대상이며, 검수와 마켓의 실제 저장 및 제출 결과는 아직 완료로 표시하지 않음."
+    "deploymentApproval": "사용자가 두 마켓 공개까지 론칭 진행을 지시함. 기기 사용은 별도 승인 대상이며, 검수와 마켓의 실제 저장 및 제출 결과는 아직 완료로 표시하지 않음.",
+    "targetAudience": "2026-10-25 대상 연령 16~17세와 만18세 이상을 저장했다. 서비스 최소 연령17세를 포함하는 Console의 연령 구간이며 앱의 최소 연령을 변경하지 않았다.",
+    "appAccess": "2026-10-25 등록된 전용 심사 계정 두 개와 Pair 연결 안내를 비공개 로그인 세부정보에 저장했다. 비밀번호는 Git과 증적에 포함하지 않는다. 실제 네이티브 로그인 검증의 통과 근거는 아니다."
   }
 }

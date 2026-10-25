@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "templateSource": "https://support.google.com/googleplay/android-developer/answer/10787469?hl=en",
-  "reviewedAt": null,
+  "reviewedAt": "2026-10-25T03:20:40.435227+00:00",
   "collectsOrSharesData": true,
   "encryptedInTransit": true,
   "supportsDeletionRequest": true,
@@ -82,5 +82,5 @@
     "ads": false
   },
   "preparedAt": "2026-10-25",
-  "reviewStatus": "prepared-free-no-iap-pending-user-review"
+  "reviewStatus": "console-saved-readback-matched-pending-market-review"
 }

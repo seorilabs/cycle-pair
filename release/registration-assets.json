@@ -1,42 +1,202 @@
 {
-  "out_dir": ".",
+  "schemaVersion": 1,
+  "preparedAt": "2026-10-25T03:34:34.070648+00:00",
+  "runtimeCandidates": {
+    "android": "f450f62c5a1dc15737db65dacff2e010eb24b844",
+    "ios": "a82f4f06971830b3693a10958e07563a3abf4789"
+  },
+  "uiSource": "a82f4f06971830b3693a10958e07563a3abf4789",
+  "sourceUiIdentity": "retained original UI/back-end source-identity evidence; Android subsequent changes did not alter screen content",
   "items": [
     {
-      "id": "google-play-tablet7-home",
-      "kind": "seven-inch-tablet",
-      "path": "play-store/assets/tablet7-1-home-1080x1920.png",
+      "market": "play-store",
+      "locale": "ko-KR",
+      "kind": "screenshot",
+      "path": "play-store/assets/ko/home.png",
       "width": 1080,
-      "height": 1920
+      "height": 1920,
+      "sha256": "b23464eeb90ad0e629350fbff0eccbdd6b9e5c2a26ddc690a48ef3b32abebb52",
+      "origin": "original RN development render, direct pixels; not device capture",
+      "id": "play-store-ko-KR-home"
     },
     {
-      "id": "google-play-tablet7-partner",
-      "kind": "seven-inch-tablet",
-      "path": "play-store/assets/tablet7-2-partner-1080x1920.png",
+      "market": "play-store",
+      "locale": "ko-KR",
+      "kind": "screenshot",
+      "path": "play-store/assets/ko/record.png",
       "width": 1080,
-      "height": 1920
+      "height": 1920,
+      "sha256": "c489624e47310cf219fb0f334776cc5b4264db272a433bae94c0eacc4d9627e1",
+      "origin": "original RN development render, direct pixels; not device capture",
+      "id": "play-store-ko-KR-record"
     },
     {
-      "id": "google-play-tablet10-home",
-      "kind": "ten-inch-tablet",
-      "path": "play-store/assets/tablet10-1-home-1440x2560.png",
-      "width": 1440,
-      "height": 2560
+      "market": "play-store",
+      "locale": "ko-KR",
+      "kind": "screenshot",
+      "path": "play-store/assets/ko/owner-sharing-default.png",
+      "width": 1080,
+      "height": 1920,
+      "sha256": "d8e030a579982206cfc673b56e261a3249e7adc09c2c1c37faa3fa11815eb96a",
+      "origin": "original RN development render, direct pixels; not device capture",
+      "id": "play-store-ko-KR-owner-sharing-default"
     },
     {
-      "id": "google-play-tablet10-partner",
-      "kind": "ten-inch-tablet",
-      "path": "play-store/assets/tablet10-2-partner-1440x2560.png",
-      "width": 1440,
-      "height": 2560
+      "market": "play-store",
+      "locale": "en-US",
+      "kind": "screenshot",
+      "path": "play-store/assets/en/home.png",
+      "width": 1080,
+      "height": 1920,
+      "sha256": "f360040c6b7506e2df80537e9e23b342d2fb85a07d8c38730c92e215937d9f82",
+      "origin": "original RN development render, direct pixels; not device capture",
+      "id": "play-store-en-US-home"
+    },
+    {
+      "market": "play-store",
+      "locale": "en-US",
+      "kind": "screenshot",
+      "path": "play-store/assets/en/record.png",
+      "width": 1080,
+      "height": 1920,
+      "sha256": "e77707d03b0aea664f097a4e9ce362dd80e06028eca09135ea5888891b68591f",
+      "origin": "original RN development render, direct pixels; not device capture",
+      "id": "play-store-en-US-record"
+    },
+    {
+      "market": "play-store",
+      "locale": "en-US",
+      "kind": "screenshot",
+      "path": "play-store/assets/en/owner-sharing-default.png",
+      "width": 1080,
+      "height": 1920,
+      "sha256": "5c07b8111c42f0b89898d9118cf387c7ed358f2223736050a55342f99912f6e2",
+      "origin": "original RN development render, direct pixels; not device capture",
+      "id": "play-store-en-US-owner-sharing-default"
+    },
+    {
+      "market": "app-store",
+      "locale": "ko-KR",
+      "kind": "screenshot",
+      "path": "app-store/assets/ko/home.png",
+      "width": 1290,
+      "height": 2796,
+      "sha256": "f7bc13446ed1b822fc48bbe4b21498a1142822cd2259d88f12b1febf7c02c215",
+      "origin": "original RN development render, direct pixels; not device capture",
+      "id": "app-store-ko-KR-home"
+    },
+    {
+      "market": "app-store",
+      "locale": "ko-KR",
+      "kind": "screenshot",
+      "path": "app-store/assets/ko/record.png",
+      "width": 1290,
+      "height": 2796,
+      "sha256": "1ee0f60dbc86129232aa38bd033da772884c50e2457081bacd6f1d49e8bae7ae",
+      "origin": "original RN development render, direct pixels; not device capture",
+      "id": "app-store-ko-KR-record"
+    },
+    {
+      "market": "app-store",
+      "locale": "ko-KR",
+      "kind": "screenshot",
+      "path": "app-store/assets/ko/owner-sharing-default.png",
+      "width": 1290,
+      "height": 2796,
+      "sha256": "52f3bae443ea3842f2f478ece87ad3cdec06ccf10fefbc0038e706016c92c548",
+      "origin": "original RN development render, direct pixels; not device capture",
+      "id": "app-store-ko-KR-owner-sharing-default"
+    },
+    {
+      "market": "app-store",
+      "locale": "en-US",
+      "kind": "screenshot",
+      "path": "app-store/assets/en/home.png",
+      "width": 1290,
+      "height": 2796,
+      "sha256": "25713c1f27c0ffe35c3e4b0105facb2ff85de471ef294b1a8a76dd04309b1ee3",
+      "origin": "original RN development render, direct pixels; not device capture",
+      "id": "app-store-en-US-home"
+    },
+    {
+      "market": "app-store",
+      "locale": "en-US",
+      "kind": "screenshot",
+      "path": "app-store/assets/en/record.png",
+      "width": 1290,
+      "height": 2796,
+      "sha256": "ca27b01460e1e8566f9b5bbb4e7bfbfa62d544efd2e9006c082f729d2384ff67",
+      "origin": "original RN development render, direct pixels; not device capture",
+      "id": "app-store-en-US-record"
+    },
+    {
+      "market": "app-store",
+      "locale": "en-US",
+      "kind": "screenshot",
+      "path": "app-store/assets/en/owner-sharing-default.png",
+      "width": 1290,
+      "height": 2796,
+      "sha256": "48803574649a9875c9cb1e323c9671e3b107371f9daf69dd3bfc5620e46cfc26",
+      "origin": "original RN development render, direct pixels; not device capture",
+      "id": "app-store-en-US-owner-sharing-default"
+    },
+    {
+      "market": "play-store",
+      "locale": "ko-KR",
+      "kind": "featureGraphic",
+      "path": "play-store/assets/ko/feature-graphic-1024x500.png",
+      "width": 1024,
+      "height": 500,
+      "sha256": "3c6f3f6f55c96a38327dcdb223d0261b657d491846a9d3b2e482b2fbd1c56362",
+      "origin": "actual RN UI and listing copy arranged for the feature graphic",
+      "id": "play-store-ko-KR-feature-graphic-1024x500"
+    },
+    {
+      "market": "play-store",
+      "locale": "en-US",
+      "kind": "featureGraphic",
+      "path": "play-store/assets/en/feature-graphic-1024x500.png",
+      "width": 1024,
+      "height": 500,
+      "sha256": "424f1f6de12f3effc63aa3390b789a7a81447488d6d99bded22be9cd980e1e7d",
+      "origin": "actual RN UI and listing copy arranged for the feature graphic",
+      "id": "play-store-en-US-feature-graphic-1024x500"
     }
   ],
+  "googlePlayScreenshotOrder": {
+    "ko-KR": [
+      "home",
+      "record",
+      "owner-sharing-default"
+    ],
+    "en-US": [
+      "record",
+      "owner-sharing-default",
+      "home"
+    ]
+  },
+  "appStoreScreenshotOrder": {
+    "ko": [
+      "home",
+      "record",
+      "owner-sharing-default"
+    ],
+    "en-US": [
+      "home",
+      "record",
+      "owner-sharing-default"
+    ]
+  },
+  "omittedSourceCaptures": "Partner screenshots contain an internal QA note; not published. Obsolete July tablet screenshots no longer match current UI and were removed from the listing; device compatibility was not changed.",
+  "deviceCalls": 0,
+  "out_dir": ".",
   "rules": [
     {
-      "kind": "seven-inch-tablet",
-      "min": 2
+      "kind": "screenshot",
+      "min": 12
     },
     {
-      "kind": "ten-inch-tablet",
+      "kind": "featureGraphic",
       "min": 2
     }
   ]
