@@ -13,7 +13,20 @@ import {
 } from '../components/Ui';
 import { useI18n } from '../i18n/I18nProvider';
 import { colors, radius, spacing } from '../theme';
-export function InviteScreen() {
+export interface InviteDraft {
+  readonly direction: 'send' | 'receive' | null;
+  readonly code: string;
+}
+
+export function InviteScreen({
+  draft,
+  onDraftChange,
+  onBack,
+}: {
+  draft: InviteDraft;
+  onDraftChange(draft: InviteDraft): void;
+  onBack(): void;
+}) {
   const {
     state,
     backendKind,
@@ -28,8 +41,7 @@ export function InviteScreen() {
     continueToSharing,
   } = useCyclePair();
   const { l, t, locale } = useI18n();
-  const [direction, setDirection] = useState<'send' | 'receive' | null>(null);
-  const [code, setCode] = useState('');
+  const { direction, code } = draft;
   const [now, setNow] = useState(Date.now);
   const submitting = useRef(false);
   const expiry = invite
@@ -84,12 +96,12 @@ export function InviteScreen() {
             <View style={styles.card}>
               <PrimaryButton
                 label={t('Send invitation')}
-                onPress={() => setDirection('send')}
+                onPress={() => onDraftChange({ ...draft, direction: 'send' })}
                 testID="invite-send"
               />
               <SecondaryButton
                 label={t('Receive invitation')}
-                onPress={() => setDirection('receive')}
+                onPress={() => onDraftChange({ ...draft, direction: 'receive' })}
               />
             </View>
           ) : (
@@ -97,7 +109,7 @@ export function InviteScreen() {
               <TextButton
                 label={t('Back')}
                 disabled={backendBusy}
-                onPress={() => setDirection(null)}
+                onPress={onBack}
               />
               <Card style={styles.card}>
                 <Text style={styles.title}>
@@ -180,7 +192,9 @@ export function InviteScreen() {
                       placeholder={t('Paste your invitation code')}
                       placeholderTextColor={colors.textSubtle}
                       value={code}
-                      onChangeText={setCode}
+                      onChangeText={value =>
+                        onDraftChange({ ...draft, code: value })
+                      }
                       style={styles.input}
                     />
                     <PrimaryButton
