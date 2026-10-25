@@ -86,6 +86,11 @@ export function CalendarScreen({onOpenRecord}: {onOpenRecord():void}) {
       new Date(2026, 9, 18 + day),
     ),
   );
+  const weekdayLabels = Array.from({ length: 7 }, (_, day) =>
+    new Intl.DateTimeFormat(locale, { weekday: 'narrow' }).format(
+      new Date(2026, 9, 18 + day),
+    ),
+  );
   const {
     state,
     backendBusy,
@@ -433,9 +438,11 @@ export function CalendarScreen({onOpenRecord}: {onOpenRecord():void}) {
           </Pressable>
         </View>
         <View style={styles.weekRow}>
-          {weekdays.map((weekday, index) => (
+          {weekdayLabels.map((weekday, index) => (
             <Text
-              key={weekday}
+              key={String(index)}
+              testID={`calendar-weekday-${index}`}
+              accessibilityLabel={weekdays[index]}
               style={[styles.weekday, index === 0 && styles.sunday]}
             >
               {weekday}
@@ -964,9 +971,10 @@ const styles = StyleSheet.create({
   },
   monthArrow: { color: colors.primaryDark, fontSize: 28, lineHeight: 32 },
   monthTitle: { color: colors.text, fontSize: 18, fontWeight: '700', flex: 1, minWidth: 0, textAlign: 'center' },
-  weekRow: { flexDirection: 'row', marginBottom: spacing.sm },
+  weekRow: { flexDirection: 'row', width: '100%', marginBottom: spacing.sm },
   weekday: {
     flex: 1,
+    minWidth: 0,
     textAlign: 'center',
     color: colors.textSubtle,
     fontSize: 11,
@@ -1040,8 +1048,8 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
   },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  legendDot: { width: 9, height: 9, borderRadius: 5 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, maxWidth: '100%', flexShrink: 1 },
+  legendDot: { width: 9, height: 9, borderRadius: 5, flexShrink: 0 },
   actualDot: { backgroundColor: colors.accent },
   inferredDot: {
     backgroundColor: colors.accentSoft,
@@ -1050,9 +1058,9 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
   },
   predictedDot: { backgroundColor: colors.primarySoft },
-  partnerLegendMark: { width: 14 },
+  partnerLegendMark: { width: 14, flexShrink: 0 },
   todayDot: { borderWidth: 1, borderColor: colors.primary },
-  legendText: { color: colors.textMuted, fontSize: 10, fontWeight: '600' },
+  legendText: { color: colors.textMuted, fontSize: 10, fontWeight: '600', minWidth: 0, flexShrink: 1 },
   selectedDaySection: {
     marginTop: spacing.lg,
     paddingTop: spacing.lg,
@@ -1062,11 +1070,12 @@ const styles = StyleSheet.create({
   },
   selectedDayHeader: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: spacing.md,
   },
-  selectedDayCopy: { flex: 1, gap: 2 },
+  selectedDayCopy: { flex: 1, minWidth: 144, gap: 2 },
   selectedDayEyebrow: {
     color: colors.textSubtle,
     fontSize: 10,

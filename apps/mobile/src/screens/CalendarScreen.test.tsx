@@ -27,4 +27,6 @@ it.each([
   const view=await render(<I18nProvider><CalendarScreen onOpenRecord={jest.fn()}/></I18nProvider>);
   expect(view.getByRole('button',{name:new RegExp(`^${date}, .*${markers}$`)})).toBeTruthy();
   if(locale==='en')expect(view.queryByLabelText(/기록 있음|공동 일정 있음/)).toBeNull();
+  const weekday=view.getByLabelText(locale==='en'?'Sun':'일');
+  expect(weekday.props.children).toBe(locale==='en'?'S':'일');
 });
