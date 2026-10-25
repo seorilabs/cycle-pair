@@ -1608,7 +1608,6 @@ export async function evaluateReleaseReadiness(root, {target, phase = "before-re
     ),
   ];
   if (googlePlayTarget.included && target !== "app-store") {
-    googlePlayBlockers.push(...freeLaunchBlockers(playConfig));
     privacyBlockers.push(
       ...evidenceBlocker(
         releaseEvidence?.policy?.googlePlayDataSafety,
@@ -1618,7 +1617,6 @@ export async function evaluateReleaseReadiness(root, {target, phase = "before-re
     );
   }
   if (appStoreTarget.included && target !== "google-play") {
-    appStoreBlockers.push(...freeLaunchBlockers(appStoreConfig));
     privacyBlockers.push(
       ...evidenceBlocker(
         releaseEvidence?.policy?.appStorePrivacy,
