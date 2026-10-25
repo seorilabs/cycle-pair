@@ -1,9 +1,10 @@
 {
   "schemaVersion": 1,
   "level": "L3",
-  "baseline": "139e9a05c4ed0f90fe8f1a45593cee06202c59a6",
+  "baseline": null,
   "changedFeatures": [
     "onboarding",
+    "home",
     "records",
     "pairing-sharing",
     "calendar",
