@@ -1,5 +1,12 @@
 import React, { useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { type DailyCheckIn, useCyclePair } from '../app/CyclePairStore';
 import {
   EMOTION_CODES,
@@ -20,6 +27,8 @@ import {
 } from '../components/Ui';
 import { useI18n } from '../i18n/I18nProvider';
 import { colors, radius, spacing } from '../theme';
+import { AppIcon } from '../components/AppArtwork';
+import {emotionArtwork} from '../components/emotionArtwork';
 const symptoms = ['복통', '두통', '피로', '부종', '예민함', '허리 불편'];
 const conditions: NonNullable<DailyCheckIn['condition']>[] = [
   '편안해요',
@@ -47,8 +56,11 @@ export function RecordScreen({
 }) {
   const { state, backendBusy, backendError, saveCheckIn } = useCyclePair();
   const { l, t, label } = useI18n();
+  const { fontScale, width } = useWindowDimensions();
+  const moodColumns =
+    fontScale >= 1.75 ? 1 : fontScale > 1.2 || width < 310 ? 2 : 3;
   const [draft, setDraft] = useState(initialDraft ?? state.checkIn);
-  const [sheet, setSheet] = useState<'emotions' | 'help' | null>(null);
+  const [sheet, setSheet] = useState<'help' | null>(null);
   const [details, setDetails] = useState(false);
   const [attempted, setAttempted] = useState(false);
   const submitting = useRef(false);
@@ -57,7 +69,7 @@ export function RecordScreen({
     onDraftChange?.(next);
   }
   async function save() {
-    if (submitting.current || backendBusy) return;
+    if (submitting.current || backendBusy || !draft.emotions?.length) return;
     submitting.current = true;
     setAttempted(true);
     try {
@@ -76,24 +88,81 @@ export function RecordScreen({
         />
         <Text style={styles.date}>{t('Today')}</Text>
       </View>
-      <Title>{t('My day')}</Title>
+      <Title>{t('How are you feeling right now?')}</Title>
       <Body muted style={styles.intro}>
-        {t('Your sharing choices stay the same.')}
+        {t('Choose a word that feels like you.')}
       </Body>
-      <Pressable
-        accessibilityRole="button"
-        testID="record-emotions"
-        onPress={() => setSheet('emotions')}
-        style={styles.summary}
-      >
-        <Text style={styles.label}>{t('How I feel')}</Text>
-        <Text style={styles.value}>
-          {draft.emotions?.map(label).join(', ') || t('Choose')} ›
-        </Text>
-      </Pressable>
+      <Body muted>
+        {t('Choose up to {count}', { count: MAX_EMOTIONS_PER_LOG })}
+      </Body>
+      <View style={styles.moods} testID="record-emotions">
+        {EMOTION_CODES.map(code => {
+          const selected = Boolean(draft.emotions?.includes(code));
+          const disabled =
+            backendBusy ||
+            (!selected &&
+              (draft.emotions?.length ?? 0) >= MAX_EMOTIONS_PER_LOG);
+          return (
+            <Pressable
+              key={code}
+              accessibilityRole="checkbox"
+              accessibilityLabel={label(code)}
+              accessibilityState={{ checked: selected, disabled }}
+              disabled={disabled}
+              testID={`record-emotion-${code}`}
+              onPress={() =>
+                update({
+                  ...draft,
+                  emotions: toggleEmotion(draft.emotions, code),
+                })
+              }
+              style={[
+                styles.mood,
+                moodColumns === 3
+                  ? styles.moodThreeColumns
+                  : moodColumns === 2
+                  ? styles.moodTwoColumns
+                  : styles.moodOneColumn,
+                selected && styles.moodSelected,
+                disabled && styles.disabled,
+              ]}
+            >
+              <AppIcon name={emotionArtwork[code]} size={32} />
+              <Text style={[styles.label, styles.moodLabel]}>
+                {label(code)}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      <Text style={styles.label}>{t('A small note, optional')}</Text>
+      <TextInput
+        accessibilityLabel={t('Note')}
+        testID="record-note"
+        placeholder={t('A few words for yourself')}
+        placeholderTextColor={colors.textMuted}
+        multiline
+        maxLength={500}
+        editable={!backendBusy}
+        value={draft.note ?? ''}
+        onChangeText={note => update({ ...draft, note })}
+        style={styles.input}
+        textAlignVertical="top"
+      />
+      <View style={styles.private}>
+        <AppIcon name={state.shareSettings.note ? 'pair' : 'lock'} />
+        <Body muted style={styles.flex}>
+          {t(state.shareSettings.note
+            ? state.paired
+              ? 'Note sharing is on. Saved notes are shared with your partner.'
+              : 'Note sharing is on. Connect a partner to share saved notes.'
+            : 'Note sharing is off. Only you can see this note.')}
+        </Body>
+      </View>
       <Pressable
         accessibilityRole="button"
         testID="record-help"
+        disabled={backendBusy}
         onPress={() => setSheet('help')}
         style={styles.summary}
       >
@@ -106,13 +175,20 @@ export function RecordScreen({
         accessibilityRole="button"
         accessibilityState={{ expanded: details }}
         testID="record-details"
+        disabled={backendBusy}
         onPress={() => setDetails(!details)}
         style={styles.details}
       >
         <Text style={styles.label}>
           {details ? '−' : '+'} {t('More details')}
         </Text>
-        <Body muted>{t('Symptoms, energy, notes and period')}</Body>
+        <Body muted>
+          {t(
+            state.isLogger
+              ? 'Symptoms, energy and period'
+              : 'Symptoms and energy',
+          )}
+        </Body>
       </Pressable>
       {details ? (
         <Card style={styles.more}>
@@ -121,6 +197,7 @@ export function RecordScreen({
             {symptoms.map(value => (
               <Chip
                 key={value}
+                disabled={backendBusy}
                 label={label(value)}
                 selected={draft.symptoms.includes(value)}
                 onPress={() =>
@@ -139,6 +216,7 @@ export function RecordScreen({
             {([1, 2, 3, 4, 5] as const).map(value => (
               <Chip
                 key={value}
+                disabled={backendBusy}
                 label={String(value)}
                 selected={draft.energy === value}
                 onPress={() =>
@@ -155,6 +233,7 @@ export function RecordScreen({
             {conditions.map(value => (
               <Chip
                 key={value}
+                disabled={backendBusy}
                 label={label(value)}
                 selected={draft.condition === value}
                 onPress={() =>
@@ -166,24 +245,11 @@ export function RecordScreen({
               />
             ))}
           </View>
-          <SectionHeader title={t('Note')} />
-          <TextInput
-            accessibilityLabel={t('Note')}
-            testID="record-note"
-            placeholder={t('Add a note')}
-            placeholderTextColor={colors.textSubtle}
-            multiline
-            maxLength={500}
-            value={draft.note ?? ''}
-            onChangeText={note => update({ ...draft, note })}
-            style={styles.input}
-            textAlignVertical="top"
-          />
-          <Text style={styles.count}>{draft.note?.length ?? 0}/500</Text>
           {state.isLogger ? (
             <>
               <ToggleRow
                 title={t('Period started today')}
+                disabled={backendBusy}
                 value={draft.periodStarted}
                 onValueChange={value =>
                   update({ ...draft, periodStarted: value, periodEnded: false })
@@ -191,6 +257,7 @@ export function RecordScreen({
               />
               <ToggleRow
                 title={t('Period ended today')}
+                disabled={backendBusy}
                 value={draft.periodEnded}
                 onValueChange={value =>
                   update({ ...draft, periodEnded: value, periodStarted: false })
@@ -207,42 +274,12 @@ export function RecordScreen({
         <PrimaryButton
           testID="record-save"
           label={t(backendBusy ? 'Saving…' : 'Save record')}
-          disabled={backendBusy}
+          disabled={backendBusy || !draft.emotions?.length}
           onPress={() => {
             save().catch(() => undefined);
           }}
         />
       </View>
-      <SelectionSheet
-        title={t('How I feel')}
-        visible={sheet === 'emotions'}
-        onClose={() => setSheet(null)}
-      >
-        <Body muted>
-          {t('Choose up to {count}', { count: MAX_EMOTIONS_PER_LOG })}
-        </Body>
-        <View style={styles.options}>
-          {EMOTION_CODES.map(code => (
-            <Chip
-              selectionRole="checkbox"
-              disabled={
-                !draft.emotions?.includes(code) &&
-                (draft.emotions?.length ?? 0) >= MAX_EMOTIONS_PER_LOG
-              }
-              key={code}
-              testID={`record-emotion-${code}`}
-              label={label(code)}
-              selected={draft.emotions?.includes(code)}
-              onPress={() =>
-                update({
-                  ...draft,
-                  emotions: toggleEmotion(draft.emotions, code),
-                })
-              }
-            />
-          ))}
-        </View>
-      </SelectionSheet>
       <SelectionSheet
         title={t('Help I want')}
         visible={sheet === 'help'}
@@ -252,6 +289,7 @@ export function RecordScreen({
           {preferences.map((value, index) => (
             <Chip
               key={value}
+              disabled={backendBusy}
               selectionRole="radio"
               testID={`record-help-${index}`}
               label={label(value)}
@@ -279,6 +317,40 @@ const styles = StyleSheet.create({
   },
   date: { color: colors.textMuted },
   intro: { marginTop: spacing.sm, marginBottom: spacing.lg },
+  moods: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginVertical: spacing.lg,
+  },
+  mood: {
+    minHeight: 88,
+    minWidth: 0,
+    flexGrow: 1,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    gap: spacing.sm,
+    alignItems: 'center',
+  },
+  moodSelected: {
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.primaryDark,
+  },
+  moodThreeColumns: { flexBasis: '30%' },
+  moodTwoColumns: { flexBasis: '45%' },
+  moodOneColumn: { flexBasis: '100%' },
+  moodLabel: { textAlign: 'center', flexShrink: 1, width: '100%' },
+  disabled: { opacity: 0.5 },
+  private: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    alignItems: 'center',
+    marginVertical: spacing.md,
+  },
+  flex: { flex: 1 },
   summary: {
     backgroundColor: colors.surface,
     borderWidth: 1,

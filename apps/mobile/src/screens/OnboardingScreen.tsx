@@ -1,70 +1,90 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useCyclePair } from '../app/CyclePairStore';
-import {
-  Body,
-  Card,
-  Chip,
-  PrimaryButton,
-  Screen,
-  Title,
-} from '../components/Ui';
+import { AppIcon } from '../components/AppArtwork';
+import { Body, PrimaryButton, Screen, Title } from '../components/Ui';
 import { useI18n } from '../i18n/I18nProvider';
-import { colors, spacing } from '../theme';
+import { colors, radius, spacing } from '../theme';
+import type { SetupDraft } from './SetupScreen';
 
-export function OnboardingScreen() {
-  const { completeOnboarding } = useCyclePair();
+export function OnboardingScreen({
+  draft,
+  onDraftChange,
+}: {
+  draft: SetupDraft;
+  onDraftChange(draft: SetupDraft): void;
+}) {
+  const { completeOnboarding, backendBusy } = useCyclePair();
   const { t } = useI18n();
   return (
-    <Screen>
+    <Screen contentStyle={styles.content}>
       <Text style={styles.brand}>∞ {t('Cycle Pair')}</Text>
-      <Title>{t('My record, my choice')}</Title>
-      <Body muted style={styles.intro}>
-        {t('Keep track of your day. Share only what you choose.')}
+      <Title>{t('What would you like to track?')}</Title>
+      <Body muted>
+        {t('Start with what you need. Your records are private by default.')}
       </Body>
-      <Card tone="primary" style={styles.example}>
-        <Chip label={t('Example')} />
-        <Text style={styles.label}>{t('My day')}</Text>
-        <View style={styles.row}>
-          <Text style={styles.value}>🙂 {t('Calm')}</Text>
-          <Chip label={t('Private')} />
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.value}>♡ {t('Just listen')}</Text>
-          <Chip label={t('Shared')} selected />
-        </View>
-        <Body muted>
-          {t('Only selected items are shared with your partner.')}
-        </Body>
-      </Card>
+      {([true, false] as const).map(isLogger => (
+        <Pressable
+          key={String(isLogger)}
+          accessibilityRole="radio"
+          accessibilityState={{
+            checked: draft.purposeChosen && draft.isLogger === isLogger,
+            disabled: backendBusy,
+          }}
+          disabled={backendBusy}
+          testID={isLogger ? 'purpose-cycle' : 'purpose-condition'}
+          onPress={() =>
+            onDraftChange({ ...draft, isLogger, purposeChosen: true })
+          }
+          style={[
+            styles.choice,
+            draft.purposeChosen &&
+              draft.isLogger === isLogger &&
+              styles.selected,
+          ]}
+        >
+          <AppIcon name={isLogger ? 'cycle' : 'leaf'} size={34} />
+          <View style={styles.copy}>
+            <Text style={styles.label}>
+              {t(isLogger ? 'Cycle and condition' : 'Condition only')}
+            </Text>
+            <Body muted>
+              {t(
+                isLogger
+                  ? 'Period dates, body and mood'
+                  : 'Body and mood, without cycle questions',
+              )}
+            </Body>
+          </View>
+        </Pressable>
+      ))}
       <PrimaryButton
-        label={t('Start')}
+        label={t('Continue')}
+        disabled={backendBusy || !draft.purposeChosen}
         onPress={completeOnboarding}
         testID="onboarding-next"
       />
-      <Body muted style={styles.notice}>
-        {t('Estimates are for reference, not medical advice or contraception.')}
-      </Body>
     </Screen>
   );
 }
 const styles = StyleSheet.create({
-  brand: {
-    color: colors.primary,
-    fontSize: 22,
-    fontWeight: '800',
-    marginBottom: spacing.xxl,
-  },
-  intro: { marginTop: spacing.md },
-  example: { gap: spacing.lg, marginVertical: spacing.xl },
-  label: { color: colors.primaryDark, fontSize: 16, fontWeight: '700' },
-  row: {
+  content: { gap: spacing.xl },
+  brand: { color: colors.primaryDark, fontSize: 18, fontWeight: '800' },
+  choice: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.md,
-    flexWrap: 'wrap',
+    gap: spacing.lg,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    minHeight: 104,
   },
-  value: { color: colors.text, fontSize: 18, fontWeight: '700', flexShrink: 1 },
-  notice: { marginTop: spacing.lg },
+  selected: {
+    borderColor: colors.primaryDark,
+    backgroundColor: colors.primarySoft,
+  },
+  copy: { flex: 1, gap: spacing.sm },
+  label: { color: colors.text, fontSize: 18, fontWeight: '700' },
 });

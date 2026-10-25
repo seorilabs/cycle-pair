@@ -18,6 +18,7 @@ import {
 } from '../components/Ui';
 import { useI18n } from '../i18n/I18nProvider';
 import { colors, spacing } from '../theme';
+import { AppIcon } from '../components/AppArtwork';
 export function PartnerScreen() {
   const { state, openPairing, continueToSharing } = useCyclePair();
   const { t, locale } = useI18n();
@@ -31,10 +32,20 @@ export function PartnerScreen() {
   const other = fields.filter(field => !primary.includes(field));
   return (
     <Screen>
-      <Title>{t('Partner')}</Title>
+      <Title>{t('Small ways to be there')}</Title>
+      <Body muted style={styles.intro}>
+        {t('Ask first. Be there in a way that feels right.')}
+      </Body>
+      <Card tone="mint" style={styles.card}>
+        <AppIcon name="cup" size={40} />
+        <Text style={styles.headingText}>
+          {t('What would feel helpful today?')}
+        </Text>
+        <Body muted>{t('Leave room for their answer.')}</Body>
+      </Card>
       {!state.paired ? (
         <Card tone="primary" style={styles.card}>
-          <Text style={styles.mark}>♡</Text>
+          <AppIcon name="pair" size={40} />
           <Body>{t('You can keep recording without a partner.')}</Body>
           <Body muted>{t('Nothing is shared until you choose.')}</Body>
           <PrimaryButton label={t('Connect a partner')} onPress={openPairing} />
@@ -93,6 +104,7 @@ export function PartnerScreen() {
   );
 }
 const styles = StyleSheet.create({
+  intro: { marginTop: spacing.md },
   card: { marginTop: spacing.lg, gap: spacing.lg },
   mark: { fontSize: 42, color: colors.primary },
   heading: {

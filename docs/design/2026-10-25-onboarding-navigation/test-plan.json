@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "level": "L3",
+  "baseline": null,
+  "changedFeatures": [
+    "onboarding",
+    "home",
+    "records",
+    "pairing-sharing",
+    "calendar",
+    "settings-language",
+    "privacy",
+    "account"
+  ],
+  "environments": [
+    "dev"
+  ],
+  "redesign": true,
+  "foundationRerun": true,
+  "floorOverrides": [
+    {
+      "rule": "foundation",
+      "featureId": "records",
+      "reason": "화면 이동과 입력 보존을 변경한다. 기존 기록의 저장, 복원과 계정 분리를 RN 개발 화면, 실제 컴포넌트에 전달하는 뒤로 이동 이벤트, 보호 저장소 계약 시험과 Firebase 개발 환경에서 검증한다. 네이티브 SDK와 OS 권한은 변경하지 않으며 첫 출시의 기기 전용 미확인 항목을 면제하지 않는다."
+    },
+    {
+      "rule": "foundation",
+      "featureId": "pairing-sharing",
+      "reason": "선택 초대 진입과 하위 단계 뒤로 이동만 변경한다. 기존 연결, 만료와 공유 기본값을 RN 개발 화면 및 Firebase 에뮬레이터에서 검증한다. 네이티브 인증 SDK, 알림과 OS 연동은 변경하지 않으며 첫 출시의 미확인 항목을 면제하지 않는다."
+    },
+    {
+      "rule": "foundation",
+      "featureId": "privacy",
+      "reason": "기존 버전의 건강 정보 동의를 별도 단계로 표시한다. 동의 전 저장 차단, 구버전 동의, 항목별 공유 해제와 계정 삭제를 개발 환경에서 검증한다. 동의의 법적 범위, SDK와 개인정보 처리방침은 확대하지 않는다."
+    },
+    {
+      "rule": "foundation",
+      "featureId": "account",
+      "reason": "승인된 이메일과 게스트 첫 진입 선택, 신규 이메일 연결과 기존 계정 복원 화면을 RN 개발 화면과 Firebase Auth 개발 에뮬레이터, 기존 계정별 캐시와 삭제 복구 계약 검사로 확인한다. 기존 네이티브 인증 SDK와 보안 저장 계약은 변경하지 않으며 최초 네이티브 인증의 기기 전용 미확인 항목을 면제하지 않는다."
+    }
+  ],
+  "release": {
+    "markets": [
+      "google-play",
+      "app-store"
+    ],
+    "until": "public",
+    "rollout": 1
+  }
+}

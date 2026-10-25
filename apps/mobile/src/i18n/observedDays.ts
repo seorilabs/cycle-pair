@@ -1,0 +1,36 @@
+export const observedDayMessages = {
+  'A moment for you': '오늘의 나를 살펴요',
+  'There is room for a slower day.': '조금 느린 하루여도 괜찮아요.',
+  'How are you feeling today?': '오늘은 어떤 하루인가요?',
+  'Start with one feeling.': '한 가지 마음부터 남겨보세요.',
+  'Records are private by default.': '기록은 기본으로 나만 볼 수 있어요.',
+  'My week': '나의 일주일',
+  'The quiet days are yours, too.': '비어 있는 날도, 나의 하루예요.',
+  '{recorded} of 7 days recorded. {missing} days without records.':
+    '7일 중 {recorded}일 기록, 미기록 {missing}일.',
+  'Feelings recorded this week': '이번 주에 남긴 마음',
+  'Your days, gently reflected': '쌓인 하루를 돌아봐요',
+  'A reflection of what you recorded.': '기록한 만큼만 보여드려요.',
+  'No feeling selected': '기분을 선택하지 않았어요',
+  'No record': '기록 없음',
+  '{count} days': '{count}일',
+  '1 day': '1일',
+  'Today’s note': '오늘의 기록',
+  'Record my day': '오늘 기록하기',
+  'Edit today’s note': '오늘 기록 수정',
+  'Days with a feeling recorded: {count}.': '기분을 남긴 날: {count}일.',
+  'You can choose several feelings in a day, so totals may overlap.':
+    '하루에 여러 마음을 고를 수 있어 합계가 겹칠 수 있어요.',
+  'Your story starts here': '아직 그려지지 않은 하루들',
+  'Your days will gather here as you record them.': '첫 기록을 남기면 이곳에 차곡차곡 모여요.',
+  'Write your first note': '기록하기',
+  'Your records are here. Add a feeling when it feels right.':
+    '남겨둔 기록이 있어요. 마음이 내킬 때 기분도 골라보세요.',
+  'Based on your entered {days}-day cycle. Recorded cycle intervals: 0.':
+    '직접 입력한 {days}일 주기를 기준으로 한 참고 범위예요. 기록으로 확인한 주기 간격은 0개예요.',
+  'Based on 1 recorded cycle interval. Average {days} days.':
+    '기록으로 확인한 주기 간격 1개, 평균 {days}일을 기준으로 표시해요.',
+  'Based on {count} recorded cycle intervals. Average {days} days.':
+    '기록으로 확인한 주기 간격 {count}개, 평균 {days}일을 기준으로 표시해요.',
+  'More than one feeling': '여러 마음을 남겼어요',
+} as const;

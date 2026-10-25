@@ -156,7 +156,7 @@
           "appFunctionality"
         ],
         "usedForTracking": false,
-        "notes": "Private notes and explicitly shared pair calendar entries"
+        "notes": "Private owner records, notes shared only with explicit field opt-in, and pair calendar entries"
       }
     }
   },

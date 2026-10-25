@@ -44,6 +44,7 @@ export interface AccountContextValue {
   readonly state: AccountState;
   clearFeedback(): void;
   startGuest(): Promise<boolean>;
+  registerEmail(email: string, password: string): Promise<boolean>;
   upgradeAnonymous(email: string, password: string): Promise<boolean>;
   resendVerification(): Promise<boolean>;
   refreshVerification(): Promise<boolean>;
@@ -168,6 +169,7 @@ export function AccountProvider({
   });
   const explicitSignOut = useRef(false);
   const intentResolved = useRef(false);
+  const startingIdentity = useRef(false);
 
   const applyError = useCallback(
     (error: unknown) => {
@@ -221,7 +223,11 @@ export function AccountProvider({
     const stop = account.subscribe(
       session => {
         if (!active) return;
-        if (!intentResolved.current || (explicitSignOut.current && session))
+        if (
+          startingIdentity.current ||
+          !intentResolved.current ||
+          (explicitSignOut.current && session)
+        )
           return;
         setState(current => ({
           ...current,
@@ -233,8 +239,8 @@ export function AccountProvider({
             current.deletionRecovery !== 'none'
               ? true
               : session && current.session?.uid === session.uid
-                ? current.sessionQuiesced
-                : false,
+              ? current.sessionQuiesced
+              : false,
           reauthenticatedAt:
             session && current.session?.uid === session.uid
               ? current.reauthenticatedAt
@@ -359,13 +365,15 @@ export function AccountProvider({
             ...current,
             hydrating: false,
             session: null,
-              sessionQuiesced: false,
-              deletionRecovery: 'none',
+            sessionQuiesced: false,
+            deletionRecovery: 'none',
             error: null,
           }));
           return;
         }
-        const session = await account.initialize();
+        const session = account.currentSession()
+          ? await account.initialize()
+          : null;
         if (!active) return;
         setState(current => ({
           ...current,
@@ -400,18 +408,84 @@ export function AccountProvider({
     setState(current => ({ ...current, error: null, notice: null }));
   }, []);
 
-  const startGuest = useCallback(async () => {
-    try {
-      const pendingIntent = await intentStorage.loadAccountDeletionIntent();
-      if (pendingIntent || state.deletionRecovery !== 'none') {
-        throw new AccountOperationError('account/deletion-recovery-active');
+  const registerEmail = useCallback(
+    async (rawEmail: string, password: string) => {
+      if (
+        startingIdentity.current ||
+        state.busy ||
+        state.session ||
+        state.sessionQuiesced
+      )
+        return false;
+      const email = normalizedEmail(rawEmail);
+      let createdAccount = false;
+      startingIdentity.current = true;
+      try {
+        validateEmail(email);
+        if (password.length < 8)
+          throw new AccountOperationError('account/password-too-short');
+        setState(current => ({
+          ...current,
+          busy: true,
+          error: null,
+          notice: null,
+        }));
+        if (await intentStorage.loadAccountDeletionIntent())
+          throw new AccountOperationError('account/deletion-recovery-active');
+        await intentStorage.markExplicitlySignedOut();
+        explicitSignOut.current = true;
+        const session = await account.registerEmail(email, password);
+        createdAccount = true;
+        await intentStorage.clearExplicitSignOut();
+        explicitSignOut.current = false;
+        let notice = '계정 전환이 완료되어 인증 메일을 보냈습니다.';
+        try {
+          await account.sendVerificationEmail(locale);
+        } catch {
+          notice = '계정 전환은 완료되었습니다. 인증 메일을 다시 보내 주세요.';
+        }
+        setState(current => ({
+          ...current,
+          busy: false,
+          session,
+          sessionQuiesced: false,
+          reauthenticatedAt: null,
+          notice,
+        }));
+        return true;
+      } catch (error) {
+        if (createdAccount) await account.signOut().catch(() => undefined);
+        applyError(error);
+        return false;
+      } finally {
+        startingIdentity.current = false;
       }
+    },
+    [
+      account,
+      applyError,
+      intentStorage,
+      locale,
+      state.busy,
+      state.session,
+      state.sessionQuiesced,
+    ],
+  );
+
+  const startGuest = useCallback(async () => {
+    if (startingIdentity.current || state.busy) return false;
+    startingIdentity.current = true;
+    try {
       setState(current => ({
         ...current,
         busy: true,
         error: null,
         notice: null,
       }));
+      const pendingIntent = await intentStorage.loadAccountDeletionIntent();
+      if (pendingIntent || state.deletionRecovery !== 'none') {
+        throw new AccountOperationError('account/deletion-recovery-active');
+      }
       const session = await account.startGuest();
       try {
         await intentStorage.clearExplicitSignOut();
@@ -434,8 +508,10 @@ export function AccountProvider({
     } catch (error) {
       applyError(error);
       return false;
+    } finally {
+      startingIdentity.current = false;
     }
-  }, [account, applyError, intentStorage, state.deletionRecovery]);
+  }, [account, applyError, intentStorage, state.busy, state.deletionRecovery]);
 
   const upgradeAnonymous = useCallback(
     async (rawEmail: string, password: string) => {
@@ -670,10 +746,7 @@ export function AccountProvider({
     let recoveryReceipt: string | null = null;
     try {
       const pendingIntent = await intentStorage.loadAccountDeletionIntent();
-      if (
-        !pendingIntent &&
-        state.deletionRecovery === 'intent-unreadable'
-      ) {
+      if (!pendingIntent && state.deletionRecovery === 'intent-unreadable') {
         const signedOut = await intentStorage.wasExplicitlySignedOut();
         const nativeSession = account.currentSession();
         explicitSignOut.current = signedOut;
@@ -866,21 +939,21 @@ export function AccountProvider({
         deletionRecovery: serverDeletionConfirmed
           ? 'local-cleanup-pending'
           : deletionCallableStarted
-            ? 'deletion-pending'
-            : preparationCallableStarted || intentRollbackFailed
-              ? recoveryReceipt === null
-                ? 'deletion-preparing'
-                : 'deletion-pending'
-            : deletionIntentCreated
-              ? 'none'
-              : current.deletionRecovery,
+          ? 'deletion-pending'
+          : preparationCallableStarted || intentRollbackFailed
+          ? recoveryReceipt === null
+            ? 'deletion-preparing'
+            : 'deletion-pending'
+          : deletionIntentCreated
+          ? 'none'
+          : current.deletionRecovery,
         error: serverDeletionConfirmed
           ? '서버 계정은 삭제했지만 기기의 보안 저장소 정리를 완료하지 못했습니다. 기기 데이터 정리를 다시 시도해 주세요.'
           : deletionCallableStarted
-            ? '계정 삭제 완료를 확인하지 못했습니다. 데이터 재생성을 막기 위해 동기화를 중지했습니다. 계정 삭제를 다시 시도해 주세요.'
-            : preparationCallableStarted || intentRollbackFailed
-              ? '계정 삭제 준비를 확인하지 못했습니다. 데이터 재생성을 막기 위해 동기화를 중지했습니다. 계정 삭제를 다시 시도해 주세요.'
-            : accountErrorMessage(error),
+          ? '계정 삭제 완료를 확인하지 못했습니다. 데이터 재생성을 막기 위해 동기화를 중지했습니다. 계정 삭제를 다시 시도해 주세요.'
+          : preparationCallableStarted || intentRollbackFailed
+          ? '계정 삭제 준비를 확인하지 못했습니다. 데이터 재생성을 막기 위해 동기화를 중지했습니다. 계정 삭제를 다시 시도해 주세요.'
+          : accountErrorMessage(error),
         notice: null,
       }));
       return false;
@@ -979,6 +1052,7 @@ export function AccountProvider({
       state,
       clearFeedback,
       startGuest,
+      registerEmail,
       upgradeAnonymous,
       resendVerification,
       refreshVerification,
@@ -993,6 +1067,7 @@ export function AccountProvider({
       state,
       clearFeedback,
       startGuest,
+      registerEmail,
       upgradeAnonymous,
       resendVerification,
       refreshVerification,

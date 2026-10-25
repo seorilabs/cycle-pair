@@ -1,9 +1,10 @@
-import {useI18n} from './i18n/I18nProvider';
+import { useI18n } from './i18n/I18nProvider';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useCyclePair } from './app/CyclePairStore';
 import { useHardwareBack } from './app/useHardwareBack';
 import { useKeyboardVisibility } from './app/useKeyboardVisibility';
+import { previousSetupStep } from './app/onboardingFlow';
 import { InAppMessageBox, InAppToast } from './components/InAppNotifications';
 import { BottomTabs } from './components/Ui';
 import { CalendarScreen } from './screens/CalendarScreen';
@@ -22,11 +23,11 @@ import { SharingScreen } from './screens/SharingScreen';
 import { colors, spacing } from './theme';
 
 function LoadingScreen() {
-  const {l} = useI18n();
+  const { l } = useI18n();
   return (
     <View style={styles.loading}>
       <Text style={styles.loadingMark}>∞</Text>
-      <Text style={styles.loadingTitle}>{l("사이클 페어")}</Text>
+      <Text style={styles.loadingTitle}>{l('사이클 페어')}</Text>
       <ActivityIndicator color={colors.primary} style={styles.spinner} />
     </View>
   );
@@ -39,13 +40,17 @@ export function CyclePairApp() {
     isHydrating,
     goBack,
     setTab,
+    openPairing,
     inAppNotices,
     toastNotice,
     dismissToastNotice,
     openInAppNotice,
   } = useCyclePair();
   const [recordOpen, setRecordOpen] = useState(false);
-  const [recordDraft, setRecordDraft] = useState<{date: string; value: import('./app/CyclePairStore').DailyCheckIn} | null>(null);
+  const [recordDraft, setRecordDraft] = useState<{
+    date: string;
+    value: import('./app/CyclePairStore').DailyCheckIn;
+  } | null>(null);
   const [setupDraft, setSetupDraft] = useState<SetupDraft | null>(null);
   const [inviteDraft, setInviteDraft] = useState<InviteDraft>({
     direction: null,
@@ -72,24 +77,53 @@ export function CyclePairApp() {
     }
     return goBack();
   }, [backendBusy, goBack, inviteDraft.direction, state.paired]);
+  const backFromSetup = useCallback(() => {
+    if (backendBusy) return true;
+    const draft = setupDraft ?? createSetupDraft(state);
+    const previous = previousSetupStep(draft);
+    if (previous) {
+      setSetupDraft({ ...draft, step: previous });
+      return true;
+    }
+    return goBack();
+  }, [backendBusy, goBack, setupDraft, state]);
   const handleHardwareBack = useCallback(() => {
     if (recordOpen) {
       closeRecord();
       return true;
     }
     if (state.stage === 'invite') return backFromInvite();
+    if (state.stage === 'setup') return backFromSetup();
     return goBack();
-  }, [backFromInvite, closeRecord, goBack, recordOpen, state.stage]);
+  }, [
+    backFromInvite,
+    backFromSetup,
+    closeRecord,
+    goBack,
+    recordOpen,
+    state.stage,
+  ]);
 
   useHardwareBack(handleHardwareBack);
 
   if (isHydrating) return <LoadingScreen />;
-  if (state.stage === 'onboarding') return <OnboardingScreen />;
+  if (state.stage === 'onboarding')
+    return (
+      <OnboardingScreen
+        draft={setupDraft ?? createSetupDraft(state)}
+        onDraftChange={setSetupDraft}
+      />
+    );
   if (state.stage === 'setup') {
     return (
       <SetupScreen
         draft={setupDraft ?? createSetupDraft(state)}
         onDraftChange={setSetupDraft}
+        onBack={backFromSetup}
+        onStartPairing={direction => {
+          setInviteDraft({ direction, code: '' });
+          openPairing();
+        }}
       />
     );
   }
@@ -105,7 +139,23 @@ export function CyclePairApp() {
   if (state.stage === 'sharing') return <SharingScreen />;
 
   if (recordOpen) {
-    return <RecordScreen initialDraft={recordDraft?.date === state.currentLocalDate ? recordDraft.value : undefined} onDraftChange={value => setRecordDraft({date: state.currentLocalDate, value})} onDone={() => {setRecordOpen(false); setRecordDraft(null);}} onCancel={closeRecord} />;
+    return (
+      <RecordScreen
+        initialDraft={
+          recordDraft?.date === state.currentLocalDate
+            ? recordDraft.value
+            : undefined
+        }
+        onDraftChange={value =>
+          setRecordDraft({ date: state.currentLocalDate, value })
+        }
+        onDone={() => {
+          setRecordOpen(false);
+          setRecordDraft(null);
+        }}
+        onCancel={closeRecord}
+      />
+    );
   }
 
   return (
@@ -116,8 +166,12 @@ export function CyclePairApp() {
         onOpen={openInAppNotice}
       />
       <View style={styles.screen}>
-        {state.activeTab === 'home' ? <HomeScreen onOpenRecord={() => setRecordOpen(true)} /> : null}
-        {state.activeTab === 'calendar' ? <CalendarScreen /> : null}
+        {state.activeTab === 'home' ? (
+          <HomeScreen onOpenRecord={() => setRecordOpen(true)} />
+        ) : null}
+        {state.activeTab === 'calendar' ? (
+          <CalendarScreen onOpenRecord={() => setRecordOpen(true)} />
+        ) : null}
         {state.activeTab === 'partner' ? <PartnerScreen /> : null}
         {state.activeTab === 'settings' ? <SettingsScreen /> : null}
       </View>
@@ -138,7 +192,12 @@ export function CyclePairApp() {
 const styles = StyleSheet.create({
   main: { flex: 1, backgroundColor: colors.background },
   screen: { flex: 1 },
-  loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background },
+  loading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background,
+  },
   loadingMark: { color: colors.primary, fontSize: 72, lineHeight: 82 },
   loadingTitle: { color: colors.text, fontSize: 26, fontWeight: '900' },
   spinner: { marginTop: spacing.xl },

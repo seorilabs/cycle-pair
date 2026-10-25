@@ -1,4 +1,8 @@
+import { emotionalMessages } from './emotional';
+import { observedDayMessages } from './observedDays';
 export const ko = {
+  ...emotionalMessages,
+  ...observedDayMessages,
   'Loading record…': '기록 불러오는 중…',
   'Could not load records': '기록을 불러오지 못했어요',
   'Dismiss keyboard': '키보드 닫기',

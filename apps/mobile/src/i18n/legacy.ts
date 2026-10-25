@@ -226,8 +226,8 @@ export const legacyEnglish: Readonly<Record<string, string>> = {
     'Enter a real date up to today in YYYY-MM-DD format.',
   '오프라인 기록은 기기에 암호화해 보관해요. 알림은 직접 켠 경우에만 받으며 건강 정보, 이름, 날짜와 메모는 알림에 넣지 않아요.':
     'Offline changes are encrypted in secure device storage. Notifications are registered only when you turn them on. Lock screen messages contain no health information, names, dates or notes.',
-  '내 기록은 나만 볼 수 있어요. 선택한 항목만 상대에게 보이며, 공유를 끄거나 연결을 해제하면 상대의 접근을 차단해요.':
-    'Only you can access your original records. Your partner receives only the fields you choose for your current connection. Turning sharing off or disconnecting immediately revokes server access.',
+  '원본 기록은 나만 보고, 메모를 포함해 직접 공유를 켠 항목만 상대에게 보여요. 공유를 끄거나 연결을 해제하면 상대의 접근을 차단해요.':
+    'Only you can access your original records. Your partner receives only the fields you turn on, including notes if you enable note sharing. Turning sharing off or disconnecting revokes server access.',
   월: 'month',
   '이 기기와 서버의 내 기록, 파트너 연결과 게스트 계정이 영구 삭제돼요. 되돌릴 수 없어요.':
     'Your private records, partner connection, sharing choices and guest account on this device and the server will be permanently deleted. This cannot be undone.',
@@ -283,7 +283,7 @@ export const legacyEnglish: Readonly<Record<string, string>> = {
     'I agree to the use of cycle and condition data',
   '주기와 다음 생리 예상 사용 중': 'Cycle tracking and estimates on',
   '주기와 컨디션 기록': 'Cycle and condition',
-  '중립적인 잠금화면 알림': 'Neutral lock screen notifications',
+  '중립적인 잠금화면 알림': 'Neutral lock screen alerts',
   '지금 기기를 잃거나 로그아웃하면 기록을 복구할 수 없어요.':
     'If you lose this device or sign out now, these records cannot be recovered.',
   '지금은 건너뛰어도 돼요. 실제 생리일은 언제든 기록할 수 있어요.':

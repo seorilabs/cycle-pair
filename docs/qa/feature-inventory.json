@@ -7,7 +7,8 @@
       "paths": [
         "apps/mobile/src/screens/OnboardingScreen.tsx",
         "apps/mobile/src/screens/SetupScreen.tsx",
-        "apps/mobile/src/CyclePairApp.tsx"
+        "apps/mobile/src/CyclePairApp.tsx",
+        "apps/mobile/src/app/onboardingFlow.ts"
       ]
     },
     {
@@ -26,7 +27,9 @@
       "core": true,
       "paths": [
         "apps/mobile/src/screens/HomeScreen.tsx",
-        "apps/mobile/src/app/cycleViewModel.ts"
+        "apps/mobile/src/app/cycleViewModel.ts",
+        "apps/mobile/src/app/observedRecordSummary.ts",
+        "apps/mobile/src/components/ObservedDays.tsx"
       ]
     },
     {
@@ -47,7 +50,9 @@
       "core": true,
       "paths": [
         "apps/mobile/src/screens/CalendarScreen.tsx",
-        "firebase/functions/src/domain/pairEvent.ts"
+        "firebase/functions/src/domain/pairEvent.ts",
+        "apps/mobile/src/app/observedRecordSummary.ts",
+        "apps/mobile/src/components/ObservedDays.tsx"
       ]
     },
     {
@@ -58,7 +63,8 @@
         "apps/mobile/src/platform/account/**",
         "apps/mobile/src/app/account/**",
         "apps/mobile/src/components/AccountSettingsCard.tsx",
-        "apps/mobile/App.tsx"
+        "apps/mobile/App.tsx",
+        "apps/mobile/src/screens/AccountGateScreen.tsx"
       ]
     },
     {

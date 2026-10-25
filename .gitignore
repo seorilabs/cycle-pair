@@ -40,3 +40,10 @@ GoogleService-Info.plist
 **/*.key
 **/*.pem
 **/*.mobileprovision
+
+# Actual RN development renderer outputs are regenerated from versioned source.
+scripts/dev-rn-web/dist/
+scripts/dev-rn-web/shims/
+scripts/dev-rn-web/entry.tsx
+scripts/dev-rn-web/bundle-metafile.json
+scripts/dev-rn-web/fixture-plan.json

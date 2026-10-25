@@ -15,10 +15,12 @@ import {
   TextStyle,
   View,
   ViewStyle,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MainTab } from '../app/CyclePairStore';
 import { colors, radius, spacing } from '../theme';
+import { AppIcon, type AppIconName } from './AppArtwork';
 
 export function Screen({
   children,
@@ -165,6 +167,7 @@ export function TextButton({
       disabled={disabled}
       onPress={onPress}
       hitSlop={10}
+      style={styles.textButtonTouch}
     >
       <Text style={[styles.textButton, disabled && styles.textButtonDisabled]}>
         {label}
@@ -321,13 +324,14 @@ export function Stepper({
   onChange(value: number): void;
   disabled?: boolean;
 }) {
+  const { t } = useI18n();
   return (
     <View style={styles.stepperRow}>
       <Text style={styles.toggleTitle}>{label}</Text>
       <View style={styles.stepperControls}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`${label} 줄이기`}
+          accessibilityLabel={t('Decrease {label}', { label })}
           accessibilityState={{ disabled: disabled || value <= min }}
           disabled={disabled || value <= min}
           onPress={() => onChange(value - 1)}
@@ -341,7 +345,7 @@ export function Stepper({
         </Text>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`${label} 늘리기`}
+          accessibilityLabel={t('Increase {label}', { label })}
           accessibilityState={{ disabled: disabled || value >= max }}
           disabled={disabled || value >= max}
           onPress={() => onChange(value + 1)}
@@ -357,12 +361,12 @@ export function Stepper({
 const tabs: Array<{
   key: MainTab;
   label: import('../i18n/language').MessageKey;
-  icon: string;
+  icon?: AppIconName;
 }> = [
-  { key: 'home', label: 'Today', icon: '∞' },
-  { key: 'calendar', label: 'Calendar', icon: '◫' },
-  { key: 'partner', label: 'Partner', icon: '♡' },
-  { key: 'settings', label: 'Settings', icon: '⋯' },
+  { key: 'home', label: 'Today', icon: 'home' },
+  { key: 'calendar', label: 'Calendar', icon: 'calendar' },
+  { key: 'partner', label: 'Partner', icon: 'pair' },
+  { key: 'settings', label: 'Settings' },
 ];
 
 export function BottomTabs({
@@ -373,6 +377,7 @@ export function BottomTabs({
   onChange(tab: MainTab): void;
 }) {
   const { t } = useI18n();
+  const { fontScale } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   return (
     <View
@@ -391,11 +396,15 @@ export function BottomTabs({
             accessibilityState={{ selected }}
             key={tab.key}
             onPress={() => onChange(tab.key)}
-            style={styles.tabItem}
+            style={[styles.tabItem, fontScale > 1.3 && styles.tabItemLargeText]}
           >
-            <Text style={[styles.tabIcon, selected && styles.tabSelected]}>
-              {tab.icon}
-            </Text>
+            {tab.icon ? (
+              <AppIcon name={tab.icon} />
+            ) : (
+              <Text style={[styles.tabIcon, selected && styles.tabSelected]}>
+                ⋯
+              </Text>
+            )}
             <Text style={[styles.tabLabel, selected && styles.tabSelected]}>
               {t(tab.label)}
             </Text>
@@ -464,15 +473,18 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     minHeight: 56,
+    borderWidth: 1,
+    borderColor: colors.primaryDark,
     borderRadius: radius.md,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primaryDark,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
   },
   primaryButtonText: { color: '#FFFFFF', fontSize: 17, fontWeight: '700' },
   secondaryButton: {
-    minHeight: 52,
+    minHeight: 56,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.primarySoft,
@@ -480,11 +492,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
   },
-  secondaryButtonCompact: { minHeight: 40, paddingHorizontal: spacing.lg },
+  secondaryButtonCompact: { minHeight: 48, paddingHorizontal: spacing.lg, paddingVertical: 0 },
   secondaryButtonText: {
     color: colors.primaryDark,
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
   },
   dangerButton: {
@@ -494,7 +507,12 @@ const styles = StyleSheet.create({
   dangerText: { color: colors.danger },
   buttonPressed: { opacity: 0.72, transform: [{ scale: 0.99 }] },
   buttonDisabled: { opacity: 0.45 },
-  textButton: { color: colors.primary, fontSize: 15, fontWeight: '700' },
+  textButton: { color: colors.primaryDark, fontSize: 15, fontWeight: '700' },
+  textButtonTouch: {
+    minHeight: 48,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
   textButtonDisabled: { color: colors.textSubtle },
   eyebrow: {
     color: colors.primary,
@@ -507,7 +525,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 32,
     lineHeight: 40,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: -0.6,
   },
   body: { color: colors.text, fontSize: 16, lineHeight: 24 },
@@ -529,7 +547,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    minHeight: 42,
+    minHeight: 48,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.border,
@@ -558,6 +576,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: spacing.md,
     paddingVertical: spacing.lg,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
@@ -568,9 +588,9 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   stepperButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: colors.surfaceMuted,
     alignItems: 'center',
     justifyContent: 'center',
@@ -585,18 +605,22 @@ const styles = StyleSheet.create({
   },
   tabBar: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     backgroundColor: colors.surface,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
     paddingTop: spacing.sm,
   },
   tabItem: {
-    flex: 1,
+    flexBasis: '25%',
+    flexGrow: 1,
+    flexShrink: 0,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,
     minHeight: 52,
   },
+  tabItemLargeText: { flexBasis: '50%' },
   tabIcon: { color: colors.textSubtle, fontSize: 23, fontWeight: '600' },
   tabLabel: { color: colors.textSubtle, fontSize: 11, fontWeight: '700' },
   tabSelected: { color: colors.primaryDark },
