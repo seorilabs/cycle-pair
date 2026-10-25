@@ -61,7 +61,7 @@ export function AccountGateScreen({
       {mode === 'entry' ? (
         <>
           <QuietTogetherArtwork />
-          <Title>{t('A little space to understand each other.')}</Title>
+          <Title>{t('A little closer, every day.')}</Title>
           <Body muted>
             {t('Small notes for yourself. Share only what feels right.')}
           </Body>

@@ -1,5 +1,5 @@
 export const emotionalMessages = {
-  'A little space to understand each other.': '나답게,\n함께해요',
+  'A little closer, every day.': '나답게,\n함께해요',
   'Small notes for yourself. Share only what feels right.':
     '나를 위한 작은 기록. 함께하고 싶은 마음만 나눠요.',
   'Start with email': '이메일로 시작',

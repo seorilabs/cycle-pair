@@ -202,7 +202,7 @@ export function CalendarScreen({onOpenRecord}: {onOpenRecord():void}) {
   ) {
     selectedCycleAgenda.push({
       id: 'partner-actual',
-      title: l('{v0} 님의 생리 기록', { v0: state.partnerName }),
+      title: l('{v0} 님의 생리 기록', { v0: state.partnerName === '파트너' ? t('Partner') : state.partnerName }),
       detail: l('파트너가 직접 공유한 생리 기간이에요.'),
       owner: 'partner',
     });
@@ -217,7 +217,7 @@ export function CalendarScreen({onOpenRecord}: {onOpenRecord():void}) {
     selectedCycleAgenda.push({
       id: 'partner-prediction',
       title: l('{v0} 님의 다음 생리 예상 범위 · 참고용', {
-        v0: state.partnerName,
+        v0: state.partnerName === '파트너' ? t('Partner') : state.partnerName,
       }),
       detail: l('파트너가 공유한 참고용 예상 범위예요.'),
       owner: 'partner',
@@ -236,7 +236,7 @@ export function CalendarScreen({onOpenRecord}: {onOpenRecord():void}) {
               field => field.key === 'cycleStatus',
             )?.value
           : partnerTodaySummary.cycleTitle) ??
-        l('{v0} 님의 오늘 주기 상태', { v0: state.partnerName }),
+        l('{v0} 님의 오늘 주기 상태', { v0: state.partnerName === '파트너' ? t('Partner') : state.partnerName }),
       detail:
         locale === 'en'
           ? l('파트너가 공유한 오늘의 상태예요.')

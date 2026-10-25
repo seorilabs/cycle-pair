@@ -272,7 +272,7 @@ export function SettingsScreen() {
           <Text style={styles.profileTitle}>{l('내 사이클 페어')}</Text>
           <Text style={styles.profileBody}>
             {state.paired
-              ? l('{v0} 님과 연결됨', { v0: state.partnerName })
+              ? l('{v0} 님과 연결됨', { v0: state.partnerName === '파트너' ? t('Partner') : state.partnerName })
               : l('혼자 기록 중')}{' '}
             · {backendKind === 'firebase' ? l('동기화') : l('테스트 미리보기')}
           </Text>
@@ -616,7 +616,7 @@ export function SettingsScreen() {
           title={l('연결과 데이터')}
           summary={
             state.paired
-              ? l('{v0} 님과 연결됨', { v0: state.partnerName })
+              ? l('{v0} 님과 연결됨', { v0: state.partnerName === '파트너' ? t('Partner') : state.partnerName })
               : l('연결 안 됨')
           }
           expanded={openSection === 'connection'}

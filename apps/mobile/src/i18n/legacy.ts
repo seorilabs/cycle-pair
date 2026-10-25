@@ -283,7 +283,7 @@ export const legacyEnglish: Readonly<Record<string, string>> = {
     'I agree to the use of cycle and condition data',
   '주기와 다음 생리 예상 사용 중': 'Cycle tracking and estimates on',
   '주기와 컨디션 기록': 'Cycle and condition',
-  '중립적인 잠금화면 알림': 'Neutral lock screen notifications',
+  '중립적인 잠금화면 알림': 'Neutral lock screen alerts',
   '지금 기기를 잃거나 로그아웃하면 기록을 복구할 수 없어요.':
     'If you lose this device or sign out now, these records cannot be recovered.',
   '지금은 건너뛰어도 돼요. 실제 생리일은 언제든 기록할 수 있어요.':
