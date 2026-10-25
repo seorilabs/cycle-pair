@@ -173,6 +173,206 @@ describe('CyclePair mobile app', () => {
     });
   });
 
+  it('AC-B2: 설정에서 이전 화면을 다녀와도 미저장 입력을 보존한다', async () => {
+    const hardwareBack = installHardwareBackMock();
+    const savePrivateSetup = jest.fn(previewCyclePairBackend.savePrivateSetup);
+    const view = await render(
+      <App backend={{ ...previewCyclePairBackend, savePrivateSetup }} />,
+    );
+    await waitFor(() =>
+      expect(view.getByTestId('onboarding-next')).toBeTruthy(),
+    );
+    await fireEvent.press(view.getByTestId('onboarding-next'));
+    await fireEvent(
+      view.getByLabelText('다음 생리일 미리 보기'),
+      'valueChange',
+      true,
+    );
+    const selectedDate = new Date();
+    selectedDate.setDate(selectedDate.getDate() - 6);
+    selectedDate.setHours(12, 0, 0, 0);
+    await fireEvent(
+      view.getByTestId('last-period-start-date-picker'),
+      'change',
+      {
+        nativeEvent: { timestamp: selectedDate.getTime() },
+      },
+    );
+    await fireEvent.press(view.getByLabelText('다음 생리까지 보통 늘리기'));
+    await fireEvent.press(view.getByLabelText('생리가 보통 늘리기'));
+    await fireEvent.press(view.getByTestId('setup-consent'));
+    await fireEvent.press(view.getByText('이전'));
+    await fireEvent.press(view.getByTestId('onboarding-next'));
+    expect(view.getByLabelText('다음 생리일 미리 보기').props.value).toBe(true);
+    expect(view.getByTestId('last-period-start-date-picker').props.date).toBe(
+      selectedDate.getTime(),
+    );
+    expect(view.getByText('29일')).toBeTruthy();
+    expect(view.getByText('6일')).toBeTruthy();
+    expect(
+      view.getByTestId('setup-consent').props.accessibilityState.checked,
+    ).toBe(true);
+    await fireEvent.press(view.getByText('컨디션만 기록'));
+    await expect(hardwareBack.press()).resolves.toBe(true);
+    await fireEvent.press(view.getByTestId('onboarding-next'));
+    expect(view.getAllByRole('radio')[1].props.accessibilityState.checked).toBe(
+      true,
+    );
+    expect(savePrivateSetup).not.toHaveBeenCalled();
+    await fireEvent.press(view.getByTestId('setup-save'));
+    await waitFor(() =>
+      expect(savePrivateSetup).toHaveBeenCalledWith(
+        'preview-self',
+        false,
+        expect.any(String),
+        SENSITIVE_HEALTH_CONSENT_VERSION,
+        undefined,
+      ),
+    );
+  });
+
+  it('AC-B4: 앱 트리가 종료되면 미저장 설정 초안을 새 실행에 넘기지 않는다', async () => {
+    const view = await render(<App backend={previewCyclePairBackend} />);
+    await waitFor(() =>
+      expect(view.getByTestId('onboarding-next')).toBeTruthy(),
+    );
+    await fireEvent.press(view.getByTestId('onboarding-next'));
+    await fireEvent.press(view.getByText('컨디션만 기록'));
+    await fireEvent.press(view.getByTestId('setup-consent'));
+    await act(async () => view.unmount());
+    const reopened = await render(<App backend={previewCyclePairBackend} />);
+    await waitFor(() => expect(reopened.getByText('시작 설정')).toBeTruthy());
+    expect(
+      reopened.getAllByRole('radio')[0].props.accessibilityState.checked,
+    ).toBe(true);
+    expect(
+      reopened.getByTestId('setup-consent').props.accessibilityState.checked,
+    ).toBe(false);
+  });
+
+  it('AC-B1: 저장 중 시스템 이전을 차단하고 실패한 초안을 유지한다', async () => {
+    const hardwareBack = installHardwareBackMock();
+    let rejectSave: ((error: Error) => void) | undefined;
+    const saveDailyLog = jest.fn(
+      () =>
+        new Promise<Awaited<ReturnType<CyclePairBackend['saveDailyLog']>>>(
+          (_resolve, reject) => {
+            rejectSave = reject;
+          },
+        ),
+    );
+    const backend: CyclePairBackend = {
+      ...previewCyclePairBackend,
+      loadCachedDailyLogs: async () => [],
+      syncDailyLogs: async () => [],
+      saveDailyLog,
+    };
+    const view = await render(<App backend={backend} />);
+    await waitFor(() =>
+      expect(view.getByTestId('onboarding-next')).toBeTruthy(),
+    );
+    await fireEvent.press(view.getByTestId('onboarding-next'));
+    await fireEvent.press(view.getByText('컨디션만 기록'));
+    await fireEvent.press(view.getByTestId('setup-consent'));
+    await fireEvent.press(view.getByTestId('setup-save'));
+    await waitFor(() => expect(view.getByTestId('home-record')).toBeTruthy());
+    await fireEvent.press(view.getByTestId('home-record'));
+    await fireEvent.press(view.getByTestId('record-details'));
+    await fireEvent.changeText(
+      view.getByTestId('record-note'),
+      '저장 실패 후에도 유지할 시험 메모',
+    );
+    await fireEvent.press(view.getByTestId('record-save'));
+    await waitFor(() => expect(saveDailyLog).toHaveBeenCalledTimes(1));
+    try {
+      await expect(hardwareBack.press()).resolves.toBe(true);
+      expect(
+        view.getByTestId('record-save').props.accessibilityState.disabled,
+      ).toBe(true);
+      expect(
+        view.getByRole('button', { name: '취소' }).props.accessibilityState
+          .disabled,
+      ).toBe(true);
+    } finally {
+      await act(async () => rejectSave?.(new Error('test-save-failed')));
+    }
+    await waitFor(() =>
+      expect(
+        view.getByTestId('record-save').props.accessibilityState.disabled,
+      ).toBe(false),
+    );
+    await expect(hardwareBack.press()).resolves.toBe(true);
+    await fireEvent.press(view.getByTestId('home-record'));
+    await fireEvent.press(view.getByTestId('record-details'));
+    expect(view.getByTestId('record-note').props.value).toBe(
+      '저장 실패 후에도 유지할 시험 메모',
+    );
+    expect(saveDailyLog).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['초대 보내기', '초대 받기'])(
+    'AC-B3: %s에서 시스템 이전은 방향 선택으로 돌아간다',
+    async direction => {
+      const hardwareBack = installHardwareBackMock();
+      const view = await render(<App backend={previewCyclePairBackend} />);
+      await waitFor(() =>
+        expect(view.getByTestId('onboarding-next')).toBeTruthy(),
+      );
+      await fireEvent.press(view.getByTestId('onboarding-next'));
+      await fireEvent.press(view.getByText('컨디션만 기록'));
+      await fireEvent.press(view.getByTestId('setup-consent'));
+      await fireEvent.press(view.getByTestId('setup-save'));
+      await waitFor(() => expect(view.getByLabelText('파트너')).toBeTruthy());
+      await fireEvent.press(view.getByLabelText('파트너'));
+      await fireEvent.press(view.getByText('파트너 연결'));
+      await fireEvent.press(view.getByText(direction));
+      await expect(hardwareBack.press()).resolves.toBe(true);
+      expect(view.getByText('초대 보내기')).toBeTruthy();
+      expect(view.getByText('초대 받기')).toBeTruthy();
+      expect(view.queryByText('연결하기')).toBeNull();
+      await expect(hardwareBack.press()).resolves.toBe(true);
+      expect(view.getByText('파트너 연결')).toBeTruthy();
+    },
+  );
+
+  it('AC-B3: 받은 초대 코드는 하위 단계 이전에서 유지하고 전체 종료 시 버린다', async () => {
+    const hardwareBack = installHardwareBackMock();
+    const backend: CyclePairBackend = {
+      ...previewCyclePairBackend,
+      kind: 'firebase',
+    };
+    const view = await render(<App backend={backend} />);
+    await waitFor(() =>
+      expect(view.getByTestId('onboarding-next')).toBeTruthy(),
+    );
+    await fireEvent.press(view.getByTestId('onboarding-next'));
+    await fireEvent.press(view.getByText('컨디션만 기록'));
+    await fireEvent.press(view.getByTestId('setup-consent'));
+    await fireEvent.press(view.getByTestId('setup-save'));
+    await waitFor(() => expect(view.getByLabelText('파트너')).toBeTruthy());
+    await fireEvent.press(view.getByLabelText('파트너'));
+    await fireEvent.press(view.getByText('파트너 연결'));
+    await fireEvent.press(view.getByText('초대 받기'));
+    await fireEvent.changeText(
+      view.getByTestId('invite-input'),
+      'synthetic-invite-code',
+    );
+    await expect(hardwareBack.press()).resolves.toBe(true);
+    await fireEvent.press(view.getByText('초대 받기'));
+    expect(view.getByTestId('invite-input').props.value).toBe(
+      'synthetic-invite-code',
+    );
+    await fireEvent.press(view.getByText('뒤로'));
+    await fireEvent.press(view.getByText('초대 받기'));
+    expect(view.getByTestId('invite-input').props.value).toBe(
+      'synthetic-invite-code',
+    );
+    await fireEvent.press(view.getByText('닫기'));
+    await fireEvent.press(view.getByText('파트너 연결'));
+    await fireEvent.press(view.getByText('초대 받기'));
+    expect(view.getByTestId('invite-input').props.value).toBe('');
+  });
+
   it('restores a saved private setup directly into solo main', async () => {
     await AsyncStorage.setItem(
       '@cyclepair/app-state/v1',

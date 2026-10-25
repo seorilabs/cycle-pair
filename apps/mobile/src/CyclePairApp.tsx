@@ -1,5 +1,5 @@
 import {useI18n} from './i18n/I18nProvider';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useCyclePair } from './app/CyclePairStore';
 import { useHardwareBack } from './app/useHardwareBack';
@@ -8,12 +8,16 @@ import { InAppMessageBox, InAppToast } from './components/InAppNotifications';
 import { BottomTabs } from './components/Ui';
 import { CalendarScreen } from './screens/CalendarScreen';
 import { HomeScreen } from './screens/HomeScreen';
-import { InviteScreen } from './screens/InviteScreen';
+import { InviteScreen, type InviteDraft } from './screens/InviteScreen';
 import { OnboardingScreen } from './screens/OnboardingScreen';
 import { PartnerScreen } from './screens/PartnerScreen';
 import { RecordScreen } from './screens/RecordScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
-import { SetupScreen } from './screens/SetupScreen';
+import {
+  createSetupDraft,
+  SetupScreen,
+  type SetupDraft,
+} from './screens/SetupScreen';
 import { SharingScreen } from './screens/SharingScreen';
 import { colors, spacing } from './theme';
 
@@ -31,6 +35,7 @@ function LoadingScreen() {
 export function CyclePairApp() {
   const {
     state,
+    backendBusy,
     isHydrating,
     goBack,
     setTab,
@@ -41,26 +46,66 @@ export function CyclePairApp() {
   } = useCyclePair();
   const [recordOpen, setRecordOpen] = useState(false);
   const [recordDraft, setRecordDraft] = useState<{date: string; value: import('./app/CyclePairStore').DailyCheckIn} | null>(null);
+  const [setupDraft, setSetupDraft] = useState<SetupDraft | null>(null);
+  const [inviteDraft, setInviteDraft] = useState<InviteDraft>({
+    direction: null,
+    code: '',
+  });
   const keyboardVisible = useKeyboardVisibility();
   const latestNotice = inAppNotices[0];
-  const handleHardwareBack = useCallback(() => {
-    if (recordOpen) {
-      setRecordOpen(false);
+  useEffect(() => {
+    if (state.stage !== 'setup' && state.stage !== 'onboarding') {
+      setSetupDraft(null);
+    }
+    if (state.stage !== 'invite') {
+      setInviteDraft({ direction: null, code: '' });
+    }
+  }, [state.stage]);
+  const closeRecord = useCallback(() => {
+    if (!backendBusy) setRecordOpen(false);
+  }, [backendBusy]);
+  const backFromInvite = useCallback(() => {
+    if (backendBusy) return true;
+    if (!state.paired && inviteDraft.direction !== null) {
+      setInviteDraft(current => ({ ...current, direction: null }));
       return true;
     }
     return goBack();
-  }, [goBack, recordOpen]);
+  }, [backendBusy, goBack, inviteDraft.direction, state.paired]);
+  const handleHardwareBack = useCallback(() => {
+    if (recordOpen) {
+      closeRecord();
+      return true;
+    }
+    if (state.stage === 'invite') return backFromInvite();
+    return goBack();
+  }, [backFromInvite, closeRecord, goBack, recordOpen, state.stage]);
 
   useHardwareBack(handleHardwareBack);
 
   if (isHydrating) return <LoadingScreen />;
   if (state.stage === 'onboarding') return <OnboardingScreen />;
-  if (state.stage === 'setup') return <SetupScreen />;
-  if (state.stage === 'invite') return <InviteScreen />;
+  if (state.stage === 'setup') {
+    return (
+      <SetupScreen
+        draft={setupDraft ?? createSetupDraft(state)}
+        onDraftChange={setSetupDraft}
+      />
+    );
+  }
+  if (state.stage === 'invite') {
+    return (
+      <InviteScreen
+        draft={inviteDraft}
+        onDraftChange={setInviteDraft}
+        onBack={backFromInvite}
+      />
+    );
+  }
   if (state.stage === 'sharing') return <SharingScreen />;
 
   if (recordOpen) {
-    return <RecordScreen initialDraft={recordDraft?.date === state.currentLocalDate ? recordDraft.value : undefined} onDraftChange={value => setRecordDraft({date: state.currentLocalDate, value})} onDone={() => {setRecordOpen(false); setRecordDraft(null);}} onCancel={() => setRecordOpen(false)} />;
+    return <RecordScreen initialDraft={recordDraft?.date === state.currentLocalDate ? recordDraft.value : undefined} onDraftChange={value => setRecordDraft({date: state.currentLocalDate, value})} onDone={() => {setRecordOpen(false); setRecordDraft(null);}} onCancel={closeRecord} />;
   }
 
   return (
