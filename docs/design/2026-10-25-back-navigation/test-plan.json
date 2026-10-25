@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "level": "L3",
+  "baseline": null,
+  "changedFeatures": ["onboarding", "records", "pairing-sharing"],
+  "environments": ["dev"],
+  "redesign": false,
+  "foundationRerun": true,
+  "floorOverrides": [
+    {
+      "rule": "foundation",
+      "featureId": "records",
+      "reason": "기존 RN 화면의 뒤로 이동과 메모리 초안만 변경한다. 실제 App 컴포넌트와 Store에 뒤로 이벤트 및 저장 대기와 실패를 전달해 보존과 이탈 차단을 개발 환경에서 확인한다. SDK, 서명과 OS 권한은 바꾸지 않으며 최초 네이티브 연동의 미확인 항목을 면제하지 않는다."
+    },
+    {
+      "rule": "foundation",
+      "featureId": "pairing-sharing",
+      "reason": "초대 하위 단계와 입력 보존만 변경한다. 기존 연결 및 공유 규약은 바꾸지 않고 실제 앱의 화면 이전 및 시스템 이전 이벤트를 개발 환경에서 확인한다. 네이티브 SDK와 첫 출시 플랫폼 검증을 대체하지 않는다."
+    }
+  ],
+  "release": {
+    "markets": ["google-play", "app-store"],
+    "until": "public",
+    "rollout": 1
+  }
+}
