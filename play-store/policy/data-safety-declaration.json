@@ -1,11 +1,14 @@
 {
   "schemaVersion": 1,
   "templateSource": "https://support.google.com/googleplay/android-developer/answer/10787469?hl=en",
-  "reviewedAt": "2026-10-25",
+  "reviewedAt": null,
   "collectsOrSharesData": true,
   "encryptedInTransit": true,
   "supportsDeletionRequest": true,
-  "accountCreationMethods": ["PSL_ACM_USER_ID_PASSWORD", "PSL_ACM_OTHER"],
+  "accountCreationMethods": [
+    "PSL_ACM_USER_ID_PASSWORD",
+    "PSL_ACM_OTHER"
+  ],
   "otherAccountCreationDescription": "Anonymous guest accounts; optional email/password registration and linking. No social sign-in, OTP or biometrics are used to create an account.",
   "accountDeletionUrl": "https://www.seorilabs.com/apps/cycle-pair/account-deletion/",
   "dataDeletionUrl": "https://www.seorilabs.com/apps/cycle-pair/account-deletion/#delete-data-without-account",
@@ -24,12 +27,6 @@
         "PSL_APP_FUNCTIONALITY",
         "PSL_ACCOUNT_MANAGEMENT",
         "PSL_FRAUD_PREVENTION_SECURITY"
-      ]
-    },
-    "PSL_PURCHASE_HISTORY": {
-      "required": false,
-      "purposes": [
-        "PSL_APP_FUNCTIONALITY"
       ]
     },
     "PSL_HEALTH": {
@@ -84,7 +81,6 @@
     "tracking": false,
     "ads": false
   },
-  "preparedAt": "2026-10-24",
-  "reviewStatus": "user-reviewed-console-draft-saved",
-  "consoleDraftReadbackSha256": "3ab740ed1ea704c4942afca0ee32923e8acb5e8518dc3a177e7d38dc23da86a6"
+  "preparedAt": "2026-10-25",
+  "reviewStatus": "prepared-free-no-iap-pending-user-review"
 }

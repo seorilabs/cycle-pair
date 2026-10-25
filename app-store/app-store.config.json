@@ -103,11 +103,9 @@
         "notes": "owner-private records and explicit partner projection"
       },
       "purchases": {
-        "collected": true,
-        "linkedToUser": true,
-        "purposes": [
-          "appFunctionality"
-        ],
+        "collected": false,
+        "linkedToUser": false,
+        "purposes": [],
         "usedForTracking": false
       },
       "productInteraction": {
@@ -189,30 +187,7 @@
   "monetization": {
     "model": "free",
     "downloadPrice": "free",
-    "subscriptionProducts": [
-      {
-        "productId": "com.seorilabs.cyclepair.plus.monthly",
-        "basePlanId": "monthly",
-        "type": "auto-renewable",
-        "billingPeriod": "P1M",
-        "price": {
-          "KRW": 3900
-        },
-        "freeTrial": "P7D",
-        "benefit": "상세 예측·전체 케어 콘텐츠·확장 이력"
-      },
-      {
-        "productId": "com.seorilabs.cyclepair.plus.yearly",
-        "basePlanId": "yearly",
-        "type": "auto-renewable",
-        "billingPeriod": "P1Y",
-        "price": {
-          "KRW": 29000
-        },
-        "freeTrial": "P7D",
-        "benefit": "상세 예측·전체 케어 콘텐츠·확장 이력(연간 ~38% 절약)"
-      }
-    ],
+    "subscriptionProducts": [],
     "salesEnabled": false
   },
   "assets": {
@@ -247,7 +222,7 @@
   },
   "manualEvidence": {
     "appStoreConnectApp": "App Store Connect API 재조회(2026-08-11): app 6792393652와 Xcode Cloud product D071BF40-979E-4D7D-A7C5-2202072488D5, workflow 6310D1DD-4A04-4E5C-8B17-B86D7A744D09를 확인했다. Cycle Pair Plus group 22301912에 monthly 6800260737(ONE_MONTH, KRW 3,900)과 yearly 6800263234(ONE_YEAR, KRW 29,000)을 생성했으며 각 175개 지역 UPFRONT 가격과 1주 FREE_TRIAL을 확인했다. 두 상품은 review screenshot 미등록으로 MISSING_METADATA다.",
-    "appPrivacyReview": "missing: App Store Connect save/readback required",
+    "appPrivacyReview": "missing: 무료, 광고 없음, IAP 없음 범위의 사용자 검토와 App Store Connect 저장 및 재조회가 필요하다.",
     "ageRating": "missing: questionnaire and 18+ override save/readback required",
     "testFlightTwoPersonTest": "현재 1.1.0 후보의 개발 검수와 TestFlight 설치본의 실제 플랫폼 검증은 구분한다. 후자는 미실행이며 필요 항목의 기기 사용은 별도 승인 대상이다.",
     "deploymentApproval": "사용자가 두 마켓 공개까지 론칭 진행을 지시함. 기기 사용은 별도 승인 대상이며, 검수와 마켓의 실제 저장 및 제출 결과는 아직 완료로 표시하지 않음."
