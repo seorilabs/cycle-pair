@@ -6,7 +6,8 @@
       "core": true,
       "paths": [
         "apps/mobile/src/screens/OnboardingScreen.tsx",
-        "apps/mobile/src/screens/SetupScreen.tsx"
+        "apps/mobile/src/screens/SetupScreen.tsx",
+        "apps/mobile/src/CyclePairApp.tsx"
       ]
     },
     {
@@ -16,7 +17,8 @@
       "paths": [
         "apps/mobile/src/screens/RecordScreen.tsx",
         "apps/mobile/src/platform/local/**",
-        "apps/mobile/src/app/CyclePairStore.tsx"
+        "apps/mobile/src/app/CyclePairStore.tsx",
+        "apps/mobile/src/CyclePairApp.tsx"
       ]
     },
     {
@@ -36,7 +38,8 @@
         "apps/mobile/src/screens/SharingScreen.tsx",
         "apps/mobile/src/screens/PartnerScreen.tsx",
         "firebase/firestore.rules",
-        "firebase/functions/src/index.ts"
+        "firebase/functions/src/index.ts",
+        "apps/mobile/src/CyclePairApp.tsx"
       ]
     },
     {
@@ -54,7 +57,8 @@
       "paths": [
         "apps/mobile/src/platform/account/**",
         "apps/mobile/src/app/account/**",
-        "apps/mobile/src/components/AccountSettingsCard.tsx"
+        "apps/mobile/src/components/AccountSettingsCard.tsx",
+        "apps/mobile/App.tsx"
       ]
     },
     {

@@ -23,8 +23,6 @@ import {
   shiftCalendarMonth,
 } from '../app/calendarMonth';
 import { useCyclePair } from '../app/CyclePairStore';
-import { useSubscription } from '../app/subscription/SubscriptionContext';
-import { resolveCycleFeaturePolicy } from '../app/subscription/cycleFeaturePolicy';
 import {
   buildPartnerTodaySummary,
   getSafePartnerProjectionForToday,
@@ -93,9 +91,7 @@ export function CalendarScreen() {
     upsertPairEvent,
     deletePairEvent,
   } = useCyclePair();
-  const { hasFeature } = useSubscription();
-  const featurePolicy = resolveCycleFeaturePolicy(hasFeature);
-  const viewModel = buildCycleViewModel(state, featurePolicy);
+  const viewModel = buildCycleViewModel(state);
   const todayParts = dateParts(viewModel.today);
   const [cursor, setCursor] = useState({
     year: todayParts.year,

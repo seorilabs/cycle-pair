@@ -334,84 +334,6 @@ describe("notification device callables", () => {
   });
 });
 
-describe("subscription account token callable", () => {
-  test("requires auth and returns one server-owned UUID for both stores", async () => {
-    const unauthenticated = await createClient("purchase-token-unauth", false);
-    const owner = await createClient("purchase-token-owner");
-    const other = await createClient("purchase-token-other");
-    const unauthenticatedCallable = httpsCallable(
-      unauthenticated.functions,
-      "getPurchaseAccountToken",
-    );
-    await expect(unauthenticatedCallable({})).rejects.toMatchObject({
-      code: "functions/unauthenticated",
-    });
-
-    const getPurchaseAccountToken = httpsCallable(
-      owner.functions,
-      "getPurchaseAccountToken",
-    );
-    const first = await getPurchaseAccountToken({});
-    const second = await getPurchaseAccountToken({uid: "ignored"});
-    const tokenResponse = first.data as {
-      schemaVersion: number;
-      appAccountToken: string;
-      googleObfuscatedExternalAccountId: string;
-    };
-    expect(second.data).toEqual(first.data);
-    expect(tokenResponse).toMatchObject({schemaVersion: 1});
-    expect(tokenResponse.appAccountToken).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
-    );
-    expect(tokenResponse.googleObfuscatedExternalAccountId).toBe(
-      tokenResponse.appAccountToken,
-    );
-
-    const uid = owner.auth.currentUser!.uid;
-    const statePath = `purchaseStates/${uid}`;
-    const state = await getDocFromServer(doc(owner.firestore, statePath));
-    expect(state.data()).toMatchObject({
-      schemaVersion: 1,
-      accountToken: tokenResponse.appAccountToken,
-    });
-    await expect(getDocFromServer(doc(other.firestore, statePath)))
-      .rejects.toMatchObject({code: "permission-denied"});
-    await expect(setDoc(doc(owner.firestore, statePath), {
-      accountToken: "forged",
-    })).rejects.toMatchObject({code: "permission-denied"});
-
-    await emulatorAdminSetDocument(`accountDeletionStates/${uid}`, {
-      schemaVersion: {integerValue: "1"},
-      status: {stringValue: "in-progress"},
-    });
-    await expect(getPurchaseAccountToken({})).rejects.toMatchObject({
-      code: "functions/failed-precondition",
-    });
-
-    const unauthenticatedVerify = httpsCallable(
-      unauthenticated.functions,
-      "verifySubscriptionPurchase",
-    );
-    const invalidEvidence = {
-      provider: "google-play",
-      productId: "client-forged-product",
-      basePlanId: "monthly",
-      transactionId: "transaction-1",
-      purchaseToken: "never-sent-to-google",
-    };
-    await expect(unauthenticatedVerify(invalidEvidence)).rejects.toMatchObject({
-      code: "functions/unauthenticated",
-    });
-    const verify = httpsCallable(
-      owner.functions,
-      "verifySubscriptionPurchase",
-    );
-    await expect(verify(invalidEvidence)).resolves.toMatchObject({
-      data: {verified: false, reason: "product-mismatch"},
-    });
-  });
-});
-
 describe("pair lifecycle callables", () => {
   test("requires auth, accepts an invite once, and revokes access atomically", async () => {
     const unauthenticated = await createClient("unauthenticated", false);
@@ -1087,10 +1009,11 @@ describe("pair lifecycle callables", () => {
         timeZone: "Asia/Seoul",
       },
     });
-    await httpsCallable(
-      owner.functions,
-      "getPurchaseAccountToken",
-    )({});
+    // Historical fixture: account deletion still removes retired purchase data.
+    await emulatorAdminSetDocument(`purchaseStates/${ownerUid}`, {
+      schemaVersion: {integerValue: "1"},
+      accountToken: {stringValue: "legacy-test-token"},
+    });
 
     await setDoc(
       doc(owner.firestore, `users/${ownerUid}/privateCycles/current`),

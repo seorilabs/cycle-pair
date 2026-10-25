@@ -1,10 +1,6 @@
 import { addDays, localDate } from '@cyclepair/product-core';
 import { createInitialState, type DailyHistoryEntry } from './CyclePairStore';
 import { buildCycleViewModel, formatKoreanDate } from './cycleViewModel';
-import { resolveCycleFeaturePolicy } from './subscription/cycleFeaturePolicy';
-
-const freeFeaturePolicy = resolveCycleFeaturePolicy(() => false);
-const premiumFeaturePolicy = resolveCycleFeaturePolicy(() => true);
 
 describe('cycle view model roles', () => {
   it.each([
@@ -179,7 +175,7 @@ describe('cycle view model roles', () => {
     expect(viewModel.selfProjection.prediction?.confidence).toBe('low');
   });
 
-  it('keeps period starts older than 365 days in the observed prediction history', () => {
+  it('uses the same bounded observed history for every account', () => {
     const today = new Date();
     const todayValue = localDate(
       today.getFullYear(),
@@ -207,17 +203,10 @@ describe('cycle view model roles', () => {
       })),
     };
 
-    const freeViewModel = buildCycleViewModel(state, freeFeaturePolicy);
-    const premiumViewModel = buildCycleViewModel(state, premiumFeaturePolicy);
-
-    // 무료는 365일 창 안에 시작일이 하나뿐이라 간격이 없고 seed 값 28을 쓴다.
-    expect(freeViewModel.predictedDate).toBe(addDays(latest, 28));
-    // 프리미엄은 창 밖 시작일까지 보므로 간격 [50, 30]이 생긴다. 최근 가중
-    // 평균이라 (50*1 + 30*2) / 3 = 36.67 -> 37 이다.
-    expect(premiumViewModel.predictedDate).toBe(addDays(latest, 37));
+    expect(buildCycleViewModel(state).predictedDate).toBe(addDays(latest, 28));
   });
 
-  it('shows one care tip for free and multiple matching tips for premium', () => {
+  it('provides matching care tips without a paid tier', () => {
     const now = new Date();
     const dailyLogDate = localDate(
       now.getFullYear(),
@@ -234,17 +223,11 @@ describe('cycle view model roles', () => {
       },
     };
 
-    expect(
-      buildCycleViewModel(state, freeFeaturePolicy).careTips.map(tip => tip.id),
-    ).toEqual(['preference-listen']);
-    expect(
-      buildCycleViewModel(state, premiumFeaturePolicy).careTips.map(
-        tip => tip.id,
-      ),
-    ).toEqual(['preference-listen', 'preference-space']);
+    expect(buildCycleViewModel(state).careTips.map(tip => tip.id))
+      .toEqual(['preference-listen', 'preference-space']);
   });
 
-  it('keeps advanced prediction evidence locked for free users', () => {
+  it('provides observed prediction evidence without a paid tier', () => {
     const today = new Date();
     const todayValue = localDate(
       today.getFullYear(),
@@ -270,12 +253,7 @@ describe('cycle view model roles', () => {
       })),
     };
 
-    expect(
-      buildCycleViewModel(state, freeFeaturePolicy).advancedPrediction,
-    ).toBeUndefined();
-    expect(
-      buildCycleViewModel(state, premiumFeaturePolicy).advancedPrediction,
-    ).toEqual(
+    expect(buildCycleViewModel(state).advancedPrediction).toEqual(
       expect.objectContaining({
         averageCycleLengthDays: 31,
         sampleSize: 2,

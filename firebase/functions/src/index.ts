@@ -29,7 +29,6 @@ import {
   onCall,
   onRequest,
 } from "firebase-functions/v2/https";
-import {onMessagePublished} from "firebase-functions/v2/pubsub";
 import {onSchedule} from "firebase-functions/v2/scheduler";
 
 import {
@@ -93,19 +92,6 @@ import {
 } from "./domain/partnerNudge.js";
 import {buildPartnerProjection} from "./domain/projection.js";
 import {
-  SubscriptionPolicyError,
-  parseVerifySubscriptionRequest,
-} from "./domain/subscription.js";
-import {
-  APPLE_IAP_SECRETS,
-  GooglePlayDeveloperApiProvider,
-  OfficialAppleAppStoreProvider,
-} from "./providers/subscriptionProviders.js";
-import {
-  FirestoreSubscriptionRepository,
-  SubscriptionService,
-} from "./services/subscriptionService.js";
-import {
   accountDeletionFinalizationFailureMessage,
   finalizeAccountDeletion,
   summarizeAccountDeletionFinalizations,
@@ -122,12 +108,6 @@ initializeApp();
 const db = getFirestore();
 const auth = getAuth();
 const messaging = getMessaging();
-const subscriptionRepository = new FirestoreSubscriptionRepository(db);
-const subscriptionService = new SubscriptionService(
-  subscriptionRepository,
-  new GooglePlayDeveloperApiProvider(),
-  new OfficialAppleAppStoreProvider(),
-);
 const enforceAppCheck = process.env.ENFORCE_APP_CHECK === "true";
 const FUNCTIONS_REGION = "asia-northeast3";
 const ACCOUNT_DELETION_LEASE_MS = 10 * 60 * 1_000;
@@ -1231,102 +1211,6 @@ export const acknowledgePartnerNudge = onCall(
   },
 );
 
-export const getPurchaseAccountToken = onCall(
-  callableOptions,
-  async request => {
-    const uid = requireAuth(request);
-    try {
-      return await subscriptionService.getPurchaseAccountToken(uid);
-    } catch (error) {
-      if (error instanceof SubscriptionPolicyError) {
-        throw new HttpsError(error.code, error.message);
-      }
-      throw new HttpsError(
-        "internal",
-        "구매 계정 토큰을 준비할 수 없습니다.",
-      );
-    }
-  },
-);
-
-export const verifySubscriptionPurchase = onCall(
-  {...callableOptions, secrets: [...APPLE_IAP_SECRETS]},
-  async request => {
-    const uid = requireAuth(request);
-    try {
-      const verificationRequest = parseVerifySubscriptionRequest(request.data);
-      return await subscriptionService.verifySubscriptionPurchase(
-        uid,
-        verificationRequest,
-      );
-    } catch (error) {
-      if (error instanceof SubscriptionPolicyError) {
-        return {verified: false as const, reason: error.reason};
-      }
-      return {verified: false as const, reason: "unknown" as const};
-    }
-  },
-);
-
-/**
- * Google Play RTDN contains only a change signal. The handler always calls
- * purchases.subscriptionsv2.get before updating the normalized snapshot.
- */
-export const handleGooglePlaySubscriptionRtdn = onMessagePublished(
-  {
-    topic: "cyclepair-google-play-rtdn",
-    timeoutSeconds: 60,
-    maxInstances: 10,
-  },
-  async event => {
-    await subscriptionService.processGoogleNotification(
-      event.data.message.data,
-      event.data.message.messageId,
-    );
-  },
-);
-
-/** Apple retries non-2xx responses; no payload, JWS, token, or UID is logged. */
-export const handleAppStoreServerNotificationV2 = onRequest(
-  {
-    invoker: "public",
-    cors: false,
-    timeoutSeconds: 60,
-    maxInstances: 10,
-    secrets: [...APPLE_IAP_SECRETS],
-  },
-  async (request, response) => {
-    if (request.method !== "POST") {
-      response.status(405).send("Method Not Allowed");
-      return;
-    }
-    const body = optionalRecord(request.body);
-    const signedPayload = body?.signedPayload;
-    if (
-      typeof signedPayload !== "string" ||
-      signedPayload.length === 0 ||
-      signedPayload.length > 131_072
-    ) {
-      response.status(400).send("Invalid notification");
-      return;
-    }
-    try {
-      await subscriptionService.processAppleNotification(signedPayload);
-      response.status(200).send("OK");
-    } catch (error) {
-      const policyError = error instanceof SubscriptionPolicyError
-        ? error
-        : undefined;
-      const status = policyError === undefined || policyError.reason === "unknown"
-        ? 503
-        : 400;
-      response.status(status).send(
-        status === 503 ? "Verification unavailable" : "Invalid notification",
-      );
-    }
-  },
-);
-
 export const upsertPairEvent = onCall(callableOptions, async request => {
   const uid = requireAuth(request);
   const data = asRecord(request.data);
@@ -2175,7 +2059,15 @@ async function completeAccountDeletion(
     const [invitePaths, purchaseTokenPaths, accountExportTicketPaths] =
       await Promise.all([
         accountInviteDocumentPaths(uid),
-        subscriptionRepository.listPurchaseBindingPaths(uid),
+        // Historical data remains part of account deletion after IAP retirement.
+        db.collection("purchaseTokens").where("uid", "==", uid)
+          .limit(ACCOUNT_DELETION_LIMITS.purchaseTokenDocuments + 1).get()
+          .then(snapshot => {
+            if (snapshot.size > ACCOUNT_DELETION_LIMITS.purchaseTokenDocuments) {
+              throw new HttpsError("resource-exhausted", "계정 자료 정리 한도를 초과했습니다.");
+            }
+            return snapshot.docs.map(document => document.ref.path);
+          }),
         accountExportTicketDocumentPaths(uid),
       ]);
     const inventory = buildAccountDeletionInventory(

@@ -12,7 +12,6 @@ export type CrashSurface =
   | 'pair'
   | 'shared-event'
   | 'notification'
-  | 'purchase'
   | 'export'
   | 'account-deletion';
 
@@ -89,7 +88,6 @@ const SAFE_SURFACES = new Set<CrashSurface>([
   'pair',
   'shared-event',
   'notification',
-  'purchase',
   'export',
   'account-deletion',
 ]);

@@ -16,8 +16,7 @@ export type ProductAnalyticsEvent =
       readonly name: 'cp_share_setting_update';
       readonly params: { readonly enabled_count: number };
     }
-  | { readonly name: 'cp_partner_open' }
-  | { readonly name: 'cp_subscription_completed' };
+  | { readonly name: 'cp_partner_open' };
 
 export interface ProductAnalytics {
   setEnabled(enabled: boolean): Promise<void>;
@@ -51,7 +50,6 @@ const PARAMETERLESS_EVENTS = new Set<string>([
   'cp_pair_invite_created',
   'cp_pair_connected',
   'cp_partner_open',
-  'cp_subscription_completed',
 ]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {

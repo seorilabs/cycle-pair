@@ -34,12 +34,6 @@ function isConditionCode(value: unknown): value is ConditionCode {
 import { PARTNER_MEMBER_ID, SELF_MEMBER_ID } from './memberIds';
 import { isEmotionCode } from './emotions';
 import { getSafePartnerProjectionForToday } from './partnerProjectionPresentation';
-import type {CycleFeaturePolicy} from './subscription/cycleFeaturePolicy';
-import {
-  FREE_CARE_TIP_LIMIT,
-  FREE_HISTORY_LOOKBACK_DAYS,
-} from './subscription/cycleFeaturePolicy';
-
 const preferenceToDomain: Record<
   NonNullable<DailyCheckIn['carePreference']>,
   HelpPreference
@@ -97,13 +91,8 @@ export interface CycleViewModel {
   };
 }
 
-const FREE_CYCLE_FEATURE_POLICY: CycleFeaturePolicy = Object.freeze({
-  extendedHistoryEnabled: false,
-  advancedPredictionEnabled: false,
-  fullCareTipsEnabled: false,
-  historyLookbackDays: FREE_HISTORY_LOOKBACK_DAYS,
-  careTipLimit: FREE_CARE_TIP_LIMIT,
-});
+const PREDICTION_LOOKBACK_DAYS = 365;
+const CARE_TIP_LIMIT = 3;
 
 export function todayLocalDate(): LocalDate {
   const date = new Date();
@@ -205,12 +194,11 @@ function standardDeviation(values: readonly number[]): number | null {
 
 export function buildCycleViewModel(
   state: CyclePairState,
-  featurePolicy: CycleFeaturePolicy = FREE_CYCLE_FEATURE_POLICY,
 ): CycleViewModel {
   const today = todayLocalDate();
   const hasPredictionBasis = state.isLogger && state.hasCycleSeed;
   const prediction = hasPredictionBasis
-    ? predictionForState(state, today, featurePolicy.historyLookbackDays)
+    ? predictionForState(state, today, PREDICTION_LOOKBACK_DAYS)
     : undefined;
   const currentCycle = prediction
     ? buildCurrentCycle(state, prediction.lastPeriodStart)
@@ -331,7 +319,7 @@ export function buildCycleViewModel(
   const careTips = selectCareTips({
     helpPreferences: partnerProjection.helpPreferences,
     condition: partnerProjection.condition,
-    limit: featurePolicy.careTipLimit,
+    limit: CARE_TIP_LIMIT,
   });
 
   const copy = phaseCopy[phase];
@@ -353,7 +341,7 @@ export function buildCycleViewModel(
     selfProjection,
     partnerProjection,
     careTips,
-    ...(prediction && featurePolicy.advancedPredictionEnabled
+    ...(prediction
       ? {
           advancedPrediction: {
             averageCycleLengthDays: prediction.averageCycleLengthDays,
