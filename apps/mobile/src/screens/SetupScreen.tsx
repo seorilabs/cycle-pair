@@ -1,12 +1,17 @@
-import { useI18n } from '../i18n/I18nProvider';
-import { parseLocalDate } from '@cyclepair/product-core';
 import React, { useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { parseLocalDate } from '@cyclepair/product-core';
 import {
   type CycleSeed,
   type CyclePairState,
   useCyclePair,
 } from '../app/CyclePairStore';
+import {
+  onboardingSteps,
+  setupCycleSeed,
+  type SetupStep,
+} from '../app/onboardingFlow';
+import { AppIcon } from '../components/AppArtwork';
 import { LocalDatePickerField } from '../components/LocalDatePickerField';
 import {
   Body,
@@ -14,422 +19,408 @@ import {
   Chip,
   PrimaryButton,
   Screen,
+  SecondaryButton,
   Stepper,
   TextButton,
   Title,
-  ToggleRow,
 } from '../components/Ui';
-import { colors, radius, spacing } from '../theme';
 import {
   hasCurrentSensitiveHealthConsent,
   SENSITIVE_HEALTH_CONSENT_VERSION,
 } from '../domain/privacy/SensitiveHealthConsent';
-
-function localToday(): string {
-  const date = new Date();
-  return [
-    date.getFullYear(),
-    String(date.getMonth() + 1).padStart(2, '0'),
-    String(date.getDate()).padStart(2, '0'),
-  ].join('-');
-}
+import { useI18n } from '../i18n/I18nProvider';
+import { colors, radius, spacing } from '../theme';
 
 export interface SetupDraft {
   readonly isLogger: boolean;
-  readonly hasCycleSeed: boolean;
   readonly seed: CycleSeed;
   readonly consentAccepted: boolean;
+  readonly purposeChosen: boolean;
+  readonly dateKnown: boolean;
+  readonly cycleKnown: boolean;
+  readonly periodKnown: boolean;
+  readonly step: SetupStep;
 }
-
 export function createSetupDraft(state: CyclePairState): SetupDraft {
   return {
     isLogger: state.isLogger,
-    hasCycleSeed: state.hasCycleSeed,
     seed: { ...state.seed },
     consentAccepted: hasCurrentSensitiveHealthConsent(
       state.sensitiveDataConsentAcceptedAt,
       state.sensitiveDataConsentVersion,
     ),
+    purposeChosen: false,
+    dateKnown: state.hasCycleSeed,
+    cycleKnown: state.hasCycleSeed,
+    periodKnown: state.hasCycleSeed,
+    step: 'consent',
   };
 }
-
 export function SetupScreen({
   draft,
   onDraftChange,
+  onBack,
+  onStartPairing,
 }: {
   draft: SetupDraft;
   onDraftChange(draft: SetupDraft): void;
+  onBack(): void;
+  onStartPairing(direction: 'send' | 'receive'): void;
 }) {
-  const { l } = useI18n();
-  const { state, backendBusy, backendError, completeSetup, goBack } =
-    useCyclePair();
-  const { isLogger, hasCycleSeed, seed, consentAccepted } = draft;
+  const { t, l, locale } = useI18n();
+  const { backendBusy, backendError, completeSetup } = useCyclePair();
   const [saveAttempted, setSaveAttempted] = useState(false);
-  const submittingRef = useRef(false);
-  const roleLocked = hasCurrentSensitiveHealthConsent(
-    state.sensitiveDataConsentAcceptedAt,
-    state.sensitiveDataConsentVersion,
-  );
-  const today = localToday();
-  const hasFutureStartDate =
-    isLogger && hasCycleSeed && seed.lastPeriodStart > today;
-
-  async function saveSetup() {
-    if (
-      submittingRef.current ||
-      backendBusy ||
-      !consentAccepted ||
-      hasFutureStartDate
-    ) {
-      return;
-    }
-    submittingRef.current = true;
+  const submitting = useRef(false);
+  const steps = onboardingSteps(draft.isLogger);
+  const position = steps.indexOf(draft.step);
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(
+    2,
+    '0',
+  )}-${String(now.getDate()).padStart(2, '0')}`;
+  const futureDate = draft.seed.lastPeriodStart > today;
+  function next(change: Partial<SetupDraft> = {}) {
+    onDraftChange({
+      ...draft,
+      ...change,
+      step: steps[position + 1] ?? 'share',
+    });
+  }
+  async function finish(direction?: 'send' | 'receive') {
+    if (submitting.current || backendBusy || !draft.consentAccepted) return;
+    submitting.current = true;
     setSaveAttempted(true);
     try {
-      await completeSetup({
-        isLogger,
-        ...(isLogger && hasCycleSeed ? { seed } : {}),
+      const seed = setupCycleSeed(draft);
+      const saved = await completeSetup({
+        isLogger: draft.isLogger,
+        ...(seed ? { seed } : {}),
         consentAcceptedAt: new Date().toISOString(),
         consentVersion: SENSITIVE_HEALTH_CONSENT_VERSION,
       });
+      if (saved && direction) onStartPairing(direction);
     } finally {
-      submittingRef.current = false;
+      submitting.current = false;
     }
   }
-
+  const titles = {
+    consent: 'Your records, your choice',
+    date: 'When did your last period start?',
+    cycle: 'How long is your usual cycle?',
+    period: 'How many days does your period last?',
+    tutorial: 'One small note is enough',
+    share: draft.isLogger
+      ? 'Someone you would like to share with?'
+      : 'Do you have a partner code?',
+  } as const;
   return (
     <Screen contentStyle={styles.content}>
       <View style={styles.header}>
-        <TextButton label={l('이전')} disabled={backendBusy} onPress={goBack} />
-        <Text style={styles.step}>{l('시작 설정')}</Text>
-      </View>
-      <Title>
-        {l('어떤 기록을')}
-        {`\n`}
-        {l('남길까요?')}
-      </Title>
-      <Body muted style={styles.intro}>
-        {l('파트너 연결 없이 시작할 수 있고, 기록은 자동으로 공유되지 않아요.')}
-      </Body>
-
-      <Text style={styles.label}>{l('기록 방식')}</Text>
-      <View style={styles.roleGrid}>
-        <Pressable
-          accessibilityRole="radio"
-          accessibilityState={{
-            checked: isLogger,
-            disabled: roleLocked || backendBusy,
-          }}
-          disabled={roleLocked || backendBusy}
-          onPress={() => onDraftChange({ ...draft, isLogger: true })}
-          style={[
-            styles.roleCard,
-            isLogger && styles.roleCardSelected,
-            roleLocked && styles.roleCardLocked,
-          ]}
-        >
-          <Text style={styles.roleIcon}>∞</Text>
-          <Text style={styles.roleTitle}>{l('주기와 컨디션 기록')}</Text>
-          <Text style={styles.roleBody}>
-            {l('생리 주기와 오늘의 상태를 기록해요')}
-          </Text>
-        </Pressable>
-        <Pressable
-          accessibilityRole="radio"
-          accessibilityState={{
-            checked: !isLogger,
-            disabled: roleLocked || backendBusy,
-          }}
-          disabled={roleLocked || backendBusy}
-          onPress={() => onDraftChange({ ...draft, isLogger: false })}
-          style={[
-            styles.roleCard,
-            !isLogger && styles.roleCardSelected,
-            roleLocked && styles.roleCardLocked,
-          ]}
-        >
-          <Text style={styles.roleIcon}>♡</Text>
-          <Text style={styles.roleTitle}>{l('컨디션만 기록')}</Text>
-          <Text style={styles.roleBody}>
-            {l('주기 없이 오늘의 상태만 기록해요')}
-          </Text>
-        </Pressable>
-      </View>
-      {roleLocked ? (
-        <Text style={styles.roleLockNote}>
-          {l(
-            '기존 기록을 보호하기 위해 이 화면에서는 기록 방식을 바꿀 수 없어요.',
-          )}
+        <TextButton label={t('Back')} disabled={backendBusy} onPress={onBack} />
+        <Text style={styles.progress}>
+          {t('Make it yours')} {position + 1} / {steps.length}
         </Text>
-      ) : null}
-
-      {isLogger ? (
+      </View>
+      <View
+        style={styles.steps}
+        accessible
+        accessibilityLabel={t('Step {current} of {total}', {
+          current: position + 1,
+          total: steps.length,
+        })}
+      >
+        {steps.map((step, index) => (
+          <View
+            key={step}
+            style={[styles.segment, index <= position && styles.segmentDone]}
+          />
+        ))}
+      </View>
+      <Title>{t(titles[draft.step])}</Title>
+      {draft.step === 'consent' ? (
         <>
-          <Text style={styles.label}>{l('다음 생리 예상')}</Text>
-          <Card>
-            <ToggleRow
-              title={l('다음 생리일 미리 보기')}
-              description={l(
-                '최근 생리일과 평소 주기를 바탕으로 다음 예상 범위를 보여드려요.',
+          <View style={styles.quiet}>
+            <AppIcon name="lock" />
+            <Body muted style={styles.flex}>
+              {t('Nothing is shared with a partner by default.')}
+            </Body>
+          </View>
+          <Card style={styles.card}>
+            <Text style={styles.label}>{t('Health information consent')}</Text>
+            <Body>
+              {t(
+                draft.isLogger
+                  ? 'Period dates, cycle details, the condition, mood and notes you enter are used to store your records and provide reference estimates.'
+                  : 'The condition, mood and notes you enter are used to store and display your records. No period dates are requested.',
               )}
-              value={hasCycleSeed}
-              disabled={backendBusy}
-              onValueChange={value =>
-                onDraftChange({ ...draft, hasCycleSeed: value })
+            </Body>
+            <Body>
+              {t(
+                'Records are kept until you delete them. In Settings, request account deletion to stop health data use and delete your records. Partner sharing can be turned off for each item.',
+              )}
+            </Body>
+            <Body muted>
+              {t('Sharing is a separate choice. Notes are never shared.')}
+            </Body>
+            <TextButton
+              label={t('Read the privacy policy')}
+              onPress={() =>
+                Linking.openURL(
+                  `https://www.seorilabs.com${
+                    locale === 'en' ? '/en' : ''
+                  }/apps/cycle-pair/privacy/`,
+                ).catch(() => undefined)
               }
             />
-            {hasCycleSeed ? (
-              <>
-                <Text style={styles.cardLabel}>{l('최근 생리 시작일')}</Text>
-                <View style={styles.datePicker}>
-                  <LocalDatePickerField
-                    accessibilityLabel={l('최근 생리 시작일')}
-                    disabled={backendBusy}
-                    maximumDate={parseLocalDate(today)}
-                    onChange={lastPeriodStart =>
-                      onDraftChange({
-                        ...draft,
-                        seed: { ...seed, lastPeriodStart },
-                      })
-                    }
-                    testID="last-period-start-date-picker"
-                    value={parseLocalDate(seed.lastPeriodStart)}
-                  />
-                </View>
-                {hasFutureStartDate ? (
-                  <Text style={styles.errorText}>
-                    {l('최근 생리 시작일은 오늘 이후로 설정할 수 없어요.')}
-                  </Text>
-                ) : null}
-                <Stepper
-                  label={l('다음 생리까지 보통')}
-                  value={seed.averageCycleLength}
-                  suffix={l('일')}
-                  min={21}
-                  max={45}
-                  disabled={backendBusy}
-                  onChange={averageCycleLength =>
-                    onDraftChange({
-                      ...draft,
-                      seed: { ...seed, averageCycleLength },
-                    })
-                  }
-                />
-                <Stepper
-                  label={l('생리가 보통')}
-                  value={seed.averagePeriodLength}
-                  suffix={l('일')}
-                  min={2}
-                  max={10}
-                  disabled={backendBusy}
-                  onChange={averagePeriodLength =>
-                    onDraftChange({
-                      ...draft,
-                      seed: { ...seed, averagePeriodLength },
-                    })
-                  }
-                />
-              </>
+          </Card>
+          <Body muted>{t('For people aged 17 and over.')}</Body>
+          <Pressable
+            accessibilityRole="checkbox"
+            accessibilityLabel={l('주기·컨디션 정보 이용 동의')}
+            accessibilityState={{
+              checked: draft.consentAccepted,
+              disabled: backendBusy,
+            }}
+            disabled={backendBusy}
+            testID="setup-consent"
+            onPress={() =>
+              onDraftChange({
+                ...draft,
+                consentAccepted: !draft.consentAccepted,
+              })
+            }
+            style={[styles.consent, draft.consentAccepted && styles.selected]}
+          >
+            <Text style={styles.check}>
+              {draft.consentAccepted ? '✓' : '□'}
+            </Text>
+            <Text style={[styles.label, styles.flex]}>
+              {t('I consent to the health information use described above.')}
+            </Text>
+          </Pressable>
+          <PrimaryButton
+            testID="setup-next"
+            label={t('Agree and continue')}
+            disabled={backendBusy || !draft.consentAccepted}
+            onPress={() => next()}
+          />
+          <TextButton
+            label={t('Go back without agreeing')}
+            onPress={onBack}
+            disabled={backendBusy}
+          />
+        </>
+      ) : null}
+      {draft.step === 'date' ||
+      draft.step === 'cycle' ||
+      draft.step === 'period' ? (
+        <>
+          <Body muted>{t('It is okay to skip if you are unsure.')}</Body>
+          <Card style={styles.card}>
+            <AppIcon
+              name={draft.step === 'date' ? 'calendar' : 'cycle'}
+              size={36}
+            />
+            {draft.step === 'date' ? (
+              <LocalDatePickerField
+                accessibilityLabel={l('최근 생리 시작일')}
+                maximumDate={parseLocalDate(today)}
+                disabled={backendBusy}
+                value={parseLocalDate(draft.seed.lastPeriodStart)}
+                testID="last-period-start-date-picker"
+                onChange={lastPeriodStart =>
+                  onDraftChange({
+                    ...draft,
+                    dateKnown: true,
+                    seed: { ...draft.seed, lastPeriodStart },
+                  })
+                }
+              />
             ) : (
-              <Body muted>
-                {l(
-                  '지금은 건너뛰어도 돼요. 실제 생리일은 언제든 기록할 수 있어요.',
+              <Stepper
+                label={l(
+                  draft.step === 'cycle' ? '다음 생리까지 보통' : '생리가 보통',
                 )}
-              </Body>
+                value={
+                  draft.step === 'cycle'
+                    ? draft.seed.averageCycleLength
+                    : draft.seed.averagePeriodLength
+                }
+                suffix={l('일')}
+                min={draft.step === 'cycle' ? 21 : 2}
+                max={draft.step === 'cycle' ? 45 : 10}
+                disabled={backendBusy}
+                onChange={value =>
+                  onDraftChange({
+                    ...draft,
+                    seed: {
+                      ...draft.seed,
+                      ...(draft.step === 'cycle'
+                        ? { averageCycleLength: value }
+                        : { averagePeriodLength: value }),
+                    },
+                  })
+                }
+              />
             )}
           </Card>
-          <View style={styles.notice}>
-            <Text style={styles.noticeIcon}>i</Text>
-            <Text style={styles.noticeText}>
-              {l(
-                '예상일은 참고용이에요. 피임이나 의료 판단에는 사용하지 마세요.',
-              )}
-            </Text>
-          </View>
-        </>
-      ) : (
-        <Card tone="primary" style={styles.partnerOnlyCard}>
-          <Chip label={l('컨디션만 기록')} selected />
-          <Body style={styles.partnerOnlyBody}>
-            {l('주기 정보 없이 기분, 증상, 필요한 도움을 기록해요.')}
-          </Body>
-        </Card>
-      )}
-
-      <Pressable
-        accessibilityRole="checkbox"
-        accessibilityLabel={l('주기·컨디션 정보 이용 동의')}
-        testID="setup-consent"
-        accessibilityState={{ checked: consentAccepted, disabled: backendBusy }}
-        disabled={backendBusy}
-        onPress={() =>
-          onDraftChange({ ...draft, consentAccepted: !consentAccepted })
-        }
-        style={[
-          styles.consentCard,
-          consentAccepted && styles.consentCardSelected,
-        ]}
-      >
-        <View
-          style={[styles.checkbox, consentAccepted && styles.checkboxSelected]}
-        >
-          {consentAccepted ? <Text style={styles.checkmark}>✓</Text> : null}
-        </View>
-        <View style={styles.consentCopy}>
-          <Text style={styles.consentTitle}>
-            {l('주기·컨디션 정보 이용에 동의해요')}
-          </Text>
-          <Text style={styles.consentBody}>
-            {l(
-              '입력한 정보는 기록과 예상에만 사용하고, 선택한 항목만 파트너에게 공유해요.',
+          {draft.step === 'date' && futureDate ? (
+            <Body style={styles.error}>
+              {l('최근 생리 시작일은 오늘 이후로 설정할 수 없어요.')}
+            </Body>
+          ) : null}
+          <Body muted>
+            {t(
+              'Reference estimates appear only when enough information is available.',
             )}
-          </Text>
-        </View>
-      </Pressable>
-
-      {backendError && saveAttempted ? (
-        <View accessibilityRole="alert" style={styles.errorCard}>
-          <Text style={styles.errorText}>{l(backendError)}</Text>
+          </Body>
+          <PrimaryButton
+            label={t('Continue')}
+            testID="setup-next"
+            disabled={backendBusy || (draft.step === 'date' && futureDate)}
+            onPress={() =>
+              next({
+                [draft.step === 'date'
+                  ? 'dateKnown'
+                  : draft.step === 'cycle'
+                  ? 'cycleKnown'
+                  : 'periodKnown']: true,
+              })
+            }
+          />
           <TextButton
-            label={l('다시 시도')}
-            disabled={backendBusy || !consentAccepted || hasFutureStartDate}
+            label={t('Not sure, skip')}
+            disabled={backendBusy}
+            onPress={() =>
+              next({
+                [draft.step === 'date'
+                  ? 'dateKnown'
+                  : draft.step === 'cycle'
+                  ? 'cycleKnown'
+                  : 'periodKnown']: false,
+              })
+            }
+          />
+        </>
+      ) : null}
+      {draft.step === 'tutorial' ? (
+        <>
+          <Body muted>
+            {t('Take a moment for yourself, at your own pace.')}
+          </Body>
+          <Card tone="primary" style={styles.card}>
+            <View style={styles.header}>
+              <Text style={styles.label}>{t('Today’s note')}</Text>
+              <Chip label={t('Example')} />
+            </View>
+            <View style={styles.quiet}>
+              <AppIcon name="leaf" size={32} />
+              <Text style={styles.label}>{t('Feeling calm')}</Text>
+            </View>
+            <Body>{t('I would love someone to listen today.')}</Body>
+            <View style={styles.quiet}>
+              <AppIcon name="lock" />
+              <Body>{t('Only me')}</Body>
+            </View>
+          </Card>
+          <Body muted>
+            {t('Choose the body, mood or care details you want to record.')}
+          </Body>
+          <PrimaryButton
+            testID="setup-next"
+            label={t('Got it')}
+            disabled={backendBusy}
+            onPress={() => next()}
+          />
+        </>
+      ) : null}
+      {draft.step === 'share' ? (
+        <>
+          <Body muted>
+            {t('Connecting is optional. You can keep this space for yourself.')}
+          </Body>
+          <Card tone="mint" style={styles.card}>
+            <AppIcon name="pair" size={40} />
+            <Text style={styles.label}>
+              {t('Your own records. Your own choices.')}
+            </Text>
+            <Body>
+              {t('Both people accept the connection and choose what to share.')}
+            </Body>
+          </Card>
+          <PrimaryButton
+            testID="setup-pair"
+            disabled={backendBusy}
+            label={t(
+              backendBusy
+                ? 'Saving…'
+                : draft.isLogger
+                ? 'See how to invite'
+                : 'Enter a partner code',
+            )}
             onPress={() => {
-              saveSetup().catch(() => undefined);
+              finish(draft.isLogger ? 'send' : 'receive').catch(
+                () => undefined,
+              );
             }}
           />
+          <SecondaryButton
+            disabled={backendBusy}
+            label={t(backendBusy ? 'Saving…' : 'Start on my own for now')}
+            onPress={() => {
+              finish().catch(() => undefined);
+            }}
+          />
+        </>
+      ) : null}
+      {saveAttempted && backendError ? (
+        <View accessibilityRole="alert" style={styles.card}>
+          <Text style={styles.error}>{l(backendError)}</Text>
+          <Body muted>
+            {t('Your choices are still here. Try again when you are ready.')}
+          </Body>
         </View>
       ) : null}
-
-      <View style={styles.footer}>
-        <PrimaryButton
-          label={backendBusy ? l('저장 중…') : l('저장하고 시작')}
-          disabled={backendBusy || !consentAccepted || hasFutureStartDate}
-          testID="setup-save"
-          onPress={() => {
-            saveSetup().catch(() => undefined);
-          }}
-        />
-      </View>
     </Screen>
   );
 }
-
 const styles = StyleSheet.create({
-  content: { paddingBottom: spacing.xl },
+  content: { gap: spacing.lg, paddingTop: spacing.md },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  step: {
-    color: colors.primary,
-    fontSize: 13,
-    fontWeight: '800',
-    marginBottom: spacing.lg,
-  },
-  intro: { marginTop: spacing.md, marginBottom: spacing.xl },
-  label: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '800',
-    marginBottom: spacing.md,
-    marginTop: spacing.lg,
-  },
-  roleGrid: { flexDirection: 'row', gap: spacing.md },
-  roleCard: {
-    flex: 1,
-    minHeight: 164,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    padding: spacing.lg,
-    gap: spacing.sm,
-  },
-  roleCardSelected: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primarySoft,
-  },
-  roleCardLocked: { opacity: 0.78 },
-  roleLockNote: {
-    color: colors.textMuted,
-    fontSize: 11,
-    lineHeight: 17,
-    marginTop: spacing.sm,
-  },
-  roleIcon: { color: colors.primary, fontSize: 30, fontWeight: '700' },
-  roleTitle: {
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: '800',
-    lineHeight: 20,
-  },
-  roleBody: { color: colors.textMuted, fontSize: 12, lineHeight: 17 },
-  cardLabel: { color: colors.textMuted, fontSize: 13, fontWeight: '700' },
-  datePicker: { marginVertical: spacing.md },
-  notice: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.lg,
-    alignItems: 'flex-start',
-  },
-  noticeIcon: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: colors.surfaceMuted,
-    color: colors.textMuted,
-    textAlign: 'center',
-    lineHeight: 20,
-    fontWeight: '800',
-  },
-  noticeText: {
-    flex: 1,
-    color: colors.textMuted,
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  partnerOnlyCard: { marginTop: spacing.lg, gap: spacing.lg },
-  partnerOnlyBody: { color: colors.primaryDark },
-  consentCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
     gap: spacing.md,
-    marginTop: spacing.xl,
-    padding: spacing.lg,
-    borderRadius: radius.md,
+    flexWrap: 'wrap',
+  },
+  progress: { color: colors.primaryDark, fontSize: 13 },
+  steps: { flexDirection: 'row', gap: spacing.xs },
+  segment: {
+    height: 4,
+    flex: 1,
+    borderRadius: 3,
+    backgroundColor: colors.border,
+  },
+  segmentDone: { backgroundColor: colors.primaryDark },
+  quiet: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  flex: { flex: 1 },
+  card: { gap: spacing.lg },
+  label: { color: colors.text, fontSize: 16, fontWeight: '700' },
+  consent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: spacing.lg,
     backgroundColor: colors.surface,
+    minHeight: 60,
   },
-  consentCardSelected: {
-    borderColor: colors.primary,
+  selected: {
+    borderColor: colors.primaryDark,
     backgroundColor: colors.primarySoft,
   },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 7,
-    borderWidth: 2,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxSelected: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary,
-  },
-  checkmark: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
-  consentCopy: { flex: 1, gap: spacing.xs },
-  consentTitle: { color: colors.text, fontSize: 14, fontWeight: '900' },
-  consentBody: { color: colors.textMuted, fontSize: 11, lineHeight: 17 },
-  errorCard: {
-    gap: spacing.sm,
-    marginTop: spacing.lg,
-    borderRadius: radius.md,
-    backgroundColor: colors.dangerSoft,
-    padding: spacing.md,
-  },
-  errorText: { color: colors.danger, fontSize: 12, lineHeight: 18 },
-  footer: { marginTop: spacing.xxl },
+  check: { fontSize: 24, color: colors.primaryDark },
+  error: { color: colors.danger },
 });

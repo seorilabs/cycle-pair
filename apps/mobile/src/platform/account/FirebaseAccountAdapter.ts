@@ -1,6 +1,7 @@
 import { getApp } from '@react-native-firebase/app';
 import {
   EmailAuthProvider,
+  createUserWithEmailAndPassword,
   getAuth,
   getIdToken,
   linkWithCredential,
@@ -223,6 +224,12 @@ export function createFirebaseAccountAdapter(
         getAuth(),
         user => onSession(user ? toAccountSession(user) : null),
         onError,
+      );
+    },
+
+    async registerEmail(email, password) {
+      return toAccountSession(
+        (await createUserWithEmailAndPassword(getAuth(), email, password)).user,
       );
     },
 

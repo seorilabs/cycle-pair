@@ -60,6 +60,7 @@ export interface AccountPort {
   currentSession(): AccountSession | null;
   initialize(): Promise<AccountSession>;
   startGuest(): Promise<AccountSession>;
+  registerEmail(email: string, password: string): Promise<AccountSession>;
   subscribe(
     onSession: AccountSessionListener,
     onError: AccountErrorListener,

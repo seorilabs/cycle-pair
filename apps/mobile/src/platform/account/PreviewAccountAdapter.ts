@@ -48,6 +48,17 @@ export const previewAccountAdapter: AccountPort = {
     return () => listeners.delete(onSession);
   },
 
+  async registerEmail(email) {
+    session = {
+      uid: PREVIEW_UID,
+      email,
+      isAnonymous: false,
+      emailVerified: false,
+    };
+    emit();
+    return session;
+  },
+
   async upgradeAnonymous(email) {
     if (!session?.isAnonymous) {
       throw new AccountOperationError('account/not-anonymous');

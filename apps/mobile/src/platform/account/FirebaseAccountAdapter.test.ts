@@ -38,6 +38,11 @@ const mockSignInWithCustomToken = jest.fn(
   }),
 );
 const mockCreateGuestCredential = jest.fn();
+const mockCreateEmail = jest.fn(
+  async (_auth: unknown, _email: string, _password: string) => ({
+    user: user({ email: 'new@example.com', isAnonymous: false }),
+  }),
+);
 const mockSignInWithEmail = jest.fn(
   async (_auth: unknown, _email: string, _password: string) => undefined,
 );
@@ -65,6 +70,11 @@ jest.mock('@react-native-firebase/auth', () => ({
       mockCredential(email, password),
   },
   getAuth: jest.fn(() => mockAuthState),
+  createUserWithEmailAndPassword: (
+    auth: unknown,
+    email: string,
+    password: string,
+  ) => mockCreateEmail(auth, email, password),
   getIdToken: (firebaseUser: unknown, forceRefresh?: boolean) =>
     mockGetIdToken(firebaseUser, forceRefresh),
   linkWithCredential: (firebaseUser: unknown, credential: unknown) =>
@@ -122,6 +132,20 @@ describe('FirebaseAccountAdapter', () => {
       firebaseCustomToken: 'firebase-custom-token',
       appUserId: PLATFORM_GUEST_UID,
     });
+  });
+
+  it('creates an email account directly without requesting a platform guest credential', async () => {
+    mockAuthState.currentUser = null;
+    await expect(
+      firebaseAccountAdapter.registerEmail('new@example.com', 'test-password'),
+    ).resolves.toMatchObject({ email: 'new@example.com', isAnonymous: false });
+    expect(mockCreateEmail).toHaveBeenCalledWith(
+      mockAuthState,
+      'new@example.com',
+      'test-password',
+    );
+    expect(mockCreateGuestCredential).not.toHaveBeenCalled();
+    expect(mockLinkWithCredential).not.toHaveBeenCalled();
   });
 
   it.each(['ko', 'en'] as const)(

@@ -849,7 +849,7 @@ interface CyclePairContextValue {
     seed?: CycleSeed;
     consentAcceptedAt: string;
     consentVersion: string;
-  }): Promise<void>;
+  }): Promise<boolean>;
   updatePrivateSetup(payload: {
     isLogger: boolean;
     seed?: CycleSeed;
@@ -1417,7 +1417,7 @@ export function CyclePairProvider({
     if (localHydrating) return;
     const preferences: PersistedShellPreferences = {
       schemaVersion: SHELL_PREFERENCES_SCHEMA_VERSION,
-      onboardingComplete: state.stage !== 'onboarding',
+      onboardingComplete: state.stage !== 'onboarding' && state.stage !== 'setup',
       neutralNotifications: state.neutralNotifications,
       notificationQuietHours: state.notificationQuietHours,
       diagnosticsEnabled: state.diagnosticsEnabled,
@@ -1565,7 +1565,7 @@ export function CyclePairProvider({
     }) => {
       if (!backendSession) {
         reportBackendError(new Error('backend session unavailable'));
-        return;
+        return false;
       }
       setBackendBusy(true);
       setBackendFailure(null);
@@ -1593,9 +1593,11 @@ export function CyclePairProvider({
         }
         dispatch({ type: 'COMPLETE_SETUP', payload });
         dispatch({ type: 'SET_SYNC_STATUS', payload: write.status });
+        return true;
       } catch (error) {
         dispatch({ type: 'SET_SYNC_STATUS', payload: 'error' });
         reportFailure(error, 'startup', 'save-private-setup', true);
+        return false;
       } finally {
         setBackendBusy(false);
       }

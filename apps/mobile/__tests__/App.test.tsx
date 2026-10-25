@@ -1,13 +1,48 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { addEventListener as addNetworkListener } from '@react-native-community/netinfo';
-import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render as renderNative,
+  waitFor,
+} from '@testing-library/react-native';
 import React from 'react';
 import { Alert, BackHandler } from 'react-native';
 import App from '../App';
+import { previewAccountAdapter } from '../src/platform/account/PreviewAccountAdapter';
 import { SENSITIVE_HEALTH_CONSENT_VERSION } from '../src/domain/privacy/SensitiveHealthConsent';
 import type { CyclePairBackend } from '../src/platform/backend/CyclePairBackend';
 import { previewCyclePairBackend } from '../src/platform/backend/PreviewCyclePairBackend';
 import { createPlatformPresenceClient } from '../src/platform/presence/PlatformPresenceClient';
+
+// Exercise the explicit guest choice before the existing application journeys.
+async function render(element: React.ReactElement) {
+  const view = await renderNative(element);
+  await waitFor(() => expect(view.queryByLabelText('계정 확인 중')).toBeNull());
+  if (view.queryByText('계정 없이 시작하기')) {
+    await fireEvent.press(view.getByText('계정 없이 시작하기'));
+  }
+  return view;
+}
+type AppView = Awaited<ReturnType<typeof render>>;
+async function enterSetup(view: AppView, cycle = false) {
+  await waitFor(() => expect(view.getByTestId('onboarding-next')).toBeTruthy());
+  await fireEvent.press(
+    view.getByTestId(cycle ? 'purpose-cycle' : 'purpose-condition'),
+  );
+  await fireEvent.press(view.getByTestId('onboarding-next'));
+}
+async function finishSoloSetup(view: AppView, cycle = false) {
+  await enterSetup(view, cycle);
+  await fireEvent.press(view.getByTestId('setup-consent'));
+  await fireEvent.press(view.getByTestId('setup-next'));
+  if (cycle)
+    for (let index = 0; index < 3; index++)
+      await fireEvent.press(view.getByText('모르겠어요, 건너뛰기'));
+  await fireEvent.press(view.getByTestId('setup-next'));
+  await fireEvent.press(view.getByText('지금은 혼자 시작하기'));
+  await waitFor(() => expect(view.getByTestId('home-record')).toBeTruthy());
+}
 
 function installHardwareBackMock() {
   const handlers = new Set<
@@ -54,6 +89,7 @@ function deviceLocalDate(): string {
 describe('CyclePair mobile app', () => {
   beforeEach(async () => {
     await AsyncStorage.clear();
+    await previewAccountAdapter.signOut();
     jest.clearAllMocks();
   });
 
@@ -61,15 +97,40 @@ describe('CyclePair mobile app', () => {
     jest.restoreAllMocks();
   });
 
-  it('shows the privacy-first onboarding on a fresh install', async () => {
-    const view = await render(<App backend={previewCyclePairBackend} />);
+  it('shows email and guest choices before creating an identity on a fresh install', async () => {
+    const view = await renderNative(<App backend={previewCyclePairBackend} />);
+    await waitFor(() =>
+      expect(view.getByText('이메일로 시작하기')).toBeTruthy(),
+    );
+    expect(view.getByText('계정 없이 시작하기')).toBeTruthy();
+    expect(previewAccountAdapter.currentSession()).toBeNull();
+    expect(addNetworkListener).not.toHaveBeenCalled();
+  });
 
-    await waitFor(() => {
-      expect(view.getByText(/∞ 사이클 페어/)).toBeTruthy();
-      expect(view.getByText('내 기록, 내가 정하는 공유')).toBeTruthy();
-      expect(view.getByText('시작하기')).toBeTruthy();
-    });
-    expect(addNetworkListener).toHaveBeenCalledTimes(1);
+  it('이메일 화면의 시스템 이전은 시작 선택으로 돌아가며 비밀번호를 비운다', async () => {
+    const hardwareBack = installHardwareBackMock();
+    const view = await renderNative(<App backend={previewCyclePairBackend} />);
+    await waitFor(() =>
+      expect(view.getByTestId('account-email-start')).toBeTruthy(),
+    );
+    await fireEvent.press(view.getByTestId('account-email-start'));
+    await fireEvent.changeText(
+      view.getByLabelText('로그인 이메일'),
+      'draft@example.invalid',
+    );
+    await fireEvent.changeText(
+      view.getByLabelText('로그인 비밀번호'),
+      'temporary-test-password',
+    );
+    await expect(hardwareBack.press()).resolves.toBe(true);
+    expect(view.getByText('계정 없이 시작하기')).toBeTruthy();
+    await expect(hardwareBack.press()).resolves.toBe(false);
+    await fireEvent.press(view.getByTestId('account-email-start'));
+    expect(view.getByLabelText('로그인 이메일').props.value).toBe(
+      'draft@example.invalid',
+    );
+    expect(view.getByLabelText('로그인 비밀번호').props.value).toBe('');
+    expect(previewAccountAdapter.currentSession()).toBeNull();
   });
 
   it('Presence Edge가 죽어 있어도 온보딩과 첫 진입이 그대로 뜬다', async () => {
@@ -87,11 +148,12 @@ describe('CyclePair mobile app', () => {
 
     await waitFor(() => {
       expect(view.getByText(/∞ 사이클 페어/)).toBeTruthy();
-      expect(view.getByText('시작하기')).toBeTruthy();
+      expect(view.getByTestId('onboarding-next')).toBeTruthy();
     });
-    fireEvent.press(view.getByText('시작하기'));
+    await fireEvent.press(view.getByTestId('purpose-condition'));
+    await fireEvent.press(view.getByTestId('onboarding-next'));
     await waitFor(() => {
-      expect(view.queryByText('시작하기')).toBeNull();
+      expect(view.queryByTestId('onboarding-next')).toBeNull();
     });
 
     // heartbeat는 시도됐고, 그 실패가 화면 흐름을 막지 않았다.
@@ -99,29 +161,32 @@ describe('CyclePair mobile app', () => {
     presenceClient.stop();
   });
 
-  it('첫 안내 한 화면에서 설정으로 이동하고 Android 뒤로가기를 정리한다', async () => {
+  it('목적과 동의는 별개이며 화면과 시스템 이전은 같은 질문으로 돌아간다', async () => {
     const hardwareBack = installHardwareBackMock();
     const view = await render(<App backend={previewCyclePairBackend} />);
     await waitFor(() =>
-      expect(view.getByText('내 기록, 내가 정하는 공유')).toBeTruthy(),
+      expect(view.getByTestId('onboarding-next')).toBeTruthy(),
     );
-    expect(view.getByText('예시')).toBeTruthy();
-    expect(view.queryByText('건너뛰기')).toBeNull();
+    expect(
+      view.getByTestId('onboarding-next').props.accessibilityState.disabled,
+    ).toBe(true);
     await expect(hardwareBack.press()).resolves.toBe(false);
-    await fireEvent.press(view.getByTestId('onboarding-next'));
-    expect(view.getByText('시작 설정')).toBeTruthy();
-    expect(view.getByText('주기·컨디션 정보 이용에 동의해요')).toBeTruthy();
-    await fireEvent(
-      view.getByLabelText('다음 생리일 미리 보기'),
-      'valueChange',
-      true,
-    );
+    await enterSetup(view, true);
+    expect(
+      view.getByTestId('setup-next').props.accessibilityState.disabled,
+    ).toBe(true);
+    await fireEvent.press(view.getByTestId('setup-consent'));
+    await fireEvent.press(view.getByTestId('setup-next'));
     expect(view.getByTestId('last-period-start-date-picker')).toBeTruthy();
     await expect(hardwareBack.press()).resolves.toBe(true);
-    expect(view.getByText('내 기록, 내가 정하는 공유')).toBeTruthy();
-    await act(async () => {
-      view.unmount();
-    });
+    expect(
+      view.getByTestId('setup-consent').props.accessibilityState.checked,
+    ).toBe(true);
+    await fireEvent.press(view.getByText('뒤로'));
+    expect(
+      view.getByTestId('purpose-cycle').props.accessibilityState.checked,
+    ).toBe(true);
+    await act(async () => view.unmount());
     expect(hardwareBack.handlers.size).toBe(0);
   });
 
@@ -135,13 +200,11 @@ describe('CyclePair mobile app', () => {
     );
     const backend = { ...previewCyclePairBackend, saveShareSettings };
     const view = await render(<App backend={backend} />);
-    await waitFor(() => expect(view.getByText('시작하기')).toBeTruthy());
-    await fireEvent.press(view.getByText('시작하기'));
-    await fireEvent.press(view.getByText('컨디션만 기록'));
-    await fireEvent.press(view.getByText('주기·컨디션 정보 이용에 동의해요'));
-    await fireEvent.press(view.getByText('저장하고 시작'));
-    await waitFor(() => expect(view.getByText('나의 오늘')).toBeTruthy());
-    expect(view.getByText('혼자 기록 중')).toBeTruthy();
+    await finishSoloSetup(view);
+    await waitFor(() =>
+      expect(view.getByText('오늘의 나를 살펴요')).toBeTruthy(),
+    );
+    expect(view.getByText('기록은 기본으로 나만 볼 수 있어요.')).toBeTruthy();
     expect(view.queryByText('나의 주기')).toBeNull();
     await fireEvent.press(view.getByLabelText('파트너'));
     await fireEvent.press(view.getByText('파트너 연결'));
@@ -173,53 +236,44 @@ describe('CyclePair mobile app', () => {
     });
   });
 
-  it('AC-B2: 설정에서 이전 화면을 다녀와도 미저장 입력을 보존한다', async () => {
-    const hardwareBack = installHardwareBackMock();
+  it('AC-B2: 질문을 오가고 기록 목적을 바꿔도 초안은 보존하고 주기 값은 보내지 않는다', async () => {
     const savePrivateSetup = jest.fn(previewCyclePairBackend.savePrivateSetup);
     const view = await render(
       <App backend={{ ...previewCyclePairBackend, savePrivateSetup }} />,
     );
-    await waitFor(() =>
-      expect(view.getByTestId('onboarding-next')).toBeTruthy(),
-    );
-    await fireEvent.press(view.getByTestId('onboarding-next'));
-    await fireEvent(
-      view.getByLabelText('다음 생리일 미리 보기'),
-      'valueChange',
-      true,
-    );
+    await enterSetup(view, true);
+    await fireEvent.press(view.getByTestId('setup-consent'));
+    await fireEvent.press(view.getByTestId('setup-next'));
     const selectedDate = new Date();
     selectedDate.setDate(selectedDate.getDate() - 6);
     selectedDate.setHours(12, 0, 0, 0);
     await fireEvent(
       view.getByTestId('last-period-start-date-picker'),
       'change',
-      {
-        nativeEvent: { timestamp: selectedDate.getTime() },
-      },
+      { nativeEvent: { timestamp: selectedDate.getTime() } },
     );
+    await fireEvent.press(view.getByTestId('setup-next'));
     await fireEvent.press(view.getByLabelText('다음 생리까지 보통 늘리기'));
+    await fireEvent.press(view.getByTestId('setup-next'));
     await fireEvent.press(view.getByLabelText('생리가 보통 늘리기'));
-    await fireEvent.press(view.getByTestId('setup-consent'));
-    await fireEvent.press(view.getByText('이전'));
-    await fireEvent.press(view.getByTestId('onboarding-next'));
-    expect(view.getByLabelText('다음 생리일 미리 보기').props.value).toBe(true);
+    await fireEvent.press(view.getByText('뒤로'));
+    expect(view.getByText('29일')).toBeTruthy();
+    await fireEvent.press(view.getByText('뒤로'));
     expect(view.getByTestId('last-period-start-date-picker').props.date).toBe(
       selectedDate.getTime(),
     );
-    expect(view.getByText('29일')).toBeTruthy();
-    expect(view.getByText('6일')).toBeTruthy();
+    await fireEvent.press(view.getByText('뒤로'));
     expect(
       view.getByTestId('setup-consent').props.accessibilityState.checked,
     ).toBe(true);
-    await fireEvent.press(view.getByText('컨디션만 기록'));
-    await expect(hardwareBack.press()).resolves.toBe(true);
+    await fireEvent.press(view.getByText('뒤로'));
+    await fireEvent.press(view.getByTestId('purpose-condition'));
     await fireEvent.press(view.getByTestId('onboarding-next'));
-    expect(view.getAllByRole('radio')[1].props.accessibilityState.checked).toBe(
-      true,
-    );
+    await fireEvent.press(view.getByTestId('setup-next'));
+    expect(view.queryByTestId('last-period-start-date-picker')).toBeNull();
     expect(savePrivateSetup).not.toHaveBeenCalled();
-    await fireEvent.press(view.getByTestId('setup-save'));
+    await fireEvent.press(view.getByTestId('setup-next'));
+    await fireEvent.press(view.getByText('지금은 혼자 시작하기'));
     await waitFor(() =>
       expect(savePrivateSetup).toHaveBeenCalledWith(
         'preview-self',
@@ -231,23 +285,53 @@ describe('CyclePair mobile app', () => {
     );
   });
 
-  it('AC-B4: 앱 트리가 종료되면 미저장 설정 초안을 새 실행에 넘기지 않는다', async () => {
+  it('AC-B4: 앱 트리가 종료되면 미저장 민감 초안을 새 실행에 넘기지 않는다', async () => {
     const view = await render(<App backend={previewCyclePairBackend} />);
-    await waitFor(() =>
-      expect(view.getByTestId('onboarding-next')).toBeTruthy(),
-    );
-    await fireEvent.press(view.getByTestId('onboarding-next'));
-    await fireEvent.press(view.getByText('컨디션만 기록'));
+    await enterSetup(view);
     await fireEvent.press(view.getByTestId('setup-consent'));
     await act(async () => view.unmount());
     const reopened = await render(<App backend={previewCyclePairBackend} />);
-    await waitFor(() => expect(reopened.getByText('시작 설정')).toBeTruthy());
-    expect(
-      reopened.getAllByRole('radio')[0].props.accessibilityState.checked,
-    ).toBe(true);
+    await waitFor(() => expect(reopened.getByTestId('purpose-condition')).toBeTruthy());
+    expect(reopened.getByTestId('onboarding-next').props.accessibilityState.disabled).toBe(true);
+    await fireEvent.press(reopened.getByTestId('purpose-condition'));
+    await fireEvent.press(reopened.getByTestId('onboarding-next'));
     expect(
       reopened.getByTestId('setup-consent').props.accessibilityState.checked,
     ).toBe(false);
+    for (const call of (AsyncStorage.setItem as jest.Mock).mock.calls)
+      expect(String(call[1])).not.toContain('consentAccepted');
+  });
+
+  it('설정 저장 실패에는 선택 공유로 넘어가지 않고 재시도 성공 뒤 받은 코드 입력을 연다', async () => {
+    const savePrivateSetup = jest
+      .fn(previewCyclePairBackend.savePrivateSetup)
+      .mockRejectedValueOnce(new Error('unavailable'));
+    const view = await render(
+      <App
+        backend={{
+          ...previewCyclePairBackend,
+          kind: 'firebase',
+          savePrivateSetup,
+        }}
+      />,
+    );
+    await enterSetup(view);
+    await fireEvent.press(view.getByTestId('setup-consent'));
+    await fireEvent.press(view.getByTestId('setup-next'));
+    expect(view.queryByTestId('last-period-start-date-picker')).toBeNull();
+    await fireEvent.press(view.getByTestId('setup-next'));
+    await fireEvent.press(view.getByTestId('setup-pair'));
+    await waitFor(() => expect(savePrivateSetup).toHaveBeenCalledTimes(1));
+    expect(view.queryByTestId('invite-input')).toBeNull();
+    expect(
+      view.getByText(
+        '선택한 내용은 그대로 있어요. 준비되면 다시 시도해 주세요.',
+      ),
+    ).toBeTruthy();
+    await fireEvent.press(view.getByTestId('setup-pair'));
+    await waitFor(() => expect(view.getByTestId('invite-input')).toBeTruthy());
+    expect(savePrivateSetup).toHaveBeenCalledTimes(2);
+    expect(savePrivateSetup.mock.calls[1]?.[4]).toBeUndefined();
   });
 
   it('AC-B1: 저장 중 시스템 이전을 차단하고 실패한 초안을 유지한다', async () => {
@@ -268,16 +352,11 @@ describe('CyclePair mobile app', () => {
       saveDailyLog,
     };
     const view = await render(<App backend={backend} />);
-    await waitFor(() =>
-      expect(view.getByTestId('onboarding-next')).toBeTruthy(),
-    );
-    await fireEvent.press(view.getByTestId('onboarding-next'));
-    await fireEvent.press(view.getByText('컨디션만 기록'));
-    await fireEvent.press(view.getByTestId('setup-consent'));
-    await fireEvent.press(view.getByTestId('setup-save'));
+    await finishSoloSetup(view);
     await waitFor(() => expect(view.getByTestId('home-record')).toBeTruthy());
     await fireEvent.press(view.getByTestId('home-record'));
     await fireEvent.press(view.getByTestId('record-details'));
+    await fireEvent.press(view.getByTestId('record-emotion-calm'));
     await fireEvent.changeText(
       view.getByTestId('record-note'),
       '저장 실패 후에도 유지할 시험 메모',
@@ -315,13 +394,7 @@ describe('CyclePair mobile app', () => {
     async direction => {
       const hardwareBack = installHardwareBackMock();
       const view = await render(<App backend={previewCyclePairBackend} />);
-      await waitFor(() =>
-        expect(view.getByTestId('onboarding-next')).toBeTruthy(),
-      );
-      await fireEvent.press(view.getByTestId('onboarding-next'));
-      await fireEvent.press(view.getByText('컨디션만 기록'));
-      await fireEvent.press(view.getByTestId('setup-consent'));
-      await fireEvent.press(view.getByTestId('setup-save'));
+      await finishSoloSetup(view);
       await waitFor(() => expect(view.getByLabelText('파트너')).toBeTruthy());
       await fireEvent.press(view.getByLabelText('파트너'));
       await fireEvent.press(view.getByText('파트너 연결'));
@@ -342,13 +415,7 @@ describe('CyclePair mobile app', () => {
       kind: 'firebase',
     };
     const view = await render(<App backend={backend} />);
-    await waitFor(() =>
-      expect(view.getByTestId('onboarding-next')).toBeTruthy(),
-    );
-    await fireEvent.press(view.getByTestId('onboarding-next'));
-    await fireEvent.press(view.getByText('컨디션만 기록'));
-    await fireEvent.press(view.getByTestId('setup-consent'));
-    await fireEvent.press(view.getByTestId('setup-save'));
+    await finishSoloSetup(view);
     await waitFor(() => expect(view.getByLabelText('파트너')).toBeTruthy());
     await fireEvent.press(view.getByLabelText('파트너'));
     await fireEvent.press(view.getByText('파트너 연결'));
@@ -406,8 +473,10 @@ describe('CyclePair mobile app', () => {
 
     const view = await render(<App backend={backend} />);
 
-    await waitFor(() => expect(view.getByText('나의 오늘')).toBeTruthy());
-    expect(view.getByText('혼자 기록 중')).toBeTruthy();
+    await waitFor(() =>
+      expect(view.getByText('오늘의 나를 살펴요')).toBeTruthy(),
+    );
+    expect(view.getByText('기록은 기본으로 나만 볼 수 있어요.')).toBeTruthy();
     expect(view.queryByText('연결 상태 확인')).toBeNull();
     await waitFor(() => expect(savePrivateSetup).toHaveBeenCalledTimes(1));
     expect(savePrivateSetup).toHaveBeenCalledWith(
@@ -466,7 +535,9 @@ describe('CyclePair mobile app', () => {
 
     const view = await render(<App backend={backend} />);
 
-    await waitFor(() => expect(view.getByText('나의 오늘')).toBeTruthy());
+    await waitFor(() =>
+      expect(view.getByText('오늘의 나를 살펴요')).toBeTruthy(),
+    );
     expect(syncDailyLogs).toHaveBeenCalledTimes(1);
     await fireEvent.press(view.getByLabelText('달력'));
     await fireEvent.press(view.getByText('기록 보기'));
@@ -519,7 +590,9 @@ describe('CyclePair mobile app', () => {
       },
     };
     const view = await render(<App backend={backend} />);
-    await waitFor(() => expect(view.getByText('나의 오늘')).toBeTruthy());
+    await waitFor(() =>
+      expect(view.getByText('오늘의 나를 살펴요')).toBeTruthy(),
+    );
     expect(view.queryByTestId('home-record')).toBeNull();
     expect(
       view.getByTestId('home-record-loading').props.accessibilityState.disabled,
@@ -534,7 +607,10 @@ describe('CyclePair mobile app', () => {
     );
     await waitFor(() => expect(view.getByTestId('home-record')).toBeTruthy());
     await fireEvent.press(view.getByTestId('home-record'));
-    expect(view.getByText('불안 ›')).toBeTruthy();
+    expect(
+      view.getByTestId('record-emotion-anxious').props.accessibilityState
+        .checked,
+    ).toBe(true);
     await fireEvent.press(view.getByTestId('record-details'));
     expect(view.getByTestId('record-note').props.value).toBe(
       '복원 전 덮지 않을 원문',
@@ -630,7 +706,9 @@ describe('CyclePair mobile app', () => {
     const view = await render(<App backend={backend} />);
     await waitFor(() => expect(watchActivePair).toHaveBeenCalledTimes(1));
 
-    await waitFor(() => expect(view.getByText('혼자 기록 중')).toBeTruthy());
+    await waitFor(() =>
+      expect(view.getByText('기록은 기본으로 나만 볼 수 있어요.')).toBeTruthy(),
+    );
     expect(loadCachedActivePair).not.toHaveBeenCalled();
     expect(loadCachedPairEvents).not.toHaveBeenCalled();
     expect(view.queryByText('공유 설정 계속하기')).toBeNull();
@@ -928,20 +1006,12 @@ describe('CyclePair mobile app', () => {
     }));
     const backend = { ...previewCyclePairBackend, savePrivateSetup };
     const view = await render(<App backend={backend} />);
-    await waitFor(() => expect(view.getByText('시작하기')).toBeTruthy());
-
-    await fireEvent.press(view.getByText('시작하기'));
-    const persistedBeforeConsent = String(
-      (AsyncStorage.setItem as jest.Mock).mock.calls.at(-1)?.[1] ?? '',
+    await finishSoloSetup(view, true);
+    await waitFor(() =>
+      expect(view.getByText('오늘의 나를 살펴요')).toBeTruthy(),
     );
-    expect(persistedBeforeConsent).not.toContain('lastPeriodStart');
-    expect(persistedBeforeConsent).not.toContain('checkIn');
-    await fireEvent.press(view.getByText('주기·컨디션 정보 이용에 동의해요'));
-    await fireEvent.press(view.getByText('저장하고 시작'));
-
-    await waitFor(() => expect(view.getByText('나의 오늘')).toBeTruthy());
-    expect(view.getByText('혼자 기록 중')).toBeTruthy();
-    expect(view.getByText('아직 주기 기록이 없어요')).toBeTruthy();
+    expect(view.getByText('기록은 기본으로 나만 볼 수 있어요.')).toBeTruthy();
+    expect(view.getByText('나의 일주일')).toBeTruthy();
     expect(view.getByText('오프라인 저장')).toBeTruthy();
     expect(savePrivateSetup).toHaveBeenCalledWith(
       'preview-self',
@@ -950,9 +1020,11 @@ describe('CyclePair mobile app', () => {
       SENSITIVE_HEALTH_CONSENT_VERSION,
       undefined,
     );
-    await fireEvent.press(view.getByText('기록하기'));
+    await fireEvent.press(view.getByTestId('home-record'));
     expect(view.queryByText('피로')).toBeNull();
-    await fireEvent.press(view.getByTestId('record-emotions'));
+    expect(
+      view.getByTestId('record-save').props.accessibilityState.disabled,
+    ).toBe(true);
     // 감정은 다중 선택이고 상한은 3개다. 상한에 닿으면 나머지가 잠긴다.
     await fireEvent.press(view.getByText('평온'));
     await fireEvent.press(view.getByText('애정'));
@@ -973,7 +1045,6 @@ describe('CyclePair mobile app', () => {
     expect(
       view.getByRole('checkbox', { name: '외로움' }).props.accessibilityState,
     ).toMatchObject({ checked: true });
-    await fireEvent.press(view.getByText('완료'));
     await fireEvent.press(view.getByTestId('record-help'));
     await fireEvent.press(view.getByText('그냥 들어줘요'));
     await fireEvent.press(view.getByText('완료'));
@@ -981,7 +1052,7 @@ describe('CyclePair mobile app', () => {
     await fireEvent.press(view.getByText('피로'));
     await fireEvent.press(view.getByText('기록 저장'));
 
-    await waitFor(() => expect(view.getByText('✓ 기록 완료')).toBeTruthy());
+    await waitFor(() => expect(view.getByText('기록 완료')).toBeTruthy());
     expect(view.queryByText('Powered by React Native')).toBeNull();
 
     for (const call of (AsyncStorage.setItem as jest.Mock).mock.calls) {
@@ -1043,7 +1114,9 @@ describe('CyclePair mobile app', () => {
       });
     const view = await render(<App backend={backend} />);
 
-    await waitFor(() => expect(view.getByText('나의 오늘')).toBeTruthy());
+    await waitFor(() =>
+      expect(view.getByText('오늘의 나를 살펴요')).toBeTruthy(),
+    );
     await fireEvent.press(view.getByLabelText('달력'));
     await fireEvent.press(view.getByText('기록 보기'));
     await waitFor(() => expect(view.getByText('삭제할 기록')).toBeTruthy());
@@ -1098,7 +1171,9 @@ describe('CyclePair mobile app', () => {
       <App backend={backend} notificationClient={notificationClient} />,
     );
 
-    await waitFor(() => expect(view.getByText('나의 오늘')).toBeTruthy());
+    await waitFor(() =>
+      expect(view.getByText('오늘의 나를 살펴요')).toBeTruthy(),
+    );
     await fireEvent.press(view.getByLabelText('설정'));
     expect(view.queryByLabelText('최근 생리 시작일')).toBeNull();
     expect(view.queryByLabelText('조용한 시간 시작')).toBeNull();
@@ -1165,7 +1240,9 @@ describe('CyclePair mobile app', () => {
           view.container.queryAll(
             node => node.type === 'Modal' && node.props.visible,
           );
-        await waitFor(() => expect(view.getByText('나의 오늘')).toBeTruthy());
+        await waitFor(() =>
+          expect(view.getByText('오늘의 나를 살펴요')).toBeTruthy(),
+        );
         await fireEvent.press(view.getByLabelText('설정'));
         await fireEvent.press(view.getByText(entrypoint));
         expect(visibleModals()).toHaveLength(1);
@@ -1438,11 +1515,13 @@ describe('CyclePair mobile app', () => {
     };
     const view = await render(<App backend={backend} />);
 
-    await waitFor(() => expect(view.getByText('나의 오늘')).toBeTruthy());
+    await waitFor(() =>
+      expect(view.getByText('오늘의 나를 살펴요')).toBeTruthy(),
+    );
     expect(view.queryByText(/주기 예측과 케어 힌트는/)).toBeNull();
     const homeTree = JSON.stringify(view.toJSON());
     expect(homeTree.indexOf('home-record')).toBeLessThan(
-      homeTree.indexOf('파트너 보기'),
+      homeTree.indexOf('tab-partner'),
     );
     expect(view.queryByLabelText('오늘 어때요?')).toBeNull();
     await fireEvent.press(view.getByLabelText('파트너'));
