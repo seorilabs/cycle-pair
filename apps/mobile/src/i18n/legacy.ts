@@ -1,4 +1,6 @@
 export const legacyEnglish: Readonly<Record<string, string>> = {
+  '기록 있음': 'Has a record',
+  '공동 일정 있음': 'Has a shared event',
   ' · 동의일 ': ', consented on ',
   '사용 및 오류 정보는 진단을 켠 경우에 수집해요. 설치 식별자, 기기 정보와 IP 주소로 추정한 대략적인 지역이 포함될 수 있어요. 계정과 Pair 식별자, 생리일, 건강 정보와 직접 쓴 글은 보내지 않아요.':
     'Usage and error information is collected when you enable diagnostics. It may include installation identifiers, device information and an approximate region inferred from your IP address. We do not send account or Pair identifiers, period dates, health information or free text.',
