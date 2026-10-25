@@ -50,7 +50,7 @@
     "fertilityOrContraception": "yes-cycle-based-fertility-window-reference-not-contraception",
     "userGeneratedContent": "yes-private-pair-notes-and-events",
     "realtimeChat": "no",
-    "dataSafety": "user-reviewed-console-draft-saved",
+    "dataSafety": "prepared-free-no-iap-pending-user-review",
     "dataSafetyCsv": "play-store/policy/data-safety.csv",
     "dataSafetyDeclaration": "play-store/policy/data-safety-declaration.json",
     "contentRating": "iarc-questionnaire-saved-review-pending",
@@ -87,32 +87,7 @@
   "monetization": {
     "model": "free",
     "downloadPrice": "free",
-    "subscriptionProducts": [
-      {
-        "productId": "cyclepair_plus",
-        "basePlanId": "monthly",
-        "offerId": "free-trial",
-        "type": "auto-renewable",
-        "billingPeriod": "P1M",
-        "price": {
-          "KRW": 3900
-        },
-        "freeTrial": "P7D",
-        "benefit": "상세 예측·전체 케어 콘텐츠·확장 이력"
-      },
-      {
-        "productId": "cyclepair_plus",
-        "basePlanId": "yearly",
-        "offerId": "free-trial",
-        "type": "auto-renewable",
-        "billingPeriod": "P1Y",
-        "price": {
-          "KRW": 29000
-        },
-        "freeTrial": "P7D",
-        "benefit": "상세 예측·전체 케어 콘텐츠·확장 이력(연간 ~38% 절약)"
-      }
-    ],
+    "subscriptionProducts": [],
     "salesEnabled": false
   },
   "assets": {
@@ -134,7 +109,7 @@
   },
   "manualEvidence": {
     "playConsoleApp": "Android Publisher API v3 재조회(2026-08-11): com.seorilabs.cyclepair 앱과 tracks=production/beta/alpha/internal, listings=ko-KR·en-US를 확인했다. cyclepair_plus의 monthly(P1M, KRW 3,900)·yearly(P1Y, KRW 29,000) base plan과 각 free-trial(P7D) offer는 173개 지역 ACTIVE다. 업로드된 bundle은 기존 versionCode 1008뿐이며 v1.0.0/1000000 candidate artifact는 아직 없다.",
-    "dataSafetyReview": "missing: 로그인 세부정보와 타겟층 설정 뒤 데이터 보안 최종 완료가 필요하다. 2026-10-25 사용자 검토 후 Console 임시 저장과 재내보내기 대조에서 수집 10개 분류, 목적, 필수 여부, 암호화와 삭제 URL이 일치했다.",
+    "dataSafetyReview": "missing: 무료, 광고 없음, IAP 없음 범위에서 구매 이력을 제외한 답안의 사용자 검토와 Console 최종 저장 및 재조회가 필요하다. 이전 10개 분류의 임시 저장 기록은 이 변경의 완료 근거로 사용하지 않는다.",
     "contentRating": "2026-10-25 비게임 IARC 설문지를 저장하고 사용자 상호작용 및 초대된 사람만의 접근을 신고했다. 마켓의 검토와 공개는 별도다.",
     "internalTwoPersonTest": "현재 1.1.0 후보의 독립 개발 화면 및 두 계정 검수 결과는 저장소 밖의 후보별 근거에서 확인한다. 운영 인증과 원격 알림 등 실제 플랫폼 검증은 별도이며 기기 사용 승인은 포함하지 않는다.",
     "deploymentApproval": "사용자가 두 마켓 공개까지 론칭 진행을 지시함. 기기 사용은 별도 승인 대상이며, 검수와 마켓의 실제 저장 및 제출 결과는 아직 완료로 표시하지 않음."

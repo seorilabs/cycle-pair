@@ -6,7 +6,7 @@
 공통 사실:
 - 광고와 제3자 추적 없음, 광고 식별자와 정밀 위치 미수집, 제3자 데이터 판매 없음. 선택적 진단에는 설치 식별자, 기기 정보와 IP 기반의 대략적인 지역이 포함된다.
 - 원본 건강 기록은 owner-private, 파트너에게는 **사용자가 켠 필드만** projection으로 제공(정확히 1인).
-- 처리 위탁: Google Firebase(Auth/Firestore/Functions/FCM/Analytics/Crashlytics/Performance), 결제는 Google Play/Apple.
+- 처리 위탁: Google Firebase(Auth/Firestore/Functions/FCM/Analytics/Crashlytics/Performance). 이번 무료 후보에는 결제 흐름과 실제 구매 SDK가 없다.
 
 ---
 
@@ -26,7 +26,7 @@
 | User ID (Firebase Auth UID) | 예 | 아니오 | 계정 관리, 앱 기능, 보안·부정사용 방지 | 필수 |
 | 건강 정보(생리일·증상·기분·컨디션·메모) | 예 | **아니오** (아래 주1) | 앱 기능 | 선택 |
 | 사용자 생성 콘텐츠(비공개 메모·공동 일정) | 예 | 아니오 | 앱 기능 | 선택 |
-| 구매 내역(구독 entitlement) | 예 | 아니오 | 앱 기능 | 선택(구독 시) |
+| 구매 내역 | 아니오 | 아니오 | 이번 무료 후보에는 구매 기능 없음 | 해당 없음 |
 | 대략적인 위치(IP 기반 지역) | 예 | 아니오 | 분석 | 선택(진단을 켠 경우) |
 | 앱 상호작용(비민감 이벤트) | 예 | 아니오 | 분석 | 선택 |
 | 크래시 로그·진단 | 예 | 아니오 | 분석/앱 기능 | 선택 |
@@ -45,7 +45,6 @@
   - Health & Fitness — 생리주기·컨디션 기록(직접 입력, HealthKit 미사용). 광고·마케팅에 사용 안 함
   - Contact Info — 이메일 주소(이메일 로그인 사용 시)
   - Identifiers — User ID(인증·Pair 연결)
-  - Purchases — 구독 entitlement
   - User Content — 비공개 메모와 공동 일정
   - Identifiers — Device ID, 알림과 보안에 필요한 설치 식별자 및 선택적 진단의 app-instance ID
 - **Data Linked to You** (선택적 분석 목적):
@@ -57,7 +56,7 @@
 
 > 설치 식별자로 특정 기기의 자료를 묶는 Firebase SDK 동작을 반영해 사용과 진단을 Linked로 작성한다. 이메일이나 계정 UID를 보내지 않는다는 이유만으로 Not Linked로 신고하지 않는다. 광고 추적과 사용자 또는 기기에 대한 자료 연결은 별개이며 tracking=no는 유지한다.
 
-2026-10-24 구현 대조: [Firebase Analytics 데이터 신고](https://support.google.com/analytics/answer/11582702?hl=en), [Firebase 설치 식별자](https://firebase.google.com/support/privacy/manage-iids), [Apple 사용자 연결 정의](https://developer.apple.com/app-store/app-privacy-details/). 현재 초안이며 사용자 검토와 실제 콘솔 저장을 마치기 전에는 완료로 표시하지 않는다.
+2026-10-25 무료 출시 범위에 맞춰 구매 내역 수집을 제외했다. 나머지 분류는 기존 [Firebase Analytics 데이터 신고](https://support.google.com/analytics/answer/11582702?hl=en), [Firebase 설치 식별자](https://firebase.google.com/support/privacy/manage-iids), [Apple 사용자 연결 정의](https://developer.apple.com/app-store/app-privacy-details/)와 구현 대조를 유지한다. 수정한 답안의 사용자 검토와 실제 Console 저장 전에는 완료로 표시하지 않는다.
 
 ---
 

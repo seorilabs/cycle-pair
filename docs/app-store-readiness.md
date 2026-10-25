@@ -1,6 +1,6 @@
 # App Store readiness
 
-2026-10-23 첫 출시는 iPhone 지원으로 승인됐다. 현재 승인 범위와 테스트 계획은 [네이티브 출시 설계](design/2026-10-22-native-launch/design.md)를 따른다. iPad QA와 스크린샷, Plus 신규 판매는 이번 출시의 요구가 아니다. 아래 Xcode Cloud와 구독 항목은 이전 준비 이력이며 현재 완료 판정으로 사용하지 않는다. 새 후보의 archive, 업로드, 처리와 공개는 각각 재확인한다.
+2026-10-23 첫 출시는 iPhone 지원으로 승인됐다. 2026-10-25 사용자가 무료, 광고 없음, 인앱결제 없음으로 첫 출시 범위를 정했다. [무료 출시 결정](launch/free-first-20261025.md)과 기존 [네이티브 출시 설계](design/2026-10-22-native-launch/design.md)를 따른다. iPad QA와 스크린샷, 구독 구매와 복원은 이번 출시의 요구가 아니다. 아래 Xcode Cloud와 구독 항목은 이전 준비 이력이며 현재 완료 판정으로 사용하지 않는다. 기존 후보의 archive, 업로드, 처리와 공개는 각각 재확인한다.
 
 현재 상태는 App Store Connect 앱과 Xcode Cloud workflow 구성 완료, 첫 정상
 TestFlight 빌드 대기다. 기계 판독 source of truth는
@@ -30,8 +30,8 @@ GitHub macOS runner는 사용하지 않는다. App Store Connect API가 `v*` tag
 - 비공개 메모·공동 일정은 실제 기능 설문에 반영
 - App Privacy: 이메일·User ID·Health & Fitness·Purchases는 linked, 동의형 Usage Data·Diagnostics는 not linked, tracking no
 - export compliance: 표준 TLS/Firebase 전송만 사용하므로 non-exempt encryption false
-- EU 포함 구독 사업이므로 DSA trader로 준비하며 공개 전화번호·증빙은 저장소에 두지 않음
-- 구독 contract: `com.seorilabs.cyclepair.plus.monthly` / `com.seorilabs.cyclepair.plus.yearly`
+- EU 거래자 여부와 공개 연락처는 실제 계정 상태를 확인한다. 무료 앱이라는 이유로 기존 거래자 지위를 임의로 바꾸지 않는다.
+- 현재 출시의 인앱결제 상품 목록은 비어 있다. 과거 구독 상품은 이전 준비 이력이며 제출 대상으로 간주하지 않는다.
 - TestFlight는 서로 다른 계정·기기 두 명으로 검증
 - Xcode Cloud: `Cycle Pair Release`
   (`6310D1DD-4A04-4E5C-8B17-B86D7A744D09`), 수동 `v*` tag,
@@ -77,7 +77,7 @@ Health 데이터 공유는 사용자 제어 기능의 본질이므로 review not
 - [ ] 심사 연락처 전화번호와 로그인 review 계정
 - [x] 저장소·런타임 구독 product ID, 가격, 혜택 정합성
 - [x] App Store Connect 구독 그룹·상품 생성과 가격·무료 체험 readback: 2026-08-11 API로 `Cycle Pair Plus`, 월간·연간 175개 지역, KRW 3,900·29,000, 1주 무료 체험 확인
-- [ ] 구독 상품 review screenshot과 심사 메타데이터 보완 (`MISSING_METADATA`)
+- 이번 무료 출시에는 해당 없음: 과거 구독 상품 review screenshot과 심사 메타데이터는 `MISSING_METADATA`였던 준비 이력이다. 구독 검수 통과로 기록하지 않으며 무료 앱 출시의 선행 조건으로 두지 않는다.
 - [ ] 실제 iPhone screenshots
 - 이번 첫 출시는 iPhone 대상이며 iPad QA와13인치 스크린샷은 제외됨
 - [ ] archive와 TestFlight 처리 완료
