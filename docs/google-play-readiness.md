@@ -94,22 +94,23 @@ CI는 파일 대신 아래 환경변수를 사용할 수 있다. 값이나 keyst
 
 Firebase 처리는 service provider, partner projection과 시스템 공유는 사용자 직접 실행 예외로 근거를 남겨 제3자 공유는 없음으로 신고한다. 제출 직전에 Google Play 공식 정의를 다시 확인한다.
 
-## blocker
+## 현재 등록 상태와 남은 검증
 
-- [x] free/paid 최초 선택: 무료
-- [x] Play Console 앱 shell
-- [x] privacy policy URL과 계정 삭제 URL 게시
-- [ ] Data safety 검토·입력
-- [ ] target audience와 IARC Console 저장/readback
-- [x] 저장소·런타임 구독 product ID, 기준 가격, 혜택 정합성
-- [x] Play Console base plan 활성화와 readback: 2026-08-11 Android Publisher API로 월간·연간 173개 지역, KRW 3,900·29,000, `free-trial` P7D ACTIVE 확인
-- [x] 1024x500 feature graphic과 실제 phone screenshots
-- [x] large/xlarge 지원 기준 7-inch·10-inch tablet screenshots 각 2장 이상
-- [x] v1.0.1/1000001 signed AAB Cloud Build와 독립 서명·bundle 검증
-- [ ] repo-local artifact를 사용하는 `release/readiness.json` evidence 등록
-- [ ] production Firebase Play Integrity App Check provider 등록과 Firestore/Callable 강제 live 검증
-- [ ] internal track 2인 테스트
-- [ ] production access와 deployment 승인
+2026-10-25 등록 결과의 정본은 [마켓 등록 결과](launch/market-registration-20261025.md)다.
+
+- [x] SeoriLabs 개인 계정의 앱 소유와 무료 가격 확인
+- [x] 개인정보 처리방침, 계정 삭제와 개별 기록 삭제 URL 게시
+- [x] 구매 내역을 제외한 데이터 보안 9개 분류 최종 저장, 재로드와 CSV 응답 782개 대조
+- [x] 전용 심사 계정 두 개와 연결 안내 비공개 저장
+- [x] 대상 연령 16~17세와 만 18세 이상 저장, 앱의 서비스 최소 연령 17세 유지
+- [x] IARC, 정부 앱, 금융 기능, 건강 기능과 광고 신고 완료 상태 확인
+- [x] 한국어와 영어 문구, 언어별 스크린샷 3장과 그래픽 등록 및 저장값 대조
+- [x] 구형 화면을 담은 태블릿 등록 이미지 제거, Android 기기 지원은 유지
+- [x] Android 1.1.1(1000108) 서명 AAB와 내부 테스트 제공 확인
+- [ ] 실제 플랫폼 인증, App Check와 원격 알림의 필수 항목 검증
+- [ ] 최종 제출 후보의 중앙 검사, 심사 접수와 공개 확인
+
+현재 공개 출시와 실기기 검증을 완료로 표시하지 않는다. 구독 상품 검수는 이번 무료 출시의 조건이 아니다. 공용 등록 검증기는 여전히 태블릿 이미지 각 2장을 요구하므로 그 결과는 통과로 기록하지 않는다. Console에서는 해당 이미지가 없는 휴대전화 등록을 저장했으며, 공용 검사와의 차이는 최종 출시 검사 전에 정리한다.
 
 ## 준비 후 검증
 
