@@ -160,7 +160,7 @@ export function SetupScreen({
               )}
             </Body>
             <Body muted>
-              {t('Sharing is a separate choice. Notes are never shared.')}
+              {t('Partner sharing is optional. Notes are shared only when you turn on note sharing.')}
             </Body>
             <TextButton
               label={t('Read the privacy policy')}

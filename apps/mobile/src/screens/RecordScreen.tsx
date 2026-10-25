@@ -150,9 +150,13 @@ export function RecordScreen({
         textAlignVertical="top"
       />
       <View style={styles.private}>
-        <AppIcon name="lock" />
+        <AppIcon name={state.shareSettings.note ? 'pair' : 'lock'} />
         <Body muted style={styles.flex}>
-          {t('This note is only for you.')}
+          {t(state.shareSettings.note
+            ? state.paired
+              ? 'Note sharing is on. Saved notes are shared with your partner.'
+              : 'Note sharing is on. Connect a partner to share saved notes.'
+            : 'Note sharing is off. Only you can see this note.')}
         </Body>
       </View>
       <Pressable

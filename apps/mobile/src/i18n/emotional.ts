@@ -38,8 +38,8 @@ export const emotionalMessages = {
   'Records are kept until you delete them. In Settings, request account deletion to stop health data use and delete your records. Partner sharing can be turned off for each item.':
     '기록은 삭제할 때까지 보관합니다. 설정에서 계정 삭제를 요청해 건강 정보 이용을 중단하고 기록을 삭제할 수 있어요. 파트너 공유는 항목별로 끌 수 있어요.',
   'For people aged 17 and over.': '만 17세 이상을 위한 앱입니다.',
-  'Sharing is a separate choice. Notes are never shared.':
-    '공유는 별도로 선택합니다. 메모는 공유되지 않습니다.',
+  'Partner sharing is optional. Notes are shared only when you turn on note sharing.':
+    '파트너 공유는 선택이에요. 메모도 공유 설정에서 직접 켠 경우에만 전달돼요.',
   'Read the privacy policy': '개인정보 처리방침 읽기',
   'I consent to the health information use described above.':
     '설명된 건강 정보 이용에 동의합니다.',
@@ -73,7 +73,12 @@ export const emotionalMessages = {
   'Choose a word that feels like you.': '나에게 맞는 말을 골라요.',
   'A small note, optional': '짧은 메모, 선택',
   'A few words for yourself': '오늘 나에게 해주고 싶은 말',
-  'This note is only for you.': '이 메모는 나만 봐요.',
+  'Note sharing is off. Only you can see this note.':
+    '메모 공유가 꺼져 있어요. 이 메모는 나만 봐요.',
+  'Note sharing is on. Saved notes are shared with your partner.':
+    '메모 공유가 켜져 있어요. 저장한 메모도 파트너에게 공유돼요.',
+  'Note sharing is on. Connect a partner to share saved notes.':
+    '메모 공유가 켜져 있어요. 파트너를 연결하면 저장한 메모도 공유해요.',
   'Small ways to be there': '마음을 나누는 작은 방법',
   'Ask first. Be there in a way that feels right.':
     '먼저 물어보고, 편한 만큼 함께해요.',

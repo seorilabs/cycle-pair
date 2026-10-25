@@ -59,7 +59,7 @@ export function PrivacyCenter({ onClose }: { onClose(): void }) {
         <PolicySection
           title={l('누가 볼 수 있나요?')}
           body={l(
-            '내 기록은 나만 볼 수 있어요. 선택한 항목만 상대에게 보이며, 공유를 끄거나 연결을 해제하면 상대의 접근을 차단해요.',
+            '원본 기록은 나만 보고, 메모를 포함해 직접 공유를 켠 항목만 상대에게 보여요. 공유를 끄거나 연결을 해제하면 상대의 접근을 차단해요.',
           )}
         />
         <PolicySection
