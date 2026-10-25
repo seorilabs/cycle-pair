@@ -498,8 +498,8 @@ export function CalendarScreen({onOpenRecord}: {onOpenRecord():void}) {
                         rangeLabels.length > 0
                           ? `, ${rangeLabels.join(', ')}`
                           : '',
-                      v3: hasRecord ? ', 기록 있음' : '',
-                      v4: hasEvent ? ', 공동 일정 있음' : '',
+                      v3: hasRecord ? `, ${l('기록 있음')}` : '',
+                      v4: hasEvent ? `, ${l('공동 일정 있음')}` : '',
                     })}
                     accessibilityState={{ selected: isSelected }}
                     key={day}
