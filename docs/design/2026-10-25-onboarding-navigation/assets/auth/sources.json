@@ -1,0 +1,47 @@
+{
+  "scope": "login provider marks in design preview; actual native authentication remains unimplemented",
+  "globalRelease": "Google Play and App Store worldwide, Korean and English; unchanged",
+  "assets": [
+    {
+      "file": "google-g.png",
+      "owner": "Google",
+      "source": "https://developers.google.com/static/identity/images/g-logo.png",
+      "guidelines": "https://developers.google.com/identity/branding-guidelines",
+      "transform": "unchanged original PNG, aspect ratio preserved",
+      "sha256": "d1ce9c2af0b10a7333abc99bc706f9a6a199e5b65bf3e3009624f076b8638e6a"
+    },
+    {
+      "file": "kakao-symbol.svg",
+      "owner": "Kakao",
+      "source": "https://developers.kakao.com/tool/images/resource/preview/login-complete-ko.svg",
+      "sourceSha256": "ab90ab44616f14a671844cd991b3fbb33277f42c5bb2cc5a9422344a854c9398",
+      "guidelines": "https://developers.kakao.com/docs/ko/kakaologin/design-guide",
+      "transform": "verbatim first symbol path, viewBox includes full symbol; black fill per design guide; no redraw",
+      "sha256": "cdb0118337c303e2d3ddd44f74de85497d44d8aa615a6be0e6039dc0852b43e6"
+    },
+    {
+      "file": "email.svg",
+      "owner": "project",
+      "source": "project-authored generic envelope vector",
+      "transform": "none",
+      "sha256": "aad4b87f3ce21936a620f86297d6b51cbd50ada356a5dba9984e30c4b571fec3"
+    },
+    {
+      "file": "apple-logo-button.png",
+      "owner": "Apple",
+      "source": "https://appleid.cdn-apple.com/appleid/button/logo?size=54&color=black&border=false&border_radius=0&scale=3",
+      "guidelines": "https://developer.apple.com/design/human-interface-guidelines/sign-in-with-apple",
+      "transform": "unmodified full generated logo-only button image, built-in padding and aspect ratio preserved",
+      "sha256": "8b0947733d4fcbc4efeef23f49501f5ceac1a59547c2008789b6b017c32e9877"
+    }
+  ],
+  "apple": {
+    "state": "official documented button-image API; no authentication performed",
+    "source": "https://appleid.cdn-apple.com/appleid/button/logo?size=54&color=black&border=false&border_radius=0&scale=3",
+    "documentation": "https://developer.apple.com/documentation/signinwithapple/incorporating-sign-in-with-apple-into-other-platforms",
+    "unusedArtworkPackageLicenseAccepted": false
+  },
+  "naver": {
+    "state": "provider not selected; add official mark only if enabled"
+  }
+}
