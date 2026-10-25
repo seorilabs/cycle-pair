@@ -113,7 +113,7 @@ export function freeLaunchBlockers(config) {
       config?.monetization?.salesEnabled !== false) {
     blockers.push("무료 출시 설정 불일치");
   }
-  if (config?.appContent?.ads !== "no") blockers.push("광고 없음 신고 불일치");
+  if (config?.contentDeclarations?.ads !== "no") blockers.push("광고 없음 신고 불일치");
   return blockers;
 }
 

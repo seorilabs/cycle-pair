@@ -17,14 +17,6 @@ const environmentPath = join(firebaseRoot, 'functions', '.env.local');
 const temporaryRoot = await mkdtemp(join(tmpdir(), 'cyclepair-emulator-'));
 const credentialPath = join(temporaryRoot, 'no-google-credentials.json');
 
-const dummySecrets = [
-  'APPLE_IAP_PRIVATE_KEY_BASE64=ZHVtbXk=',
-  'APPLE_IAP_KEY_ID=emulator-test-key',
-  'APPLE_IAP_ISSUER_ID=00000000-0000-0000-0000-000000000000',
-  'APPLE_APP_ID=1',
-  'APPLE_IAP_ROOT_CERTIFICATES_BASE64_JSON=["ZHVtbXk="]',
-  '',
-].join('\n');
 const isolatedEnvironment = [
   'ENFORCE_APP_CHECK=false',
   'HTTP_PROXY=http://127.0.0.1:9',
@@ -50,11 +42,8 @@ if ((await pathExists(secretPath)) || (await pathExists(environmentPath))) {
   );
 }
 
-let secretCreated = false;
 let environmentCreated = false;
 try {
-  await writeFile(secretPath, dummySecrets, {flag: 'wx', mode: 0o600});
-  secretCreated = true;
   await writeFile(environmentPath, isolatedEnvironment, {
     flag: 'wx',
     mode: 0o600,
@@ -101,7 +90,6 @@ try {
   });
   if (exitCode !== 0) process.exitCode = exitCode;
 } finally {
-  if (secretCreated) await unlink(secretPath).catch(() => undefined);
   if (environmentCreated) {
     await unlink(environmentPath).catch(() => undefined);
   }

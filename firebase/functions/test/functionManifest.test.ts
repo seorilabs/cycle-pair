@@ -44,7 +44,11 @@ describe("Functions deployment manifest", () => {
       deployedFunctions.cleanupExpiredPairRetentionData,
     );
 
-    expect(endpoints).toHaveLength(27);
+    expect(endpoints).toHaveLength(23);
+    for (const name of ["getPurchaseAccountToken", "verifySubscriptionPurchase",
+      "handleGooglePlaySubscriptionRtdn", "handleAppStoreServerNotificationV2"]) {
+      expect(Object.hasOwn(deployedFunctions, name)).toBe(false);
+    }
     expect(endpoint(deployedFunctions.sendPartnerNudge)).toBeDefined();
     expect(endpoint(deployedFunctions.acknowledgePartnerNudge)).toBeDefined();
     expect(retentionEndpoint?.scheduleTrigger).toMatchObject({

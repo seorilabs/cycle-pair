@@ -461,11 +461,11 @@ echo "GoogleService-Info.plist"
   await write(root, "play-store/google-play.config.json", {
     packageName: "com.seorilabs.cyclepair",
     monetization: {model: "free", downloadPrice: "free", salesEnabled: false},
-    appContent: {ads: "no"},
+    contentDeclarations: {ads: "no"},
   });
   await write(root, "app-store/app-store.config.json", {
     monetization: {model: "free", downloadPrice: "free", salesEnabled: false},
-    appContent: {ads: "no"},
+    contentDeclarations: {ads: "no"},
     bundleId: "com.seorilabs.cyclepair",
     appleTeamId: "FIXTURETEAM",
     review: {
@@ -1776,8 +1776,15 @@ test('release validation rejects excluded targets and unknown phases', async () 
 });
 
 test("무료 출시 설정에서 유료 판매와 광고 신고 변경을 차단한다", () => {
-  const config = {monetization: {model: "free", downloadPrice: "free", salesEnabled: false}, appContent: {ads: "no"}};
+  const config = {monetization: {model: "free", downloadPrice: "free", salesEnabled: false}, contentDeclarations: {ads: "no"}};
   assert.deepEqual(freeLaunchBlockers(config), []);
   assert.deepEqual(freeLaunchBlockers({...config, monetization: {...config.monetization, salesEnabled: true}}), ["무료 출시 설정 불일치"]);
-  assert.deepEqual(freeLaunchBlockers({...config, appContent: {ads: "yes"}}), ["광고 없음 신고 불일치"]);
+  assert.deepEqual(freeLaunchBlockers({...config, contentDeclarations: {ads: "yes"}}), ["광고 없음 신고 불일치"]);
+});
+
+test("실제 두 마켓 설정이 현재 무료 무광고 출시 계약과 일치한다", async () => {
+  for (const file of ["../play-store/google-play.config.json", "../app-store/app-store.config.json"]) {
+    const config = JSON.parse(await readFile(new URL(file, import.meta.url), "utf8"));
+    assert.deepEqual(freeLaunchBlockers(config), [], file);
+  }
 });

@@ -93,8 +93,6 @@ OFF/누락/유효하지 않은 값은 `null`로 남기지 않고 문서에서 �
 | `finalizePendingAccountDeletions` | 15분 schedule | lease가 만료된 `in-progress`·`revoking-pairs` 삭제를 최대 5건 재개해 Auth 삭제 후 tombstone 기록 장애도 수렴 |
 | `registerNotificationDevice` | `{ token, platform, locale, quietHours }` | FCM token hash 문서에 기기와 quiet hours를 사용자당 최대 10개까지 등록                                            |
 | `unregisterNotificationDevice` | `{ token }`                    | 인증 사용자 아래의 해당 FCM token hash 문서를 멱등 삭제                                                          |
-| `getPurchaseAccountToken` | `{}` | Apple/Google 구매 흐름에 넣을 동일한 안정적 UUID를 생성 또는 재사용 |
-| `verifySubscriptionPurchase` | `{ provider, productId, basePlanId, transactionId, purchaseToken }` | Android purchase token 또는 iOS signed transaction JWS를 서버 검증하고 snapshot 저장 |
 
 사용자당 active Pair는 하나뿐이다. invite accept는 자기초대, 이미 사용/만료된 초대, epoch가 지난 초대, 두 사용자 중 한 명에게 active Pair가 있는 경우를 거절한다. accept/revoke가 `inviteEpoch`를 올리므로 이전 pending invite는 재사용할 수 없다.
 
@@ -121,55 +119,11 @@ FCM data payload는 정확히 `schemaVersion`, `type`, `destination` 세 필드�
 
 로컬 검증은 실제 FCM을 호출하지 않는다. 개발 프로젝트 재배포 전 Functions runtime service account의 FCM 발송 권한을 확인하고, iOS 실기기 발송 전 Firebase Console에 APNs 인증 키를 등록해야 한다.
 
-## 구독 검증 계약
+## 무료 출시
 
-구독 판매 feature flag는 계속 `false`다. 아래 식별자는 콘솔 생성 전 후보 allowlist이며 가격·혜택·판매를 활성화하지 않는다.
+IAP와 구독 구매, 스토어 영수증 확인 및 알림 처리는 제거했다. 모든 기록 기능은 결제 상태와 무관하게 제공한다. 첫 출시는 광고도 표시하지 않으며 전면광고와 보상광고는 후속 계획이다.
 
-- Google Play: product `cyclepair_plus`, base plan `monthly` / `yearly`
-- App Store: `com.seorilabs.cyclepair.plus.monthly` / `com.seorilabs.cyclepair.plus.yearly`
-- Android package / iOS bundle: `com.seorilabs.cyclepair`
-
-클라이언트 구매 callback은 entitlement 근거가 아니다. `verifySubscriptionPurchase`는 인증 token의 UID만 사용하고, 먼저 `getPurchaseAccountToken`이 만든 UUID와 Google `externalAccountIdentifiers.obfuscatedExternalAccountId` 또는 Apple signed transaction의 `appAccountToken`이 정확히 같은지 확인한다. Google은 ADC로 `purchases.subscriptionsv2.get`을 매번 호출한다. Apple은 Apple 공식 Node server library로 기기 signed transaction JWS를 검증한 뒤 App Store Server API `Get All Subscription Statuses` 응답의 transaction/renewal JWS도 다시 검증한다.
-
-검증된 stable purchase ID는 provider와 함께 SHA-256한 문서 ID로만 보관한다. raw Play purchase token, Apple JWS, UID는 로그·응답·Analytics·Firestore에 저장하지 않는다. 같은 binding을 다른 UID가 제시하면 원자적으로 거부한다. 만료, 자발적 취소 후 paid-through, grace period, account hold/billing retry, revoke, refund를 `subscriptions/{uid}`의 authoritative snapshot으로 정규화한다.
-
-Google RTDN 함수 `handleGooglePlaySubscriptionRtdn`은 Pub/Sub topic `cyclepair-google-play-rtdn`을 구독한다. RTDN payload 자체에서 entitlement를 결정하지 않고 반드시 subscriptionsv2를 다시 조회한다. Apple Notifications V2 endpoint는 `handleAppStoreServerNotificationV2`이며, 외부 인증 대신 Apple certificate chain·bundle·environment·내부 transaction/renewal JWS를 검증한다. 두 handler는 provider event timestamp와 고유 ID로 이전/중복 event를 무시한다.
-
-현재 Functions dependency는 공식 최신 stable 확인 시점(2026-07-14) 기준 `googleapis@173.0.0`, `@apple/app-store-server-library@3.1.0`이다.
-
-구현 기준 문서는 [Google subscriptionsv2](https://developers.google.com/android-publisher/api-ref/rest/v3/purchases.subscriptionsv2/get), [Google RTDN](https://developer.android.com/google/play/billing/rtdn-reference), [Apple App Store Server API](https://developer.apple.com/documentation/appstoreserverapi), [Apple Notifications V2](https://developer.apple.com/documentation/appstoreservernotifications/receiving-app-store-server-notifications), [Apple 공식 Node library](https://github.com/apple/app-store-server-library-node)다.
-
-### 외부 운영 gate
-
-다음 작업은 코드에서 자동 생성하거나 배포하지 않았으며 판매 활성화 전에 콘솔에서 완료해야 한다.
-
-- Play Console에서 후보 product/base plan과 가격을 승인·생성하고 Play Developer API service account 권한을 부여한다.
-- Pub/Sub topic을 만들고 Google Play Console RTDN topic으로 등록하며 Google Play service agent publish IAM을 설정한다.
-- App Store Connect에서 후보 subscription group/products/가격을 승인·생성하고 Notifications V2 production/sandbox URL을 등록한다.
-- App Store Connect In-App Purchase key와 Apple PKI root certificate를 Secret Manager에 저장한다. 아래 5개 secret은 Gen2 function option으로 `verifySubscriptionPurchase`와 `handleAppStoreServerNotificationV2`에만 binding하며, Google RTDN·구매 계정 token·그 밖의 함수에는 주입하지 않는다.
-- Sandbox/license tester로 신규 구매, 갱신, 취소, grace, hold/billing retry, revoke/refund와 중복 notification을 검증한다.
-
-Apple adapter가 요구하는 runtime secret/environment 이름은 다음과 같다. 값은 repo, `.env`, 로그에 기록하지 않는다.
-
-- `APPLE_IAP_PRIVATE_KEY_BASE64`: App Store Connect In-App Purchase `.p8` key의 base64
-- `APPLE_IAP_KEY_ID`
-- `APPLE_IAP_ISSUER_ID`
-- `APPLE_APP_ID`: production numeric Apple app ID
-- `APPLE_IAP_ROOT_CERTIFICATES_BASE64_JSON`: 신뢰할 Apple root DER certificate base64 문자열 배열 JSON
-
-배포 전에 각 값을 Firebase Secret Manager에 등록한다. CLI에 값을 인자로 전달하지 말고 prompt 또는 표준 입력을 사용한다.
-
-```bash
-firebase functions:secrets:set APPLE_IAP_PRIVATE_KEY_BASE64
-firebase functions:secrets:set APPLE_IAP_KEY_ID
-firebase functions:secrets:set APPLE_IAP_ISSUER_ID
-firebase functions:secrets:set APPLE_APP_ID
-firebase functions:secrets:set APPLE_IAP_ROOT_CERTIFICATES_BASE64_JSON
-```
-
-`APPLE_APP_ID`를 포함한 다섯 값은 동일한 최소 권한 lifecycle로 관리한다. Functions 배포 manifest에서 두 Apple 검증 경계만 이 secret들을 요구하는지 확인한 뒤 배포한다.
-
-Google adapter는 service-account JSON을 앱이나 repo에 두지 않고 Cloud Functions runtime ADC를 사용한다. 자격증명·root certificate·콘솔 product가 없거나 응답이 불완전하면 검증은 fail closed한다.
+운영에 남아 있을 수 있는 과거 상품과 자료, 비밀값은 이 변경으로 삭제하지 않는다. 기존 계정 삭제 요청에서는 과거 구매 자료도 기존 범위로 정리한다. 새 구매 상품 생성과 결제 기능 활성화 절차는 현재 출시 범위에 없다.
 
 ## 내보내기·계정 삭제 계약
 
