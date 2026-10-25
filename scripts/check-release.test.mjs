@@ -1788,3 +1788,19 @@ test("실제 두 마켓 설정이 현재 무료 무광고 출시 계약과 일�
     assert.deepEqual(freeLaunchBlockers(config), [], file);
   }
 });
+
+test("무료 출시 설정 오류를 마켓마다 한 번만 보고한다", async t => {
+  const root = await mkdtemp(path.join(tmpdir(), "cyclepair-free-launch-drift-"));
+  t.after(() => rm(root, {recursive: true, force: true}));
+  await createReadyFixture(root);
+  for (const file of ["play-store/google-play.config.json", "app-store/app-store.config.json"]) {
+    const config = await readJsonFixture(root, file);
+    config.monetization.salesEnabled = true;
+    await write(root, file, config);
+  }
+  const result = await evaluateReleaseReadiness(root);
+  for (const market of ["Google Play", "App Store"]) {
+    const section = result.sections.find(section => section.market === market);
+    assert.equal(section.blockers.filter(item => item === "무료 출시 설정 불일치").length, 1, market);
+  }
+});
