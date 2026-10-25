@@ -56,7 +56,7 @@ export function HomeScreen({onOpenRecord}: {onOpenRecord():void}) {
               <Body>{model.cycleDay ? t('Cycle day {day}',{day:model.cycleDay}) : t('More records needed')}</Body>
               <Text style={styles.rangeLabel}>{t('Estimated next period')}</Text>
               <Body>{model.predictionStart && model.predictionEnd ? `${formatDate(model.predictionStart,locale)} – ${formatDate(model.predictionEnd,locale)}` : t('More records needed')}</Body>
-              <Body muted>{t('Reference estimate')}</Body>
+              <Body muted>{t('Estimates are for reference, not medical advice or contraception.')}</Body>
               <TextButton label={t('Calendar')} onPress={() => setTab('calendar')}/>
             </>
           ) : (
