@@ -21,3 +21,5 @@ Android 1.2.0(1000109)은 [빌드와 업로드 실행](https://github.com/seoril
 중앙 before-release 검사는 두 마켓 모두 통과했다. 이는 승인된 개발 범위의 검사이며 실제 네이티브 실행을 증명하지 않는다. 기존 네이티브 출시 설계에 남긴 운영 인증, 보안 저장소와 OS 알림 항목은 별도 상태다. Firebase의 기존 Android 앱은 ACTIVE지만 인증서 SHA 등록이 0개다. 현재 Play 배포 인증서는 읽기 전용으로 확인했으며 새 키 발급이나 강제 검사 변경은 하지 않았다.
 
 현재 공개 단계와 남은 조건은 [출시 원장](../../release/market-launch-state.json)을 따른다. iOS 빌드는 서명 연결 복구와 새 버전 선택 대기이며 실제 네이티브 검증, 심사, 승인과 공개는 완료하지 않았다.
+
+운영 IAP 정리: `getPurchaseAccountToken`, `verifySubscriptionPurchase`, `handleGooglePlaySubscriptionRtdn`, `handleAppStoreServerNotificationV2` 4개를 제거하고 모두 404를 확인했다. 연결된 Cloud Run 서비스 4개와 구독 알림 트리거도 제거됐으며 다른 함수의 상태와 수정 시각은 그대로였다. 계정과 기록, 기존 결제 자료와 키는 변경하지 않았다. 원본 소스, 설정과 IAM은 암호화해 NAS에 보관하고 실제 복호화 결과가 원본과 같음을 확인한 뒤 제거했다. 검증 목록 SHA256은 `b9c49d9600b2e1c188479a2f1afc068951722bf7e17a688acdc6fead90dab9d9`다.
