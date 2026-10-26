@@ -16,4 +16,8 @@ Google Play의 API 저장 두 번은 완료되지 않았다. 첫 편집은 만�
 
 실제 실행 원본은 NAS1dual의 `cycle-pair/2026-10-26/fc60c9e7c8e875104388ef03a4c6c27176554726/ui-independent-round5-100044-41898e`에 보관했다. 검증 목록 SHA256은 `0a955216ad0236bd64923b5f4f05f9ad54911a3aa16593a974e7ce1aaaa46097`이다. 등록 정보 변경 전 원본도 같은 후보 아래 `before-market-metadata-101030-a7f297`에 보관했고 검증 목록 SHA256은 `b5e39b54330159f7d481f9967ce3ea3cb0ce778b989349a3fdd92933368fc17f`다.
 
-현재 상태는 개발 검수와 일부 등록 정보 저장이다. 빌드, 내부 테스트 도달, 필수 네이티브 검증, 심사, 승인과 공개는 각각 실제 결과로 갱신한다.
+Android 1.2.0(1000109)은 [빌드와 업로드 실행](https://github.com/seorilabs/cycle-pair/actions/runs/40256647671)을 마쳤고 Publisher API에서 internal completed를 확인했다. AAB SHA256 `d562ddfb0b1cea992d0f7ba1ae892d0f891ec11f517c6ef43a69844893f735e0`은 CI와 같다. Play가 생성한 APK도 패키지와 버전, 서명을 검증했으며 결제 권한이 없다. 두 언어 출시노트와 등록 이미지도 업로드 후 유지됐다.
+
+중앙 before-release 검사는 두 마켓 모두 통과했다. 이는 승인된 개발 범위의 검사이며 실제 네이티브 실행을 증명하지 않는다. 기존 네이티브 출시 설계에 남긴 운영 인증, 보안 저장소와 OS 알림 항목은 별도 상태다. Firebase의 기존 Android 앱은 ACTIVE지만 인증서 SHA 등록이 0개다. 현재 Play 배포 인증서는 읽기 전용으로 확인했으며 새 키 발급이나 강제 검사 변경은 하지 않았다.
+
+현재 공개 단계와 남은 조건은 [출시 원장](../../release/market-launch-state.json)을 따른다. iOS 빌드는 서명 연결 복구와 새 버전 선택 대기이며 실제 네이티브 검증, 심사, 승인과 공개는 완료하지 않았다.
