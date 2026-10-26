@@ -194,10 +194,40 @@ it('makes a queued change visible after the period editor is closed', async () =
   await AsyncStorage.clear();
   await AsyncStorage.setItem('cyclepair.language.v1', 'en');
   const state = createInitialState();
+  jest.mocked(useCyclePair).mockReturnValue({
+    state: { ...state, isLogger: true, syncStatus: 'queued' },
+    backendBusy: false,
+    backendError: null,
+    dailyHistoryStatus: 'ready',
+  } as unknown as ReturnType<typeof useCyclePair>);
+  const view = await render(
+    <I18nProvider>
+      <CalendarScreen onOpenRecord={jest.fn()} />
+    </I18nProvider>,
+  );
+  expect(view.getByTestId('calendar-sync-status').props.children).toBe(
+    'Saved here. Waiting to sync.',
+  );
+});
+it('keeps small recorded-period day numbers readable against their rendered fill', async () => {
+  const { within } = require('@testing-library/react-native');
+  const { StyleSheet } = require('react-native');
+  await AsyncStorage.clear();
+  await AsyncStorage.setItem('cyclepair.language.v1', 'en');
+  const state = createInitialState();
   jest
     .mocked(useCyclePair)
     .mockReturnValue({
-      state: { ...state, isLogger: true, syncStatus: 'queued' },
+      state: {
+        ...state,
+        isLogger: true,
+        dailyHistory: [
+          {
+            localDate: state.currentLocalDate,
+            checkIn: { symptoms: [], periodStarted: true, periodEnded: true },
+          },
+        ],
+      },
       backendBusy: false,
       backendError: null,
       dailyHistoryStatus: 'ready',
@@ -207,7 +237,30 @@ it('makes a queued change visible after the period editor is closed', async () =
       <CalendarScreen onOpenRecord={jest.fn()} />
     </I18nProvider>,
   );
-  expect(view.getByTestId('calendar-sync-status').props.children).toBe(
-    'Saved here. Waiting to sync.',
+  const day = view.getByRole('button', {
+    name: new RegExp(`^${state.currentLocalDate},`),
+  });
+  const number = within(day).getByText(
+    String(Number(state.currentLocalDate.slice(-2))),
   );
+  const foreground = StyleSheet.flatten(number.props.style).color;
+  let parent = number.parent,
+    background;
+  while (parent && !background) {
+    background = StyleSheet.flatten(parent.props.style)?.backgroundColor;
+    parent = parent.parent;
+  }
+  function luminance(color: string) {
+    expect(color).toMatch(/^#[0-9a-f]{6}$/i);
+    const channels = [1, 3, 5]
+      .map(i => parseInt(color.slice(i, i + 2), 16) / 255)
+      .map(v => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+    return (
+      channels[0]! * 0.2126 + channels[1]! * 0.7152 + channels[2]! * 0.0722
+    );
+  }
+  const values = [luminance(foreground), luminance(background)].sort(
+    (a, b) => a - b,
+  );
+  expect((values[1]! + 0.05) / (values[0]! + 0.05)).toBeGreaterThanOrEqual(4.5);
 });

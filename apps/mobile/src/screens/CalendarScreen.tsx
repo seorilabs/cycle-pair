@@ -1218,7 +1218,7 @@ const styles = StyleSheet.create({
   dayOutside: { color: colors.border },
   predictedText: { color: colors.primaryDark, fontWeight: '800' },
   inferredText: { color: colors.text, fontWeight: '800' },
-  dayActiveText: { color: '#FFFFFF', fontWeight: '900' },
+  dayActiveText: { color: colors.text, fontWeight: '900' },
   todayText: { color: colors.primaryDark, fontWeight: '900' },
   dayMarkers: { height: 5, flexDirection: 'row', gap: 2, marginTop: 1 },
   dayMarker: { width: 4, height: 4, borderRadius: 2 },
