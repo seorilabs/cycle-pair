@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "level": "L3",
+  "baseline": null,
+  "changedFeatures": ["home", "records", "calendar", "pairing-sharing", "settings-language"],
+  "environments": ["dev"],
+  "redesign": false,
+  "foundationRerun": true,
+  "floorOverrides": [
+    {
+      "rule": "foundation",
+      "featureId": "records",
+      "reason": "기록 조회의 대기 안내와 재시도 상태를 개발 환경의 실제 Store, HomeScreen, 지연된 Firebase 경계와 저장 차단 회귀로 확인한다. 네이티브 SDK, 보안 저장과 OS 연동은 변경하지 않으며 최초 네이티브 검증을 면제하지 않는다."
+    },
+    {
+      "rule": "foundation",
+      "featureId": "pairing-sharing",
+      "reason": "공통 탭의 선택 표시만 수정한다. 연결, 공유 설정, 기록 공개와 전송 경로는 변경하지 않고 개발 환경 회귀로 확인한다. 네이티브 SDK와 OS 연동은 변경하지 않는다."
+    }
+  ],
+  "release": {
+    "markets": ["google-play", "app-store"],
+    "until": "public",
+    "rollout": 1
+  }
+}
