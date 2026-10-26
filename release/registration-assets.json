@@ -375,5 +375,10 @@
     "sourceUi": "existing original home interface remains applicable",
     "fixture": "previous synthetic 5-record-day fixture retained in two graphics",
     "noNewGeneration": true
+  },
+  "captureEvidence": {
+    "manifest": "/Volumes/Data/Backup/agent-artifacts/cycle-pair/2026-10-27/period-calendar-author-r2-fixes-1d36181/VERIFIED-MANIFEST.json",
+    "sha256": "017baa0a352ac34f8dc42a7bf106b531bf6ac44177cac39dce49a2ae6f4a85a7",
+    "verifiedDirectReads": 2
   }
 }
