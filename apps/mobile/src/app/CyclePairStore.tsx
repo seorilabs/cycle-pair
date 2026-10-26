@@ -713,7 +713,7 @@ function backendErrorMessage(error: unknown): string {
       ? String((error as { code?: unknown }).code)
       : '';
   if (code.includes('record-conflict'))
-    return '다른 기기에서 기록이 바뀌었어요. 최신 기록을 불러온 뒤 다시 저장해 주세요.';
+    return '저장된 기록이 바뀌었어요. 최신 기록을 불러온 뒤 다시 저장해 주세요.';
   if (code.includes('network'))
     return '네트워크 연결을 확인한 뒤 다시 시도해 주세요.';
   if (code.includes('resource-exhausted'))
