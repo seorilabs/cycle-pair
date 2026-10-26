@@ -395,11 +395,13 @@ export function RecordScreen({
 const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: spacing.lg,
   },
-  date: { color: colors.textMuted },
+  date: { color: colors.textMuted, fontSize:14, flexShrink:1 },
   intro: { marginTop: spacing.sm, marginBottom: spacing.lg },
   moods: {
     flexDirection: 'row',
