@@ -7,7 +7,34 @@ import {
   Text,
   type KeyboardEvent,
 } from 'react-native';
-import { Screen } from './Ui';
+import { BottomTabs, Screen } from './Ui';
+import type { MainTab } from '../app/CyclePairStore';
+
+it('moves the selected tab state together with navigation through all four tabs', async () => {
+  const changed = jest.fn();
+  function Navigation() {
+    const [tab, setTab] = React.useState<MainTab>('home');
+    return (
+      <BottomTabs
+        value={tab}
+        onChange={next => {
+          changed(next);
+          setTab(next);
+        }}
+      />
+    );
+  }
+  const view = await render(<Navigation />);
+  for (const key of ['calendar', 'partner', 'settings', 'home'] as const) {
+    await fireEvent.press(view.getByTestId(`tab-${key}`));
+    expect(changed).toHaveBeenLastCalledWith(key);
+    for (const other of ['home', 'calendar', 'partner', 'settings']) {
+      expect(
+        view.getByTestId(`tab-${other}`).props.accessibilityState.selected,
+      ).toBe(other === key);
+    }
+  }
+});
 
 describe('Screen keyboard behavior', () => {
   afterEach(() => jest.restoreAllMocks());
