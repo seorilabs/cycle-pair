@@ -37,7 +37,11 @@ jest.mock('@react-native-firebase/firestore', () => ({
     toDate: () => new Date('2026-10-26T00:00:00.000Z'),
   }),
 }));
-import { getDocs, runTransaction } from '@react-native-firebase/firestore';
+import {
+  getDoc,
+  getDocs,
+  runTransaction,
+} from '@react-native-firebase/firestore';
 
 const uid = 'atomic-period-test',
   date = '2026-10-01';
@@ -362,4 +366,27 @@ it('recognizes the same mutation without rewriting a later server note', async (
   );
   expect(result.log?.record.note).toBe('later note');
   expect(documents.get(key)?.note).toBe('later note');
+});
+
+it('restores a valid overdue status from the server and the encrypted setup cache', async () => {
+  const cycle = {
+    asOfDate: '2026-10-01',
+    averageCycleLength: 28,
+    averagePeriodLength: 5,
+    periodDates: { startDate: '2026-08-02' },
+    cyclePhase: 'unknown',
+    cycleStatus: 'period-late',
+    nextPeriodWindow: { startDate: '2026-08-23', endDate: '2026-09-06' },
+  };
+  jest
+    .mocked(getDoc)
+    .mockResolvedValueOnce({
+      exists: () => true,
+      data: () => ({ schemaVersion: 2, ...setup, ...cycle }),
+    } as never);
+  const restored = await firebaseCyclePairBackend.loadPrivateSetup(uid);
+  expect(restored?.cycle?.cycleStatus).toBe('period-late');
+  expect((await secureCyclePairCache.loadSetup(uid))?.cycle?.cycleStatus).toBe(
+    'period-late',
+  );
 });

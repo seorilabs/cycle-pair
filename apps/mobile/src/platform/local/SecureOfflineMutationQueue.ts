@@ -317,6 +317,7 @@ function isPrivateSetupSnapshot(value: unknown): value is PrivateSetupSnapshot {
       cycle.cycleStatus === 'fertile-window' ||
       cycle.cycleStatus === 'pre-period' ||
       cycle.cycleStatus === 'cycle-in-progress' ||
+      cycle.cycleStatus === 'period-late' ||
       cycle.cycleStatus === 'unknown') &&
     isRecord(nextPeriodWindow) &&
     isLocalDate(nextPeriodWindow.startDate) &&

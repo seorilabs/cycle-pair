@@ -15,6 +15,7 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { recordedPeriods } from '../app/periodCalendar';
 import { PeriodBoundaryEditor } from '../components/PeriodBoundaryEditor';
@@ -86,6 +87,8 @@ export function CalendarScreen({
   onOpenRecord(date?: string): void;
 }) {
   const { l, t, label, locale } = useI18n();
+  const { fontScale } = useWindowDimensions();
+  const largeCalendarText = fontScale > 1.3;
   const [recordOpen, setRecordOpen] = useState(false);
   const [periodOpen, setPeriodOpen] = useState(false);
   const weekdays = Array.from({ length: 7 }, (_, day) =>
@@ -482,6 +485,18 @@ export function CalendarScreen({
       )}
 
       <Card style={styles.calendarCard}>
+        {largeCalendarText ? (
+          <Text
+            testID="calendar-month-title"
+            accessibilityRole="header"
+            style={[styles.monthTitle, styles.largeMonthTitle]}
+          >
+            {new Intl.DateTimeFormat(locale, {
+              year: 'numeric',
+              month: 'long',
+            }).format(new Date(cursor.year, cursor.month - 1, 1))}
+          </Text>
+        ) : null}
         <View style={styles.monthHeader}>
           <Pressable
             accessibilityRole="button"
@@ -491,12 +506,18 @@ export function CalendarScreen({
           >
             <Text style={styles.monthArrow}>‹</Text>
           </Pressable>
-          <Text style={styles.monthTitle}>
-            {new Intl.DateTimeFormat(locale, {
-              year: 'numeric',
-              month: 'long',
-            }).format(new Date(cursor.year, cursor.month - 1, 1))}
-          </Text>
+          {!largeCalendarText ? (
+            <Text
+              testID="calendar-month-title"
+              accessibilityRole="header"
+              style={styles.monthTitle}
+            >
+              {new Intl.DateTimeFormat(locale, {
+                year: 'numeric',
+                month: 'long',
+              }).format(new Date(cursor.year, cursor.month - 1, 1))}
+            </Text>
+          ) : null}
           <TextButton
             testID="calendar-today"
             label={t('Today')}
@@ -1146,6 +1167,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   calendarCard: { padding: spacing.lg },
+  largeMonthTitle: { flex: 0, width: '100%', marginBottom: spacing.sm },
   monthHeader: {
     flexDirection: 'row',
     alignItems: 'center',

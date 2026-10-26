@@ -832,6 +832,7 @@ function parseCycle(value: unknown): PrivateCycleRecord | undefined {
     cycleStatus === 'fertile-window' ||
     cycleStatus === 'pre-period' ||
     cycleStatus === 'cycle-in-progress' ||
+    cycleStatus === 'period-late' ||
     cycleStatus === 'unknown'
       ? cycleStatus
       : undefined;
@@ -911,6 +912,7 @@ function parseProjection(value: unknown): RemotePartnerProjection | null {
     cycleStatus === 'fertile-window' ||
     cycleStatus === 'pre-period' ||
     cycleStatus === 'cycle-in-progress' ||
+    cycleStatus === 'period-late' ||
     cycleStatus === 'unknown'
       ? cycleStatus
       : undefined;
