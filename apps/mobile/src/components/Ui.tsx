@@ -563,6 +563,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   chip: {
+    maxWidth: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
@@ -577,7 +578,13 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
     backgroundColor: colors.primarySoft,
   },
-  chipText: { color: colors.textMuted, fontSize: 15, fontWeight: '600' },
+  chipText: {
+    color: colors.textMuted,
+    fontSize: 15,
+    fontWeight: '600',
+    flexShrink: 1,
+    minWidth: 0,
+  },
   chipTextSelected: { color: colors.primaryDark, fontWeight: '800' },
   chipEmoji: { fontSize: 18 },
   toggleRow: {

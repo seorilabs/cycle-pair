@@ -45,3 +45,7 @@ R2 원본과 보고서: `/Volumes/Data/Backup/agent-artifacts/cycle-pair/2026-10
 로컬 코드 수정 확인 검토는 2회차에서 exit 6 시간 초과, 허용된 한 번의 재시도도 같은 시간 초과로 종료했다. 추가 실행 없이 작성자 변경 검토, GitHub 검사와 독립 실행 결과로 남은 변경을 확인한다.
 
 작성자 원본과 수정 전후 로그, 등록 캡처의 보관: `/Volumes/Data/Backup/agent-artifacts/cycle-pair/2026-10-27/period-calendar-author-r2-fixes-1d36181/VERIFIED-MANIFEST.json`, SHA256 `017baa0a352ac34f8dc42a7bf106b531bf6ac44177cac39dce49a2ae6f4a85a7`. 92개 파일과 11,673,327바이트를 크기와 SHA256으로 두 번 직접 확인했다.
+
+### 추가 승인한 긴 선택 항목 보정
+
+R3의 실제 기능 10개와 자동검사 861개는 통과했고 CAL-8의 선택 캡슐 잘림은 실패로 보존했다. 사용자 추가 진행 승인과 최대 회차 4, 수정 범위 및 실행 티켓은 [round4.md](round4.md)에 기록했다.
