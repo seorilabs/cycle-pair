@@ -269,18 +269,47 @@ try {
   }
 
   const xcodeProject = read(files.xcodeProject);
-  for (const expected of [
-    'CODE_SIGN_STYLE = Automatic;',
-    'DEVELOPMENT_TEAM = HCDUXX4Z3X;',
-    'PRODUCT_BUNDLE_IDENTIFIER = com.seorilabs.cyclepair;',
-  ]) {
-    assertIncludes(xcodeProject, expected, `iOS Release signing contract에 ${expected}가 없습니다.`);
+  const objectBody = id => {
+    const body = xcodeProject.match(
+      new RegExp(`${id} /\\*[^\\n]*\\*/ = \\{([\\s\\S]*?)\\n\\t\\t\\};`, 'u'),
+    )?.[1];
+    if (!body) throw new Error(`iOS signing: Xcode object ${id}가 없습니다.`);
+    return body;
+  };
+  const appTarget = xcodeProject.match(
+    /\/\* CyclePair \*\/ = \{\s*isa = PBXNativeTarget;([\s\S]*?)\n\t\t\};/u,
+  )?.[1];
+  const listId = appTarget?.match(/buildConfigurationList = ([A-F0-9]+)/u)?.[1];
+  if (!listId) throw new Error('iOS signing: CyclePair 앱 구성 목록이 없습니다.');
+  const configurations = objectBody(listId);
+  for (const name of ['Debug', 'Release']) {
+    const id = configurations.match(new RegExp(`([A-F0-9]+) /\\* ${name} \\*/`, 'u'))?.[1];
+    if (!id) throw new Error(`iOS signing: 앱 ${name} 구성이 없습니다.`);
+    const settings = objectBody(id);
+    for (const expected of [
+      'DEVELOPMENT_TEAM = HCDUXX4Z3X;',
+      'PRODUCT_BUNDLE_IDENTIFIER = com.seorilabs.cyclepair;',
+    ]) {
+      assertIncludes(settings, expected, `iOS ${name} signing contract에 ${expected}가 없습니다.`);
+    }
+    // 중앙 GitHub-hosted lane은 archive 때 Manual을 지정하며 앱 Release의
+    // 프로파일 이름을 읽는다. Debug와 Pods에는 이 바인딩을 전달하지 않는다.
+    if (name === 'Release') {
+      assertIncludes(
+        settings,
+        'PROVISIONING_PROFILE_SPECIFIER = "Cycle Pair App Store 2026-07-23";',
+        'iOS Release에 승인된 App Store 프로파일이 없습니다.',
+      );
+    } else {
+      assertIncludes(settings, 'CODE_SIGN_STYLE = Automatic;', 'iOS Debug 기본 자동 서명이 없습니다.');
+      if (/PROVISIONING_PROFILE_SPECIFIER\s*=/u.test(settings)) {
+        throw new Error('iOS Debug에 App Store 프로파일을 고정하면 안 됩니다.');
+      }
+    }
   }
-  if (
-    xcodeProject.includes('PROVISIONING_PROFILE_SPECIFIER = "Cycle Pair App Store') ||
-    xcodeProject.includes('CODE_SIGN_STYLE = Manual;')
-  ) {
-    throw new Error('자동 서명 대상은 manual signing profile을 고정하면 안 됩니다.');
+  if ((xcodeProject.match(/PROVISIONING_PROFILE_SPECIFIER\s*=/gu) ?? []).length !== 1 ||
+      /CODE_SIGN_STYLE\s*=\s*Manual;/u.test(xcodeProject)) {
+    throw new Error('iOS 프로파일은 앱 Release 한 곳에만 지정하고 Debug 자동 서명을 유지해야 합니다.');
   }
 
   const readiness = JSON.parse(read(files.readiness));

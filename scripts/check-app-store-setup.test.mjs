@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
-import {accessSync, constants, readdirSync, readFileSync} from 'node:fs';
+import {accessSync, constants, cpSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join, dirname, resolve} from 'node:path';
+import {spawnSync} from 'node:child_process';
 import test from 'node:test';
 
 const read = file => readFileSync(file, 'utf8');
@@ -96,7 +99,7 @@ test('iOS CI 훅이 Pods 설치와 Firebase 복원을 유지한다', () => {
   accessSync('apps/mobile/ios/ci_scripts/ci_pre_xcodebuild.sh', constants.X_OK);
 });
 
-test('Release signing is automatic and Firebase config stays untracked', () => {
+test('기본 자동 서명과 Firebase 설정의 추적 제외를 유지한다', () => {
   const project = read('apps/mobile/ios/CyclePair.xcodeproj/project.pbxproj');
   const ignore = read('.gitignore');
   assert.match(project, /CODE_SIGN_STYLE = Automatic;/);
@@ -130,4 +133,39 @@ test('App Store 프로파일을 앱 Release 타깃에만 지정한다', () => {
   assert.match(debug, /CODE_SIGN_STYLE = Automatic;/u);
   assert.doesNotMatch(debug, /PROVISIONING_PROFILE_SPECIFIER\s*=/u);
   assert.equal((project.match(/PROVISIONING_PROFILE_SPECIFIER\s*=/gu) ?? []).length, 1);
+});
+
+
+test('자동화 검사가 Release 프로파일을 허용하고 잘못된 범위를 거부한다', () => {
+  const fixture = mkdtempSync(join(tmpdir(), 'cyclepair-signing-contract-'));
+  const checker = resolve('scripts/check-release-automation.mjs');
+  const projectPath = 'apps/mobile/ios/CyclePair.xcodeproj/project.pbxproj';
+  const project = read(projectPath);
+  const profile = 'PROVISIONING_PROFILE_SPECIFIER = "Cycle Pair App Store 2026-07-23";';
+  try {
+    for (const path of [
+      '.github/workflows', 'package.json', 'release/readiness.json',
+      'apps/mobile/android/app/build.gradle',
+      'apps/mobile/ios/ci_scripts/ci_post_clone.sh',
+      'apps/mobile/ios/ci_scripts/ci_pre_xcodebuild.sh', projectPath,
+    ]) {
+      mkdirSync(dirname(join(fixture, path)), {recursive: true});
+      cpSync(path, join(fixture, path), {recursive: true});
+    }
+    const cases = [
+      ['승인된 Release 프로파일', project, 0],
+      ['Release 프로파일 누락', project.replace(profile, ''), 1],
+      ['다른 프로파일', project.replace(profile, 'PROVISIONING_PROFILE_SPECIFIER = "Other";'), 1],
+      ['Debug에 프로파일 전달', project.replace('CODE_SIGN_STYLE = Automatic;', `CODE_SIGN_STYLE = Automatic;\n${profile}`), 1],
+      ['다른 팀', project.replaceAll('DEVELOPMENT_TEAM = HCDUXX4Z3X;', 'DEVELOPMENT_TEAM = OTHER;'), 1],
+      ['기본 수동 서명 강제', project.replace('CODE_SIGN_STYLE = Automatic;', 'CODE_SIGN_STYLE = Manual;'), 1],
+    ];
+    for (const [name, source, expected] of cases) {
+      writeFileSync(join(fixture, projectPath), source);
+      const result = spawnSync(process.execPath, [checker], {cwd: fixture, encoding: 'utf8'});
+      assert.equal(result.status, expected, `${name}: ${result.stderr || result.stdout}`);
+    }
+  } finally {
+    rmSync(fixture, {recursive: true, force: true});
+  }
 });
