@@ -104,3 +104,30 @@ test('Release signing is automatic and Firebase config stays untracked', () => {
   assert.match(project, /PRODUCT_BUNDLE_IDENTIFIER = com\.seorilabs\.cyclepair;/);
   assert.match(ignore, /^GoogleService-Info\.plist$/m);
 });
+
+test('App Store 프로파일을 앱 Release 타깃에만 지정한다', () => {
+  const project = read('apps/mobile/ios/CyclePair.xcodeproj/project.pbxproj');
+  const objectBody = id => {
+    const pattern = new RegExp(`${id} /\\*[^\\n]*\\*/ = \\{([\\s\\S]*?)\\n\\t\\t\\};`, 'u');
+    const match = project.match(pattern);
+    assert.ok(match, `Xcode object ${id}`);
+    return match[1];
+  };
+  const target = project.match(/\/\* CyclePair \*\/ = \{\s*isa = PBXNativeTarget;([\s\S]*?)\n\t\t\};/u);
+  assert.ok(target, '앱 타깃');
+  const listId = target[1].match(/buildConfigurationList = ([A-F0-9]+)/u)?.[1];
+  assert.ok(listId, '앱 구성 목록');
+  const list = objectBody(listId);
+  const releaseId = list.match(/([A-F0-9]+) \/\* Release \*\//u)?.[1];
+  const debugId = list.match(/([A-F0-9]+) \/\* Debug \*\//u)?.[1];
+  assert.ok(releaseId);
+  assert.ok(debugId);
+  const release = objectBody(releaseId);
+  const debug = objectBody(debugId);
+  assert.match(release, /PROVISIONING_PROFILE_SPECIFIER = "Cycle Pair App Store 2026-07-23";/u);
+  assert.match(release, /DEVELOPMENT_TEAM = HCDUXX4Z3X;/u);
+  assert.match(release, /PRODUCT_BUNDLE_IDENTIFIER = com\.seorilabs\.cyclepair;/u);
+  assert.match(debug, /CODE_SIGN_STYLE = Automatic;/u);
+  assert.doesNotMatch(debug, /PROVISIONING_PROFILE_SPECIFIER\s*=/u);
+  assert.equal((project.match(/PROVISIONING_PROFILE_SPECIFIER\s*=/gu) ?? []).length, 1);
+});

@@ -407,6 +407,7 @@
 					"-lc++",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.seorilabs.cyclepair;
+				PROVISIONING_PROFILE_SPECIFIER = "Cycle Pair App Store 2026-07-23";
 				PRODUCT_NAME = CyclePair;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_OBJC_BRIDGING_HEADER = "CyclePair/CyclePair-Bridging-Header.h";
