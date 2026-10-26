@@ -54,7 +54,8 @@
         "Firebase Android/iOS registrations ACTIVE; Play Integrity and App Attest provider configurations read back",
         "Firebase Android SHA list empty; existing Play distribution certificate known but local public identity catalog registration is missing",
         "Firestore, Auth and Storage App Check UNENFORCED; registerNotificationDevice ENFORCE_APP_CHECK unset",
-        "Production callable revisions read back; current backend deployment fingerprint and production end-to-end acceptance remain unconfirmed"
+        "Production callable revisions read back; current backend deployment fingerprint and production end-to-end acceptance remain unconfirmed",
+        "Four obsolete IAP functions and their managed services/trigger removed; source exports absent, provider 404 and all other function metadata unchanged. User records retained."
       ],
       "checkedAt": "2026-10-26T02:17:54.687416+00:00",
       "blocker": null
@@ -269,7 +270,7 @@
       }
     }
   },
-  "updatedAt": "2026-10-26T02:17:54.687416+00:00",
+  "updatedAt": "2026-10-26T02:36:47.134638+00:00",
   "nativeExecution": {
     "status": "unrun",
     "deviceApproval": false,
@@ -280,5 +281,42 @@
     "round5ManifestSha256": "0a955216ad0236bd64923b5f4f05f9ad54911a3aa16593a974e7ce1aaaa46097",
     "metadata": "cycle-pair/2026-10-26/fc60c9e7c8e875104388ef03a4c6c27176554726/market-metadata-completed-110100-6d5f6e",
     "metadataManifestSha256": "f66986ff3d1b61e8fd12b3602bbe16ae2d12f7459c52b5e1a4fd4601d2e6b805"
+  },
+  "iapDecommission": {
+    "sourceSha": "fc60c9e7c8e875104388ef03a4c6c27176554726",
+    "status": "completed",
+    "completedAt": "2026-10-26T02:32:47.230060+00:00",
+    "functions": [
+      "getPurchaseAccountToken",
+      "verifySubscriptionPurchase",
+      "handleGooglePlaySubscriptionRtdn",
+      "handleAppStoreServerNotificationV2"
+    ],
+    "providerReadback": {
+      "getPurchaseAccountToken": 404,
+      "verifySubscriptionPurchase": 404,
+      "handleGooglePlaySubscriptionRtdn": 404,
+      "handleAppStoreServerNotificationV2": 404
+    },
+    "managedResources": {
+      "getPurchaseAccountToken": {
+        "runServiceHttpStatus": 404
+      },
+      "verifySubscriptionPurchase": {
+        "runServiceHttpStatus": 404
+      },
+      "handleGooglePlaySubscriptionRtdn": {
+        "runServiceHttpStatus": 404,
+        "managedTriggerHttpStatus": 404
+      },
+      "handleAppStoreServerNotificationV2": {
+        "runServiceHttpStatus": 404
+      }
+    },
+    "otherFunctionMetadataUnchanged": true,
+    "userDataAndAccountsChanged": false,
+    "newKeysOrCredentials": false,
+    "backupManifestSha256": "b9c49d9600b2e1c188479a2f1afc068951722bf7e17a688acdc6fead90dab9d9",
+    "evidence": "NAS1dual cycle-pair/2026-10-26/fc60c9e7c8e875104388ef03a4c6c27176554726/retired-iap-backup-112919-30a321/VERIFIED-MANIFEST.json; encrypted source/config/IAM restored in memory before deletion"
   }
 }
