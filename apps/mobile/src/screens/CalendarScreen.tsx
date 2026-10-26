@@ -846,7 +846,9 @@ export function CalendarScreen({
                   </Text>
                   {period.lengthDays ? (
                     <Text style={styles.agendaBody}>
-                      {t('{count} days', { count: period.lengthDays })}
+                      {period.lengthDays === 1
+                        ? t('1 day')
+                        : t('{count} days', { count: period.lengthDays })}
                     </Text>
                   ) : null}
                 </Pressable>

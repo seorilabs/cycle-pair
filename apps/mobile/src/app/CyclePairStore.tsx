@@ -163,7 +163,7 @@ interface PersistedShellPreferences {
 export type CyclePairAction =
   | { type: 'RESTORE_SHELL_PREFERENCES'; payload: PersistedShellPreferences }
   | {
-      type: 'RESTORE_PRIVATE_SETUP';
+      type: 'RESTORE_PRIVATE_SETUP' | 'APPLY_SAVED_PRIVATE_SETUP';
       payload: {
         isLogger: boolean;
         seed?: CycleSeed;
@@ -381,11 +381,14 @@ export function reduceCyclePairState(
         diagnosticsEnabled: restored.diagnosticsEnabled,
       };
     }
-    case 'RESTORE_PRIVATE_SETUP': {
+    case 'RESTORE_PRIVATE_SETUP':
+    case 'APPLY_SAVED_PRIVATE_SETUP': {
       const hasCurrentConsent = hasCurrentSensitiveHealthConsent(
         action.payload.consentAcceptedAt,
         action.payload.consentVersion,
       );
+      const preserveNavigation =
+        action.type === 'APPLY_SAVED_PRIVATE_SETUP' && hasCurrentConsent;
       return {
         ...state,
         isLogger: action.payload.isLogger,
@@ -398,14 +401,17 @@ export function reduceCyclePairState(
         sensitiveDataConsentVersion: hasCurrentConsent
           ? action.payload.consentVersion
           : undefined,
-        stage: hasCurrentConsent
+        stage: preserveNavigation
+          ? state.stage
+          : hasCurrentConsent
           ? state.paired
             ? state.sharingCompleted
               ? 'main'
               : 'sharing'
             : 'main'
           : 'setup',
-        activeTab: state.paired ? state.activeTab : 'home',
+        activeTab:
+          preserveNavigation || state.paired ? state.activeTab : 'home',
       };
     }
     case 'COMPLETE_ONBOARDING':
@@ -1985,7 +1991,7 @@ export function CyclePairProvider({
               restored.seed,
             )
           : '';
-        dispatch({ type: 'RESTORE_PRIVATE_SETUP', payload: restored });
+        dispatch({ type: 'APPLY_SAVED_PRIVATE_SETUP', payload: restored });
         dispatch({ type: 'SET_SYNC_STATUS', payload: write.status });
         await analytics
           .track({ name: 'cp_cycle_log', params: { sync_state: write.status } })
@@ -2046,7 +2052,7 @@ export function CyclePairProvider({
       const logs = await backend.syncDailyLogs(backendSession.uid);
       if (!setup) throw new Error('Saved setup unavailable.');
       dispatch({
-        type: 'RESTORE_PRIVATE_SETUP',
+        type: 'APPLY_SAVED_PRIVATE_SETUP',
         payload: restoredSetup(setup),
       });
       dispatch({

@@ -162,3 +162,25 @@ it('keeps a queued deletion separate from a read error and permits the next orde
   });
   expect(backend.saveDailyLogChange).toHaveBeenCalledTimes(2);
 });
+it.each(['save', 'reload'] as const)(
+  'keeps an unpaired user on the selected calendar tab after %s',
+  async operation => {
+    await start();
+    await act(async () => {
+      current.setTab('calendar');
+    });
+    expect(current.state.activeTab).toBe('calendar');
+    await act(async () => {
+      if (operation === 'save')
+        expect(
+          await current.savePeriodBoundary('2026-10-01', {
+            periodStarted: true,
+            periodEnded: true,
+          }),
+        ).toBe(true);
+      else await current.reloadPrivateHistory();
+    });
+    expect(current.state.activeTab).toBe('calendar');
+    expect(current.state.stage).toBe('main');
+  },
+);
