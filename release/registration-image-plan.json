@@ -1,34 +1,67 @@
 {
   "schemaVersion": 1,
-  "status": "prepared-pending-current-capture-and-native-fidelity",
+  "status": "captured-and-development-reviewed",
   "packageName": "com.seorilabs.cyclepair",
-  "locales": ["ko-KR", "en-US"],
+  "locales": [
+    "ko-KR",
+    "en-US"
+  ],
   "creativeBrief": {
     "promise": "Keep a private daily record and choose what one partner can see.",
     "audience": "People tracking their cycle and one close partner in global markets",
     "tone": "Existing calm purple and cream Cycle Pair brand, real product UI and readable labels",
     "logo": "Reuse existing two-ring product mark without generating new art",
-    "featureGraphic": "Reuse existing 1024x500 Cycle Pair graphic; recheck its text against the final listing",
-    "states": ["home with saved synthetic record", "record with emotions and help", "sharing with selected fields and preview", "paired partner or shared calendar"]
+    "featureGraphic": "Original quiet-together product illustration and exact candidate home screen, composed in HTML without paid generation",
+    "states": [
+      "email or guest welcome",
+      "today record with moods",
+      "saved weekly reflection",
+      "calendar with actual synthetic records"
+    ]
   },
   "previewCapture": {
     "origin": "actual React Native source rendered in development browser",
     "platformClaims": "No physical Android or iPhone capture and no native SDK validation",
     "data": "Synthetic emulator actors only; authentication screens excluded",
-    "playPhone": {"logicalWidth": 360, "logicalHeight": 640, "scale": 3, "width": 1080, "height": 1920, "countPerLocale": 4},
-    "apple69": {"logicalWidth": 430, "logicalHeight": 932, "scale": 3, "width": 1290, "height": 2796, "countPerLocale": 4},
+    "playPhone": {
+      "logicalWidth": 360,
+      "logicalHeight": 640,
+      "scale": 3,
+      "width": 1080,
+      "height": 1920,
+      "countPerLocale": 4
+    },
+    "apple69": {
+      "logicalWidth": 440,
+      "logicalHeight": 956,
+      "scale": 3,
+      "width": 1320,
+      "height": 2868,
+      "countPerLocale": 4
+    },
     "format": "PNG RGB without alpha; no device frame, fake OS chrome, marketing overlay or resampling",
-    "evidence": "Capture run, candidate SHA, source and fixture hashes, per-file dimensions and SHA256 in the external capture manifest"
+    "evidence": "Capture run, candidate SHA, source and fixture hashes, per-file dimensions and SHA256 in the external capture manifest",
+    "playTablet7": {
+      "width": 1260,
+      "height": 2240,
+      "countPerLocale": 2
+    },
+    "playTablet10": {
+      "width": 1800,
+      "height": 3200,
+      "countPerLocale": 2
+    }
   },
   "finalUpload": {
-    "status": "blocked-pending-current-platform-image-verification",
-    "legacyImages": "Existing phone and tablet assets show an earlier UI and must not be accepted as current candidate evidence",
-    "apple": "iPhone only; no iPad or Watch slot. Verify current iOS appearance before replacing upload slots; screenshot-size compliance does not prove iPhone origin.",
-    "play": "Four current phone scenes per locale prepared first; old tablet images need current platform capture if those slots remain in use.",
-    "localeMapping": "Do not upload the same Korean screenshots for en-US. The current uploader has a flat asset list, so use an explicitly reviewed locale-specific input or Console mapping."
+    "status": "both-markets-saved-and-pixel-verified",
+    "apple": "Eight iPhone images processed COMPLETE and pixel-matched in draft 1.2.0; no iPad or Watch images. RN development origin is recorded in registration-assets.json.",
+    "play": "Eighteen localized image references saved in Console; API source hashes and order, downloaded processed pixels match exactly. Existing icons and app details retained. No release track was changed by listing save.",
+    "localeMapping": "Separate ko-KR and en-US image lists, with ko-KR mapped to ko in App Store Connect.",
+    "nativeFidelity": "No physical device capture or native SDK pass is claimed."
   },
   "sources": [
     "https://support.google.com/googleplay/android-developer/answer/9866151?hl=en",
     "https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications/"
-  ]
+  ],
+  "sourceSha": "fc60c9e7c8e875104388ef03a4c6c27176554726"
 }
