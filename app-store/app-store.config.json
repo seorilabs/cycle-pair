@@ -25,16 +25,16 @@
       "en-US": "Cycle Pair"
     },
     "subtitle": {
-      "ko-KR": "함께 준비하는 우리의 주기",
-      "en-US": "Prepare for the cycle together"
+      "ko-KR": "나를 기록하고, 선택해 나눠요",
+      "en-US": "Small notes, shared by choice"
     },
     "promotionalText": {
-      "ko-KR": "생리주기와 오늘의 컨디션을 파트너와 '내가 허용한 만큼만' 공유하세요. 원본은 나만, 공유는 내가 켠 것만. 광고·추적 없이 함께 대비해요.",
-      "en-US": "Share your cycle and today's condition with your partner — only what you choose. Originals stay yours. No ads, no tracking. Prepare together."
+      "ko-KR": "이메일이나 게스트로 시작하고, 오늘의 마음을 기록해요. 주기 질문은 하나씩, 공유는 직접 켠 항목만. 무료이며 광고와 인앱결제가 없어요.",
+      "en-US": "Start with email or as a guest. Reflect on your mood and week of records. Share only the fields you turn on. Free, with no ads or in-app purchases."
     },
     "description": {
-      "ko-KR": "사이클 페어는 주기를 기록하는 사람과 가까운 한 사람이, 생리주기와 그날의 컨디션을 '내가 허용한 만큼만' 나누며 함께 대비하도록 돕는 커플 케어 앱입니다. 이 앱은 의료기기가 아니며 질환을 진단·치료·치유·예방하지 않고, 피임 또는 임신 가능성 판단에 사용할 수 없습니다. 의료 조언, 진단이나 치료가 필요하면 의료 전문가와 상담하세요.\n\n■ 두 사람을 위한 설계\n- 정확히 두 명이 서로 수락해 연결되는 대칭형 Pair\n- 연결 전에도 나만의 기록을 쓸 수 있어요\n\n■ 내가 정하는 공유\n- 생리 시작·종료일, 증상, 기분, 컨디션, 도움 선호를 기록\n- 필드별로 공유를 켜고 끌 수 있고, 기본값은 전부 비공개\n- 파트너에게는 내가 켠 정보만 전달돼요(원본은 나만 볼 수 있어요)\n\n■ 함께 준비\n- 다음 생리 예정일을 참고용으로 표시(개인차가 있으며 의료·피임 판단에 쓰지 않아요)\n- 공동 캘린더와 기념일, 두 가지 고정 메시지로 보내는 파트너 넛지\n\n■ 프라이버시 우선\n- 잠금화면 알림은 건강정보를 드러내지 않는 중립 문구\n- 광고 없음, 제3자 추적 없음, 데이터 판매 없음\n- 언제든 데이터 내보내기·계정 삭제·연결 해제\n\n무료로 이용할 수 있으며 광고와 인앱결제가 없습니다.",
-      "en-US": "Cycle Pair helps someone who tracks their cycle and one close partner prepare together — sharing menstrual cycle and daily condition only as much as you allow. It is not a medical device and does not diagnose, treat, cure, or prevent any medical condition. It must not be used for contraceptive or pregnancy-likelihood decisions. Consult a healthcare professional for medical advice, diagnosis or treatment.\n\nBuilt for two\n- A symmetric Pair of exactly two people who both accept the connection\n- Keep private records even before connecting\n\nYou control sharing\n- Log period start/end, symptoms, mood, condition, and help preferences\n- Turn sharing on or off per field; everything is private by default\n- Your partner sees only what you enable — originals stay yours\n\nPrepare together\n- See your next expected period as reference only (individual variation applies; not for medical or contraceptive decisions)\n- Shared calendar, anniversaries, and two fixed partner nudges\n\nPrivacy first\n- Neutral lock-screen notifications that never reveal health details\n- No ads, no third-party tracking, no data sales\n- Export data, delete your account, or disconnect anytime\n\nFree to use, with no ads or in-app purchases."
+      "ko-KR": "사이클 페어는 오늘의 몸과 마음을 기록하고, 가까운 한 사람과 원하는 만큼만 나누는 앱입니다. 혼자 기록해도, 함께 나눠도 괜찮아요.\n\n이 앱은 의료기기가 아닙니다. 질환을 진단, 치료, 치유, 예방하지 않으며 피임 또는 임신 가능성 판단에 사용할 수 없습니다. 건강에 관한 결정은 의료 전문가와 상담하세요.\n\n내게 맞게 시작해요\n- 이메일 계정 또는 게스트로 시작해요\n- 주기와 컨디션, 또는 컨디션만 관리할 수 있어요\n- 주기 질문은 한 번에 하나씩, 모르는 내용은 건너뛸 수 있어요\n- 게스트 기록은 나중에 이메일 계정을 연결해 이어갈 수 있어요\n\n작은 기록을 돌아봐요\n- 오늘의 마음, 몸 상태와 원하는 배려를 남겨요\n- 실제 기록을 바탕으로 일주일과 기분별 기록 일수를 보여줘요\n- 주기 예상은 기록 수와 계산 기준을 함께 표시하는 참고 정보예요\n\n나누는 것은 직접 골라요\n- 두 사람이 서로 수락해야 연결돼요\n- 모든 공유는 기본으로 꺼져 있어요\n- 메모를 포함해 직접 켠 항목만 연결된 파트너에게 전달돼요\n- 공유를 끄거나 연결을 해제할 수 있어요\n- 공동 캘린더와 기념일, 두 가지 고정 메시지로 함께 준비해요\n\n내 기록을 위한 선택\n- 잠금화면 알림에 건강 정보와 메모를 드러내지 않아요\n- 데이터 내보내기와 계정 삭제를 지원해요\n- 광고, 인앱결제, 제3자 추적과 데이터 판매가 없어요\n\n무료로 이용할 수 있어요.",
+      "en-US": "Cycle Pair is a little space to record your body and mood, and share only what you choose with one close partner. Start on your own or prepare together.\n\nThis app is not a medical device. It does not diagnose, treat, cure or prevent any medical condition, and must not be used for contraceptive or pregnancy-likelihood decisions. Consult a healthcare professional for health decisions.\n\nStart with what you need\n- Choose an email account or start as a guest\n- Track your cycle and condition, or condition only\n- Answer cycle questions one at a time and skip what you do not know\n- Connect an email account later to keep your guest records\n\nReflect on small notes\n- Record your mood, body condition and the care you would like\n- See your week and mood counts from the records you actually keep\n- Cycle estimates show their recorded sample size and calculation basis as reference information\n\nChoose what to share\n- Both people accept before connecting\n- All sharing starts off\n- Only the fields you turn on, including notes, go to your connected partner\n- Turn sharing off or disconnect when you choose\n- Prepare together with a shared calendar, anniversaries and two fixed partner nudges\n\nYour records, your choices\n- Lock-screen notifications contain no health details or notes\n- Export your data or delete your account\n- No ads, in-app purchases, third-party tracking or data sales\n\nFree to use."
     },
     "keywords": {
       "ko-KR": "주기,생리주기,커플,파트너,컨디션,기분,공유,캘린더,커플앱,함께,케어,기념일",
@@ -193,13 +193,32 @@
   "assets": {
     "appIcon1024": "app-store/assets/app-icon-1024.png",
     "iphoneScreenshots69": [
-      "app-store/assets/ko/home.png",
+      "app-store/assets/ko/welcome.png",
       "app-store/assets/ko/record.png",
-      "app-store/assets/ko/owner-sharing-default.png"
+      "app-store/assets/ko/home.png",
+      "app-store/assets/ko/calendar.png"
     ],
     "iphoneScreenshots65": [],
     "ipadScreenshots13": [],
-    "appleWatchScreenshots": []
+    "appleWatchScreenshots": [],
+    "localizations": {
+      "ko-KR": {
+        "iphoneScreenshots69": [
+          "app-store/assets/ko/welcome.png",
+          "app-store/assets/ko/record.png",
+          "app-store/assets/ko/home.png",
+          "app-store/assets/ko/calendar.png"
+        ]
+      },
+      "en-US": {
+        "iphoneScreenshots69": [
+          "app-store/assets/en/welcome.png",
+          "app-store/assets/en/record.png",
+          "app-store/assets/en/home.png",
+          "app-store/assets/en/calendar.png"
+        ]
+      }
+    }
   },
   "signing": {
     "mode": "xcode-cloud-automatic",

@@ -1,199 +1,369 @@
 {
   "schemaVersion": 1,
-  "preparedAt": "2026-10-25T03:34:34.070648+00:00",
+  "preparedAt": "2026-10-25T15:16:41.267416+00:00",
+  "uiSource": "fc60c9e7c8e875104388ef03a4c6c27176554726",
+  "productSourceFingerprint": "d9e78b929613f0735ae8aaf9e1f94bada5ada6384d68f6b4fa103fa02fbfbca3",
   "runtimeCandidates": {
-    "android": "f450f62c5a1dc15737db65dacff2e010eb24b844",
-    "ios": "a82f4f06971830b3693a10958e07563a3abf4789"
+    "android": "not-built-v1.2.0",
+    "ios": "not-built-v1.2.0"
   },
-  "uiSource": "a82f4f06971830b3693a10958e07563a3abf4789",
-  "sourceUiIdentity": "retained original UI/back-end source-identity evidence; Android subsequent changes did not alter screen content",
+  "sourceUiIdentity": "Exact candidate RN screens with isolated synthetic local Firebase records; not native or device evidence.",
   "items": [
     {
+      "id": "play-store-ko-play-phone-welcome",
       "market": "play-store",
       "locale": "ko-KR",
       "kind": "screenshot",
+      "display": "play-phone",
+      "path": "play-store/assets/ko/welcome.png",
+      "width": 1080,
+      "height": 1920,
+      "sha256": "8ba4c08a8ecbb850e0ceda25c4b12c88ec0e62abe09f58f950a1165b836c2ff2",
+      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+    },
+    {
+      "id": "app-store-ko-iphone-welcome",
+      "market": "app-store",
+      "locale": "ko-KR",
+      "kind": "screenshot",
+      "display": "iphone",
+      "path": "app-store/assets/ko/welcome.png",
+      "width": 1320,
+      "height": 2868,
+      "sha256": "e2c3baf42468619f17efc5be741a5d8fdaf10906faab905423c8a84d527749de",
+      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+    },
+    {
+      "id": "play-store-ko-play-phone-home",
+      "market": "play-store",
+      "locale": "ko-KR",
+      "kind": "screenshot",
+      "display": "play-phone",
       "path": "play-store/assets/ko/home.png",
       "width": 1080,
       "height": 1920,
-      "sha256": "b23464eeb90ad0e629350fbff0eccbdd6b9e5c2a26ddc690a48ef3b32abebb52",
-      "origin": "original RN development render, direct pixels; not device capture",
-      "id": "play-store-ko-KR-home"
+      "sha256": "310c4dc7dff4a253e924ecc013f8f7472b6efd99386e8fd3d1310e086d50fefe",
+      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
     },
     {
+      "id": "app-store-ko-iphone-home",
+      "market": "app-store",
+      "locale": "ko-KR",
+      "kind": "screenshot",
+      "display": "iphone",
+      "path": "app-store/assets/ko/home.png",
+      "width": 1320,
+      "height": 2868,
+      "sha256": "4a1d2fc7db57ae8cece80e5c7116862e641f8f46067b56b44778a6e3c632a6db",
+      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+    },
+    {
+      "id": "play-store-ko-tablet7-home",
       "market": "play-store",
       "locale": "ko-KR",
       "kind": "screenshot",
+      "display": "tablet7",
+      "path": "play-store/assets/ko/tablet7/home.png",
+      "width": 1260,
+      "height": 2240,
+      "sha256": "a7e2a509a6bac2daa8872416355568601ee2bd9deea107ec8bdeb5d136a8b76b",
+      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+    },
+    {
+      "id": "play-store-ko-tablet10-home",
+      "market": "play-store",
+      "locale": "ko-KR",
+      "kind": "screenshot",
+      "display": "tablet10",
+      "path": "play-store/assets/ko/tablet10/home.png",
+      "width": 1800,
+      "height": 3200,
+      "sha256": "0cbf0782d5ef823b8f77b30cfbd3d3130b8be327a1af961541f43cc452e0b863",
+      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+    },
+    {
+      "id": "play-store-ko-play-phone-calendar",
+      "market": "play-store",
+      "locale": "ko-KR",
+      "kind": "screenshot",
+      "display": "play-phone",
+      "path": "play-store/assets/ko/calendar.png",
+      "width": 1080,
+      "height": 1920,
+      "sha256": "5331e4740b37ff41b88efce819bd64c35ea604a1e88b435299bdb06847ff05cc",
+      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+    },
+    {
+      "id": "app-store-ko-iphone-calendar",
+      "market": "app-store",
+      "locale": "ko-KR",
+      "kind": "screenshot",
+      "display": "iphone",
+      "path": "app-store/assets/ko/calendar.png",
+      "width": 1320,
+      "height": 2868,
+      "sha256": "b67c97ff877b8de6b780e818023b19e3ac8934a8694b0e57f69ad2cb5ace5c3f",
+      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+    },
+    {
+      "id": "play-store-ko-tablet7-calendar",
+      "market": "play-store",
+      "locale": "ko-KR",
+      "kind": "screenshot",
+      "display": "tablet7",
+      "path": "play-store/assets/ko/tablet7/calendar.png",
+      "width": 1260,
+      "height": 2240,
+      "sha256": "9992b821397bff98dbdec21299a3262c193c335688702cf0c0561bf1d507cb1f",
+      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+    },
+    {
+      "id": "play-store-ko-tablet10-calendar",
+      "market": "play-store",
+      "locale": "ko-KR",
+      "kind": "screenshot",
+      "display": "tablet10",
+      "path": "play-store/assets/ko/tablet10/calendar.png",
+      "width": 1800,
+      "height": 3200,
+      "sha256": "c47fea2f7cd77ba18ab63442835954b07fb1556b3d8197958c762c56c94ed6fc",
+      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+    },
+    {
+      "id": "play-store-ko-play-phone-record",
+      "market": "play-store",
+      "locale": "ko-KR",
+      "kind": "screenshot",
+      "display": "play-phone",
       "path": "play-store/assets/ko/record.png",
       "width": 1080,
       "height": 1920,
-      "sha256": "c489624e47310cf219fb0f334776cc5b4264db272a433bae94c0eacc4d9627e1",
-      "origin": "original RN development render, direct pixels; not device capture",
-      "id": "play-store-ko-KR-record"
+      "sha256": "cf3c9f5b212b4f7a96a7356c2258ffffd04839eee618c4376ef385cc61159dfd",
+      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
     },
     {
-      "market": "play-store",
+      "id": "app-store-ko-iphone-record",
+      "market": "app-store",
       "locale": "ko-KR",
       "kind": "screenshot",
-      "path": "play-store/assets/ko/owner-sharing-default.png",
-      "width": 1080,
-      "height": 1920,
-      "sha256": "d8e030a579982206cfc673b56e261a3249e7adc09c2c1c37faa3fa11815eb96a",
-      "origin": "original RN development render, direct pixels; not device capture",
-      "id": "play-store-ko-KR-owner-sharing-default"
+      "display": "iphone",
+      "path": "app-store/assets/ko/record.png",
+      "width": 1320,
+      "height": 2868,
+      "sha256": "d5e90b5afeb734270b551c20f4c6abe55d13fbf9f355f3dea9755fe433d4381e",
+      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
     },
     {
+      "id": "play-store-en-play-phone-welcome",
       "market": "play-store",
       "locale": "en-US",
       "kind": "screenshot",
+      "display": "play-phone",
+      "path": "play-store/assets/en/welcome.png",
+      "width": 1080,
+      "height": 1920,
+      "sha256": "aa8829c26e40b0fd7daf6e127103fb2b6663d086b8ab8e500fb4d192697cb29e",
+      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+    },
+    {
+      "id": "app-store-en-iphone-welcome",
+      "market": "app-store",
+      "locale": "en-US",
+      "kind": "screenshot",
+      "display": "iphone",
+      "path": "app-store/assets/en/welcome.png",
+      "width": 1320,
+      "height": 2868,
+      "sha256": "2324e0d51d6bb392f509346870f1eaaa0b1bc770f105e222675501a35ace028f",
+      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+    },
+    {
+      "id": "play-store-en-play-phone-home",
+      "market": "play-store",
+      "locale": "en-US",
+      "kind": "screenshot",
+      "display": "play-phone",
       "path": "play-store/assets/en/home.png",
       "width": 1080,
       "height": 1920,
-      "sha256": "f360040c6b7506e2df80537e9e23b342d2fb85a07d8c38730c92e215937d9f82",
-      "origin": "original RN development render, direct pixels; not device capture",
-      "id": "play-store-en-US-home"
+      "sha256": "04faa09de473d2fdd09ff28a234ec9fbb4096935cfd9a4b66a0c2981d084ef00",
+      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
     },
     {
+      "id": "app-store-en-iphone-home",
+      "market": "app-store",
+      "locale": "en-US",
+      "kind": "screenshot",
+      "display": "iphone",
+      "path": "app-store/assets/en/home.png",
+      "width": 1320,
+      "height": 2868,
+      "sha256": "a0b63e65dbe5bc1703a8cb7dfb75110f54b5b7d98fd2b99c44c640fcae501ccb",
+      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+    },
+    {
+      "id": "play-store-en-tablet7-home",
       "market": "play-store",
       "locale": "en-US",
       "kind": "screenshot",
+      "display": "tablet7",
+      "path": "play-store/assets/en/tablet7/home.png",
+      "width": 1260,
+      "height": 2240,
+      "sha256": "50c70bbb7a31a26491632af82d59e4de165bc55b00616e4448e5ff4c6374f9e9",
+      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+    },
+    {
+      "id": "play-store-en-tablet10-home",
+      "market": "play-store",
+      "locale": "en-US",
+      "kind": "screenshot",
+      "display": "tablet10",
+      "path": "play-store/assets/en/tablet10/home.png",
+      "width": 1800,
+      "height": 3200,
+      "sha256": "cbc9bfd0f731bff6abf6864f6adecbf4f4a0f2afa8d55472ace99b6bbdac8a5b",
+      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+    },
+    {
+      "id": "play-store-en-play-phone-calendar",
+      "market": "play-store",
+      "locale": "en-US",
+      "kind": "screenshot",
+      "display": "play-phone",
+      "path": "play-store/assets/en/calendar.png",
+      "width": 1080,
+      "height": 1920,
+      "sha256": "e152e6733fdbb40129779d8d8e662da8e9b7596f2a66a90ea7c84af22974f046",
+      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+    },
+    {
+      "id": "app-store-en-iphone-calendar",
+      "market": "app-store",
+      "locale": "en-US",
+      "kind": "screenshot",
+      "display": "iphone",
+      "path": "app-store/assets/en/calendar.png",
+      "width": 1320,
+      "height": 2868,
+      "sha256": "36d72fc98832bdc80f76765363eacc176ac873c0f2a666008196de2ead82d964",
+      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+    },
+    {
+      "id": "play-store-en-tablet7-calendar",
+      "market": "play-store",
+      "locale": "en-US",
+      "kind": "screenshot",
+      "display": "tablet7",
+      "path": "play-store/assets/en/tablet7/calendar.png",
+      "width": 1260,
+      "height": 2240,
+      "sha256": "f0102fddc23c0c1943c1d8e48e331d472a65e249f36591a37b7268ca4d7bd7fa",
+      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+    },
+    {
+      "id": "play-store-en-tablet10-calendar",
+      "market": "play-store",
+      "locale": "en-US",
+      "kind": "screenshot",
+      "display": "tablet10",
+      "path": "play-store/assets/en/tablet10/calendar.png",
+      "width": 1800,
+      "height": 3200,
+      "sha256": "4888563245506fc616b0ab32c16581dc11bb8d8fd87f60e1f5d33a39aefbe69d",
+      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+    },
+    {
+      "id": "play-store-en-play-phone-record",
+      "market": "play-store",
+      "locale": "en-US",
+      "kind": "screenshot",
+      "display": "play-phone",
       "path": "play-store/assets/en/record.png",
       "width": 1080,
       "height": 1920,
-      "sha256": "e77707d03b0aea664f097a4e9ce362dd80e06028eca09135ea5888891b68591f",
-      "origin": "original RN development render, direct pixels; not device capture",
-      "id": "play-store-en-US-record"
+      "sha256": "58515b681926c226b7705237fb1ad34c2cb3cf3042c8248ba81ff1d8ee7bdc16",
+      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
     },
     {
-      "market": "play-store",
-      "locale": "en-US",
-      "kind": "screenshot",
-      "path": "play-store/assets/en/owner-sharing-default.png",
-      "width": 1080,
-      "height": 1920,
-      "sha256": "5c07b8111c42f0b89898d9118cf387c7ed358f2223736050a55342f99912f6e2",
-      "origin": "original RN development render, direct pixels; not device capture",
-      "id": "play-store-en-US-owner-sharing-default"
-    },
-    {
-      "market": "app-store",
-      "locale": "ko-KR",
-      "kind": "screenshot",
-      "path": "app-store/assets/ko/home.png",
-      "width": 1290,
-      "height": 2796,
-      "sha256": "f7bc13446ed1b822fc48bbe4b21498a1142822cd2259d88f12b1febf7c02c215",
-      "origin": "original RN development render, direct pixels; not device capture",
-      "id": "app-store-ko-KR-home"
-    },
-    {
-      "market": "app-store",
-      "locale": "ko-KR",
-      "kind": "screenshot",
-      "path": "app-store/assets/ko/record.png",
-      "width": 1290,
-      "height": 2796,
-      "sha256": "1ee0f60dbc86129232aa38bd033da772884c50e2457081bacd6f1d49e8bae7ae",
-      "origin": "original RN development render, direct pixels; not device capture",
-      "id": "app-store-ko-KR-record"
-    },
-    {
-      "market": "app-store",
-      "locale": "ko-KR",
-      "kind": "screenshot",
-      "path": "app-store/assets/ko/owner-sharing-default.png",
-      "width": 1290,
-      "height": 2796,
-      "sha256": "52f3bae443ea3842f2f478ece87ad3cdec06ccf10fefbc0038e706016c92c548",
-      "origin": "original RN development render, direct pixels; not device capture",
-      "id": "app-store-ko-KR-owner-sharing-default"
-    },
-    {
+      "id": "app-store-en-iphone-record",
       "market": "app-store",
       "locale": "en-US",
       "kind": "screenshot",
-      "path": "app-store/assets/en/home.png",
-      "width": 1290,
-      "height": 2796,
-      "sha256": "25713c1f27c0ffe35c3e4b0105facb2ff85de471ef294b1a8a76dd04309b1ee3",
-      "origin": "original RN development render, direct pixels; not device capture",
-      "id": "app-store-en-US-home"
-    },
-    {
-      "market": "app-store",
-      "locale": "en-US",
-      "kind": "screenshot",
+      "display": "iphone",
       "path": "app-store/assets/en/record.png",
-      "width": 1290,
-      "height": 2796,
-      "sha256": "ca27b01460e1e8566f9b5bbb4e7bfbfa62d544efd2e9006c082f729d2384ff67",
-      "origin": "original RN development render, direct pixels; not device capture",
-      "id": "app-store-en-US-record"
+      "width": 1320,
+      "height": 2868,
+      "sha256": "cfbb90dd1b5d3ff48d155eaad842f1e1db4c958ee96bec024ab815b042d6283c",
+      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
     },
     {
-      "market": "app-store",
-      "locale": "en-US",
-      "kind": "screenshot",
-      "path": "app-store/assets/en/owner-sharing-default.png",
-      "width": 1290,
-      "height": 2796,
-      "sha256": "48803574649a9875c9cb1e323c9671e3b107371f9daf69dd3bfc5620e46cfc26",
-      "origin": "original RN development render, direct pixels; not device capture",
-      "id": "app-store-en-US-owner-sharing-default"
-    },
-    {
+      "id": "play-feature-ko",
       "market": "play-store",
       "locale": "ko-KR",
       "kind": "featureGraphic",
       "path": "play-store/assets/ko/feature-graphic-1024x500.png",
       "width": 1024,
       "height": 500,
-      "sha256": "3c6f3f6f55c96a38327dcdb223d0261b657d491846a9d3b2e482b2fbd1c56362",
-      "origin": "actual RN UI and listing copy arranged for the feature graphic",
-      "id": "play-store-ko-KR-feature-graphic-1024x500"
+      "sha256": "6b85ea4d5ddbae40367923c48c12980256b79548aa77dbecb92815d86e8f2f25",
+      "origin": "original product quiet-together illustration and actual validated RN home capture; HTML composite"
     },
     {
+      "id": "play-feature-en",
       "market": "play-store",
       "locale": "en-US",
       "kind": "featureGraphic",
       "path": "play-store/assets/en/feature-graphic-1024x500.png",
       "width": 1024,
       "height": 500,
-      "sha256": "424f1f6de12f3effc63aa3390b789a7a81447488d6d99bded22be9cd980e1e7d",
-      "origin": "actual RN UI and listing copy arranged for the feature graphic",
-      "id": "play-store-en-US-feature-graphic-1024x500"
+      "sha256": "e9e1abd90f8ddb599af06795489bd7b32bcb496135829fdebbdef6ac3804394b",
+      "origin": "original product quiet-together illustration and actual validated RN home capture; HTML composite"
     }
   ],
   "googlePlayScreenshotOrder": {
     "ko-KR": [
-      "home",
+      "welcome",
       "record",
-      "owner-sharing-default"
+      "home",
+      "calendar"
     ],
     "en-US": [
+      "welcome",
       "record",
-      "owner-sharing-default",
-      "home"
+      "home",
+      "calendar"
     ]
   },
   "appStoreScreenshotOrder": {
     "ko": [
-      "home",
+      "welcome",
       "record",
-      "owner-sharing-default"
+      "home",
+      "calendar"
     ],
     "en-US": [
-      "home",
+      "welcome",
       "record",
-      "owner-sharing-default"
+      "home",
+      "calendar"
     ]
   },
-  "omittedSourceCaptures": "Partner screenshots contain an internal QA note; not published. Obsolete July tablet screenshots no longer match current UI and were removed from the listing; device compatibility was not changed.",
+  "demoData": {
+    "recordedDays": 5,
+    "missingDays": 2,
+    "calmDays": 3,
+    "happyDays": 1,
+    "affectionateDays": 2,
+    "drainedDays": 1,
+    "anxiousDays": 1,
+    "notesShared": false
+  },
   "deviceCalls": 0,
   "out_dir": ".",
   "rules": [
     {
       "kind": "screenshot",
-      "min": 12
+      "min": 24
     },
     {
       "kind": "featureGraphic",
