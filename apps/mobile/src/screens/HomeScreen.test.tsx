@@ -1,6 +1,6 @@
 import React from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {render} from '@testing-library/react-native';
+import {fireEvent, render} from '@testing-library/react-native';
 import {addDays, localDate} from '@cyclepair/product-core';
 import {createInitialState, useCyclePair} from '../app/CyclePairStore';
 import {I18nProvider} from '../i18n/I18nProvider';
@@ -39,4 +39,13 @@ it('does not offer a prediction basis before complete cycle inputs exist', async
   const view=await show(createInitialState());
   expect(view.queryByText(/Based on your entered/)).toBeNull();
   expect(view.queryByText(/recorded cycle interval/)).toBeNull();
+});
+it('offers retry instead of record creation when the history read is slow', async () => {
+  const retryDailyHistory=jest.fn(async()=>{}), onOpenRecord=jest.fn();
+  mockedUseCyclePair.mockReturnValue({state:createInitialState(), dailyHistoryStatus:'slow', setTab:jest.fn(), retryDailyHistory} as unknown as ReturnType<typeof useCyclePair>);
+  const view=await render(<I18nProvider><HomeScreen onOpenRecord={onOpenRecord}/></I18nProvider>);
+  expect(view.getByText('Your records are taking longer to load.')).toBeTruthy();
+  await fireEvent.press(view.getByTestId('home-record-retry'));
+  expect(retryDailyHistory).toHaveBeenCalledTimes(1);
+  expect(onOpenRecord).not.toHaveBeenCalled();
 });

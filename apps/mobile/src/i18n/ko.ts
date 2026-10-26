@@ -4,6 +4,7 @@ export const ko = {
   ...emotionalMessages,
   ...observedDayMessages,
   'Loading record…': '기록 불러오는 중…',
+  'Your records are taking longer to load.': '기록을 가져오는 데 시간이 걸려요.',
   'Could not load records': '기록을 불러오지 못했어요',
   'Dismiss keyboard': '키보드 닫기',
   'Could not save your language. Try again.':

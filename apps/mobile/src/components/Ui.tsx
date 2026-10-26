@@ -398,16 +398,25 @@ export function BottomTabs({
             onPress={() => onChange(tab.key)}
             style={[styles.tabItem, fontScale > 1.3 && styles.tabItemLargeText]}
           >
-            {tab.icon ? (
-              <AppIcon name={tab.icon} />
-            ) : (
-              <Text style={[styles.tabIcon, selected && styles.tabSelected]}>
-                ⋯
+            <View style={[styles.tabFace, selected && styles.tabFaceSelected]}>
+              {selected ? (
+                <View
+                  accessible={false}
+                  importantForAccessibility="no"
+                  style={styles.tabIndicator}
+                />
+              ) : null}
+              {tab.icon ? (
+                <AppIcon name={tab.icon} />
+              ) : (
+                <Text style={[styles.tabIcon, selected && styles.tabSelected]}>
+                  ⋯
+                </Text>
+              )}
+              <Text style={[styles.tabLabel, selected && styles.tabSelected]}>
+                {t(tab.label)}
               </Text>
-            )}
-            <Text style={[styles.tabLabel, selected && styles.tabSelected]}>
-              {t(tab.label)}
-            </Text>
+            </View>
           </Pressable>
         );
       })}
@@ -494,7 +503,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
   },
-  secondaryButtonCompact: { minHeight: 48, paddingHorizontal: spacing.lg, paddingVertical: 0 },
+  secondaryButtonCompact: {
+    minHeight: 48,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 0,
+  },
   secondaryButtonText: {
     color: colors.primaryDark,
     fontSize: 17,
@@ -610,6 +623,7 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
     paddingTop: spacing.sm,
+    paddingHorizontal: spacing.xs,
   },
   tabItem: {
     flexBasis: '25%',
@@ -617,13 +631,33 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
+    paddingHorizontal: spacing.xs,
     minHeight: 52,
+  },
+  tabFace: {
+    width: '100%',
+    minHeight: 58,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+    paddingTop: 12,
+    paddingBottom: 7,
+    paddingHorizontal: spacing.xs,
+    borderRadius: radius.md,
+  },
+  tabFaceSelected: { backgroundColor: colors.primarySoft },
+  tabIndicator: {
+    position: 'absolute',
+    top: spacing.xs,
+    width: 22,
+    height: 3,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primaryDark,
   },
   tabItemLargeText: { flexBasis: '50%' },
   tabIcon: { color: colors.textSubtle, fontSize: 23, fontWeight: '600' },
-  tabLabel: { color: colors.textSubtle, fontSize: 11, fontWeight: '700' },
-  tabSelected: { color: colors.primaryDark },
+  tabLabel: { color: colors.textSubtle, fontSize: 11, fontWeight: '600' },
+  tabSelected: { color: colors.primaryDark, fontWeight: '800' },
 });
 
 /** One modal owns focus and scrolling while the underlying screen stays mounted. */

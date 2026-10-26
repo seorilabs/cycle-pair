@@ -129,6 +129,26 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
     await secureCyclePairCache.clearUser(uid);
   });
 
+  it('does not confirm an empty cache when the server query fails', async () => {
+    getDocsMock.mockRejectedValue(Object.assign(new Error('unavailable'), { code: 'unavailable' }));
+    await expect(firebaseCyclePairBackend.syncDailyLogs(uid)).rejects.toMatchObject({code:'unavailable'});
+  });
+
+  it('does not confirm a cache-only empty snapshot or advance its sync cursor', async () => {
+    const cursorBefore = await secureCyclePairCache.loadDailyLogSyncCursor(uid);
+    getDocsMock.mockResolvedValue({metadata:{fromCache:true},docs:[]} as unknown as Awaited<ReturnType<typeof getDocs>>);
+    await expect(firebaseCyclePairBackend.syncDailyLogs(uid)).rejects.toMatchObject({code:'unavailable'});
+    await expect(secureCyclePairCache.loadDailyLogSyncCursor(uid)).resolves.toEqual(cursorBefore);
+  });
+
+  it('keeps an existing cached record for today usable when the network fails', async () => {
+    const now=new Date();
+    const localDate=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');
+    await secureCyclePairCache.saveDailyLog(uid,{localDate,record:{note:'existing local note'}});
+    getDocsMock.mockRejectedValue(Object.assign(new Error('unavailable'), {code:'unavailable'}));
+    await expect(firebaseCyclePairBackend.syncDailyLogs(uid)).resolves.toEqual([expect.objectContaining({localDate,record:{note:'existing local note'}})]);
+  });
+
   it('현재 보안 규칙의 기록 schema v3로 직접 저장한다', async () => {
     await expect(
       firebaseCyclePairBackend.saveDailyLog(
@@ -271,7 +291,7 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
         throw { code: 'firestore/unavailable' };
       }),
     } as unknown as ReturnType<typeof writeBatch>);
-    getDocsMock.mockResolvedValueOnce({
+    getDocsMock.mockResolvedValueOnce({ metadata: {fromCache: false},
       docs: [
         {
           id: '2026-07-14',
@@ -286,7 +306,7 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
         },
       ],
     } as Awaited<ReturnType<typeof getDocs>>);
-    getDocsMock.mockResolvedValueOnce({ docs: [] } as unknown as Awaited<
+    getDocsMock.mockResolvedValueOnce({ metadata: {fromCache: false}, docs: [] } as unknown as Awaited<
       ReturnType<typeof getDocs>
     >);
 
@@ -302,7 +322,7 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
   });
 
   it('첫 동기화 뒤에는 전체 문서 ID 범위 대신 변경 시점 쿼리를 사용한다', async () => {
-    getDocsMock.mockResolvedValue({ docs: [] } as unknown as Awaited<
+    getDocsMock.mockResolvedValue({ metadata: {fromCache: false}, docs: [] } as unknown as Awaited<
       ReturnType<typeof getDocs>
     >);
 
@@ -342,7 +362,7 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
     const firstUpdatedAt = '2026-07-14T01:00:00.000Z';
     const deletedAt = '2026-07-15T01:00:00.000Z';
     getDocsMock
-      .mockResolvedValueOnce({
+      .mockResolvedValueOnce({ metadata: {fromCache: false},
         docs: [
           {
             id: '2026-07-14',
@@ -355,13 +375,13 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
           },
         ],
       } as Awaited<ReturnType<typeof getDocs>>)
-      .mockResolvedValueOnce({ docs: [] } as unknown as Awaited<
+      .mockResolvedValueOnce({ metadata: {fromCache: false}, docs: [] } as unknown as Awaited<
         ReturnType<typeof getDocs>
       >)
-      .mockResolvedValueOnce({ docs: [] } as unknown as Awaited<
+      .mockResolvedValueOnce({ metadata: {fromCache: false}, docs: [] } as unknown as Awaited<
         ReturnType<typeof getDocs>
       >)
-      .mockResolvedValueOnce({
+      .mockResolvedValueOnce({ metadata: {fromCache: false},
         docs: [
           {
             id: '2026-07-14',
@@ -387,7 +407,7 @@ describe('firebaseCyclePairBackend durable mutation fallback', () => {
   it('원격 문서의 감정 배열을 기록으로 되살린다', async () => {
     // 저장 경로만 고치고 읽기 경로를 빠뜨리면 타입 검사가 잡지 못한다.
     // 필드 이름을 바꿀 때 실제로 한 번 빠뜨렸던 자리다.
-    getDocsMock.mockResolvedValueOnce({
+    getDocsMock.mockResolvedValueOnce({ metadata: {fromCache: false},
       docs: [
         {
           id: '2026-07-14',
