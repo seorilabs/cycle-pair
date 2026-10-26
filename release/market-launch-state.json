@@ -1,0 +1,284 @@
+{
+  "schemaVersion": 1,
+  "app": {
+    "name": "Cycle Pair",
+    "repo": "seorilabs/cycle-pair",
+    "sourceRevision": "fc60c9e7c8e875104388ef03a4c6c27176554726"
+  },
+  "release": {
+    "version": "1.2.0",
+    "tag": "v1.2.0",
+    "objective": "public_live",
+    "countries": [],
+    "rolloutMode": "full (approved rollout=1)",
+    "countryIntent": "worldwide; preserve configured storefronts and reread exact country list before promotion",
+    "pricing": "free; no ads or IAP"
+  },
+  "deploymentApproval": {
+    "status": "approved",
+    "markets": [
+      "google_play",
+      "app_store"
+    ],
+    "objective": "public_live",
+    "approvedAt": "2026-10-25T09:13:32.504557+00:00",
+    "evidence": [
+      "docs/design/2026-10-25-onboarding-navigation/test-plan.json@4a7f9ee68cef39eee8662aaeee61de241140de4c release.markets=google-play,app-store; release.until=public; rollout=1",
+      "https://github.com/seorilabs/cycle-pair/releases/tag/v1.2.0 development-evidence files retain the human approval and independent review history"
+    ]
+  },
+  "commonGates": {
+    "candidate": {
+      "status": "pending",
+      "evidence": [
+        "https://github.com/seorilabs/cycle-pair/releases/tag/v1.2.0 source fc60c9e7c8e875104388ef03a4c6c27176554726; Android 1000109; Apple 1002000; exact storefront country list not reread for promotion"
+      ],
+      "checkedAt": "2026-10-26T02:17:54.687416+00:00",
+      "blocker": null
+    },
+    "quality": {
+      "status": "pass",
+      "evidence": [
+        "https://github.com/seorilabs/cycle-pair/releases/tag/v1.2.0 independent round 5: all 10 functional and UX features passed; host regression 793 passed",
+        "R1-R4 failures and their resolution evidence retained without changing original timestamps",
+        "Central L3 before-build and before-release checks passed for both targets; these checks do not claim native SDK execution",
+        "https://github.com/seorilabs/cycle-pair/actions/runs/40256736259 PR 160 CI success",
+        "https://github.com/seorilabs/cycle-pair/actions/runs/40256885935 main CI success"
+      ],
+      "checkedAt": "2026-10-26T02:17:54.687416+00:00",
+      "blocker": null
+    },
+    "production_dependencies": {
+      "status": "pending",
+      "evidence": [
+        "Firebase Android/iOS registrations ACTIVE; Play Integrity and App Attest provider configurations read back",
+        "Firebase Android SHA list empty; existing Play distribution certificate known but local public identity catalog registration is missing",
+        "Firestore, Auth and Storage App Check UNENFORCED; registerNotificationDevice ENFORCE_APP_CHECK unset",
+        "Production callable revisions read back; current backend deployment fingerprint and production end-to-end acceptance remain unconfirmed"
+      ],
+      "checkedAt": "2026-10-26T02:17:54.687416+00:00",
+      "blocker": null
+    },
+    "observability": {
+      "status": "pending",
+      "evidence": [
+        "Development behavior tested; current release production analytics/crash signals not yet observed"
+      ],
+      "checkedAt": "2026-10-26T02:17:54.687416+00:00",
+      "blocker": null
+    }
+  },
+  "markets": {
+    "google_play": {
+      "objective": "public_live",
+      "state": "pending",
+      "identity": {
+        "applicationId": "com.seorilabs.cyclepair",
+        "version": "1.2.0",
+        "build": "1000109",
+        "developerId": "7593567020638200144"
+      },
+      "gates": {
+        "candidate": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "artifact": {
+          "status": "pass",
+          "evidence": [
+            "https://github.com/seorilabs/cycle-pair/actions/runs/40256647671 exact tag binding, manifest package/version and AAB digest verified",
+            "Android Publisher bundles SHA256 equals CI digest d562ddfb0b1cea992d0f7ba1ae892d0f891ec11f517c6ef43a69844893f735e0",
+            "Play generated universal APK signature and identity verified; SHA256 79aad509338516ddbdf0fe0b7db64171e5553cff25a21a271e58ab547fd5e357; BILLING permission absent"
+          ],
+          "checkedAt": "2026-10-26T02:17:54.687416+00:00",
+          "blocker": null
+        },
+        "upload": {
+          "status": "pass",
+          "evidence": [
+            "https://github.com/seorilabs/cycle-pair/actions/runs/40256647671",
+            "Android Publisher readback: internal release 1.2.0, versionCode 1000109, completed; production/beta/alpha empty",
+            "Both language release notes match release-notes.json and listing/image hashes are unchanged after upload"
+          ],
+          "checkedAt": "2026-10-26T02:17:54.687416+00:00",
+          "blocker": null
+        },
+        "processing": {
+          "status": "pending",
+          "evidence": [
+            "Bundle generated universal APK and 173 splits under the known Play signing certificate; pre-launch-report status not inspected"
+          ],
+          "checkedAt": "2026-10-26T02:17:54.687416+00:00",
+          "blocker": null
+        },
+        "qa": {
+          "status": "pending",
+          "evidence": [
+            "https://github.com/seorilabs/cycle-pair/releases/tag/v1.2.0 development regression and independent rendered flows passed",
+            "Device calls 0; native production authentication, secure storage and OS notification acceptance not executed; request only concrete necessary items after host preparation"
+          ],
+          "checkedAt": "2026-10-26T02:17:54.687416+00:00",
+          "blocker": null
+        },
+        "metadata": {
+          "status": "pass",
+          "evidence": [
+            "https://github.com/seorilabs/cycle-pair/pull/160",
+            "Console save and fresh Publisher readback: ko-KR/en-US text matches, 18 image SHA values and order match, downloaded processed pixels match; icons retained"
+          ],
+          "checkedAt": "2026-10-26T02:17:54.687416+00:00",
+          "blocker": null
+        },
+        "policy": {
+          "status": "pending",
+          "evidence": [
+            "2026-10-25 policy registration record in docs/launch/market-registration-20261025.md; final current-candidate Console gate readback remains before submission"
+          ],
+          "checkedAt": "2026-10-26T02:17:54.687416+00:00",
+          "blocker": null
+        },
+        "submission": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "approval": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "release": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "live_smoke": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        }
+      },
+      "currentDistribution": {
+        "channel": "internal",
+        "status": "completed",
+        "readAt": "2026-10-26T02:10:29.565029+00:00",
+        "aabSha256": "d562ddfb0b1cea992d0f7ba1ae892d0f891ec11f517c6ef43a69844893f735e0",
+        "productionReleasePresent": false
+      }
+    },
+    "app_store": {
+      "objective": "public_live",
+      "state": "pending",
+      "identity": {
+        "applicationId": "com.seorilabs.cyclepair",
+        "appStoreConnectAppId": "6792393652",
+        "version": "1.2.0",
+        "build": "1002000"
+      },
+      "gates": {
+        "candidate": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "artifact": {
+          "status": "blocked",
+          "evidence": [
+            "https://github.com/seorilabs/cycle-pair/actions/runs/40254674616",
+            "Existing installed profile Cycle Pair App Store 2026-07-23; no archive or upload performed"
+          ],
+          "checkedAt": "2026-10-26T02:17:54.687416+00:00",
+          "blocker": "App Release target lacks PROVISIONING_PROFILE_SPECIFIER; one-line repair prepared, new immutable version 1.2.1 choice pending"
+        },
+        "upload": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "processing": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "qa": {
+          "status": "pending",
+          "evidence": [
+            "https://github.com/seorilabs/cycle-pair/releases/tag/v1.2.0 development regression and independent rendered flows passed",
+            "No current native iOS build or device execution"
+          ],
+          "checkedAt": "2026-10-26T02:17:54.687416+00:00",
+          "blocker": null
+        },
+        "metadata": {
+          "status": "pass",
+          "evidence": [
+            "https://github.com/seorilabs/cycle-pair/pull/160",
+            "Editable version c4a4f720-9ded-40fb-9cb4-9af3f74f05d2 is 1.2.0 PREPARE_FOR_SUBMISSION",
+            "ko and en-US text matches, eight iPhone images COMPLETE and processed pixels match, old iPad image links removed after backup",
+            "Old build15 link detached while retaining its artifact; new build not linked or submitted"
+          ],
+          "checkedAt": "2026-10-26T02:17:54.687416+00:00",
+          "blocker": null
+        },
+        "policy": {
+          "status": "pending",
+          "evidence": [
+            "2026-10-25 policy registration record in docs/launch/market-registration-20261025.md; recheck against final signed Info.plist before submission"
+          ],
+          "checkedAt": "2026-10-26T02:17:54.687416+00:00",
+          "blocker": null
+        },
+        "submission": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "approval": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "release": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "live_smoke": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        }
+      },
+      "currentDistribution": {
+        "versionState": "PREPARE_FOR_SUBMISSION",
+        "linkedBuild": null,
+        "uploadedNewBuild": false
+      }
+    }
+  },
+  "updatedAt": "2026-10-26T02:17:54.687416+00:00",
+  "nativeExecution": {
+    "status": "unrun",
+    "deviceApproval": false,
+    "reason": "Development/UI verification completed; native-only paths require exact artifact/tool ownership preparation and separate explicit scoped approval. No blanket device regression requested."
+  },
+  "evidenceArchive": {
+    "round5": "cycle-pair/2026-10-26/fc60c9e7c8e875104388ef03a4c6c27176554726/ui-independent-round5-100044-41898e",
+    "round5ManifestSha256": "0a955216ad0236bd64923b5f4f05f9ad54911a3aa16593a974e7ce1aaaa46097",
+    "metadata": "cycle-pair/2026-10-26/fc60c9e7c8e875104388ef03a4c6c27176554726/market-metadata-completed-110100-6d5f6e",
+    "metadataManifestSha256": "f66986ff3d1b61e8fd12b3602bbe16ae2d12f7459c52b5e1a4fd4601d2e6b805"
+  }
+}
