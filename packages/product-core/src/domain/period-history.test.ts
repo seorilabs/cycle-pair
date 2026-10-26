@@ -1,5 +1,4 @@
-import assert from 'node:assert/strict';
-import { test } from 'vitest';
+import { assert, test } from 'vitest';
 import { parseLocalDate } from './local-date.js';
 import { buildRecordedPeriods, type PeriodBoundary } from './period-history.js';
 
