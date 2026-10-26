@@ -140,7 +140,7 @@ service cloud.firestore {
             && (!('cycleStatus' in data) || data.cycleStatus in [
               'period-starting', 'period-in-progress', 'period-ending',
               'post-period', 'fertile-window', 'pre-period',
-              'cycle-in-progress', 'unknown'
+              'cycle-in-progress', 'period-late', 'unknown'
             ])
             && isValidPredictionWindow(
               data.nextPeriodWindow,

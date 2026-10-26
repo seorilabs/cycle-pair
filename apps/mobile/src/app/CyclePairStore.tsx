@@ -1987,12 +1987,6 @@ export function CyclePairProvider({
           : '';
         dispatch({ type: 'RESTORE_PRIVATE_SETUP', payload: restored });
         dispatch({ type: 'SET_SYNC_STATUS', payload: write.status });
-        if (
-          write.status === 'queued' &&
-          !write.log &&
-          localDate === state.currentLocalDate
-        )
-          setDailyHistoryStatus('error');
         await analytics
           .track({ name: 'cp_cycle_log', params: { sync_state: write.status } })
           .catch(() => undefined);

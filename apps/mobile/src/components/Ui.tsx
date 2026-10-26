@@ -158,13 +158,16 @@ export function TextButton({
   label,
   onPress,
   disabled = false,
+  testID,
 }: {
   label: string;
+  testID?: string;
   onPress(): void;
   disabled?: boolean;
 }) {
   return (
     <Pressable
+      testID={testID}
       accessibilityRole="button"
       accessibilityState={{ disabled }}
       disabled={disabled}

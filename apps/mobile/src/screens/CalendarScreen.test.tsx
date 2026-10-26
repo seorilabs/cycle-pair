@@ -1,4 +1,5 @@
 import React from 'react';
+import {Alert} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { render } from '@testing-library/react-native';
 import { createInitialState, useCyclePair } from '../app/CyclePairStore';
@@ -77,26 +78,24 @@ it('shows older recorded periods without filling an unknown end and opens a date
   const state = createInitialState(),
     savePeriodBoundary = jest.fn(async () => true),
     onOpenRecord = jest.fn();
-  jest
-    .mocked(useCyclePair)
-    .mockReturnValue({
-      state: {
-        ...state,
-        isLogger: true,
-        hasCycleSeed: false,
-        dailyHistory: [
-          {
-            localDate: '2026-10-01',
-            checkIn: { symptoms: [], periodStarted: true, periodEnded: false },
-          },
-        ],
-      },
-      backendBusy: false,
-      backendError: null,
-      dailyHistoryStatus: 'ready',
-      savePeriodBoundary,
-      recoverDailyDraft: jest.fn(async () => null),
-    } as unknown as ReturnType<typeof useCyclePair>);
+  jest.mocked(useCyclePair).mockReturnValue({
+    state: {
+      ...state,
+      isLogger: true,
+      hasCycleSeed: false,
+      dailyHistory: [
+        {
+          localDate: '2026-10-01',
+          checkIn: { symptoms: [], periodStarted: true, periodEnded: false },
+        },
+      ],
+    },
+    backendBusy: false,
+    backendError: null,
+    dailyHistoryStatus: 'ready',
+    savePeriodBoundary,
+    recoverDailyDraft: jest.fn(async () => null),
+  } as unknown as ReturnType<typeof useCyclePair>);
   const view = await render(
     <I18nProvider>
       <CalendarScreen onOpenRecord={onOpenRecord} />
@@ -113,6 +112,12 @@ it('shows older recorded periods without filling an unknown end and opens a date
     periodStarted: true,
     periodEnded: true,
   });
+  await fireEvent.press(view.getByTestId('calendar-today'));
+  expect(
+    view.getByRole('button', {
+      name: new RegExp(`^${state.currentLocalDate},`),
+    }).props.accessibilityState.selected,
+  ).toBe(true);
 });
 it('opens the selected record in condition mode without offering period controls', async () => {
   const { fireEvent } = require('@testing-library/react-native');
@@ -120,14 +125,12 @@ it('opens the selected record in condition mode without offering period controls
   await AsyncStorage.setItem('cyclepair.language.v1', 'en');
   const state = createInitialState(),
     onOpenRecord = jest.fn();
-  jest
-    .mocked(useCyclePair)
-    .mockReturnValue({
-      state: { ...state, isLogger: false },
-      backendBusy: false,
-      backendError: null,
-      dailyHistoryStatus: 'ready',
-    } as unknown as ReturnType<typeof useCyclePair>);
+  jest.mocked(useCyclePair).mockReturnValue({
+    state: { ...state, isLogger: false },
+    backendBusy: false,
+    backendError: null,
+    dailyHistoryStatus: 'ready',
+  } as unknown as ReturnType<typeof useCyclePair>);
   const view = await render(
     <I18nProvider>
       <CalendarScreen onOpenRecord={onOpenRecord} />
@@ -137,4 +140,55 @@ it('opens the selected record in condition mode without offering period controls
   await fireEvent.press(view.getByTestId('calendar-log-period'));
   expect(onOpenRecord).toHaveBeenCalledWith(state.currentLocalDate);
   expect(view.queryByTestId('period-start')).toBeNull();
+});
+it('shows reload inside the record view after a stale deletion is refused', async () => {
+  const { fireEvent } = require('@testing-library/react-native');
+  await AsyncStorage.clear();
+  await AsyncStorage.setItem('cyclepair.language.v1', 'en');
+  const state = createInitialState(),
+    reloadPrivateHistory = jest.fn(async () => {});
+  jest
+    .mocked(useCyclePair)
+    .mockReturnValue({
+      state: {
+        ...state,
+        isLogger: false,
+        dailyHistory: [
+          {
+            localDate: state.currentLocalDate,
+            checkIn: {
+              symptoms: [],
+              emotions: ['calm'],
+              note: 'server record',
+              periodStarted: false,
+              periodEnded: false,
+            },
+          },
+        ],
+      },
+      backendBusy: false,
+      backendError:
+        '저장된 기록이 바뀌었어요. 최신 기록을 불러온 뒤 다시 저장해 주세요.',
+      dailyHistoryStatus: 'ready',
+      reloadPrivateHistory,
+      deleteDailyLog: jest.fn(async () => false),
+    } as unknown as ReturnType<typeof useCyclePair>);
+  const alert = jest
+    .spyOn(Alert, 'alert')
+    .mockImplementation((_title, _message, buttons) => {
+      buttons?.find(button => button.style === 'destructive')?.onPress?.();
+    });
+  try {
+    const view = await render(
+      <I18nProvider>
+        <CalendarScreen onOpenRecord={jest.fn()} />
+      </I18nProvider>,
+    );
+    await fireEvent.press(view.getByText('View record'));
+    await fireEvent.press(view.getByText('Delete record'));
+    await fireEvent.press(view.getByTestId('calendar-delete-reload'));
+    expect(reloadPrivateHistory).toHaveBeenCalledTimes(1);
+  } finally {
+    alert.mockRestore();
+  }
 });

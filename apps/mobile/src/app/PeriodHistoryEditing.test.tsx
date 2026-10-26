@@ -134,3 +134,31 @@ it('keeps a failed selection and offers fresh setup and history for retry', asyn
   });
   expect(current.state.seed.lastPeriodStart).toBe('2026-10-02');
 });
+it('keeps a queued deletion separate from a read error and permits the next ordered edit', async () => {
+  const backend = await start();
+  backend.saveDailyLogChange.mockResolvedValueOnce({
+    status: 'queued',
+    mutationId: 'queued-delete',
+    log: null,
+    setup,
+    related: [],
+  } as never);
+  await act(async () => {
+    expect(await current.deleteDailyLog('2026-10-27')).toBe(true);
+  });
+  expect(current.dailyHistoryStatus).toBe('ready');
+  await act(async () => {
+    expect(
+      await current.saveCheckIn(
+        {
+          symptoms: [],
+          emotions: ['happy'],
+          periodStarted: false,
+          periodEnded: false,
+        },
+        { localDate: '2026-10-27', preservePeriod: true },
+      ),
+    ).toBe(true);
+  });
+  expect(backend.saveDailyLogChange).toHaveBeenCalledTimes(2);
+});

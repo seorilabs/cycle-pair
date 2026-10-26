@@ -107,6 +107,7 @@ export function CalendarScreen({
     deletePairEvent,
     dailyHistoryStatus,
     retryDailyHistory,
+    reloadPrivateHistory,
   } = useCyclePair();
   const viewModel = buildCycleViewModel(state);
   const periods = recordedPeriods(state);
@@ -442,10 +443,12 @@ export function CalendarScreen({
       </View>
 
       {dailyHistoryStatus === 'ready' ? (
-        <MoodHistoryCard
-          summary={observed}
-          onOpenRecord={() => onOpenRecord()}
-        />
+        !state.isLogger ? (
+          <MoodHistoryCard
+            summary={observed}
+            onOpenRecord={() => onOpenRecord()}
+          />
+        ) : null
       ) : (
         <Card>
           <AppIcon name="journal" size={28} />
@@ -485,6 +488,14 @@ export function CalendarScreen({
               month: 'long',
             }).format(new Date(cursor.year, cursor.month - 1, 1))}
           </Text>
+          <TextButton
+            testID="calendar-today"
+            label={t('Today')}
+            onPress={() => {
+              setSelectedDate(String(viewModel.today));
+              setCursor({ year: todayParts.year, month: todayParts.month });
+            }}
+          />
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={l('다음 달')}
@@ -817,6 +828,12 @@ export function CalendarScreen({
           )}
         </Card>
       ) : null}
+      {state.isLogger && dailyHistoryStatus === 'ready' ? (
+        <MoodHistoryCard
+          summary={observed}
+          onOpenRecord={() => onOpenRecord()}
+        />
+      ) : null}
       {periodOpen ? (
         <PeriodBoundaryEditor
           date={selectedDate}
@@ -838,11 +855,32 @@ export function CalendarScreen({
 
       <Modal
         visible={recordOpen}
-        onRequestClose={() => setRecordOpen(false)}
+        onRequestClose={() => {
+          if (!backendBusy) setRecordOpen(false);
+        }}
         animationType="slide"
       >
         <Screen>
-          <TextButton label={t('Back')} onPress={() => setRecordOpen(false)} />
+          <TextButton
+            label={t('Back')}
+            disabled={backendBusy}
+            onPress={() => setRecordOpen(false)}
+          />
+          {backendError && retryOperation?.type === 'delete-record' ? (
+            <View accessibilityRole="alert" style={styles.errorCard}>
+              <Text style={styles.errorText}>{l(backendError)}</Text>
+              <TextButton
+                testID="calendar-delete-reload"
+                label={t('Reload saved records')}
+                disabled={backendBusy}
+                onPress={() => {
+                  reloadPrivateHistory()
+                    .then(() => setRetryOperation(null))
+                    .catch(() => undefined);
+                }}
+              />
+            </View>
+          ) : null}
           {selectedHistory ? (
             <View style={styles.agendaRow}>
               <View style={[styles.agendaMarker, styles.recordAgendaMarker]} />

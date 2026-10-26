@@ -150,6 +150,8 @@ describe("owner-only raw records", () => {
       updatedAt: serverTimestamp(),
     };
 
+    await assertSucceeds(setDoc(cycleRef, {...valid, asOfDate: "2026-09-01", cyclePhase: "unknown", cycleStatus: "period-late"}));
+    await assertFails(setDoc(cycleRef, {...valid, cycleStatus: "invented-status"}));
     await assertFails(setDoc(cycleRef, {...valid, privateLeak: true}));
     await assertFails(setDoc(cycleRef, {...valid, asOfDate: "2026-02-30"}));
     await assertFails(setDoc(cycleRef, {...valid, asOfDate: "9999-12-31"}));
