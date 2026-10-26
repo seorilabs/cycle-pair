@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "preparedAt": "2026-10-25T15:16:41.267416+00:00",
-  "uiSource": "fc60c9e7c8e875104388ef03a4c6c27176554726",
-  "productSourceFingerprint": "d9e78b929613f0735ae8aaf9e1f94bada5ada6384d68f6b4fa103fa02fbfbca3",
+  "preparedAt": "2026-10-26T18:08:06.856884+00:00",
+  "uiSource": "1d36181fbaef0214ee1ece73c3925c48d26e62ca",
+  "productSourceFingerprint": "92cf3245becef865e0b0eddcb4ca079bbeb1249ee616e246f6524a3d93f79f8e",
   "runtimeCandidates": {
-    "android": "not-built-v1.2.0",
-    "ios": "not-built-v1.2.0"
+    "android": "not-built-calendar-candidate",
+    "ios": "not-built-calendar-candidate"
   },
   "sourceUiIdentity": "Exact candidate RN screens with isolated synthetic local Firebase records; not native or device evidence.",
   "items": [
@@ -18,8 +18,8 @@
       "path": "play-store/assets/ko/welcome.png",
       "width": 1080,
       "height": 1920,
-      "sha256": "8ba4c08a8ecbb850e0ceda25c4b12c88ec0e62abe09f58f950a1165b836c2ff2",
-      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+      "sha256": "89d1074281ef182817de018308766d47a9ba2e97dbe408deee52dd20cda26ed7",
+      "origin": "Actual RN source in a fresh synthetic demo namespace; uniform Chromium DPR screenshot without resizing; development browser, not native or device."
     },
     {
       "id": "app-store-ko-iphone-welcome",
@@ -30,8 +30,8 @@
       "path": "app-store/assets/ko/welcome.png",
       "width": 1320,
       "height": 2868,
-      "sha256": "e2c3baf42468619f17efc5be741a5d8fdaf10906faab905423c8a84d527749de",
-      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+      "sha256": "976450f02607d9fa6dd75f10ab6601772136a7634844ac51c57181a18efb6b0e",
+      "origin": "Actual RN source in a fresh synthetic demo namespace; uniform Chromium DPR screenshot without resizing; development browser, not native or device."
     },
     {
       "id": "play-store-ko-play-phone-home",
@@ -42,8 +42,8 @@
       "path": "play-store/assets/ko/home.png",
       "width": 1080,
       "height": 1920,
-      "sha256": "310c4dc7dff4a253e924ecc013f8f7472b6efd99386e8fd3d1310e086d50fefe",
-      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+      "sha256": "9e61d5d4095c90dbc7326e0d167409dcfdb435dc94071e2c47282adee7ad9558",
+      "origin": "Actual RN source in a fresh synthetic demo namespace; uniform Chromium DPR screenshot without resizing; development browser, not native or device."
     },
     {
       "id": "app-store-ko-iphone-home",
@@ -54,8 +54,8 @@
       "path": "app-store/assets/ko/home.png",
       "width": 1320,
       "height": 2868,
-      "sha256": "4a1d2fc7db57ae8cece80e5c7116862e641f8f46067b56b44778a6e3c632a6db",
-      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+      "sha256": "aefd36d861e75d7cde6c810949d07c009436a79d859b7012e3a9be648cd46251",
+      "origin": "Actual RN source in a fresh synthetic demo namespace; uniform Chromium DPR screenshot without resizing; development browser, not native or device."
     },
     {
       "id": "play-store-ko-tablet7-home",
@@ -66,8 +66,8 @@
       "path": "play-store/assets/ko/tablet7/home.png",
       "width": 1260,
       "height": 2240,
-      "sha256": "a7e2a509a6bac2daa8872416355568601ee2bd9deea107ec8bdeb5d136a8b76b",
-      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+      "sha256": "746ad54bbefe9039cfcb701f0ccedd0a4d29edd0391fb65aed10462e6cc55ec2",
+      "origin": "Actual RN source in a fresh synthetic demo namespace; uniform Chromium DPR screenshot without resizing; development browser, not native or device."
     },
     {
       "id": "play-store-ko-tablet10-home",
@@ -78,8 +78,8 @@
       "path": "play-store/assets/ko/tablet10/home.png",
       "width": 1800,
       "height": 3200,
-      "sha256": "0cbf0782d5ef823b8f77b30cfbd3d3130b8be327a1af961541f43cc452e0b863",
-      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+      "sha256": "5d4645520dd0176f6b9c0aa701de5ee455e052c782518299b6a807b18f7e3cb4",
+      "origin": "Actual RN source in a fresh synthetic demo namespace; uniform Chromium DPR screenshot without resizing; development browser, not native or device."
     },
     {
       "id": "play-store-ko-play-phone-calendar",
@@ -90,8 +90,8 @@
       "path": "play-store/assets/ko/calendar.png",
       "width": 1080,
       "height": 1920,
-      "sha256": "5331e4740b37ff41b88efce819bd64c35ea604a1e88b435299bdb06847ff05cc",
-      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+      "sha256": "607bd8d74aa848fa6703b60521b3e75a2ff7ee22cdca00e2d1336ef07729863a",
+      "origin": "Actual RN source in a fresh synthetic demo namespace; uniform Chromium DPR screenshot without resizing; development browser, not native or device."
     },
     {
       "id": "app-store-ko-iphone-calendar",
@@ -102,8 +102,8 @@
       "path": "app-store/assets/ko/calendar.png",
       "width": 1320,
       "height": 2868,
-      "sha256": "b67c97ff877b8de6b780e818023b19e3ac8934a8694b0e57f69ad2cb5ace5c3f",
-      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+      "sha256": "f7970cc790fa001f10dee124b37f2cde4babd4f3f7c17bfbde069f65bcf4aa1e",
+      "origin": "Actual RN source in a fresh synthetic demo namespace; uniform Chromium DPR screenshot without resizing; development browser, not native or device."
     },
     {
       "id": "play-store-ko-tablet7-calendar",
@@ -114,8 +114,8 @@
       "path": "play-store/assets/ko/tablet7/calendar.png",
       "width": 1260,
       "height": 2240,
-      "sha256": "9992b821397bff98dbdec21299a3262c193c335688702cf0c0561bf1d507cb1f",
-      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+      "sha256": "c96666731c27b7d9afc2e397a511c689f4d8ed5b28cc8ab878cb570a50eca0c9",
+      "origin": "Actual RN source in a fresh synthetic demo namespace; uniform Chromium DPR screenshot without resizing; development browser, not native or device."
     },
     {
       "id": "play-store-ko-tablet10-calendar",
@@ -126,8 +126,8 @@
       "path": "play-store/assets/ko/tablet10/calendar.png",
       "width": 1800,
       "height": 3200,
-      "sha256": "c47fea2f7cd77ba18ab63442835954b07fb1556b3d8197958c762c56c94ed6fc",
-      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+      "sha256": "b0024daea274aace9f5397f32dd450911f5e1cc73fb476680b732d1adf67581b",
+      "origin": "Actual RN source in a fresh synthetic demo namespace; uniform Chromium DPR screenshot without resizing; development browser, not native or device."
     },
     {
       "id": "play-store-ko-play-phone-record",
@@ -138,8 +138,8 @@
       "path": "play-store/assets/ko/record.png",
       "width": 1080,
       "height": 1920,
-      "sha256": "cf3c9f5b212b4f7a96a7356c2258ffffd04839eee618c4376ef385cc61159dfd",
-      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+      "sha256": "f845636bfc43038d23a8afca16cd88a1ee20d35abdec14bc4e9b2bc6ca9b3404",
+      "origin": "Actual RN source in a fresh synthetic demo namespace; uniform Chromium DPR screenshot without resizing; development browser, not native or device."
     },
     {
       "id": "app-store-ko-iphone-record",
@@ -150,8 +150,8 @@
       "path": "app-store/assets/ko/record.png",
       "width": 1320,
       "height": 2868,
-      "sha256": "d5e90b5afeb734270b551c20f4c6abe55d13fbf9f355f3dea9755fe433d4381e",
-      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+      "sha256": "5ea5f1f60102d098901b219805e7f9535c81d067d4a9598965867ae5ca97ea61",
+      "origin": "Actual RN source in a fresh synthetic demo namespace; uniform Chromium DPR screenshot without resizing; development browser, not native or device."
     },
     {
       "id": "play-store-en-play-phone-welcome",
@@ -162,8 +162,8 @@
       "path": "play-store/assets/en/welcome.png",
       "width": 1080,
       "height": 1920,
-      "sha256": "aa8829c26e40b0fd7daf6e127103fb2b6663d086b8ab8e500fb4d192697cb29e",
-      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+      "sha256": "354b087714a6ddbd99b67dc4fe7612d5a592383f5c3af777849057a9b2831f72",
+      "origin": "Actual RN source in a fresh synthetic demo namespace; uniform Chromium DPR screenshot without resizing; development browser, not native or device."
     },
     {
       "id": "app-store-en-iphone-welcome",
@@ -174,8 +174,8 @@
       "path": "app-store/assets/en/welcome.png",
       "width": 1320,
       "height": 2868,
-      "sha256": "2324e0d51d6bb392f509346870f1eaaa0b1bc770f105e222675501a35ace028f",
-      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+      "sha256": "fab2551f77d33608df7b0ecddb1a523abcccb4bb70c1277044f4bc8fc585a3ff",
+      "origin": "Actual RN source in a fresh synthetic demo namespace; uniform Chromium DPR screenshot without resizing; development browser, not native or device."
     },
     {
       "id": "play-store-en-play-phone-home",
@@ -186,8 +186,8 @@
       "path": "play-store/assets/en/home.png",
       "width": 1080,
       "height": 1920,
-      "sha256": "04faa09de473d2fdd09ff28a234ec9fbb4096935cfd9a4b66a0c2981d084ef00",
-      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+      "sha256": "727d72e7ec7f8e0bcaf4128bc3258d35057f76edd61b6df891ff04916e1c93fb",
+      "origin": "Actual RN source in a fresh synthetic demo namespace; uniform Chromium DPR screenshot without resizing; development browser, not native or device."
     },
     {
       "id": "app-store-en-iphone-home",
@@ -198,8 +198,8 @@
       "path": "app-store/assets/en/home.png",
       "width": 1320,
       "height": 2868,
-      "sha256": "a0b63e65dbe5bc1703a8cb7dfb75110f54b5b7d98fd2b99c44c640fcae501ccb",
-      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+      "sha256": "aaa97eb0a76938ebb96f964cd25d0d74d5b9ede1b5278bb009e30931cb174fd6",
+      "origin": "Actual RN source in a fresh synthetic demo namespace; uniform Chromium DPR screenshot without resizing; development browser, not native or device."
     },
     {
       "id": "play-store-en-tablet7-home",
@@ -210,8 +210,8 @@
       "path": "play-store/assets/en/tablet7/home.png",
       "width": 1260,
       "height": 2240,
-      "sha256": "50c70bbb7a31a26491632af82d59e4de165bc55b00616e4448e5ff4c6374f9e9",
-      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+      "sha256": "00431f7edc713029806fce3bc5318cff641c62c81e7d95fe7c9f1bb4ac70abcb",
+      "origin": "Actual RN source in a fresh synthetic demo namespace; uniform Chromium DPR screenshot without resizing; development browser, not native or device."
     },
     {
       "id": "play-store-en-tablet10-home",
@@ -222,8 +222,8 @@
       "path": "play-store/assets/en/tablet10/home.png",
       "width": 1800,
       "height": 3200,
-      "sha256": "cbc9bfd0f731bff6abf6864f6adecbf4f4a0f2afa8d55472ace99b6bbdac8a5b",
-      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+      "sha256": "fbb6ce3b2eb6b2917ff23e10d513b9110c782dcde7202ba3e5648234a5cdeb2f",
+      "origin": "Actual RN source in a fresh synthetic demo namespace; uniform Chromium DPR screenshot without resizing; development browser, not native or device."
     },
     {
       "id": "play-store-en-play-phone-calendar",
@@ -234,8 +234,8 @@
       "path": "play-store/assets/en/calendar.png",
       "width": 1080,
       "height": 1920,
-      "sha256": "e152e6733fdbb40129779d8d8e662da8e9b7596f2a66a90ea7c84af22974f046",
-      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+      "sha256": "4df6fc78bc88549c397d93f358b1d7d31eaa3b20611c503c1182d7559cc9ce88",
+      "origin": "Actual RN source in a fresh synthetic demo namespace; uniform Chromium DPR screenshot without resizing; development browser, not native or device."
     },
     {
       "id": "app-store-en-iphone-calendar",
@@ -246,8 +246,8 @@
       "path": "app-store/assets/en/calendar.png",
       "width": 1320,
       "height": 2868,
-      "sha256": "36d72fc98832bdc80f76765363eacc176ac873c0f2a666008196de2ead82d964",
-      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+      "sha256": "385a2ec8165e967feb5d28b4fd3aad228136ecc2174ef7ee333c4e4d696e3ffe",
+      "origin": "Actual RN source in a fresh synthetic demo namespace; uniform Chromium DPR screenshot without resizing; development browser, not native or device."
     },
     {
       "id": "play-store-en-tablet7-calendar",
@@ -258,8 +258,8 @@
       "path": "play-store/assets/en/tablet7/calendar.png",
       "width": 1260,
       "height": 2240,
-      "sha256": "f0102fddc23c0c1943c1d8e48e331d472a65e249f36591a37b7268ca4d7bd7fa",
-      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+      "sha256": "c5e2aa3daef9a997569cf0c4f32cd2f43927c2c5f2e89704e8f13578cf064416",
+      "origin": "Actual RN source in a fresh synthetic demo namespace; uniform Chromium DPR screenshot without resizing; development browser, not native or device."
     },
     {
       "id": "play-store-en-tablet10-calendar",
@@ -270,8 +270,8 @@
       "path": "play-store/assets/en/tablet10/calendar.png",
       "width": 1800,
       "height": 3200,
-      "sha256": "4888563245506fc616b0ab32c16581dc11bb8d8fd87f60e1f5d33a39aefbe69d",
-      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+      "sha256": "2bbea213fcf8c240be7df8f13c1a603c170cdc5db145f09b611cdc726a055930",
+      "origin": "Actual RN source in a fresh synthetic demo namespace; uniform Chromium DPR screenshot without resizing; development browser, not native or device."
     },
     {
       "id": "play-store-en-play-phone-record",
@@ -282,8 +282,8 @@
       "path": "play-store/assets/en/record.png",
       "width": 1080,
       "height": 1920,
-      "sha256": "58515b681926c226b7705237fb1ad34c2cb3cf3042c8248ba81ff1d8ee7bdc16",
-      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+      "sha256": "91b525597d2d1c117e2825da3c4651b6bd58f56f01a031159257ddb9e4adbe55",
+      "origin": "Actual RN source in a fresh synthetic demo namespace; uniform Chromium DPR screenshot without resizing; development browser, not native or device."
     },
     {
       "id": "app-store-en-iphone-record",
@@ -294,8 +294,8 @@
       "path": "app-store/assets/en/record.png",
       "width": 1320,
       "height": 2868,
-      "sha256": "cfbb90dd1b5d3ff48d155eaad842f1e1db4c958ee96bec024ab815b042d6283c",
-      "origin": "actual RN source, fixed logical frame, uniform export zoom; no pixel resize; dev web, not native"
+      "sha256": "9f4131ab325125eb5c1e29fbed7f5df87cae8cef77a8f0e00ddeee0199a586ea",
+      "origin": "Actual RN source in a fresh synthetic demo namespace; uniform Chromium DPR screenshot without resizing; development browser, not native or device."
     },
     {
       "id": "play-feature-ko",
@@ -349,14 +349,15 @@
     ]
   },
   "demoData": {
-    "recordedDays": 5,
-    "missingDays": 2,
+    "recordedDays": 7,
+    "missingDays": 0,
     "calmDays": 3,
-    "happyDays": 1,
-    "affectionateDays": 2,
-    "drainedDays": 1,
-    "anxiousDays": 1,
-    "notesShared": false
+    "happyDays": 2,
+    "completePeriods": 2,
+    "observedIntervalDays": 28,
+    "notesShared": false,
+    "source": "fresh local demo actors only; normalized UI shows 3 calm days, 2 happy days and 2 note-only days; no real users",
+    "noFeelingDays": 2
   },
   "deviceCalls": 0,
   "out_dir": ".",
@@ -369,5 +370,10 @@
       "kind": "featureGraphic",
       "min": 2
     }
-  ]
+  ],
+  "featureGraphicReuse": {
+    "sourceUi": "existing original home interface remains applicable",
+    "fixture": "previous synthetic 5-record-day fixture retained in two graphics",
+    "noNewGeneration": true
+  }
 }
