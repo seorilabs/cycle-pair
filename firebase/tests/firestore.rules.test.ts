@@ -16,6 +16,7 @@ import {
   serverTimestamp,
   setDoc,
   updateDoc,
+  writeBatch,
 } from "firebase/firestore";
 import {afterAll, beforeAll, beforeEach, describe, test} from "vitest";
 
@@ -776,4 +777,16 @@ describe("server-managed lifecycle documents", () => {
     );
     await assertFails(getDoc(doc(otherDb, tombstonePath)));
   });
+});
+
+test("stores a one-day period with its complete cycle summary in one atomic write",async()=>{
+ const db=testEnv.authenticatedContext("alice").firestore();
+ const setupRef=doc(db,"users/alice/privateCycles/current");
+ await assertSucceeds(setDoc(setupRef,{schemaVersion:2,recordsCycle:true,consentAcceptedAt:"2026-10-01T00:00:00.000Z",consentVersion:"2026-08-09-v1",updatedAt:serverTimestamp()}));
+ const batch=writeBatch(db);
+ batch.set(doc(db,"users/alice/privateDailyLogs/2026-10-01"),{schemaVersion:3,localDate:"2026-10-01",lastMutationId:"one-day-today",periodStarted:true,updatedAt:serverTimestamp()});
+ batch.set(doc(db,"users/alice/privateDailyLogs/2026-10-05"),{schemaVersion:3,localDate:"2026-10-05",lastMutationId:"one-day-today",periodEnded:true,updatedAt:serverTimestamp()});
+ batch.set(doc(db,"users/alice/privateDailyLogs/2026-10-27"),{schemaVersion:3,localDate:"2026-10-27",lastMutationId:"one-day-today",periodStarted:true,periodEnded:true,note:"keep",emotionTags:["calm"],updatedAt:serverTimestamp()});
+ batch.set(setupRef,{schemaVersion:2,recordsCycle:true,consentAcceptedAt:"2026-10-01T00:00:00.000Z",consentVersion:"2026-08-09-v1",asOfDate:"2026-10-27",averageCycleLength:28,averagePeriodLength:5,periodDates:{startDate:"2026-10-27",endDate:"2026-10-27"},cyclePhase:"menstrual",cycleStatus:"period-starting",nextPeriodWindow:{startDate:"2026-11-17",endDate:"2026-12-01"},updatedAt:serverTimestamp()});
+ await assertSucceeds(batch.commit());
 });

@@ -411,6 +411,15 @@ export function CalendarScreen({
       contentStyle={styles.content}
       footer={
         <View style={styles.dock}>
+          {state.syncStatus === 'queued' ? (
+            <Text
+              testID="calendar-sync-status"
+              accessibilityLiveRegion="polite"
+              style={styles.historyStatus}
+            >
+              {t('Saved here. Waiting to sync.')}
+            </Text>
+          ) : null}
           <Text style={styles.selectedDayEyebrow}>
             {formatDate(selectedLocalDate, locale)}
           </Text>

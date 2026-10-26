@@ -1,5 +1,5 @@
 import React from 'react';
-import {Alert} from 'react-native';
+import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { render } from '@testing-library/react-native';
 import { createInitialState, useCyclePair } from '../app/CyclePairStore';
@@ -147,32 +147,30 @@ it('shows reload inside the record view after a stale deletion is refused', asyn
   await AsyncStorage.setItem('cyclepair.language.v1', 'en');
   const state = createInitialState(),
     reloadPrivateHistory = jest.fn(async () => {});
-  jest
-    .mocked(useCyclePair)
-    .mockReturnValue({
-      state: {
-        ...state,
-        isLogger: false,
-        dailyHistory: [
-          {
-            localDate: state.currentLocalDate,
-            checkIn: {
-              symptoms: [],
-              emotions: ['calm'],
-              note: 'server record',
-              periodStarted: false,
-              periodEnded: false,
-            },
+  jest.mocked(useCyclePair).mockReturnValue({
+    state: {
+      ...state,
+      isLogger: false,
+      dailyHistory: [
+        {
+          localDate: state.currentLocalDate,
+          checkIn: {
+            symptoms: [],
+            emotions: ['calm'],
+            note: 'server record',
+            periodStarted: false,
+            periodEnded: false,
           },
-        ],
-      },
-      backendBusy: false,
-      backendError:
-        '저장된 기록이 바뀌었어요. 최신 기록을 불러온 뒤 다시 저장해 주세요.',
-      dailyHistoryStatus: 'ready',
-      reloadPrivateHistory,
-      deleteDailyLog: jest.fn(async () => false),
-    } as unknown as ReturnType<typeof useCyclePair>);
+        },
+      ],
+    },
+    backendBusy: false,
+    backendError:
+      '저장된 기록이 바뀌었어요. 최신 기록을 불러온 뒤 다시 저장해 주세요.',
+    dailyHistoryStatus: 'ready',
+    reloadPrivateHistory,
+    deleteDailyLog: jest.fn(async () => false),
+  } as unknown as ReturnType<typeof useCyclePair>);
   const alert = jest
     .spyOn(Alert, 'alert')
     .mockImplementation((_title, _message, buttons) => {
@@ -191,4 +189,25 @@ it('shows reload inside the record view after a stale deletion is refused', asyn
   } finally {
     alert.mockRestore();
   }
+});
+it('makes a queued change visible after the period editor is closed', async () => {
+  await AsyncStorage.clear();
+  await AsyncStorage.setItem('cyclepair.language.v1', 'en');
+  const state = createInitialState();
+  jest
+    .mocked(useCyclePair)
+    .mockReturnValue({
+      state: { ...state, isLogger: true, syncStatus: 'queued' },
+      backendBusy: false,
+      backendError: null,
+      dailyHistoryStatus: 'ready',
+    } as unknown as ReturnType<typeof useCyclePair>);
+  const view = await render(
+    <I18nProvider>
+      <CalendarScreen onOpenRecord={jest.fn()} />
+    </I18nProvider>,
+  );
+  expect(view.getByTestId('calendar-sync-status').props.children).toBe(
+    'Saved here. Waiting to sync.',
+  );
 });

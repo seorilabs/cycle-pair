@@ -1,6 +1,7 @@
 import { emotionalMessages } from './emotional';
 import { observedDayMessages } from './observedDays';
 export const ko = {
+  'Saved here. Waiting to sync.': '이 기기에 저장했어요. 연결되면 동기화해요.',
   'Log period': '생리 기록하기',
   'Save period': '생리 기록 저장',
   'Period started on this date': '이날 생리가 시작됐어요',
