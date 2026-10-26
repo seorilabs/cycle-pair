@@ -84,8 +84,13 @@ const DAILY_LOG_SYNC_EPOCH = '1970-01-01T00:00:00.000Z';
 let initialization: Promise<void> | undefined;
 const mutationWrites = new SerializedWriteQueue();
 const dailyWriteRevisions = new Map<string, number>();
-function advanceDailyWriteRevision(uid: string) {
-  dailyWriteRevisions.set(uid, (dailyWriteRevisions.get(uid) ?? 0) + 1);
+const dailyDateRevisions = new Map<string, Map<string, number>>();
+function markDailyDateWritten(uid: string, localDate: string) {
+  const revision = (dailyWriteRevisions.get(uid) ?? 0) + 1;
+  dailyWriteRevisions.set(uid, revision);
+  const dates = dailyDateRevisions.get(uid) ?? new Map<string, number>();
+  dates.set(localDate, revision);
+  dailyDateRevisions.set(uid, dates);
 }
 const quiescedUids = new Set<string>();
 const sessionWatchStops = new Map<string, Set<() => void>>();
@@ -129,17 +134,7 @@ function serializeMutationWrite<T>(
   uid: string,
   write: () => Promise<T>,
 ): Promise<T> {
-  return mutationWrites.run(
-    () => requireSessionActive(uid),
-    async () => {
-      advanceDailyWriteRevision(uid);
-      try {
-        return await write();
-      } finally {
-        advanceDailyWriteRevision(uid);
-      }
-    },
-  );
+  return mutationWrites.run(() => requireSessionActive(uid), write);
 }
 
 function trackSessionWatch(uid: string, start: () => () => void): () => void {
@@ -496,6 +491,7 @@ async function writeDailyLog(
     doc(firestore, 'users', uid, 'privateDailyLogTombstones', localDate),
   );
   await batch.commit();
+  markDailyDateWritten(uid, localDate);
 }
 
 async function deleteDailyLogDocument(
@@ -516,6 +512,7 @@ async function deleteDailyLogDocument(
     },
   );
   await batch.commit();
+  markDailyDateWritten(uid, localDate);
 }
 
 function privateSetupDocument(setup: PrivateSetupSnapshot) {
@@ -553,6 +550,8 @@ async function cacheDailyLogChange(
   localDate: string,
   related: DailyLogChangeWriteResult['related'] = [],
 ): Promise<void> {
+  markDailyDateWritten(uid, localDate);
+  for (const item of related) markDailyDateWritten(uid, item.localDate);
   for (const item of related) {
     if (item.log) await secureCyclePairCache.saveDailyLog(uid, item.log);
     else await secureCyclePairCache.deleteDailyLog(uid, item.localDate);
@@ -1185,11 +1184,17 @@ async function performDailyLogSync(
     await mutationWrites.run(
       () => requireSessionActive(uid),
       async () => {
-        if ((dailyWriteRevisions.get(uid) ?? 0) !== startedRevision) return;
+        const changedDuringRead =
+          (dailyWriteRevisions.get(uid) ?? 0) !== startedRevision;
+        const changedDate = (date: string) =>
+          (dailyDateRevisions.get(uid)?.get(date) ?? 0) > startedRevision;
         if (!cursor) {
           const remoteDates = new Set(remoteLogs.map(log => log.localDate));
           for (const cached of cachedLogs) {
-            if (!remoteDates.has(cached.localDate)) {
+            if (
+              !remoteDates.has(cached.localDate) &&
+              !changedDate(cached.localDate)
+            ) {
               await secureCyclePairCache.deleteDailyLog(uid, cached.localDate);
             }
           }
@@ -1197,6 +1202,7 @@ async function performDailyLogSync(
 
         const changes = remoteChanges(remoteLogs, tombstones);
         for (const change of changes) {
+          if (changedDate(change.localDate)) continue;
           if (change.kind === 'log') {
             await secureCyclePairCache.saveDailyLog(uid, change.log);
           } else {
@@ -1208,9 +1214,11 @@ async function performDailyLogSync(
             change.updatedAt > latest ? change.updatedAt : latest,
           cursor?.updatedAt ?? DAILY_LOG_SYNC_EPOCH,
         );
-        await secureCyclePairCache.saveDailyLogSyncCursor(uid, {
-          updatedAt: nextCursor,
-        });
+        // Re-read the overlapping window next time when a local write won.
+        if (!changedDuringRead)
+          await secureCyclePairCache.saveDailyLogSyncCursor(uid, {
+            updatedAt: nextCursor,
+          });
       },
     );
   } catch (error) {

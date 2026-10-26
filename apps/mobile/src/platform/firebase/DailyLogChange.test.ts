@@ -199,6 +199,14 @@ it('does not let an earlier history read erase a newly confirmed write', async (
     metadata: { fromCache: false },
     docs: [
       {
+        id: '2026-09-01',
+        data: () => ({
+          localDate: '2026-09-01',
+          note: 'older history',
+          updatedAt: { toDate: () => new Date('2026-09-01T00:00:00.000Z') },
+        }),
+      },
+      {
         id: date,
         data: () => ({
           localDate: date,
@@ -209,6 +217,9 @@ it('does not let an earlier history read erase a newly confirmed write', async (
     ],
   });
   const logs = await reading;
+  expect(logs.find(log => log.localDate === '2026-09-01')?.record.note).toBe(
+    'older history',
+  );
   expect(logs.find(log => log.localDate === date)?.record.periodStarted).toBe(
     true,
   );
