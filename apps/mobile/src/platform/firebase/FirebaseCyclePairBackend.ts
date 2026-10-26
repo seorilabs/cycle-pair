@@ -853,6 +853,14 @@ async function performDailyLogSync(
         buildPrivateDailyLogTombstonesQuery(uid, cursor?.updatedAt),
       ),
     ]);
+    if (
+      logSnapshots.metadata.fromCache ||
+      tombstoneSnapshots.metadata.fromCache
+    ) {
+      throw Object.assign(new Error('Daily history is not server-confirmed.'), {
+        code: 'unavailable',
+      });
+    }
     const remoteLogs = logSnapshots.docs.map(snapshot =>
       parseDailyLog(snapshot.id, snapshot.data()),
     );
@@ -893,6 +901,17 @@ async function performDailyLogSync(
     if (!isRetryableNetworkError(error) && !(await isDefinitelyOffline())) {
       throw error;
     }
+    const localLogs = await loadCachedDailyLogs(uid);
+    const now = new Date();
+    const today = [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, '0'),
+      String(now.getDate()).padStart(2, '0'),
+    ].join('-');
+    // An existing record is safe to edit offline. An empty cache cannot tell
+    // us whether today's record exists on the server.
+    if (!localLogs.some(log => log.localDate === today)) throw error;
+    return localLogs;
   }
   return loadCachedDailyLogs(uid);
 }

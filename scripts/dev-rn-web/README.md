@@ -25,6 +25,7 @@ python3 -m http.server 4177 --bind 127.0.0.1 --directory scripts/dev-rn-web/dist
 - 날짜 선택은 브라우저의 실제 date input으로 대체한다. 보안 저장소는 검수별 브라우저 저장소로 대체한다. native Keychain과 Android Keystore 보장을 입증하지 않는다.
 - 알림은 기본 거부다. `notification=authorized`는 가상 권한과 토큰으로 실제 `createNotificationClient`와 demo 서버 등록, 해제를 실행한다. `openNotification(payload)`와 `refreshNotificationToken(token)`은 등록된 경계 콜백을 호출한다. 실제 APNs, FCM과 OS 권한 검수는 아니다.
 - `failNext(operation)`은 다음 개발 백엔드 호출만 실패시킨다. `holdNext(operation)` 뒤 `heldOperations`에서 도달을 확인하고 `releaseHeld(operation, false)`로 실제 저장을 이어가거나 `true`로 실패시킨다. 화면과 Store 원본은 바꾸지 않는다. 지원 호출은 `saveDailyLog`, `savePrivateSetup`, `saveShareSettings`, `loadPrivateSetup`, `syncDailyLogs`, `upsertPairEvent`, `deleteDailyLog`다.
+- `holdSyncDailyLogs=1`은 앱을 처음 렌더링하기 전에 다음 기록 조회를 보류한다. 기존 가상 계정의 캐시가 있는 재실행과 빈 캐시의 지연 복구를 확인할 때 사용하고 같은 `releaseHeld`로 해제한다. 운영 빌드에는 포함하지 않는다.
 - `readOwnDaily()`는 demo Firestore의 현재 사용자 오늘 기록을 서버에서 직접 읽는다. 분석과 오류 수집 경계의 `calls`에는 기능 이벤트와 고정 범주만 기록하고 기록 내용과 비밀번호를 넣지 않는다.
 
 새 테스트 자료는 각 검수의 고유 run과 actor에만 만든다. 계정과 합성 기록은 demo emulator 안에 있으며 운영 계정과 자료를 사용하지 않는다. 검수 원본은 작업별 산출물 경로로 모으고 NAS 복사와 해시 확인 뒤 정리한다. 독립 L3와 세 번의 기능, UX 검수는 구현자와 다른 검수자가 후보를 고정하고 사전 계획을 기록한 뒤 수행한다.

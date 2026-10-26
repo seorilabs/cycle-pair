@@ -826,7 +826,7 @@ interface CyclePairContextValue {
   backendSession: BackendSession | null;
   activePair: ActivePairMembership | null;
   invite: PairInvite | null;
-  dailyHistoryStatus: 'loading' | 'ready' | 'error';
+  dailyHistoryStatus: 'loading' | 'slow' | 'ready' | 'error';
   retryDailyHistory(): Promise<void>;
   backendBusy: boolean;
   notificationBusy: boolean;
@@ -899,7 +899,7 @@ export function CyclePairProvider({
   const [localHydrating, setLocalHydrating] = useState(true);
   const [backendHydrating, setBackendHydrating] = useState(true);
   const [dailyHistoryStatus, setDailyHistoryStatus] = useState<
-    'loading' | 'ready' | 'error'
+    'loading' | 'slow' | 'ready' | 'error'
   >('loading');
   const [backendSession, setBackendSession] = useState<BackendSession | null>(
     null,
@@ -935,6 +935,15 @@ export function CyclePairProvider({
   const shareWriteChain = useRef<Promise<void>>(Promise.resolve());
   const lastCyclePersistenceKey = useRef('');
   const initialDailyHistoryLoad = useRef<Promise<void> | null>(null);
+  // Keep waiting for the existing read, but give the user a recovery action.
+  // Never treat an empty cache as proof that today's server record is absent.
+  useEffect(() => {
+    if (!backendSession || dailyHistoryStatus !== 'loading') return;
+    const timer = setTimeout(() => {
+      setDailyHistoryStatus(current => current === 'loading' ? 'slow' : current);
+    }, 15_000);
+    return () => clearTimeout(timer);
+  }, [backendSession, dailyHistoryStatus]);
   const latestState = useRef(state);
   latestState.current = state;
   // 하이드레이션 effect 는 저장소 한 번만 읽어야 한다. 알림 클라이언트를
@@ -1852,6 +1861,10 @@ export function CyclePairProvider({
     if (!backendSession) return;
     setDailyHistoryStatus('loading');
     setBackendFailure(null);
+    if (initialDailyHistoryLoad.current) {
+      await initialDailyHistoryLoad.current;
+      return;
+    }
     try {
       const logs = await backend.syncDailyLogs(backendSession.uid);
       dispatch({

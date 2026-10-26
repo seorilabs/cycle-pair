@@ -30,6 +30,7 @@ export function HomeScreen({onOpenRecord}: {onOpenRecord():void}) {
         <View style={styles.recordHeading}><AppIcon name="journal" size={22}/><Text style={styles.eyebrow}>{t('Today’s note')}</Text></View>
         <Text style={styles.status}>
           {dailyHistoryStatus === 'loading' ? t('Loading record…') :
+            dailyHistoryStatus === 'slow' ? t('Your records are taking longer to load.') :
             dailyHistoryStatus === 'error' ? t('Could not load records') :
             todayRecord ? t('Recorded') : t('How are you feeling today?')}
         </Text>
@@ -40,9 +41,9 @@ export function HomeScreen({onOpenRecord}: {onOpenRecord():void}) {
           ].filter(Boolean).join(', ')}</Body> : <Body muted>{t('Start with one feeling.')}</Body>
         ) : null}
         <PrimaryButton
-          label={dailyHistoryStatus === 'loading' ? t('Loading record…') : dailyHistoryStatus === 'error' ? t('Retry') : t(todayRecord ? 'Edit today’s note' : 'Record my day')}
+          label={dailyHistoryStatus === 'loading' ? t('Loading record…') : dailyHistoryStatus !== 'ready' ? t('Retry') : t(todayRecord ? 'Edit today’s note' : 'Record my day')}
           disabled={dailyHistoryStatus === 'loading'}
-          onPress={dailyHistoryStatus === 'error' ? () => {retryDailyHistory().catch(() => undefined);} : onOpenRecord}
+          onPress={dailyHistoryStatus !== 'ready' ? () => {retryDailyHistory().catch(() => undefined);} : onOpenRecord}
           testID={dailyHistoryStatus === 'ready' ? 'home-record' : dailyHistoryStatus === 'loading' ? 'home-record-loading' : 'home-record-retry'}
         />
       </Card>

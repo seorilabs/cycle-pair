@@ -407,8 +407,8 @@ export function CalendarScreen({onOpenRecord}: {onOpenRecord():void}) {
       ) : (
         <Card>
           <AppIcon name="journal" size={28}/>
-          <Text style={styles.historyStatus}>{t(dailyHistoryStatus === 'error' ? 'Could not load records' : 'Loading record…')}</Text>
-          {dailyHistoryStatus === 'error' ? <TextButton label={t('Retry')} onPress={() => {retryDailyHistory().catch(() => undefined);}}/> : null}
+          <Text style={styles.historyStatus}>{t(dailyHistoryStatus === 'error' ? 'Could not load records' : dailyHistoryStatus === 'slow' ? 'Your records are taking longer to load.' : 'Loading record…')}</Text>
+          {dailyHistoryStatus !== 'loading' ? <TextButton label={t('Retry')} onPress={() => {retryDailyHistory().catch(() => undefined);}}/> : null}
         </Card>
       )}
 
