@@ -16,10 +16,12 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { recordedPeriods } from '../app/periodCalendar';
+import { PeriodBoundaryEditor } from '../components/PeriodBoundaryEditor';
 import { buildCycleViewModel } from '../app/cycleViewModel';
-import {observedRecordSummary} from '../app/observedRecordSummary';
-import {MoodHistoryCard} from '../components/ObservedDays';
-import {AppIcon} from '../components/AppArtwork';
+import { observedRecordSummary } from '../app/observedRecordSummary';
+import { MoodHistoryCard } from '../components/ObservedDays';
+import { AppIcon } from '../components/AppArtwork';
 import { buildCalendarCycleRanges } from '../app/calendarCycleRanges';
 import {
   buildCalendarMonthRows,
@@ -78,9 +80,14 @@ function isValidEventTimes(start?: string, end?: string): boolean {
   );
 }
 
-export function CalendarScreen({onOpenRecord}: {onOpenRecord():void}) {
+export function CalendarScreen({
+  onOpenRecord,
+}: {
+  onOpenRecord(date?: string): void;
+}) {
   const { l, t, label, locale } = useI18n();
   const [recordOpen, setRecordOpen] = useState(false);
+  const [periodOpen, setPeriodOpen] = useState(false);
   const weekdays = Array.from({ length: 7 }, (_, day) =>
     new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(
       new Date(2026, 9, 18 + day),
@@ -102,7 +109,15 @@ export function CalendarScreen({onOpenRecord}: {onOpenRecord():void}) {
     retryDailyHistory,
   } = useCyclePair();
   const viewModel = buildCycleViewModel(state);
-  const observed = observedRecordSummary(state.dailyHistory, parseLocalDate(state.currentLocalDate));
+  const periods = recordedPeriods(state);
+  const actualRanges = periods.map(period => ({
+    start: period.start ?? period.end!,
+    end: period.end ?? period.start!,
+  }));
+  const observed = observedRecordSummary(
+    state.dailyHistory,
+    parseLocalDate(state.currentLocalDate),
+  );
   const todayParts = dateParts(viewModel.today);
   const [cursor, setCursor] = useState({
     year: todayParts.year,
@@ -157,10 +172,8 @@ export function CalendarScreen({onOpenRecord}: {onOpenRecord():void}) {
   const partnerTodaySummary = buildPartnerTodaySummary(safePartnerProjection);
   const selectedCycleAgenda: SelectedCycleAgendaItem[] = [];
   if (
-    isBetween(
-      selectedLocalDate,
-      cycleRanges.ownActual?.start,
-      cycleRanges.ownActual?.end,
+    actualRanges.some(range =>
+      isBetween(selectedLocalDate, range.start, range.end),
     )
   ) {
     selectedCycleAgenda.push({
@@ -207,7 +220,9 @@ export function CalendarScreen({onOpenRecord}: {onOpenRecord():void}) {
   ) {
     selectedCycleAgenda.push({
       id: 'partner-actual',
-      title: l('{v0} 님의 생리 기록', { v0: state.partnerName === '파트너' ? t('Partner') : state.partnerName }),
+      title: l('{v0} 님의 생리 기록', {
+        v0: state.partnerName === '파트너' ? t('Partner') : state.partnerName,
+      }),
       detail: l('파트너가 직접 공유한 생리 기간이에요.'),
       owner: 'partner',
     });
@@ -241,7 +256,9 @@ export function CalendarScreen({onOpenRecord}: {onOpenRecord():void}) {
               field => field.key === 'cycleStatus',
             )?.value
           : partnerTodaySummary.cycleTitle) ??
-        l('{v0} 님의 오늘 주기 상태', { v0: state.partnerName === '파트너' ? t('Partner') : state.partnerName }),
+        l('{v0} 님의 오늘 주기 상태', {
+          v0: state.partnerName === '파트너' ? t('Partner') : state.partnerName,
+        }),
       detail:
         locale === 'en'
           ? l('파트너가 공유한 오늘의 상태예요.')
@@ -389,7 +406,29 @@ export function CalendarScreen({onOpenRecord}: {onOpenRecord():void}) {
   }
 
   return (
-    <Screen contentStyle={styles.content}>
+    <Screen
+      contentStyle={styles.content}
+      footer={
+        <View style={styles.dock}>
+          <Text style={styles.selectedDayEyebrow}>
+            {formatDate(selectedLocalDate, locale)}
+          </Text>
+          <PrimaryButton
+            testID="calendar-log-period"
+            label={t(state.isLogger ? 'Log period' : 'Record this date')}
+            disabled={
+              backendBusy ||
+              dailyHistoryStatus !== 'ready' ||
+              selectedDate > state.currentLocalDate
+            }
+            onPress={() => {
+              if (state.isLogger) setPeriodOpen(true);
+              else onOpenRecord(selectedDate);
+            }}
+          />
+        </View>
+      }
+    >
       <View style={styles.header}>
         <View style={styles.headerTitle}>
           <Text style={styles.eyebrow}>
@@ -403,12 +442,30 @@ export function CalendarScreen({onOpenRecord}: {onOpenRecord():void}) {
       </View>
 
       {dailyHistoryStatus === 'ready' ? (
-        <MoodHistoryCard summary={observed} onOpenRecord={onOpenRecord}/>
+        <MoodHistoryCard
+          summary={observed}
+          onOpenRecord={() => onOpenRecord()}
+        />
       ) : (
         <Card>
-          <AppIcon name="journal" size={28}/>
-          <Text style={styles.historyStatus}>{t(dailyHistoryStatus === 'error' ? 'Could not load records' : dailyHistoryStatus === 'slow' ? 'Your records are taking longer to load.' : 'Loading record…')}</Text>
-          {dailyHistoryStatus !== 'loading' ? <TextButton label={t('Retry')} onPress={() => {retryDailyHistory().catch(() => undefined);}}/> : null}
+          <AppIcon name="journal" size={28} />
+          <Text style={styles.historyStatus}>
+            {t(
+              dailyHistoryStatus === 'error'
+                ? 'Could not load records'
+                : dailyHistoryStatus === 'slow'
+                ? 'Your records are taking longer to load.'
+                : 'Loading record…',
+            )}
+          </Text>
+          {dailyHistoryStatus !== 'loading' ? (
+            <TextButton
+              label={t('Retry')}
+              onPress={() => {
+                retryDailyHistory().catch(() => undefined);
+              }}
+            />
+          ) : null}
         </Card>
       )}
 
@@ -460,10 +517,8 @@ export function CalendarScreen({onOpenRecord}: {onOpenRecord():void}) {
                 const parts = dateParts(day);
                 const inMonth = parts.month === cursor.month;
                 const isToday = day === viewModel.today;
-                const isOwnActual = isBetween(
-                  day,
-                  cycleRanges.ownActual?.start,
-                  cycleRanges.ownActual?.end,
+                const isOwnActual = actualRanges.some(range =>
+                  isBetween(day, range.start, range.end),
                 );
                 const isOwnInferred = isBetween(
                   day,
@@ -557,10 +612,10 @@ export function CalendarScreen({onOpenRecord}: {onOpenRecord():void}) {
           ))}
         </View>
         <View style={styles.legend}>
-          {cycleRanges.ownActual ? (
+          {actualRanges.length ? (
             <View style={styles.legendItem}>
               <View style={[styles.legendDot, styles.actualDot]} />
-              <Text style={styles.legendText}>{l('내 실제 기록')}</Text>
+              <Text style={styles.legendText}>{t('Actual period')}</Text>
             </View>
           ) : null}
           {cycleRanges.ownInferred ? (
@@ -692,6 +747,20 @@ export function CalendarScreen({onOpenRecord}: {onOpenRecord():void}) {
               />
             ) : null}
 
+            {selectedDate <= state.currentLocalDate ? (
+              <TextButton
+                label={t(selectedHistory ? 'Edit record' : 'Record this date')}
+                disabled={backendBusy || dailyHistoryStatus !== 'ready'}
+                onPress={() => onOpenRecord(selectedDate)}
+              />
+            ) : (
+              <Text style={styles.agendaBody}>
+                {t(
+                  'Future dates are for estimates. Record what happened today or earlier.',
+                )}
+              </Text>
+            )}
+
             {selectedCycleAgenda.length === 0 &&
             selectedEvents.length === 0 &&
             !selectedHistory ? (
@@ -704,6 +773,68 @@ export function CalendarScreen({onOpenRecord}: {onOpenRecord():void}) {
           </View>
         </View>
       </Card>
+
+      {state.isLogger ? (
+        <Card style={styles.historyCard}>
+          <Text style={styles.editorTitle}>{t('Period history')}</Text>
+          {periods.length ? (
+            periods
+              .slice()
+              .reverse()
+              .map((period, index) => (
+                <Pressable
+                  key={`${period.start ?? 'unknown'}-${period.end ?? index}`}
+                  testID={`period-history-${index}`}
+                  accessibilityRole="button"
+                  onPress={() => {
+                    const date = period.start ?? period.end!;
+                    setSelectedDate(date);
+                    const parts = dateParts(date);
+                    setCursor({ year: parts.year, month: parts.month });
+                  }}
+                  style={styles.historyItem}
+                >
+                  <Text style={styles.agendaTitle}>
+                    {period.start
+                      ? formatDate(period.start, locale)
+                      : t('Start not recorded')}{' '}
+                    —{' '}
+                    {period.end
+                      ? formatDate(period.end, locale)
+                      : t('End not recorded')}
+                  </Text>
+                  {period.lengthDays ? (
+                    <Text style={styles.agendaBody}>
+                      {t('{count} days', { count: period.lengthDays })}
+                    </Text>
+                  ) : null}
+                </Pressable>
+              ))
+          ) : (
+            <Text style={styles.agendaBody}>
+              {t('No period dates recorded yet.')}
+            </Text>
+          )}
+        </Card>
+      ) : null}
+      {periodOpen ? (
+        <PeriodBoundaryEditor
+          date={selectedDate}
+          value={{
+            periodStarted: Boolean(
+              selectedHistory?.checkIn.periodStarted ||
+                (state.hasCycleSeed &&
+                  state.seed.lastPeriodStart === selectedDate),
+            ),
+            periodEnded: Boolean(
+              selectedHistory?.checkIn.periodEnded ||
+                (state.hasCycleSeed &&
+                  state.seed.lastPeriodEnd === selectedDate),
+            ),
+          }}
+          onClose={() => setPeriodOpen(false)}
+        />
+      ) : null}
 
       <Modal
         visible={recordOpen}
@@ -922,7 +1053,21 @@ export function CalendarScreen({onOpenRecord}: {onOpenRecord():void}) {
 }
 
 const styles = StyleSheet.create({
-  historyStatus: {fontSize: 14, lineHeight: 22, color: colors.textMuted},
+  dock: {
+    padding: spacing.md,
+    gap: spacing.xs,
+    borderTopWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  historyCard: { marginTop: spacing.lg },
+  historyItem: {
+    paddingVertical: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    gap: spacing.xs,
+  },
+  historyStatus: { fontSize: 14, lineHeight: 22, color: colors.textMuted },
   content: { paddingBottom: spacing.xl },
   header: {
     flexDirection: 'row',
@@ -970,7 +1115,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceMuted,
   },
   monthArrow: { color: colors.primaryDark, fontSize: 28, lineHeight: 32 },
-  monthTitle: { color: colors.text, fontSize: 18, fontWeight: '700', flex: 1, minWidth: 0, textAlign: 'center' },
+  monthTitle: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: '700',
+    flex: 1,
+    minWidth: 0,
+    textAlign: 'center',
+  },
   weekRow: { flexDirection: 'row', width: '100%', marginBottom: spacing.sm },
   weekday: {
     flex: 1,
@@ -1004,6 +1156,7 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
   },
   predictedDay: {
+    borderStyle: 'dashed',
     backgroundColor: colors.primarySoft,
     borderWidth: 1,
     borderColor: colors.primary,
@@ -1048,7 +1201,13 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
   },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, maxWidth: '100%', flexShrink: 1 },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    maxWidth: '100%',
+    flexShrink: 1,
+  },
   legendDot: { width: 9, height: 9, borderRadius: 5, flexShrink: 0 },
   actualDot: { backgroundColor: colors.accent },
   inferredDot: {
@@ -1057,10 +1216,21 @@ const styles = StyleSheet.create({
     borderColor: colors.accent,
     borderStyle: 'dashed',
   },
-  predictedDot: { backgroundColor: colors.primarySoft },
+  predictedDot: {
+    backgroundColor: colors.primarySoft,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: colors.primary,
+  },
   partnerLegendMark: { width: 14, flexShrink: 0 },
   todayDot: { borderWidth: 1, borderColor: colors.primary },
-  legendText: { color: colors.textMuted, fontSize: 10, fontWeight: '600', minWidth: 0, flexShrink: 1 },
+  legendText: {
+    color: colors.textMuted,
+    fontSize: 10,
+    fontWeight: '600',
+    minWidth: 0,
+    flexShrink: 1,
+  },
   selectedDaySection: {
     marginTop: spacing.lg,
     paddingTop: spacing.lg,

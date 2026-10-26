@@ -240,7 +240,7 @@ describe("owner-only raw records", () => {
       }),
     );
     const base = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       localDate: "2026-07-12",
       lastMutationId: "daily-1",
       updatedAt: serverTimestamp(),
@@ -279,7 +279,7 @@ describe("owner-only raw records", () => {
         conditionCode: "arbitrary-private-state",
       }),
     );
-    await assertFails(
+    await assertSucceeds(
       setDoc(doc(ownerDb, "users/alice/privateDailyLogs/2026-07-12"), {
         ...base,
         periodStarted: true,

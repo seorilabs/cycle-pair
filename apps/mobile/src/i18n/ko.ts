@@ -1,10 +1,36 @@
 import { emotionalMessages } from './emotional';
 import { observedDayMessages } from './observedDays';
 export const ko = {
+  'Log period': '생리 기록하기',
+  'Save period': '생리 기록 저장',
+  'Period started on this date': '이날 생리가 시작됐어요',
+  'Period ended on this date': '이날 생리가 끝났어요',
+  'Mark what happened on this date. Your note and feelings stay as they are.':
+    '이날의 시작과 종료를 표시해 주세요. 메모와 감정은 그대로 남아요.',
+  'You can mark both for a one-day period. Leave the end off until you know it.':
+    '하루에 끝난 생리는 둘 다 켤 수 있어요. 종료일을 모르면 비워 두세요.',
+  'Your unsaved changes are here. Review them before saving.':
+    '저장하지 못한 입력을 복원했어요. 확인한 뒤 저장해 주세요.',
+  'Reload saved records': '저장된 기록 새로 불러오기',
+  'Period history': '생리 기록 이력',
+  'No period dates recorded yet.': '아직 생리 날짜를 기록하지 않았어요.',
+  'End not recorded': '종료일 미입력',
+  'Start not recorded': '시작일 미입력',
+  'Actual period': '기록한 생리',
+  'Estimated period': '예상 생리',
+  'Record this date': '이날 기록하기',
+  'Future dates are for estimates. Record what happened today or earlier.':
+    '미래 날짜에는 예상 일정이 표시돼요. 실제 기록은 오늘과 지난 날짜에 입력해 주세요.',
+  'Feelings are optional when you log a period.':
+    '생리를 기록할 때 감정 선택은 생략해도 돼요.',
+  'Based on the current {days}-day cycle setting. Recorded cycle intervals: 0.':
+    '현재 설정한 {days}일 주기를 기준으로 해요. 기록된 주기 간격은 0개예요.',
+
   ...emotionalMessages,
   ...observedDayMessages,
   'Loading record…': '기록 불러오는 중…',
-  'Your records are taking longer to load.': '기록을 가져오는 데 시간이 걸려요.',
+  'Your records are taking longer to load.':
+    '기록을 가져오는 데 시간이 걸려요.',
   'Could not load records': '기록을 불러오지 못했어요',
   'Dismiss keyboard': '키보드 닫기',
   'Could not save your language. Try again.':

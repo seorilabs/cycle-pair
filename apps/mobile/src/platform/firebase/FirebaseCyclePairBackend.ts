@@ -12,6 +12,7 @@ import {
   onSnapshot,
   orderBy,
   query,
+  runTransaction,
   serverTimestamp,
   setDoc,
   where,
@@ -32,6 +33,9 @@ import type {
   PartnerNudgeState,
   PartnerNudgeType,
   PrivateCycleRecord,
+  DailyLogChange,
+  DailyLogChangeWriteResult,
+  PrivateSetupSnapshot,
   PrivateDailyLogRecord,
   PrivateDailyLogSnapshot,
   RemotePartnerProjection,
@@ -53,6 +57,18 @@ import { replayOfflineMutations } from './replayOfflineMutations';
 import { SerializedWriteQueue } from './SerializedWriteQueue';
 import { isFirebaseGuestUser } from '../account/FirebaseGuestIdentity';
 import { SENSITIVE_HEALTH_CONSENT_VERSION } from '../../domain/privacy/SensitiveHealthConsent';
+import {
+  hasDailyLogContent,
+  mergePeriodBoundary,
+  sameSetupFacts,
+  sameDailyLogData,
+  seedBoundaryDates,
+} from '../backend/periodBoundaryChange';
+import {
+  toDeviceLocalDate,
+  toPrivateCycleRecord,
+} from '../backend/backendPayloads';
+import { isLocalDate } from '@cyclepair/product-core';
 
 const FUNCTIONS_REGION = 'asia-northeast3';
 const CONDITION_CODES = new Set<BackendConditionCode>([
@@ -67,6 +83,10 @@ const DAILY_LOG_SYNC_EPOCH = '1970-01-01T00:00:00.000Z';
 
 let initialization: Promise<void> | undefined;
 const mutationWrites = new SerializedWriteQueue();
+const dailyWriteRevisions = new Map<string, number>();
+function advanceDailyWriteRevision(uid: string) {
+  dailyWriteRevisions.set(uid, (dailyWriteRevisions.get(uid) ?? 0) + 1);
+}
 const quiescedUids = new Set<string>();
 const sessionWatchStops = new Map<string, Set<() => void>>();
 const invalidatedPairKeys = new Set<string>();
@@ -109,7 +129,17 @@ function serializeMutationWrite<T>(
   uid: string,
   write: () => Promise<T>,
 ): Promise<T> {
-  return mutationWrites.run(() => requireSessionActive(uid), write);
+  return mutationWrites.run(
+    () => requireSessionActive(uid),
+    async () => {
+      advanceDailyWriteRevision(uid);
+      try {
+        return await write();
+      } finally {
+        advanceDailyWriteRevision(uid);
+      }
+    },
+  );
 }
 
 function trackSessionWatch(uid: string, start: () => () => void): () => void {
@@ -401,6 +431,7 @@ const PRESERVABLE_FAILURE_CODES = new Set([
   'cancelled',
   'data-loss',
   'failed-precondition',
+  'record-conflict',
   'internal',
   'invalid-argument',
   'not-found',
@@ -454,16 +485,13 @@ async function writeDailyLog(
 ): Promise<void> {
   const firestore = getFirestore();
   const batch = writeBatch(firestore);
-  batch.set(
-    doc(firestore, 'users', uid, 'privateDailyLogs', localDate),
-    {
-      ...record,
-      localDate,
-      lastMutationId: mutationId,
-      updatedAt: serverTimestamp(),
-      schemaVersion: 3,
-    },
-  );
+  batch.set(doc(firestore, 'users', uid, 'privateDailyLogs', localDate), {
+    ...record,
+    localDate,
+    lastMutationId: mutationId,
+    updatedAt: serverTimestamp(),
+    schemaVersion: 3,
+  });
   batch.delete(
     doc(firestore, 'users', uid, 'privateDailyLogTombstones', localDate),
   );
@@ -490,6 +518,247 @@ async function deleteDailyLogDocument(
   await batch.commit();
 }
 
+function privateSetupDocument(setup: PrivateSetupSnapshot) {
+  if (setup.consentVersion !== SENSITIVE_HEALTH_CONSENT_VERSION)
+    throw new Error('Current sensitive health consent is required.');
+  return {
+    recordsCycle: setup.recordsCycle,
+    consentAcceptedAt: setup.consentAcceptedAt,
+    consentVersion: setup.consentVersion,
+    ...(setup.recordsCycle && setup.cycle ? setup.cycle : {}),
+    updatedAt: serverTimestamp(),
+    schemaVersion: 2,
+  };
+}
+
+function setupFromDocument(value: unknown): PrivateSetupSnapshot | null {
+  const data = asRecord(value),
+    consentAcceptedAt = asString(data?.consentAcceptedAt);
+  if (!consentAcceptedAt) return null;
+  const consentVersion = asString(data?.consentVersion),
+    recordsCycle = data?.recordsCycle === true;
+  const cycle = recordsCycle ? parseCycle(value) : undefined;
+  return {
+    recordsCycle,
+    consentAcceptedAt,
+    ...(consentVersion ? { consentVersion } : {}),
+    ...(cycle ? { cycle } : {}),
+  };
+}
+
+async function cacheDailyLogChange(
+  uid: string,
+  log: PrivateDailyLogSnapshot | null,
+  setup: PrivateSetupSnapshot | null,
+  localDate: string,
+  related: DailyLogChangeWriteResult['related'] = [],
+): Promise<void> {
+  for (const item of related) {
+    if (item.log) await secureCyclePairCache.saveDailyLog(uid, item.log);
+    else await secureCyclePairCache.deleteDailyLog(uid, item.localDate);
+  }
+  if (log) await secureCyclePairCache.saveDailyLog(uid, log);
+  else await secureCyclePairCache.deleteDailyLog(uid, localDate);
+  if (setup) await secureCyclePairCache.saveSetup(uid, setup);
+  else await secureCyclePairCache.clearSetup(uid);
+}
+
+async function writeDailyLogChange(
+  uid: string,
+  change: DailyLogChange,
+  mutationId: string,
+): Promise<Pick<DailyLogChangeWriteResult, 'log' | 'setup' | 'related'>> {
+  const db = getFirestore(),
+    logRef = doc(db, 'users', uid, 'privateDailyLogs', change.localDate),
+    setupRef = doc(db, 'users', uid, 'privateCycles', 'current'),
+    tombstoneRef = doc(
+      db,
+      'users',
+      uid,
+      'privateDailyLogTombstones',
+      change.localDate,
+    );
+  const outcome = await runTransaction(db, async transaction => {
+    const snapshot = await transaction.get(logRef);
+    const setupSnapshot = await transaction.get(setupRef);
+    const tombstone = await transaction.get(tombstoneRef);
+    const relatedReads = [];
+    for (const seed of seedBoundaryDates(change, toDeviceLocalDate())) {
+      const ref = doc(db, 'users', uid, 'privateDailyLogs', seed.localDate);
+      relatedReads.push({ seed, ref, snapshot: await transaction.get(ref) });
+    }
+    const related = relatedReads.map(({ seed, snapshot: item }) => ({
+      localDate: seed.localDate,
+      log: item.exists() ? parseDailyLog(seed.localDate, item.data()) : null,
+    }));
+    const raw = asRecord(snapshot.data()) ?? {},
+      currentSetup = setupFromDocument(setupSnapshot.data());
+    const currentLog = snapshot.exists()
+      ? parseDailyLog(change.localDate, raw)
+      : null;
+    const applied = snapshot.exists()
+      ? raw.lastMutationId === mutationId
+      : asRecord(tombstone.data())?.lastMutationId === mutationId;
+    if (applied && currentSetup)
+      return { conflict: false, log: currentLog, setup: currentSetup, related };
+    const expectedFlags =
+      raw.periodStarted === change.expected.periodStarted ||
+      (raw.periodStarted !== true && !change.expected.periodStarted);
+    const expectedEnd =
+      raw.periodEnded === change.expected.periodEnded ||
+      (raw.periodEnded !== true && !change.expected.periodEnded);
+    const alreadyRequested =
+      (raw.periodStarted === true) === change.value.periodStarted &&
+      (raw.periodEnded === true) === change.value.periodEnded;
+    const matchesSetup = change.preservePeriod
+      ? currentSetup?.consentVersion === SENSITIVE_HEALTH_CONSENT_VERSION
+      : sameSetupFacts(currentSetup, change.expectedSetup) ||
+        (alreadyRequested && sameSetupFacts(currentSetup, change.setup));
+    const matchesRecord =
+      change.record === undefined ||
+      sameDailyLogData(
+        currentLog?.record ?? null,
+        change.expectedRecord ?? null,
+        change.preservePeriod,
+      ) ||
+      ((change.preservePeriod || alreadyRequested) &&
+        sameDailyLogData(
+          currentLog?.record ?? null,
+          change.record,
+          change.preservePeriod,
+        ));
+    if (
+      !currentSetup ||
+      (!change.preservePeriod &&
+        !(expectedFlags && expectedEnd) &&
+        !alreadyRequested) ||
+      !matchesSetup ||
+      !matchesRecord
+    ) {
+      return { conflict: true, log: currentLog, setup: currentSetup, related };
+    }
+    if (
+      change.record === undefined &&
+      alreadyRequested &&
+      sameSetupFacts(currentSetup, change.setup)
+    )
+      return { conflict: false, log: currentLog, setup: currentSetup, related };
+    for (let index = 0; index < relatedReads.length; index++) {
+      const { seed, ref, snapshot: item } = relatedReads[index]!;
+      const previous = asRecord(item.data()) ?? {};
+      if (
+        (seed.periodStarted && previous.periodStarted === undefined) ||
+        (seed.periodEnded && previous.periodEnded === undefined)
+      ) {
+        const body = {
+          ...previous,
+          periodStarted: previous.periodStarted ?? seed.periodStarted ?? false,
+          periodEnded: previous.periodEnded ?? seed.periodEnded ?? false,
+          localDate: seed.localDate,
+          lastMutationId: mutationId,
+          updatedAt: serverTimestamp(),
+          schemaVersion: 3,
+        };
+        transaction.set(ref, body);
+        transaction.delete(
+          doc(db, 'users', uid, 'privateDailyLogTombstones', seed.localDate),
+        );
+        related[index] = {
+          localDate: seed.localDate,
+          log: {
+            ...parseDailyLog(seed.localDate, body),
+            updatedAt: new Date().toISOString(),
+          },
+        };
+      }
+    }
+    const period = change.preservePeriod
+      ? {
+          periodStarted: raw.periodStarted === true,
+          periodEnded: raw.periodEnded === true,
+        }
+      : change.value;
+    const body = {
+      ...(change.record ?? raw),
+      ...period,
+      localDate: change.localDate,
+      lastMutationId: mutationId,
+      updatedAt: serverTimestamp(),
+      schemaVersion: 3,
+    };
+    const retained = hasDailyLogContent(body);
+    if (retained) {
+      transaction.set(logRef, body);
+      transaction.delete(tombstoneRef);
+    } else {
+      transaction.delete(logRef);
+      transaction.set(tombstoneRef, {
+        schemaVersion: 1,
+        localDate: change.localDate,
+        lastMutationId: mutationId,
+        updatedAt: serverTimestamp(),
+      });
+    }
+    const refreshedSetup =
+      change.preservePeriod && currentSetup.cycle
+        ? {
+            ...currentSetup,
+            cycle: toPrivateCycleRecord({
+              lastPeriodStart: currentSetup.cycle.periodDates.startDate,
+              lastPeriodEnd: currentSetup.cycle.periodDates.endDate,
+              averageCycleLength: currentSetup.cycle.averageCycleLength,
+              averagePeriodLength: currentSetup.cycle.averagePeriodLength,
+            }),
+          }
+        : currentSetup;
+    if (!change.preservePeriod || currentSetup.cycle)
+      transaction.set(
+        setupRef,
+        privateSetupDocument(
+          change.preservePeriod ? refreshedSetup : change.setup,
+        ),
+      );
+    const log = retained
+      ? {
+          ...parseDailyLog(change.localDate, body),
+          updatedAt: new Date().toISOString(),
+        }
+      : null;
+    return {
+      conflict: false,
+      log,
+      setup: change.preservePeriod ? refreshedSetup : change.setup,
+      related,
+    };
+  });
+  await cacheDailyLogChange(
+    uid,
+    outcome.log,
+    outcome.setup,
+    change.localDate,
+    outcome.related,
+  );
+  if (outcome.conflict || !outcome.setup)
+    throw Object.assign(
+      new Error('Saved records changed. Reload before saving.'),
+      { code: 'record-conflict' },
+    );
+  for (const previous of await secureOfflineMutationQueue.listFailed(uid)) {
+    const full = change.record !== undefined;
+    if (
+      previous.mutationId !== mutationId &&
+      ((previous.type === 'daily-log-change' &&
+        previous.change.localDate === change.localDate &&
+        (full || previous.change.record === undefined)) ||
+        (full &&
+          previous.type === 'daily-log' &&
+          previous.localDate === change.localDate))
+    )
+      await secureOfflineMutationQueue.remove(uid, previous.mutationId);
+  }
+  return { log: outcome.log, setup: outcome.setup, related: outcome.related };
+}
+
 async function writePrivateSetup(
   uid: string,
   recordsCycle: boolean,
@@ -500,14 +769,15 @@ async function writePrivateSetup(
   if (consentVersion !== SENSITIVE_HEALTH_CONSENT_VERSION) {
     throw new Error('Current sensitive health consent is required.');
   }
-  await setDoc(doc(getFirestore(), 'users', uid, 'privateCycles', 'current'), {
-    recordsCycle,
-    consentAcceptedAt,
-    consentVersion,
-    ...(recordsCycle && cycle ? cycle : {}),
-    updatedAt: serverTimestamp(),
-    schemaVersion: 2,
-  });
+  await setDoc(
+    doc(getFirestore(), 'users', uid, 'privateCycles', 'current'),
+    privateSetupDocument({
+      recordsCycle,
+      consentAcceptedAt,
+      consentVersion,
+      ...(cycle ? { cycle } : {}),
+    }),
+  );
 }
 
 async function writeShareSettings(
@@ -712,7 +982,13 @@ async function call<Request, Response>(
 }
 
 async function executeQueuedMutation(mutation: OfflineMutation): Promise<void> {
-  if (mutation.type === 'private-setup') {
+  if (mutation.type === 'daily-log-change') {
+    await writeDailyLogChange(
+      mutation.uid,
+      mutation.change,
+      mutation.mutationId,
+    );
+  } else if (mutation.type === 'private-setup') {
     await writePrivateSetup(
       mutation.uid,
       mutation.setup.recordsCycle,
@@ -782,6 +1058,42 @@ function mergePendingDailyMutations(
         mutationId: mutation.mutationId,
         updatedAt: mutation.createdAt,
       });
+    } else if (mutation.type === 'daily-log-change') {
+      for (const seed of seedBoundaryDates(
+        mutation.change,
+        toDeviceLocalDate(),
+      )) {
+        const old = byDate.get(seed.localDate);
+        byDate.set(seed.localDate, {
+          localDate: seed.localDate,
+          record: mergePeriodBoundary(old?.record ?? {}, {
+            periodStarted:
+              old?.record.periodStarted ?? seed.periodStarted ?? false,
+            periodEnded: old?.record.periodEnded ?? seed.periodEnded ?? false,
+          }),
+          mutationId: mutation.mutationId,
+          updatedAt: mutation.createdAt,
+        });
+      }
+      const previous = byDate.get(mutation.change.localDate)?.record;
+      const value = mutation.change.preservePeriod
+        ? {
+            periodStarted: previous?.periodStarted === true,
+            periodEnded: previous?.periodEnded === true,
+          }
+        : mutation.change.value;
+      const record = mergePeriodBoundary(
+        mutation.change.record ?? previous ?? {},
+        value,
+      );
+      if (hasDailyLogContent({ ...record }))
+        byDate.set(mutation.change.localDate, {
+          localDate: mutation.change.localDate,
+          record,
+          mutationId: mutation.mutationId,
+          updatedAt: mutation.createdAt,
+        });
+      else byDate.delete(mutation.change.localDate);
     } else if (mutation.type === 'delete-daily-log') {
       byDate.delete(mutation.localDate);
     }
@@ -837,6 +1149,7 @@ function remoteChanges(
 async function performDailyLogSync(
   uid: string,
 ): Promise<readonly PrivateDailyLogSnapshot[]> {
+  const startedRevision = dailyWriteRevisions.get(uid) ?? 0;
   const [cachedLogs, cursor] = await Promise.all([
     secureCyclePairCache.loadDailyLogs(uid),
     secureCyclePairCache.loadDailyLogSyncCursor(uid),
@@ -849,9 +1162,7 @@ async function performDailyLogSync(
           ? buildChangedPrivateDailyLogsQuery(uid, cursor.updatedAt)
           : buildPrivateDailyLogsQuery(uid),
       ),
-      getDocs(
-        buildPrivateDailyLogTombstonesQuery(uid, cursor?.updatedAt),
-      ),
+      getDocs(buildPrivateDailyLogTombstonesQuery(uid, cursor?.updatedAt)),
     ]);
     if (
       logSnapshots.metadata.fromCache ||
@@ -865,38 +1176,43 @@ async function performDailyLogSync(
       parseDailyLog(snapshot.id, snapshot.data()),
     );
     const tombstones = tombstoneSnapshots.docs.flatMap(snapshot => {
-      const tombstone = parseDailyLogTombstone(
-        snapshot.id,
-        snapshot.data(),
-      );
+      const tombstone = parseDailyLogTombstone(snapshot.id, snapshot.data());
       return tombstone ? [tombstone] : [];
     });
 
-    if (!cursor) {
-      const remoteDates = new Set(remoteLogs.map(log => log.localDate));
-      for (const cached of cachedLogs) {
-        if (!remoteDates.has(cached.localDate)) {
-          await secureCyclePairCache.deleteDailyLog(uid, cached.localDate);
+    // Only cache application joins the write queue. Slow network reads must not
+    // hold up edits to an already restored record.
+    await mutationWrites.run(
+      () => requireSessionActive(uid),
+      async () => {
+        if ((dailyWriteRevisions.get(uid) ?? 0) !== startedRevision) return;
+        if (!cursor) {
+          const remoteDates = new Set(remoteLogs.map(log => log.localDate));
+          for (const cached of cachedLogs) {
+            if (!remoteDates.has(cached.localDate)) {
+              await secureCyclePairCache.deleteDailyLog(uid, cached.localDate);
+            }
+          }
         }
-      }
-    }
 
-    const changes = remoteChanges(remoteLogs, tombstones);
-    for (const change of changes) {
-      if (change.kind === 'log') {
-        await secureCyclePairCache.saveDailyLog(uid, change.log);
-      } else {
-        await secureCyclePairCache.deleteDailyLog(uid, change.localDate);
-      }
-    }
-    const nextCursor = changes.reduce(
-      (latest, change) =>
-        change.updatedAt > latest ? change.updatedAt : latest,
-      cursor?.updatedAt ?? DAILY_LOG_SYNC_EPOCH,
+        const changes = remoteChanges(remoteLogs, tombstones);
+        for (const change of changes) {
+          if (change.kind === 'log') {
+            await secureCyclePairCache.saveDailyLog(uid, change.log);
+          } else {
+            await secureCyclePairCache.deleteDailyLog(uid, change.localDate);
+          }
+        }
+        const nextCursor = changes.reduce(
+          (latest, change) =>
+            change.updatedAt > latest ? change.updatedAt : latest,
+          cursor?.updatedAt ?? DAILY_LOG_SYNC_EPOCH,
+        );
+        await secureCyclePairCache.saveDailyLogSyncCursor(uid, {
+          updatedAt: nextCursor,
+        });
+      },
     );
-    await secureCyclePairCache.saveDailyLogSyncCursor(uid, {
-      updatedAt: nextCursor,
-    });
   } catch (error) {
     if (!isRetryableNetworkError(error) && !(await isDefinitelyOffline())) {
       throw error;
@@ -968,6 +1284,15 @@ export const firebaseCyclePairBackend: CyclePairBackend = {
   },
 
   async loadPrivateSetup(uid) {
+    const pending = (await secureOfflineMutationQueue.listForReplay(uid))
+      .filter(
+        m =>
+          m.type === 'private-setup' ||
+          (m.type === 'daily-log-change' && !m.change.preservePeriod),
+      )
+      .at(-1);
+    if (pending?.type === 'private-setup') return pending.setup;
+    if (pending?.type === 'daily-log-change') return pending.change.setup;
     if (await isDefinitelyOffline()) {
       return secureCyclePairCache.loadSetup(uid);
     }
@@ -1108,6 +1433,145 @@ export const firebaseCyclePairBackend: CyclePairBackend = {
         return queueAfterWriteFailure(mutation, error);
       }
     });
+  },
+
+  async saveDailyLogChange(uid, change, mutationId) {
+    return serializeMutationWrite(uid, async () => {
+      if (
+        !isLocalDate(change.localDate) ||
+        change.localDate > toDeviceLocalDate() ||
+        change.setup.consentVersion !== SENSITIVE_HEALTH_CONSENT_VERSION ||
+        (!change.setup.recordsCycle &&
+          (change.value.periodStarted || change.value.periodEnded)) ||
+        (change.record !== undefined && change.expectedRecord === undefined) ||
+        (change.preservePeriod && change.record === undefined)
+      )
+        throw Object.assign(new Error('Invalid daily log change.'), {
+          code: 'invalid-argument',
+        });
+      const mutation = {
+        schemaVersion: 1 as const,
+        type: 'daily-log-change' as const,
+        uid,
+        change,
+        mutationId,
+        createdAt: new Date().toISOString(),
+      };
+      const enqueue = async () => {
+        await secureOfflineMutationQueue.enqueue(mutation);
+        const existing = await secureCyclePairCache.loadDailyLogs(uid);
+        const related = seedBoundaryDates(change, toDeviceLocalDate()).map(
+          seed => {
+            const old = existing.find(log => log.localDate === seed.localDate);
+            const record = mergePeriodBoundary(old?.record ?? {}, {
+              periodStarted:
+                old?.record.periodStarted ?? seed.periodStarted ?? false,
+              periodEnded: old?.record.periodEnded ?? seed.periodEnded ?? false,
+            });
+            return {
+              localDate: seed.localDate,
+              log: {
+                localDate: seed.localDate,
+                record,
+                mutationId,
+                updatedAt: mutation.createdAt,
+              },
+            };
+          },
+        );
+        const previous = existing.find(
+          log => log.localDate === change.localDate,
+        );
+        const value = change.preservePeriod
+          ? {
+              periodStarted: previous?.record.periodStarted === true,
+              periodEnded: previous?.record.periodEnded === true,
+            }
+          : change.value;
+        const record = mergePeriodBoundary(
+          change.record ?? previous?.record ?? {},
+          value,
+        );
+        const log = hasDailyLogContent({ ...record })
+          ? {
+              localDate: change.localDate,
+              record,
+              mutationId,
+              updatedAt: mutation.createdAt,
+            }
+          : null;
+        const setup = change.preservePeriod
+          ? (await secureCyclePairCache.loadSetup(uid)) ?? change.setup
+          : change.setup;
+        await cacheDailyLogChange(uid, log, setup, change.localDate, related);
+        return { log, related, setup };
+      };
+      if (await isDefinitelyOffline())
+        return { status: 'queued', mutationId, ...(await enqueue()) };
+      await ensureFirestoreConfigured();
+      if (await secureOfflineMutationQueue.count(uid)) {
+        const optimistic = await enqueue(),
+          write = replayWriteResult(
+            await flushQueuedMutations(uid),
+            mutationId,
+          );
+        if (write.status === 'queued') return { ...write, ...optimistic };
+        const setup = await secureCyclePairCache.loadSetup(uid);
+        if (!setup)
+          throw Object.assign(new Error('Setup unavailable.'), {
+            code: 'unavailable',
+          });
+        const logs = await loadCachedDailyLogs(uid);
+        return {
+          ...write,
+          log: logs.find(log => log.localDate === change.localDate) ?? null,
+          setup,
+          related: seedBoundaryDates(change, toDeviceLocalDate()).map(seed => ({
+            localDate: seed.localDate,
+            log: logs.find(log => log.localDate === seed.localDate) ?? null,
+          })),
+        };
+      }
+      try {
+        return {
+          status: 'synced',
+          mutationId,
+          ...(await writeDailyLogChange(uid, change, mutationId)),
+        };
+      } catch (error) {
+        if (!isRetryableNetworkError(error) && !(await isDefinitelyOffline()))
+          throw error;
+        return { status: 'queued', mutationId, ...(await enqueue()) };
+      }
+    });
+  },
+
+  async loadFailedDailyDraft(uid, localDate) {
+    const failed = (await secureOfflineMutationQueue.listFailed(uid))
+      .filter(
+        m =>
+          (m.type === 'daily-log-change' && m.change.localDate === localDate) ||
+          (m.type === 'daily-log' && m.localDate === localDate),
+      )
+      .at(-1);
+    if (failed?.type === 'daily-log-change')
+      return {
+        ...(failed.change.record ? { record: failed.change.record } : {}),
+        value: failed.change.value,
+        periodEdited: !failed.change.preservePeriod,
+      };
+    if (failed?.type === 'daily-log')
+      return {
+        record: failed.record,
+        value: {
+          periodStarted: failed.record.periodStarted === true,
+          periodEnded: failed.record.periodEnded === true,
+        },
+        periodEdited:
+          failed.record.periodStarted === true ||
+          failed.record.periodEnded === true,
+      };
+    return null;
   },
 
   async deleteDailyLog(uid, localDate, mutationId) {

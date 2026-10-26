@@ -47,10 +47,20 @@ export function CyclePairApp() {
     openInAppNotice,
   } = useCyclePair();
   const [recordOpen, setRecordOpen] = useState(false);
-  const [recordDraft, setRecordDraft] = useState<{
-    date: string;
-    value: import('./app/CyclePairStore').DailyCheckIn;
-  } | null>(null);
+  const [recordDate, setRecordDate] = useState(state.currentLocalDate);
+  const [recordDrafts, setRecordDrafts] = useState<
+    Record<
+      string,
+      {
+        value: import('./app/CyclePairStore').DailyCheckIn;
+        periodEdited: boolean;
+      }
+    >
+  >({});
+  function openRecord(date = state.currentLocalDate) {
+    setRecordDate(date);
+    setRecordOpen(true);
+  }
   const [setupDraft, setSetupDraft] = useState<SetupDraft | null>(null);
   const [inviteDraft, setInviteDraft] = useState<InviteDraft>({
     direction: null,
@@ -141,17 +151,22 @@ export function CyclePairApp() {
   if (recordOpen) {
     return (
       <RecordScreen
-        initialDraft={
-          recordDraft?.date === state.currentLocalDate
-            ? recordDraft.value
-            : undefined
-        }
-        onDraftChange={value =>
-          setRecordDraft({ date: state.currentLocalDate, value })
+        localDate={recordDate}
+        initialDraft={recordDrafts[recordDate]?.value}
+        initialPeriodEdited={recordDrafts[recordDate]?.periodEdited}
+        onDraftChange={(value, periodEdited) =>
+          setRecordDrafts(current => ({
+            ...current,
+            [recordDate]: { value, periodEdited },
+          }))
         }
         onDone={() => {
           setRecordOpen(false);
-          setRecordDraft(null);
+          setRecordDrafts(current => {
+            const next = { ...current };
+            delete next[recordDate];
+            return next;
+          });
         }}
         onCancel={closeRecord}
       />
@@ -167,10 +182,10 @@ export function CyclePairApp() {
       />
       <View style={styles.screen}>
         {state.activeTab === 'home' ? (
-          <HomeScreen onOpenRecord={() => setRecordOpen(true)} />
+          <HomeScreen onOpenRecord={() => openRecord()} />
         ) : null}
         {state.activeTab === 'calendar' ? (
-          <CalendarScreen onOpenRecord={() => setRecordOpen(true)} />
+          <CalendarScreen onOpenRecord={openRecord} />
         ) : null}
         {state.activeTab === 'partner' ? <PartnerScreen /> : null}
         {state.activeTab === 'settings' ? <SettingsScreen /> : null}

@@ -99,9 +99,7 @@ describe('CyclePair mobile app', () => {
 
   it('shows email and guest choices before creating an identity on a fresh install', async () => {
     const view = await renderNative(<App backend={previewCyclePairBackend} />);
-    await waitFor(() =>
-      expect(view.getByText('이메일로 시작')).toBeTruthy(),
-    );
+    await waitFor(() => expect(view.getByText('이메일로 시작')).toBeTruthy());
     expect(view.getByText('계정 없이 시작')).toBeTruthy();
     expect(previewAccountAdapter.currentSession()).toBeNull();
     expect(addNetworkListener).not.toHaveBeenCalled();
@@ -291,8 +289,12 @@ describe('CyclePair mobile app', () => {
     await fireEvent.press(view.getByTestId('setup-consent'));
     await act(async () => view.unmount());
     const reopened = await render(<App backend={previewCyclePairBackend} />);
-    await waitFor(() => expect(reopened.getByTestId('purpose-condition')).toBeTruthy());
-    expect(reopened.getByTestId('onboarding-next').props.accessibilityState.disabled).toBe(true);
+    await waitFor(() =>
+      expect(reopened.getByTestId('purpose-condition')).toBeTruthy(),
+    );
+    expect(
+      reopened.getByTestId('onboarding-next').props.accessibilityState.disabled,
+    ).toBe(true);
     await fireEvent.press(reopened.getByTestId('purpose-condition'));
     await fireEvent.press(reopened.getByTestId('onboarding-next'));
     expect(
@@ -337,19 +339,19 @@ describe('CyclePair mobile app', () => {
   it('AC-B1: 저장 중 시스템 이전을 차단하고 실패한 초안을 유지한다', async () => {
     const hardwareBack = installHardwareBackMock();
     let rejectSave: ((error: Error) => void) | undefined;
-    const saveDailyLog = jest.fn(
+    const saveDailyLogChange = jest.fn(
       () =>
-        new Promise<Awaited<ReturnType<CyclePairBackend['saveDailyLog']>>>(
-          (_resolve, reject) => {
-            rejectSave = reject;
-          },
-        ),
+        new Promise<
+          Awaited<ReturnType<CyclePairBackend['saveDailyLogChange']>>
+        >((_resolve, reject) => {
+          rejectSave = reject;
+        }),
     );
     const backend: CyclePairBackend = {
       ...previewCyclePairBackend,
       loadCachedDailyLogs: async () => [],
       syncDailyLogs: async () => [],
-      saveDailyLog,
+      saveDailyLogChange,
     };
     const view = await render(<App backend={backend} />);
     await finishSoloSetup(view);
@@ -362,7 +364,7 @@ describe('CyclePair mobile app', () => {
       '저장 실패 후에도 유지할 시험 메모',
     );
     await fireEvent.press(view.getByTestId('record-save'));
-    await waitFor(() => expect(saveDailyLog).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(saveDailyLogChange).toHaveBeenCalledTimes(1));
     try {
       await expect(hardwareBack.press()).resolves.toBe(true);
       expect(
@@ -386,7 +388,7 @@ describe('CyclePair mobile app', () => {
     expect(view.getByTestId('record-note').props.value).toBe(
       '저장 실패 후에도 유지할 시험 메모',
     );
-    expect(saveDailyLog).toHaveBeenCalledTimes(1);
+    expect(saveDailyLogChange).toHaveBeenCalledTimes(1);
   });
 
   it.each(['초대 보내기', '초대 받기'])(
@@ -859,13 +861,28 @@ describe('CyclePair mobile app', () => {
       watchTokenRefresh: jest.fn(() => jest.fn()),
       watchOpened: jest.fn(() => jest.fn()),
     };
-    const view = await render(<App backend={previewCyclePairBackend} notificationClient={notificationClient}/>);
+    const view = await render(
+      <App
+        backend={previewCyclePairBackend}
+        notificationClient={notificationClient}
+      />,
+    );
     await finishSoloSetup(view);
     await fireEvent.press(view.getByLabelText('설정'));
     await fireEvent.press(view.getByText('알림과 개인정보'));
-    await fireEvent(view.getByLabelText('중립적인 잠금화면 알림'), 'valueChange', true);
-    await waitFor(() => expect(notificationClient.enable).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(view.getByTestId('notification-feedback')).toHaveTextContent('알림 권한이 허용되지 않았습니다. 기기 설정에서 다시 켤 수 있어요.'));
+    await fireEvent(
+      view.getByLabelText('중립적인 잠금화면 알림'),
+      'valueChange',
+      true,
+    );
+    await waitFor(() =>
+      expect(notificationClient.enable).toHaveBeenCalledTimes(1),
+    );
+    await waitFor(() =>
+      expect(view.getByTestId('notification-feedback')).toHaveTextContent(
+        '알림 권한이 허용되지 않았습니다. 기기 설정에서 다시 켤 수 있어요.',
+      ),
+    );
   });
 
   it.each([2, 3])(
@@ -1093,9 +1110,12 @@ describe('CyclePair mobile app', () => {
       }),
     );
     const today = deviceLocalDate();
-    const deleteDailyLog = jest.fn(async () => ({
+    const saveDailyLogChange = jest.fn(async (_uid, change, mutationId) => ({
       status: 'synced' as const,
-      mutationId: 'daily-delete-test',
+      mutationId,
+      log: null,
+      setup: change.setup,
+      related: [],
     }));
     const backend: CyclePairBackend = {
       ...previewCyclePairBackend,
@@ -1122,7 +1142,7 @@ describe('CyclePair mobile app', () => {
           },
         ];
       },
-      deleteDailyLog,
+      saveDailyLogChange,
     };
     jest
       .spyOn(Alert, 'alert')
@@ -1140,10 +1160,14 @@ describe('CyclePair mobile app', () => {
     await fireEvent.press(view.getByText('기록 삭제'));
 
     await waitFor(() =>
-      expect(deleteDailyLog).toHaveBeenCalledWith(
+      expect(saveDailyLogChange).toHaveBeenCalledWith(
         'preview-self',
-        today,
-        expect.stringMatching(/^daily-delete-/),
+        expect.objectContaining({
+          localDate: today,
+          record: {},
+          value: { periodStarted: false, periodEnded: false },
+        }),
+        expect.stringMatching(/^daily-change-/),
       ),
     );
     await waitFor(() => expect(view.queryByText('삭제할 기록')).toBeNull());

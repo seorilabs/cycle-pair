@@ -209,9 +209,7 @@ service cloud.firestore {
             ])))
         && isOptionalString(data, 'note', 500)
         && isOptionalBoolean(data, 'periodStarted')
-        && isOptionalBoolean(data, 'periodEnded')
-        && (!(('periodStarted' in data) && data.periodStarted == true)
-          || !(('periodEnded' in data) && data.periodEnded == true));
+        && isOptionalBoolean(data, 'periodEnded');
     }
 
     function isValidPrivateDailyLogTombstone(logId) {

@@ -22,6 +22,7 @@ import {
   type DeleteDailyLogOfflineMutation,
   type DeletePairEventOfflineMutation,
   type PrivateSetupOfflineMutation,
+  type DailyLogChangeOfflineMutation,
   type ShareSettingsOfflineMutation,
   type UpsertPairEventOfflineMutation,
   OFFLINE_MUTATION_QUEUE_LIMIT,
@@ -52,6 +53,55 @@ const resetGenericPasswordMock =
   >;
 
 let storedCredentials: Map<string, MockCredential>;
+
+function periodMutation(id = 'period-1'): DailyLogChangeOfflineMutation {
+  return {
+    schemaVersion: 1,
+    type: 'daily-log-change',
+    uid: 'user-a',
+    mutationId: id,
+    createdAt: '2026-07-14T02:00:00.000Z',
+    change: {
+      localDate: '2026-07-14',
+      expected: { periodStarted: false, periodEnded: false },
+      value: { periodStarted: true, periodEnded: true },
+      expectedSetup: setupMutation().setup,
+      setup: setupMutation().setup,
+    },
+  };
+}
+
+it('persists and restores a one-day period without dropping its end marker', async () => {
+  await expect(
+    secureOfflineMutationQueue.enqueue(
+      dailyMutation({ record: { periodStarted: true, periodEnded: true } }),
+    ),
+  ).resolves.toBeUndefined();
+  expect((await secureOfflineMutationQueue.list('user-a'))[0]).toMatchObject({
+    record: { periodStarted: true, periodEnded: true },
+  });
+});
+
+it('keeps period changes and their daily-write prerequisites in order across coalescing', async () => {
+  await secureOfflineMutationQueue.enqueue(
+    dailyMutation({ mutationId: 'before-period' }),
+  );
+  await secureOfflineMutationQueue.enqueue(periodMutation());
+  await secureOfflineMutationQueue.enqueue(
+    dailyMutation({ mutationId: 'after-period' }),
+  );
+  expect(
+    (await secureOfflineMutationQueue.listForReplay('user-a')).map(
+      x => x.mutationId,
+    ),
+  ).toEqual(['before-period', 'period-1', 'after-period']);
+  await secureOfflineMutationQueue.enqueue(periodMutation('period-2'));
+  expect(
+    (await secureOfflineMutationQueue.listForReplay('user-a')).map(
+      x => x.mutationId,
+    ),
+  ).toEqual(['before-period', 'period-1', 'after-period', 'period-2']);
+});
 
 function dailyMutation(
   overrides: Partial<DailyLogOfflineMutation> = {},
@@ -234,9 +284,9 @@ describe('secureOfflineMutationQueue', () => {
     });
     await secureOfflineMutationQueue.enqueue(current);
 
-    await expect(secureOfflineMutationQueue.list(current.uid)).resolves.toEqual([
-      current,
-    ]);
+    await expect(secureOfflineMutationQueue.list(current.uid)).resolves.toEqual(
+      [current],
+    );
   });
 
   it('민감 mutation을 기기 한정 Keychain/Keystore 옵션으로 저장한다', async () => {
@@ -262,17 +312,17 @@ describe('secureOfflineMutationQueue', () => {
   });
 
   it('기존 raw service mutation을 보존하고 다음 enqueue에서 opaque service로 전환한다', async () => {
-    const mutation = dailyMutation({mutationId: 'legacy-daily-write'});
+    const mutation = dailyMutation({ mutationId: 'legacy-daily-write' });
     const legacyService =
       'com.seorilabs.cyclepair.offline.v1.user-a::legacy-daily-write';
     storedCredentials.set(legacyService, {
       username: mutation.uid,
-      password: JSON.stringify({...mutation, queueSequence: 1}),
+      password: JSON.stringify({ ...mutation, queueSequence: 1 }),
     });
 
-    await expect(secureOfflineMutationQueue.list(mutation.uid)).resolves.toEqual(
-      [mutation],
-    );
+    await expect(
+      secureOfflineMutationQueue.list(mutation.uid),
+    ).resolves.toEqual([mutation]);
     await secureOfflineMutationQueue.enqueue(mutation);
 
     expect(storedCredentials.has(legacyService)).toBe(false);
@@ -313,9 +363,9 @@ describe('secureOfflineMutationQueue', () => {
       'failed-precondition',
     );
 
-    await expect(secureOfflineMutationQueue.list(mutation.uid)).resolves.toEqual(
-      [],
-    );
+    await expect(
+      secureOfflineMutationQueue.list(mutation.uid),
+    ).resolves.toEqual([]);
     // 이름이 말하던 "자동 재생에서 제외" 를 실제로 단언한다. 예전에는 격리
     // 항목이 재생 목록에 남아 매 동기화마다 같은 실패를 되풀이했다.
     await expect(
@@ -352,7 +402,7 @@ describe('secureOfflineMutationQueue', () => {
     const retry = upsertPairEventMutation({
       pairId: first.pairId,
       mutationId: first.mutationId,
-      event: {...first.event, title: '수정된 일정'},
+      event: { ...first.event, title: '수정된 일정' },
     });
     await secureOfflineMutationQueue.enqueue(retry);
     await expect(secureOfflineMutationQueue.list(first.uid)).resolves.toEqual([
@@ -372,7 +422,7 @@ describe('secureOfflineMutationQueue', () => {
   });
 
   it('개인 건강 기록도 격리해 자동 재생에서 뺀다', async () => {
-    const mutation = dailyMutation({mutationId: 'private-quarantine'});
+    const mutation = dailyMutation({ mutationId: 'private-quarantine' });
     await secureOfflineMutationQueue.enqueue(mutation);
 
     await secureOfflineMutationQueue.quarantine(
@@ -381,9 +431,9 @@ describe('secureOfflineMutationQueue', () => {
       'invalid-argument',
     );
 
-    await expect(secureOfflineMutationQueue.list(mutation.uid)).resolves.toEqual(
-      [],
-    );
+    await expect(
+      secureOfflineMutationQueue.list(mutation.uid),
+    ).resolves.toEqual([]);
     await expect(
       secureOfflineMutationQueue.listForReplay(mutation.uid),
     ).resolves.toEqual([]);
@@ -494,10 +544,7 @@ describe('secureOfflineMutationQueue', () => {
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(setGenericPasswordMock).toHaveBeenCalledTimes(1);
 
-    const clear = secureOfflineMutationQueue.clearPair(
-      'user-a',
-      'pair-race',
-    );
+    const clear = secureOfflineMutationQueue.clearPair('user-a', 'pair-race');
     let cleared = false;
     clear.then(() => {
       cleared = true;
@@ -538,7 +585,7 @@ describe('secureOfflineMutationQueue', () => {
   });
 
   it('count는 Keychain read 실패를 빈 큐로 오인하지 않는다', async () => {
-    const mutation = dailyMutation({mutationId: 'strict-count-write'});
+    const mutation = dailyMutation({ mutationId: 'strict-count-write' });
     await secureOfflineMutationQueue.enqueue(mutation);
     getGenericPasswordMock.mockRejectedValueOnce(
       new Error('Keychain temporarily unavailable'),
@@ -591,7 +638,7 @@ describe('secureOfflineMutationQueue', () => {
     // 서로 다른 날짜다. 같은 날짜는 접히므로 순서 보존은 다른 대상 사이에서
     // 확인해야 한다.
     const createdAt = '2026-07-14T02:00:00.000Z';
-    const save = dailyMutation({mutationId: 'z-save', createdAt});
+    const save = dailyMutation({ mutationId: 'z-save', createdAt });
     const remove = deleteDailyLogMutation({
       mutationId: 'a-delete',
       createdAt,
@@ -697,13 +744,6 @@ describe('secureOfflineMutationQueue', () => {
   it('서버 Rules를 통과할 수 없는 민감 기록과 일정은 큐에 넣지 않는다', async () => {
     await expect(
       secureOfflineMutationQueue.enqueue(
-        dailyMutation({
-          record: { periodStarted: true, periodEnded: true },
-        }),
-      ),
-    ).rejects.toThrow('Invalid offline mutation.');
-    await expect(
-      secureOfflineMutationQueue.enqueue(
         dailyMutation({ record: { emotionTags: ['free-form-health-text'] } }),
       ),
     ).rejects.toThrow('Invalid offline mutation.');
@@ -797,7 +837,10 @@ describe('같은 대상을 가리키는 변경을 접는다', () => {
       await secureOfflineMutationQueue.enqueue(
         dailyMutation({
           mutationId: `daily-${index}`,
-          record: {emotionTags: ['anxious'], energyLevel: ((index % 5) + 1) as 1 | 2 | 3 | 4 | 5},
+          record: {
+            emotionTags: ['anxious'],
+            energyLevel: ((index % 5) + 1) as 1 | 2 | 3 | 4 | 5,
+          },
         }),
       );
     }
@@ -806,7 +849,7 @@ describe('같은 대상을 가리키는 변경을 접는다', () => {
     expect(queued).toHaveLength(1);
     expect(queued[0]).toMatchObject({
       mutationId: 'daily-4',
-      record: {energyLevel: 5},
+      record: { energyLevel: 5 },
     });
     // 고아 Keychain 항목이 남지 않는다.
     expect(storedCredentials.size).toBe(1);
@@ -814,10 +857,10 @@ describe('같은 대상을 가리키는 변경을 접는다', () => {
 
   it('저장 다음 삭제는 삭제만, 삭제 다음 저장은 저장만 남는다', async () => {
     await secureOfflineMutationQueue.enqueue(
-      dailyMutation({mutationId: 'save-first'}),
+      dailyMutation({ mutationId: 'save-first' }),
     );
     await secureOfflineMutationQueue.enqueue(
-      deleteDailyLogMutation({mutationId: 'delete-second'}),
+      deleteDailyLogMutation({ mutationId: 'delete-second' }),
     );
 
     let queued = await secureOfflineMutationQueue.list(uid);
@@ -828,7 +871,7 @@ describe('같은 대상을 가리키는 변경을 접는다', () => {
     });
 
     await secureOfflineMutationQueue.enqueue(
-      dailyMutation({mutationId: 'save-third'}),
+      dailyMutation({ mutationId: 'save-third' }),
     );
     queued = await secureOfflineMutationQueue.list(uid);
     expect(queued).toHaveLength(1);
@@ -840,14 +883,17 @@ describe('같은 대상을 가리키는 변경을 접는다', () => {
 
   it('접힌 항목의 순번이 유지돼 다른 대상과의 재생 순서가 바뀌지 않는다', async () => {
     await secureOfflineMutationQueue.enqueue(
-      dailyMutation({mutationId: 'first-date', localDate: '2026-07-14'}),
+      dailyMutation({ mutationId: 'first-date', localDate: '2026-07-14' }),
     );
     await secureOfflineMutationQueue.enqueue(
-      dailyMutation({mutationId: 'second-date', localDate: '2026-07-15'}),
+      dailyMutation({ mutationId: 'second-date', localDate: '2026-07-15' }),
     );
     // 첫 번째 날짜를 다시 저장한다. 순번이 새로 매겨지면 뒤로 밀린다.
     await secureOfflineMutationQueue.enqueue(
-      dailyMutation({mutationId: 'first-date-again', localDate: '2026-07-14'}),
+      dailyMutation({
+        mutationId: 'first-date-again',
+        localDate: '2026-07-14',
+      }),
     );
 
     const queued = await secureOfflineMutationQueue.list(uid);
@@ -859,21 +905,21 @@ describe('같은 대상을 가리키는 변경을 접는다', () => {
 
   it('share-settings 는 pairId 단위로, 페어 이벤트는 (pairId, eventId) 단위로 접힌다', async () => {
     await secureOfflineMutationQueue.enqueue(
-      shareSettingsMutation({mutationId: 'share-1'}),
+      shareSettingsMutation({ mutationId: 'share-1' }),
     );
     await secureOfflineMutationQueue.enqueue(
-      shareSettingsMutation({mutationId: 'share-2'}),
+      shareSettingsMutation({ mutationId: 'share-2' }),
     );
     await secureOfflineMutationQueue.enqueue(
-      upsertPairEventMutation({mutationId: 'event-1'}),
+      upsertPairEventMutation({ mutationId: 'event-1' }),
     );
     await secureOfflineMutationQueue.enqueue(
-      upsertPairEventMutation({mutationId: 'event-2'}),
+      upsertPairEventMutation({ mutationId: 'event-2' }),
     );
     await secureOfflineMutationQueue.enqueue(
       upsertPairEventMutation({
         mutationId: 'other-event',
-        event: {id: 'event-9', title: '다른 일정', date: '2026-07-21'},
+        event: { id: 'event-9', title: '다른 일정', date: '2026-07-21' },
       }),
     );
 
@@ -886,7 +932,7 @@ describe('같은 대상을 가리키는 변경을 접는다', () => {
   });
 
   it('격리된 항목은 접기 대상이 아니다', async () => {
-    const failed = dailyMutation({mutationId: 'quarantined-daily'});
+    const failed = dailyMutation({ mutationId: 'quarantined-daily' });
     await secureOfflineMutationQueue.enqueue(failed);
     await secureOfflineMutationQueue.quarantine(
       uid,
@@ -895,7 +941,7 @@ describe('같은 대상을 가리키는 변경을 접는다', () => {
     );
 
     await secureOfflineMutationQueue.enqueue(
-      dailyMutation({mutationId: 'fresh-daily'}),
+      dailyMutation({ mutationId: 'fresh-daily' }),
     );
 
     // 격리 항목은 진단 이력이므로 남고, 새 항목은 접히지 않고 따로 들어간다.
@@ -908,7 +954,11 @@ describe('같은 대상을 가리키는 변경을 접는다', () => {
 
   it('상한을 넘으면 가장 오래된 미격리 항목부터 버리고 그 수를 알린다', async () => {
     const overflow = 3;
-    for (let index = 0; index < OFFLINE_MUTATION_QUEUE_LIMIT + overflow; index += 1) {
+    for (
+      let index = 0;
+      index < OFFLINE_MUTATION_QUEUE_LIMIT + overflow;
+      index += 1
+    ) {
       await secureOfflineMutationQueue.enqueue(
         dailyMutation({
           mutationId: `daily-${index}`,
@@ -920,7 +970,7 @@ describe('같은 대상을 가리키는 변경을 접는다', () => {
     const queued = await secureOfflineMutationQueue.list(uid);
     expect(queued).toHaveLength(OFFLINE_MUTATION_QUEUE_LIMIT);
     // 가장 오래된 것부터 버린다.
-    expect(queued[0]).toMatchObject({mutationId: `daily-${overflow}`});
+    expect(queued[0]).toMatchObject({ mutationId: `daily-${overflow}` });
     expect(secureOfflineMutationQueue.takeDiscardedCount(uid)).toBe(overflow);
     // 한 번 보고하면 0 으로 돌아간다.
     expect(secureOfflineMutationQueue.takeDiscardedCount(uid)).toBe(0);

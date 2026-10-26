@@ -23,6 +23,7 @@ jest.mock('@react-native-firebase/firestore', () => ({
     orderBy: { field, direction },
   })),
   query: jest.fn((...constraints: unknown[]) => constraints),
+  runTransaction: jest.fn(),
   serverTimestamp: jest.fn(),
   setDoc: jest.fn(),
   where: jest.fn((field: unknown, operator: unknown, value: unknown) => ({

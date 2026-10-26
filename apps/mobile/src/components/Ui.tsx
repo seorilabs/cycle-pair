@@ -26,9 +26,11 @@ export function Screen({
   children,
   scroll = true,
   contentStyle,
+  footer,
 }: PropsWithChildren<{
   scroll?: boolean;
   contentStyle?: StyleProp<ViewStyle>;
+  footer?: ReactNode;
 }>) {
   const insets = useSafeAreaInsets();
   const { t } = useI18n();
@@ -60,6 +62,7 @@ export function Screen({
         ) : (
           <View style={[styles.screen, content]}>{children}</View>
         )}
+        {footer}
         {Platform.OS === 'ios' && keyboardVisible ? (
           <View style={styles.keyboardBar}>
             <Pressable

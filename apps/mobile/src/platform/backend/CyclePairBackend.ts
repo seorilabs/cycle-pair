@@ -84,6 +84,38 @@ export interface PrivateDailyLogSnapshot {
   readonly updatedAt?: string;
 }
 
+export interface PeriodBoundaryState {
+  readonly periodStarted: boolean;
+  readonly periodEnded: boolean;
+}
+
+export interface DailyLogChange {
+  readonly localDate: string;
+  readonly expected: PeriodBoundaryState;
+  readonly value: PeriodBoundaryState;
+  readonly expectedSetup: PrivateSetupSnapshot;
+  readonly setup: PrivateSetupSnapshot;
+  /** Present only when the user also edits the complete daily check-in. */
+  readonly record?: PrivateDailyLogRecord;
+  readonly expectedRecord?: PrivateDailyLogRecord | null;
+  readonly preservePeriod?: boolean;
+}
+
+export interface FailedDailyLogDraft {
+  readonly record?: PrivateDailyLogRecord;
+  readonly value: PeriodBoundaryState;
+  readonly periodEdited: boolean;
+}
+
+export interface DailyLogChangeWriteResult extends BackendWriteResult {
+  readonly log: PrivateDailyLogSnapshot | null;
+  readonly setup: PrivateSetupSnapshot;
+  readonly related: readonly {
+    readonly localDate: string;
+    readonly log: PrivateDailyLogSnapshot | null;
+  }[];
+}
+
 export interface DailyLogSyncCursor {
   readonly updatedAt: string;
 }
@@ -226,10 +258,17 @@ export interface CyclePairBackend {
     inviteToken: string,
     recordsCycle: boolean,
   ): Promise<{ pairId: string }>;
-  loadCachedDailyLogs(
-    uid: string,
-  ): Promise<readonly PrivateDailyLogSnapshot[]>;
+  loadCachedDailyLogs(uid: string): Promise<readonly PrivateDailyLogSnapshot[]>;
   syncDailyLogs(uid: string): Promise<readonly PrivateDailyLogSnapshot[]>;
+  saveDailyLogChange(
+    uid: string,
+    change: DailyLogChange,
+    mutationId: string,
+  ): Promise<DailyLogChangeWriteResult>;
+  loadFailedDailyDraft(
+    uid: string,
+    localDate: string,
+  ): Promise<FailedDailyLogDraft | null>;
   saveDailyLog(
     uid: string,
     localDate: string,

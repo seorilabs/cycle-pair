@@ -4,11 +4,12 @@ import * as Keychain from 'react-native-keychain';
 import type {
   BackendShareSettings,
   PairEventInput,
+  DailyLogChange,
   PrivateDailyLogRecord,
   PrivateSetupSnapshot,
 } from '../backend/CyclePairBackend';
 import { PairDataFence } from './PairDataFence';
-import {opaqueServiceSegment} from './opaqueServiceSegment';
+import { opaqueServiceSegment } from './opaqueServiceSegment';
 import { secureUserDataFence } from './SecureUserDataFence';
 
 const SCHEMA_VERSION = 1 as const;
@@ -66,6 +67,11 @@ export interface DeleteDailyLogOfflineMutation extends OfflineMutationBase {
   readonly localDate: string;
 }
 
+export interface DailyLogChangeOfflineMutation extends OfflineMutationBase {
+  readonly type: 'daily-log-change';
+  readonly change: DailyLogChange;
+}
+
 export interface PrivateSetupOfflineMutation extends OfflineMutationBase {
   readonly type: 'private-setup';
   readonly setup: PrivateSetupSnapshot;
@@ -94,6 +100,7 @@ export type OfflineMutation =
   | ShareSettingsOfflineMutation
   | DailyLogOfflineMutation
   | DeleteDailyLogOfflineMutation
+  | DailyLogChangeOfflineMutation
   | UpsertPairEventOfflineMutation
   | DeletePairEventOfflineMutation;
 
@@ -121,6 +128,8 @@ export function coalesceKeyForOfflineMutation(
   mutation: OfflineMutation,
 ): string {
   switch (mutation.type) {
+    case 'daily-log-change':
+      return `period:${mutation.change.localDate}:${mutation.mutationId}`;
     case 'daily-log':
     case 'delete-daily-log':
       return `daily:${mutation.localDate}`;
@@ -155,6 +164,7 @@ type StoredOfflineMutation = OfflineMutation & {
 export interface SecureOfflineMutationQueue {
   enqueue(mutation: OfflineMutation): Promise<void>;
   list(uid: string): Promise<readonly OfflineMutation[]>;
+  listFailed(uid: string): Promise<readonly OfflineMutation[]>;
   listForReplay(uid: string): Promise<readonly OfflineMutation[]>;
   remove(uid: string, mutationId: string): Promise<void>;
   /**
@@ -244,8 +254,7 @@ function isReasonableRecordedLocalDate(value: unknown): value is string {
 
 function calendarDayDistance(from: string, to: string): number {
   return (
-    (Date.parse(`${to}T12:00:00.000Z`) -
-      Date.parse(`${from}T12:00:00.000Z`)) /
+    (Date.parse(`${to}T12:00:00.000Z`) - Date.parse(`${from}T12:00:00.000Z`)) /
     86_400_000
   );
 }
@@ -355,8 +364,7 @@ function isPrivateDailyLogRecord(
         ))) &&
     isOptionalBoundedString(value.note, 500) &&
     isOptionalBoolean(value.periodStarted) &&
-    isOptionalBoolean(value.periodEnded) &&
-    !(value.periodStarted === true && value.periodEnded === true)
+    isOptionalBoolean(value.periodEnded)
   );
 }
 
@@ -406,7 +414,8 @@ function isShareSettings(value: unknown): value is BackendShareSettings {
     SHARE_SETTING_KEYS.filter(
       key => key !== 'cycleStatus' && key !== 'fertilityStatus',
     ).every(key => typeof value[key] === 'boolean') &&
-    (value.cycleStatus === undefined || typeof value.cycleStatus === 'boolean') &&
+    (value.cycleStatus === undefined ||
+      typeof value.cycleStatus === 'boolean') &&
     (value.fertilityStatus === undefined ||
       typeof value.fertilityStatus === 'boolean')
   );
@@ -442,6 +451,29 @@ function isOfflineMutation(value: unknown): value is StoredOfflineMutation {
   }
 
   switch (value.type) {
+    case 'daily-log-change': {
+      const change = value.change;
+      return (
+        isRecord(change) &&
+        isReasonableRecordedLocalDate(change.localDate) &&
+        isRecord(change.expected) &&
+        typeof change.expected.periodStarted === 'boolean' &&
+        typeof change.expected.periodEnded === 'boolean' &&
+        isRecord(change.value) &&
+        typeof change.value.periodStarted === 'boolean' &&
+        typeof change.value.periodEnded === 'boolean' &&
+        isPrivateSetupSnapshot(change.expectedSetup) &&
+        isPrivateSetupSnapshot(change.setup) &&
+        (change.setup.recordsCycle ||
+          (!change.value.periodStarted && !change.value.periodEnded)) &&
+        isOptionalBoolean(change.preservePeriod) &&
+        (change.preservePeriod !== true || change.record !== undefined) &&
+        (change.record === undefined ||
+          (isPrivateDailyLogRecord(change.record) &&
+            (change.expectedRecord === null ||
+              isPrivateDailyLogRecord(change.expectedRecord))))
+      );
+    }
     case 'private-setup':
       return isPrivateSetupSnapshot(value.setup);
     case 'share-settings':
@@ -545,10 +577,7 @@ class KeychainSecureOfflineMutationQueue implements SecureOfflineMutationQueue {
           )
         : this.persistWithSequence(mutation);
     const previous = this.enqueueChains.get(mutation.uid) ?? Promise.resolve();
-    const pending = previous.then(
-      persist,
-      persist,
-    );
+    const pending = previous.then(persist, persist);
     this.enqueueChains.set(
       mutation.uid,
       pending.then(
@@ -563,10 +592,24 @@ class KeychainSecureOfflineMutationQueue implements SecureOfflineMutationQueue {
     await secureUserDataFence.runWrite(mutation.uid, async () => {
       const current = await this.listStored(mutation.uid);
       const key = coalesceKeyForOfflineMutation(mutation);
+      const periodDependent =
+        mutation.type === 'daily-log' ||
+        mutation.type === 'delete-daily-log' ||
+        mutation.type === 'private-setup';
+      const barrier = periodDependent
+        ? current.reduce(
+            (last, item) =>
+              item.type === 'daily-log-change' && item.queueState !== 'failed'
+                ? Math.max(last, item.queueSequence ?? 0)
+                : last,
+            0,
+          )
+        : 0;
       // 격리된 항목은 접기 대상이 아니다. 진단 이력이므로 그대로 남긴다.
       const existing = current.find(
         item =>
           item.queueState !== 'failed' &&
+          (barrier === 0 || (item.queueSequence ?? 0) > barrier) &&
           coalesceKeyForOfflineMutation(item) === key,
       );
       const maximumSequence = current.reduce(
@@ -595,9 +638,7 @@ class KeychainSecureOfflineMutationQueue implements SecureOfflineMutationQueue {
           'Unable to persist offline mutation in secure storage.',
         );
       }
-      await removeService(
-        legacyServiceFor(mutation.uid, mutation.mutationId),
-      );
+      await removeService(legacyServiceFor(mutation.uid, mutation.mutationId));
       // 접힌 항목의 Keychain service 를 지운다. mutationId 가 달라지므로
       // 지우지 않으면 같은 대상의 고아 항목이 남는다.
       if (existing && existing.mutationId !== mutation.mutationId) {
@@ -624,9 +665,7 @@ class KeychainSecureOfflineMutationQueue implements SecureOfflineMutationQueue {
       skipUIAuth: true,
     });
     const matchingServices = [
-      ...services.filter(service =>
-        service.startsWith(userServicePrefix(uid)),
-      ),
+      ...services.filter(service => service.startsWith(userServicePrefix(uid))),
       ...services.filter(service =>
         service.startsWith(legacyUserServicePrefix(uid)),
       ),
@@ -677,9 +716,7 @@ class KeychainSecureOfflineMutationQueue implements SecureOfflineMutationQueue {
       }
 
       if (
-        !mutations.some(
-          mutation => mutation.mutationId === parsed.mutationId,
-        )
+        !mutations.some(mutation => mutation.mutationId === parsed.mutationId)
       ) {
         // Opaque services are enumerated first and win over legacy copies.
         mutations.push(parsed);
@@ -745,6 +782,20 @@ class KeychainSecureOfflineMutationQueue implements SecureOfflineMutationQueue {
       );
   }
 
+  async listFailed(uid: string): Promise<readonly OfflineMutation[]> {
+    return (await this.listStored(uid))
+      .filter(mutation => mutation.queueState === 'failed')
+      .map(
+        ({
+          queueSequence: _,
+          queueState: _state,
+          failureCode: _code,
+          failedAt: _at,
+          ...mutation
+        }) => mutation as OfflineMutation,
+      );
+  }
+
   /**
    * 재생 대상만 돌려준다.
    *
@@ -756,14 +807,14 @@ class KeychainSecureOfflineMutationQueue implements SecureOfflineMutationQueue {
     return (await this.listStored(uid, true))
       .filter(mutation => mutation.queueState !== 'failed')
       .map(
-      ({
-        queueSequence: _,
-        queueState: _queueState,
-        failureCode: _failureCode,
-        failedAt: _failedAt,
-        ...mutation
-      }) => mutation as OfflineMutation,
-    );
+        ({
+          queueSequence: _,
+          queueState: _queueState,
+          failureCode: _failureCode,
+          failedAt: _failedAt,
+          ...mutation
+        }) => mutation as OfflineMutation,
+      );
   }
 
   async remove(uid: string, mutationId: string): Promise<void> {

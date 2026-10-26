@@ -4,6 +4,7 @@ export * from "./domain/models.js";
 export * from "./domain/pair.js";
 export * from "./domain/cycle.js";
 export * from "./domain/prediction.js";
+export * from "./domain/period-history.js";
 export * from "./domain/sharing.js";
 export * from "./domain/care-tips.js";
 export * from "./domain/notifications.js";
