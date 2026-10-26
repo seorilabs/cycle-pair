@@ -3,11 +3,11 @@
   "app": {
     "name": "Cycle Pair",
     "repo": "seorilabs/cycle-pair",
-    "sourceRevision": "fc60c9e7c8e875104388ef03a4c6c27176554726"
+    "sourceRevision": "0360e7a174570818d48f372bead80517a6f73695"
   },
   "release": {
-    "version": "1.2.0",
-    "tag": "v1.2.0",
+    "version": "1.2.1",
+    "tag": "v1.2.1",
     "objective": "public_live",
     "countries": [],
     "rolloutMode": "full (approved rollout=1)",
@@ -24,41 +24,44 @@
     "approvedAt": "2026-10-25T09:13:32.504557+00:00",
     "evidence": [
       "docs/design/2026-10-25-onboarding-navigation/test-plan.json@4a7f9ee68cef39eee8662aaeee61de241140de4c release.markets=google-play,app-store; release.until=public; rollout=1",
-      "https://github.com/seorilabs/cycle-pair/releases/tag/v1.2.0 development-evidence files retain the human approval and independent review history"
+      "https://github.com/seorilabs/cycle-pair/releases/tag/v1.2.0 development-evidence files retain the human approval and independent review history",
+      "https://github.com/seorilabs/cycle-pair/releases/tag/v1.2.1 기존 사람 승인과 독립 검수 이력을 유지한 현재 후보 근거"
     ]
   },
   "commonGates": {
     "candidate": {
       "status": "pending",
       "evidence": [
-        "https://github.com/seorilabs/cycle-pair/releases/tag/v1.2.0 source fc60c9e7c8e875104388ef03a4c6c27176554726; Android 1000109; Apple 1002000; exact storefront country list not reread for promotion"
+        "https://github.com/seorilabs/cycle-pair/releases/tag/v1.2.1 source 0360e7a174570818d48f372bead80517a6f73695; Android1000110; Apple1002001",
+        "공개 승격 직전 실제 국가 목록을 다시 확인해야 한다."
       ],
-      "checkedAt": "2026-10-26T02:17:54.687416+00:00",
+      "checkedAt": "2026-10-26T06:41:19.201032+00:00",
       "blocker": null
     },
     "quality": {
       "status": "pass",
       "evidence": [
-        "https://github.com/seorilabs/cycle-pair/releases/tag/v1.2.0 independent round 5: all 10 functional and UX features passed; host regression 793 passed",
-        "R1-R4 failures and their resolution evidence retained without changing original timestamps",
-        "Central L3 before-build and before-release checks passed for both targets; these checks do not claim native SDK execution",
-        "https://github.com/seorilabs/cycle-pair/actions/runs/40256736259 PR 160 CI success",
-        "https://github.com/seorilabs/cycle-pair/actions/runs/40256885935 main CI success"
+        "https://github.com/seorilabs/cycle-pair/releases/tag/v1.2.1 최종 코드에서 독립 개발 기능 10개와 11시나리오, 호스트 795개 통과",
+        "기존 R1~R5 원문, 시각과 실패 해결 근거를 보존했다. UI 소스는 R5와 같다.",
+        "https://github.com/seorilabs/cycle-pair/pull/163",
+        "https://github.com/seorilabs/cycle-pair/actions/runs/40270347030",
+        "두 마켓 중앙 L3 before-build와 before-deploy 통과. 기기 SDK 통과를 뜻하지 않는다."
       ],
-      "checkedAt": "2026-10-26T02:17:54.687416+00:00",
+      "checkedAt": "2026-10-26T06:41:19.201032+00:00",
       "blocker": null
     },
     "production_dependencies": {
-      "status": "pending",
+      "status": "blocked",
       "evidence": [
-        "Firebase Android/iOS registrations ACTIVE; Play Integrity and App Attest provider configurations read back",
-        "Firebase Android SHA list empty; existing Play distribution certificate known but local public identity catalog registration is missing",
-        "Firestore, Auth and Storage App Check UNENFORCED; registerNotificationDevice ENFORCE_APP_CHECK unset",
-        "Production callable revisions read back; current backend deployment fingerprint and production end-to-end acceptance remain unconfirmed",
-        "Four obsolete IAP functions and their managed services/trigger removed; source exports absent, provider 404 and all other function metadata unchanged. User records retained."
+        "운영 함수 23개 최신 Ready 리비전과 트래픽 100퍼센트, 배포 소스와 현재 Git 원본 16개 및 컴파일 JavaScript14개 일치",
+        "Firestore Rules 현재 원본 SHA256 96fc2fa10bc2f80104f25a8a3872fa58269b6ce347d7f45ea23bfdb50b21fe66 일치, 필요한 인덱스 2개 READY",
+        "기존 권한 바인딩과 CPU, 메모리 등 실행 설정 유지. 폐기한 IAP 함수 4개는 404, 구독 원본과 컴파일 모듈은 새 묶음에서 제외",
+        "Play 관리 앱 서명 공개 SHA256을 기존 Firebase Android 앱과 로컬 목록에 등록, 변경 전후 백업과 복원 검증 완료",
+        "기존 APNs 키와 Apple 팀, 표시된 iOS bundle 연결 확인. 전용 심사 계정 2개 서버 로그인 통과",
+        "Firestore, Auth, Storage App Check 강제 적용과 23개 함수의 ENFORCE_APP_CHECK 환경은 기존 상태 유지"
       ],
-      "checkedAt": "2026-10-26T02:17:54.687416+00:00",
-      "blocker": null
+      "checkedAt": "2026-10-26T06:41:19.201032+00:00",
+      "blocker": "Play Integrity의 기존 Cloud 프로젝트 연결에 수반되는 서비스 약관 동의 승인 대기. 네이티브 인증, 보안 저장, 무결성 증명과 실제 푸시 수신은 미실행이다."
     },
     "observability": {
       "status": "pending",
@@ -75,61 +78,63 @@
       "state": "pending",
       "identity": {
         "applicationId": "com.seorilabs.cyclepair",
-        "version": "1.2.0",
-        "build": "1000109",
+        "version": "1.2.1",
+        "build": "1000110",
         "developerId": "7593567020638200144"
       },
       "gates": {
         "candidate": {
           "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
+          "evidence": [
+            "공개 국가 목록의 최종 재조회가 남아 있다."
+          ],
+          "checkedAt": "2026-10-26T06:41:19.201032+00:00",
           "blocker": null
         },
         "artifact": {
           "status": "pass",
           "evidence": [
-            "https://github.com/seorilabs/cycle-pair/actions/runs/40256647671 exact tag binding, manifest package/version and AAB digest verified",
-            "Android Publisher bundles SHA256 equals CI digest d562ddfb0b1cea992d0f7ba1ae892d0f891ec11f517c6ef43a69844893f735e0",
-            "Play generated universal APK signature and identity verified; SHA256 79aad509338516ddbdf0fe0b7db64171e5553cff25a21a271e58ab547fd5e357; BILLING permission absent"
+            "https://github.com/seorilabs/cycle-pair/actions/runs/40272328036",
+            "CI와 Publisher AAB SHA256 a42c377c7261f0e350d775a4c9f64eb1f2035df1df160a4d3619f1ab6122bce1 일치",
+            "Play 생성 APK 서명과 package, version 검증, APK SHA256 b30044f84c728a554576a45e03cf22d42fb2f45313125727e1f0031334ef98ff",
+            "BILLING과 AD_ID 권한 없음, Firebase project와 Android app ID 일치"
           ],
-          "checkedAt": "2026-10-26T02:17:54.687416+00:00",
+          "checkedAt": "2026-10-26T05:16:28.612106+00:00",
           "blocker": null
         },
         "upload": {
           "status": "pass",
           "evidence": [
-            "https://github.com/seorilabs/cycle-pair/actions/runs/40256647671",
-            "Android Publisher readback: internal release 1.2.0, versionCode 1000109, completed; production/beta/alpha empty",
-            "Both language release notes match release-notes.json and listing/image hashes are unchanged after upload"
+            "Publisher internal1.2.1 versionCode1000110 completed",
+            "두 언어 출시 문구와 현재 소스의 등록 문구, 이미지 19개(기존 아이콘 1개 포함)의 해시와 순서 일치",
+            "production, alpha, beta release 없음"
           ],
-          "checkedAt": "2026-10-26T02:17:54.687416+00:00",
+          "checkedAt": "2026-10-26T05:16:28.612106+00:00",
           "blocker": null
         },
         "processing": {
-          "status": "pending",
+          "status": "pass",
           "evidence": [
-            "Bundle generated universal APK and 173 splits under the known Play signing certificate; pre-launch-report status not inspected"
+            "Publisher가 현재 서명 인증서로 생성한 universal APK를 다운로드하고 호스트에서 검증했다."
           ],
-          "checkedAt": "2026-10-26T02:17:54.687416+00:00",
+          "checkedAt": "2026-10-26T05:16:28.612106+00:00",
           "blocker": null
         },
         "qa": {
           "status": "pending",
           "evidence": [
-            "https://github.com/seorilabs/cycle-pair/releases/tag/v1.2.0 development regression and independent rendered flows passed",
-            "Device calls 0; native production authentication, secure storage and OS notification acceptance not executed; request only concrete necessary items after host preparation"
+            "https://github.com/seorilabs/cycle-pair/releases/tag/v1.2.1 독립 개발 회귀 통과. 현재 APK의 네이티브 SDK와 OS 동작은 미실행이며 기기 승인은 없다."
           ],
-          "checkedAt": "2026-10-26T02:17:54.687416+00:00",
+          "checkedAt": "2026-10-26T06:41:19.201032+00:00",
           "blocker": null
         },
         "metadata": {
           "status": "pass",
           "evidence": [
-            "https://github.com/seorilabs/cycle-pair/pull/160",
-            "Console save and fresh Publisher readback: ko-KR/en-US text matches, 18 image SHA values and order match, downloaded processed pixels match; icons retained"
+            "ko-KR, en-US 실제 Publisher 문구가 현재 Git 원본과 일치",
+            "등록 이미지 18개와 기존 아이콘 1개의 해시 및 순서 일치"
           ],
-          "checkedAt": "2026-10-26T02:17:54.687416+00:00",
+          "checkedAt": "2026-10-26T05:16:28.612106+00:00",
           "blocker": null
         },
         "policy": {
@@ -168,8 +173,9 @@
       "currentDistribution": {
         "channel": "internal",
         "status": "completed",
-        "readAt": "2026-10-26T02:10:29.565029+00:00",
-        "aabSha256": "d562ddfb0b1cea992d0f7ba1ae892d0f891ec11f517c6ef43a69844893f735e0",
+        "readAt": "2026-10-26T05:16:28.612106+00:00",
+        "aabSha256": "a42c377c7261f0e350d775a4c9f64eb1f2035df1df160a4d3619f1ab6122bce1",
+        "universalApkSha256": "b30044f84c728a554576a45e03cf22d42fb2f45313125727e1f0031334ef98ff",
         "productionReleasePresent": false
       }
     },
@@ -179,55 +185,59 @@
       "identity": {
         "applicationId": "com.seorilabs.cyclepair",
         "appStoreConnectAppId": "6792393652",
-        "version": "1.2.0",
-        "build": "1002000"
+        "version": "1.2.1",
+        "build": "1002001"
       },
       "gates": {
         "candidate": {
           "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
+          "evidence": [
+            "공개 storefront 목록의 최종 재조회가 남아 있다."
+          ],
+          "checkedAt": "2026-10-26T06:41:19.201032+00:00",
           "blocker": null
         },
         "artifact": {
-          "status": "blocked",
+          "status": "pass",
           "evidence": [
-            "https://github.com/seorilabs/cycle-pair/actions/runs/40254674616",
-            "Existing installed profile Cycle Pair App Store 2026-07-23; no archive or upload performed"
+            "https://github.com/seorilabs/cycle-pair/actions/runs/40272297924",
+            "기존 수락된 App Store 프로파일을 앱 Release에 연결, 서명 archive와 export 및 업로드 성공",
+            "App Store Connect 앱 6792393652, 버전 1.2.1, 빌드 1002001 VALID"
           ],
-          "checkedAt": "2026-10-26T02:17:54.687416+00:00",
-          "blocker": "App Release target lacks PROVISIONING_PROFILE_SPECIFIER; one-line repair prepared, new immutable version 1.2.1 choice pending"
+          "checkedAt": "2026-10-26T05:38:34.976109+00:00",
+          "blocker": null
         },
         "upload": {
-          "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
+          "status": "pass",
+          "evidence": [
+            "App Store Connect build 776ecbfc-8c21-4540-b12e-df5354332e33 수신과 처리 확인"
+          ],
+          "checkedAt": "2026-10-26T05:38:34.976109+00:00",
           "blocker": null
         },
         "processing": {
-          "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
+          "status": "pass",
+          "evidence": [
+            "VALID, expired=false, 기존 내부 그룹 0e8695fc-459e-4d3d-8d34-d1c855b7a2fa에 빌드 제공 확인"
+          ],
+          "checkedAt": "2026-10-26T05:38:34.976109+00:00",
           "blocker": null
         },
         "qa": {
           "status": "pending",
           "evidence": [
-            "https://github.com/seorilabs/cycle-pair/releases/tag/v1.2.0 development regression and independent rendered flows passed",
-            "No current native iOS build or device execution"
+            "https://github.com/seorilabs/cycle-pair/releases/tag/v1.2.1 독립 개발 회귀 통과. TestFlight 빌드의 네이티브 SDK와 OS 동작은 미실행이며 기기 승인은 없다."
           ],
-          "checkedAt": "2026-10-26T02:17:54.687416+00:00",
+          "checkedAt": "2026-10-26T06:41:19.201032+00:00",
           "blocker": null
         },
         "metadata": {
           "status": "pass",
           "evidence": [
-            "https://github.com/seorilabs/cycle-pair/pull/160",
-            "Editable version c4a4f720-9ded-40fb-9cb4-9af3f74f05d2 is 1.2.0 PREPARE_FOR_SUBMISSION",
-            "ko and en-US text matches, eight iPhone images COMPLETE and processed pixels match, old iPad image links removed after backup",
-            "Old build15 link detached while retaining its artifact; new build not linked or submitted"
+            "초안 버전 1.2.1 PREPARE_FOR_SUBMISSION에 빌드 1002001 연결",
+            "ko, en-US 이미지 8장 COMPLETE, 기존 이미지 ID와 순서 유지. 첫 출시 What's New는 비어 있다."
           ],
-          "checkedAt": "2026-10-26T02:17:54.687416+00:00",
+          "checkedAt": "2026-10-26T05:59:28.204927+00:00",
           "blocker": null
         },
         "policy": {
@@ -264,23 +274,32 @@
         }
       },
       "currentDistribution": {
+        "channel": "TestFlight internal",
         "versionState": "PREPARE_FOR_SUBMISSION",
-        "linkedBuild": null,
-        "uploadedNewBuild": false
+        "linkedBuild": "776ecbfc-8c21-4540-b12e-df5354332e33",
+        "uploadedNewBuild": true,
+        "processingState": "VALID",
+        "existingInternalGroup": "0e8695fc-459e-4d3d-8d34-d1c855b7a2fa",
+        "buildAvailableInGroup": true,
+        "readAt": "2026-10-26T05:38:34.976109+00:00"
       }
     }
   },
-  "updatedAt": "2026-10-26T02:36:47.134638+00:00",
+  "updatedAt": "2026-10-26T06:41:19.201032+00:00",
   "nativeExecution": {
     "status": "unrun",
     "deviceApproval": false,
-    "reason": "Development/UI verification completed; native-only paths require exact artifact/tool ownership preparation and separate explicit scoped approval. No blanket device regression requested."
+    "reason": "현재 1.2.1 두 마켓 빌드는 내부 제공 중이다. 네이티브 SDK와 OS 항목은 별도 범위 소명과 명시적 기기 승인이 필요하며, 조회와 실행은 0회다."
   },
   "evidenceArchive": {
     "round5": "cycle-pair/2026-10-26/fc60c9e7c8e875104388ef03a4c6c27176554726/ui-independent-round5-100044-41898e",
     "round5ManifestSha256": "0a955216ad0236bd64923b5f4f05f9ad54911a3aa16593a974e7ce1aaaa46097",
     "metadata": "cycle-pair/2026-10-26/fc60c9e7c8e875104388ef03a4c6c27176554726/market-metadata-completed-110100-6d5f6e",
-    "metadataManifestSha256": "f66986ff3d1b61e8fd12b3602bbe16ae2d12f7459c52b5e1a4fd4601d2e6b805"
+    "metadataManifestSha256": "f66986ff3d1b61e8fd12b3602bbe16ae2d12f7459c52b5e1a4fd4601d2e6b805",
+    "functional121": "cycle-pair/2026-10-26/0360e7a174570818d48f372bead80517a6f73695/signing-121-independent-functional-135643-6c6d4d/manifest.json",
+    "functional121ManifestSha256": "e0189bd53b105906344ba4fd3f09e308965d7b694be88c2620ff2fd845346b5b",
+    "launch121Originals": "cycle-pair/2026-10-26/0360e7a174570818d48f372bead80517a6f73695/launch-121-verified-063002-2b8786/VERIFIED-MANIFEST.json",
+    "launch121OriginalsManifestSha256": "9b2278cfd510120cd2cad30ec8021810854a3ac6c09f68ce40bc3f7e8ed5c4b2"
   },
   "iapDecommission": {
     "sourceSha": "fc60c9e7c8e875104388ef03a4c6c27176554726",
@@ -317,6 +336,27 @@
     "userDataAndAccountsChanged": false,
     "newKeysOrCredentials": false,
     "backupManifestSha256": "b9c49d9600b2e1c188479a2f1afc068951722bf7e17a688acdc6fead90dab9d9",
-    "evidence": "NAS1dual cycle-pair/2026-10-26/fc60c9e7c8e875104388ef03a4c6c27176554726/retired-iap-backup-112919-30a321/VERIFIED-MANIFEST.json; encrypted source/config/IAM restored in memory before deletion"
+    "evidence": "NAS1dual cycle-pair/2026-10-26/fc60c9e7c8e875104388ef03a4c6c27176554726/retired-iap-backup-112919-30a321/VERIFIED-MANIFEST.json; encrypted source/config/IAM restored in memory before deletion",
+    "bundledSourceRetirement": {
+      "status": "completed",
+      "sourceSha": "0360e7a174570818d48f372bead80517a6f73695",
+      "verifiedAt": "2026-10-26T06:22:36.529952+00:00",
+      "functionCount": 23,
+      "firebaseFunctionsHash": "6637c2c8605b3dd4d7be62a3db2bad6030798e31",
+      "sourceAndCompiledModulesAbsent": true,
+      "historicalUserDataMigration": false,
+      "rulesSourceSha256": "96fc2fa10bc2f80104f25a8a3872fa58269b6ce347d7f45ea23bfdb50b21fe66"
+    }
+  },
+  "backendUpdate": {
+    "status": "verified-current-serving-source",
+    "sourceSha": "0360e7a174570818d48f372bead80517a6f73695",
+    "verifiedAt": "2026-10-26T06:22:36.529952+00:00",
+    "functionCount": 23,
+    "firebaseFunctionsHash": "6637c2c8605b3dd4d7be62a3db2bad6030798e31",
+    "iamAndRuntimeResourcesPreserved": true,
+    "appCheckEnforcementChanged": false,
+    "initialParallelQuotaFailures": "원문과 순차 복구 기록을 보존했다. 한도와 과금 설정은 변경하지 않았다.",
+    "dataMigration": false
   }
 }
