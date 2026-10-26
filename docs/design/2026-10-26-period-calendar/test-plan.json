@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "level": "L3",
+  "baseline": null,
+  "changedFeatures": ["calendar", "records", "home", "pairing-sharing", "settings-language", "privacy"],
+  "environments": ["dev"],
+  "redesign": true,
+  "foundationRerun": true,
+  "floorOverrides": [
+    {"rule":"foundation","featureId":"records","reason":"기존 날짜별 자료의 생리 표시, 과거 수정, 단일 날짜 트랜잭션과 암호화 큐 계약을 RN 개발 실행과 Firebase 에뮬레이터로 확인한다. 네이티브 SDK와 보안 저장 구현은 바꾸지 않으며 첫 네이티브 검증을 면제하지 않는다."},
+    {"rule":"foundation","featureId":"pairing-sharing","reason":"개인 기록 변경 후 기존 공유 항목의 허용된 투영과 공유 끄기를 Firebase 개발 환경에서 회귀한다. 공유 기본값, 네이티브 알림과 OS 연동은 바꾸지 않는다."},
+    {"rule":"foundation","featureId":"privacy","reason":"동의 전 차단, 다른 계정 경계, 기존 개인 자료 삭제와 내보내기를 개발 환경에서 확인한다. 수집 항목이나 외부 전송처를 늘리지 않고 네이티브 SDK도 바꾸지 않는다."}
+  ],
+  "release": {"markets":["google-play","app-store"],"until":"public","rollout":1}
+}
