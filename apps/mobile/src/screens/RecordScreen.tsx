@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -25,10 +25,10 @@ import {
   Title,
   ToggleRow,
 } from '../components/Ui';
-import { useI18n } from '../i18n/I18nProvider';
+import { formatDate, useI18n } from '../i18n/I18nProvider';
 import { colors, radius, spacing } from '../theme';
 import { AppIcon } from '../components/AppArtwork';
-import {emotionArtwork} from '../components/emotionArtwork';
+import { emotionArtwork } from '../components/emotionArtwork';
 const symptoms = ['복통', '두통', '피로', '부종', '예민함', '허리 불편'];
 const conditions: NonNullable<DailyCheckIn['condition']>[] = [
   '편안해요',
@@ -48,32 +48,84 @@ export function RecordScreen({
   onCancel,
   initialDraft,
   onDraftChange,
+  localDate,
+  initialPeriodEdited = false,
 }: {
   onDone(): void;
   onCancel(): void;
   initialDraft?: DailyCheckIn;
-  onDraftChange?(draft: DailyCheckIn): void;
+  localDate?: string;
+  initialPeriodEdited?: boolean;
+  onDraftChange?(draft: DailyCheckIn, periodEdited: boolean): void;
 }) {
-  const { state, backendBusy, backendError, saveCheckIn } = useCyclePair();
-  const { l, t, label } = useI18n();
+  const {
+    state,
+    backendBusy,
+    backendError,
+    saveCheckIn,
+    recoverDailyDraft,
+    reloadPrivateHistory,
+  } = useCyclePair();
+  const { l, t, label, locale } = useI18n();
   const { fontScale, width } = useWindowDimensions();
   const moodColumns =
     fontScale >= 1.75 ? 1 : fontScale > 1.2 || width < 310 ? 2 : 3;
-  const [draft, setDraft] = useState(initialDraft ?? state.checkIn);
+  const date = localDate ?? state.currentLocalDate;
+  const existing = state.dailyHistory.find(
+    entry => entry.localDate === date,
+  )?.checkIn;
+  const [draft, setDraft] = useState(
+    initialDraft ??
+      existing ??
+      (date === state.currentLocalDate
+        ? state.checkIn
+        : { symptoms: [], periodStarted: false, periodEnded: false }),
+  );
+  const periodEdited = useRef(initialPeriodEdited),
+    dirty = useRef(false);
+  const [recovered, setRecovered] = useState(false);
+  useEffect(() => {
+    let active = true;
+    if (!initialDraft && recoverDailyDraft)
+      recoverDailyDraft(date)
+        .then(saved => {
+          if (active && !dirty.current && saved) {
+            setDraft(saved.checkIn);
+            periodEdited.current = saved.periodEdited;
+            setRecovered(true);
+          }
+        })
+        .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [date, initialDraft, recoverDailyDraft]);
   const [sheet, setSheet] = useState<'help' | null>(null);
   const [details, setDetails] = useState(false);
   const [attempted, setAttempted] = useState(false);
   const submitting = useRef(false);
   function update(next: DailyCheckIn) {
+    dirty.current = true;
     setDraft(next);
-    onDraftChange?.(next);
+    onDraftChange?.(next, periodEdited.current);
   }
   async function save() {
-    if (submitting.current || backendBusy || !draft.emotions?.length) return;
+    if (
+      submitting.current ||
+      backendBusy ||
+      !(draft.emotions?.length || draft.periodStarted || draft.periodEnded)
+    )
+      return;
     submitting.current = true;
     setAttempted(true);
     try {
-      if (await saveCheckIn(draft)) onDone();
+      if (
+        await saveCheckIn(draft, {
+          localDate: date,
+          preservePeriod: !periodEdited.current,
+        })
+      )
+        onDone();
     } finally {
       submitting.current = false;
     }
@@ -86,8 +138,17 @@ export function RecordScreen({
           disabled={backendBusy}
           onPress={onCancel}
         />
-        <Text style={styles.date}>{t('Today')}</Text>
+        <Text style={styles.date}>
+          {date === state.currentLocalDate
+            ? t('Today')
+            : formatDate(date, locale)}
+        </Text>
       </View>
+      {recovered ? (
+        <Body>
+          {t('Your unsaved changes are here. Review them before saving.')}
+        </Body>
+      ) : null}
       <Title>{t('How are you feeling right now?')}</Title>
       <Body muted style={styles.intro}>
         {t('Choose a word that feels like you.')}
@@ -152,11 +213,13 @@ export function RecordScreen({
       <View style={styles.private}>
         <AppIcon name={state.shareSettings.note ? 'pair' : 'lock'} />
         <Body muted style={styles.flex}>
-          {t(state.shareSettings.note
-            ? state.paired
-              ? 'Note sharing is on. Saved notes are shared with your partner.'
-              : 'Note sharing is on. Connect a partner to share saved notes.'
-            : 'Note sharing is off. Only you can see this note.')}
+          {t(
+            state.shareSettings.note
+              ? state.paired
+                ? 'Note sharing is on. Saved notes are shared with your partner.'
+                : 'Note sharing is on. Connect a partner to share saved notes.'
+              : 'Note sharing is off. Only you can see this note.',
+          )}
         </Body>
       </View>
       <Pressable
@@ -248,33 +311,54 @@ export function RecordScreen({
           {state.isLogger ? (
             <>
               <ToggleRow
-                title={t('Period started today')}
+                title={t('Period started on this date')}
+                testID="record-period-start"
                 disabled={backendBusy}
                 value={draft.periodStarted}
-                onValueChange={value =>
-                  update({ ...draft, periodStarted: value, periodEnded: false })
-                }
+                onValueChange={value => {
+                  periodEdited.current = true;
+                  update({ ...draft, periodStarted: value });
+                }}
               />
               <ToggleRow
-                title={t('Period ended today')}
+                title={t('Period ended on this date')}
+                testID="record-period-end"
                 disabled={backendBusy}
                 value={draft.periodEnded}
-                onValueChange={value =>
-                  update({ ...draft, periodEnded: value, periodStarted: false })
-                }
+                onValueChange={value => {
+                  periodEdited.current = true;
+                  update({ ...draft, periodEnded: value });
+                }}
               />
             </>
           ) : null}
         </Card>
       ) : null}
       {attempted && backendError ? (
-        <Body style={styles.error}>{l(backendError)}</Body>
+        <View accessibilityRole="alert">
+          <Body style={styles.error}>{l(backendError)}</Body>
+          <TextButton
+            label={t('Reload saved records')}
+            disabled={backendBusy}
+            onPress={() => {
+              reloadPrivateHistory().catch(() => undefined);
+            }}
+          />
+        </View>
       ) : null}
       <View style={styles.save}>
         <PrimaryButton
           testID="record-save"
           label={t(backendBusy ? 'Saving…' : 'Save record')}
-          disabled={backendBusy || !draft.emotions?.length}
+          disabled={
+            backendBusy ||
+            date > state.currentLocalDate ||
+            !(
+              draft.emotions?.length ||
+              draft.periodStarted ||
+              draft.periodEnded
+            )
+          }
           onPress={() => {
             save().catch(() => undefined);
           }}
@@ -311,11 +395,13 @@ export function RecordScreen({
 const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: spacing.lg,
   },
-  date: { color: colors.textMuted },
+  date: { color: colors.textMuted, fontSize:14, flexShrink:1 },
   intro: { marginTop: spacing.sm, marginBottom: spacing.lg },
   moods: {
     flexDirection: 'row',

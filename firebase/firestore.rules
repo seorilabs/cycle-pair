@@ -55,12 +55,16 @@ service cloud.firestore {
       );
     }
 
+    function matchesLocalDateParts(value, parsed) {
+      return parsed.year() == int(value[0:4])
+        && parsed.month() == int(value[5:7])
+        && parsed.day() == int(value[8:10]);
+    }
+
     function isGregorianLocalDate(value) {
       return value is string
         && value.matches('^\\d{4}-\\d{2}-\\d{2}$')
-        && localDateTimestamp(value).year() == int(value[0:4])
-        && localDateTimestamp(value).month() == int(value[5:7])
-        && localDateTimestamp(value).day() == int(value[8:10]);
+        && matchesLocalDateParts(value, localDateTimestamp(value));
     }
 
     // One UTC day of headroom covers legitimate LocalDates in UTC+14 while
@@ -140,7 +144,7 @@ service cloud.firestore {
             && (!('cycleStatus' in data) || data.cycleStatus in [
               'period-starting', 'period-in-progress', 'period-ending',
               'post-period', 'fertile-window', 'pre-period',
-              'cycle-in-progress', 'unknown'
+              'cycle-in-progress', 'period-late', 'unknown'
             ])
             && isValidPredictionWindow(
               data.nextPeriodWindow,
@@ -209,9 +213,7 @@ service cloud.firestore {
             ])))
         && isOptionalString(data, 'note', 500)
         && isOptionalBoolean(data, 'periodStarted')
-        && isOptionalBoolean(data, 'periodEnded')
-        && (!(('periodStarted' in data) && data.periodStarted == true)
-          || !(('periodEnded' in data) && data.periodEnded == true));
+        && isOptionalBoolean(data, 'periodEnded');
     }
 
     function isValidPrivateDailyLogTombstone(logId) {

@@ -24,7 +24,7 @@ function show(state: ReturnType<typeof createInitialState>) {
 it('identifies an input-only estimate as zero recorded intervals', async () => {
   const view = await show({...createInitialState(), hasCycleSeed:true,
     seed:{lastPeriodStart:addDays(today,-20),averageCycleLength:31,averagePeriodLength:5}});
-  expect(view.getByText('Based on your entered 31-day cycle. Recorded cycle intervals: 0.')).toBeTruthy();
+  expect(view.getByText('Based on the current 31-day cycle setting. Recorded cycle intervals: 0.')).toBeTruthy();
   expect(view.queryByText(/Based on 1 recorded cycle interval/)).toBeNull();
 });
 it('shows the actual observed interval count and average rather than the configured seed', async () => {
@@ -33,7 +33,7 @@ it('shows the actual observed interval count and average rather than the configu
     dailyHistory:[-32,-4].map(offset=>({localDate:addDays(today,offset),checkIn:{symptoms:[],periodStarted:true,periodEnded:false}}))};
   const view = await show(state);
   expect(view.getByText('Based on 2 recorded cycle intervals. Average 28 days.')).toBeTruthy();
-  expect(view.queryByText('Based on your entered 31-day cycle. Recorded cycle intervals: 0.')).toBeNull();
+  expect(view.queryByText('Based on the current 31-day cycle setting. Recorded cycle intervals: 0.')).toBeNull();
 });
 it('does not offer a prediction basis before complete cycle inputs exist', async () => {
   const view=await show(createInitialState());

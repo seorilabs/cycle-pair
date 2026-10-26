@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "status": "captured-and-development-reviewed",
+  "status": "new-calendar-images-prepared-not-uploaded",
   "packageName": "com.seorilabs.cyclepair",
   "locales": [
     "ko-KR",
@@ -53,15 +53,14 @@
     }
   },
   "finalUpload": {
-    "status": "both-markets-saved-and-pixel-verified",
-    "apple": "Eight iPhone images processed COMPLETE and pixel-matched in draft 1.2.0; no iPad or Watch images. RN development origin is recorded in registration-assets.json.",
-    "play": "Eighteen localized image references saved in Console; API source hashes and order, downloaded processed pixels match exactly. Existing icons and app details retained. No release track was changed by listing save.",
-    "localeMapping": "Separate ko-KR and en-US image lists, with ko-KR mapped to ko in App Store Connect.",
-    "nativeFidelity": "No physical device capture or native SDK pass is claimed."
+    "status": "pending-new-candidate",
+    "previous": "Older draft screenshots were saved in an earlier task. The 24 replacement screenshots in this candidate have not been uploaded.",
+    "localeMapping": "ko-KR and en-US; ko-KR maps to ko in App Store Connect",
+    "nativeFidelity": "Development rendering only; no device or native SDK proof."
   },
   "sources": [
     "https://support.google.com/googleplay/android-developer/answer/9866151?hl=en",
     "https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications/"
   ],
-  "sourceSha": "fc60c9e7c8e875104388ef03a4c6c27176554726"
+  "sourceSha": "1d36181fbaef0214ee1ece73c3925c48d26e62ca"
 }

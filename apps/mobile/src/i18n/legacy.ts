@@ -1,4 +1,5 @@
 export const legacyEnglish: Readonly<Record<string, string>> = {
+  '저장된 기록이 바뀌었어요. 최신 기록을 불러온 뒤 다시 저장해 주세요.': 'Your saved records changed. Reload them before saving again.',
   '기록 있음': 'Has a record',
   '공동 일정 있음': 'Has a shared event',
   ' · 동의일 ': ', consented on ',

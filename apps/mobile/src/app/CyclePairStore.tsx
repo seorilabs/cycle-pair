@@ -11,11 +11,7 @@ import React, {
   useState,
 } from 'react';
 import { addEventListener as addNetworkListener } from '@react-native-community/netinfo';
-import {
-  calculateAverageCycleLength,
-  createCycle,
-  parseLocalDate,
-} from '@cyclepair/product-core';
+import { isLocalDate } from '@cyclepair/product-core';
 import type { EmotionCode } from '@cyclepair/product-core';
 import { AppState, Platform } from 'react-native';
 import {
@@ -27,6 +23,8 @@ import type {
   BackendKind,
   BackendSession,
   BackendWriteResult,
+  PeriodBoundaryState,
+  PrivateSetupSnapshot,
   CyclePairBackend,
   PairEvent,
   PairEventInput,
@@ -44,7 +42,7 @@ import {
   toPrivateDailyLogRecord,
 } from '../platform/backend/backendPayloads';
 import { previewCyclePairBackend } from '../platform/backend/PreviewCyclePairBackend';
-import { SELF_MEMBER_ID } from './memberIds';
+import { cycleSetupForPeriodChange } from './periodCalendar';
 import {
   SHELL_PREFERENCES_SCHEMA_VERSION,
   isReadableShellPreferencesSchemaVersion,
@@ -165,7 +163,7 @@ interface PersistedShellPreferences {
 export type CyclePairAction =
   | { type: 'RESTORE_SHELL_PREFERENCES'; payload: PersistedShellPreferences }
   | {
-      type: 'RESTORE_PRIVATE_SETUP';
+      type: 'RESTORE_PRIVATE_SETUP' | 'APPLY_SAVED_PRIVATE_SETUP';
       payload: {
         isLogger: boolean;
         seed?: CycleSeed;
@@ -209,7 +207,12 @@ export type CyclePairAction =
   | { type: 'USE_RECOMMENDED_SHARING' }
   | { type: 'COMPLETE_SHARING'; queued?: boolean }
   | { type: 'SET_TAB'; payload: MainTab }
-  | { type: 'SAVE_CHECK_IN'; payload: DailyCheckIn }
+  | {
+      type: 'SAVE_CHECK_IN';
+      payload: DailyCheckIn;
+      localDate?: string;
+      updatedAt?: string;
+    }
   | { type: 'DELETE_DAILY_LOG'; payload: string }
   | { type: 'SET_NOTIFICATIONS_ENABLED'; payload: boolean }
   | { type: 'SET_NOTIFICATION_QUIET_HOURS'; payload: NotificationQuietHours }
@@ -231,73 +234,41 @@ function daysAgo(count: number): string {
   return toLocalDate(date);
 }
 
-/**
- * 저장되는 seed의 평균 주기 길이.
- *
- * 홈 예측과 같은 도메인 식(`calculateAverageCycleLength`)을 쓴다. 다만 이 값은
- * 파트너에게 전송되는 seed라서 화면 조회의 lookback 컷오프를 적용하지 않고
- * 관측된 전체 기록을 넘긴다. 컷오프는 화면 표시 정책이지 저장 값의 정의가
- * 아니다.
- */
-function observedAverageCycleLength(
-  state: Pick<CyclePairState, 'dailyHistory' | 'seed'>,
-  nextStart?: string,
-): number {
-  const starts = new Set<string>([state.seed.lastPeriodStart]);
-  for (const entry of state.dailyHistory) {
-    if (entry.checkIn.periodStarted) starts.add(entry.localDate);
-  }
-  if (nextStart) starts.add(nextStart);
-  const cycles = [...starts].sort().map((start, index) =>
-    createCycle({
-      id: `seed-cycle-${index}-${start}`,
-      memberId: SELF_MEMBER_ID,
-      startedOn: parseLocalDate(start),
-    }),
-  );
-  return calculateAverageCycleLength(cycles) ?? state.seed.averageCycleLength;
-}
-
 function seedFromDailyHistory(
   seed: CycleSeed,
   dailyHistory: readonly DailyHistoryEntry[],
 ): CycleSeed {
-  const observedStarts = dailyHistory
-    .filter(entry => entry.checkIn.periodStarted)
-    .map(entry => entry.localDate);
-  const lastPeriodStart = [...observedStarts, seed.lastPeriodStart]
-    .sort()
-    .at(-1)!;
-  const eligibleEnds = dailyHistory
-    .filter(
-      entry => entry.checkIn.periodEnded && entry.localDate >= lastPeriodStart,
-    )
-    .map(entry => entry.localDate);
-  if (
-    seed.lastPeriodEnd &&
-    seed.lastPeriodStart === lastPeriodStart &&
-    seed.lastPeriodEnd >= lastPeriodStart
-  ) {
-    eligibleEnds.push(seed.lastPeriodEnd);
-  }
-  const lastPeriodEnd = eligibleEnds.sort().at(-1);
-  const averageCycleLength = observedAverageCycleLength({
+  return cycleSetupForPeriodChange({
+    isLogger: true,
+    hasCycleSeed: true,
     seed,
     dailyHistory,
-  });
-
-  return {
-    ...seed,
-    lastPeriodStart,
-    ...(lastPeriodEnd ? { lastPeriodEnd } : { lastPeriodEnd: undefined }),
-    averageCycleLength,
-  };
+    currentLocalDate: toDeviceLocalDate(),
+  }).seed;
 }
 
 function createMutationId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random()
     .toString(36)
     .slice(2, 12)}`;
+}
+
+function restoredSetup(setup: PrivateSetupSnapshot) {
+  return {
+    isLogger: setup.recordsCycle,
+    consentAcceptedAt: setup.consentAcceptedAt,
+    consentVersion: setup.consentVersion,
+    ...(setup.cycle
+      ? {
+          seed: {
+            lastPeriodStart: setup.cycle.periodDates.startDate,
+            lastPeriodEnd: setup.cycle.periodDates.endDate,
+            averageCycleLength: setup.cycle.averageCycleLength,
+            averagePeriodLength: setup.cycle.averagePeriodLength,
+          },
+        }
+      : {}),
+  };
 }
 
 function cyclePersistenceKey(
@@ -410,11 +381,14 @@ export function reduceCyclePairState(
         diagnosticsEnabled: restored.diagnosticsEnabled,
       };
     }
-    case 'RESTORE_PRIVATE_SETUP': {
+    case 'RESTORE_PRIVATE_SETUP':
+    case 'APPLY_SAVED_PRIVATE_SETUP': {
       const hasCurrentConsent = hasCurrentSensitiveHealthConsent(
         action.payload.consentAcceptedAt,
         action.payload.consentVersion,
       );
+      const preserveNavigation =
+        action.type === 'APPLY_SAVED_PRIVATE_SETUP' && hasCurrentConsent;
       return {
         ...state,
         isLogger: action.payload.isLogger,
@@ -427,14 +401,17 @@ export function reduceCyclePairState(
         sensitiveDataConsentVersion: hasCurrentConsent
           ? action.payload.consentVersion
           : undefined,
-        stage: hasCurrentConsent
+        stage: preserveNavigation
+          ? state.stage
+          : hasCurrentConsent
           ? state.paired
             ? state.sharingCompleted
               ? 'main'
               : 'sharing'
             : 'main'
           : 'setup',
-        activeTab: state.paired ? state.activeTab : 'home',
+        activeTab:
+          preserveNavigation || state.paired ? state.activeTab : 'home',
       };
     }
     case 'COMPLETE_ONBOARDING':
@@ -647,41 +624,55 @@ export function reduceCyclePairState(
     case 'SET_TAB':
       return { ...state, activeTab: action.payload };
     case 'SAVE_CHECK_IN': {
-      const today = toLocalDate(new Date());
-      const history = [
-        { localDate: today, checkIn: action.payload },
-        ...state.dailyHistory.filter(entry => entry.localDate !== today),
-      ].sort((left, right) => right.localDate.localeCompare(left.localDate));
+      const date = action.localDate ?? state.currentLocalDate;
+      const dailyHistory = [
+        {
+          localDate: date,
+          checkIn: action.payload,
+          ...(action.updatedAt ? { updatedAt: action.updatedAt } : {}),
+        },
+        ...state.dailyHistory.filter(entry => entry.localDate !== date),
+      ].sort((a, b) => b.localDate.localeCompare(a.localDate));
+      const derived = cycleSetupForPeriodChange(
+        { ...state, dailyHistory },
+        {
+          localDate: date,
+          periodStarted: action.payload.periodStarted,
+          periodEnded: action.payload.periodEnded,
+        },
+      );
       return {
         ...state,
-        checkIn: action.payload,
-        dailyHistory: history,
-        seed:
-          state.hasCycleSeed && action.payload.periodStarted
-            ? {
-                ...state.seed,
-                lastPeriodStart: today,
-                lastPeriodEnd: undefined,
-                averageCycleLength: observedAverageCycleLength(state, today),
-              }
-            : state.hasCycleSeed && action.payload.periodEnded
-            ? { ...state.seed, lastPeriodEnd: today }
-            : state.seed,
+        dailyHistory,
+        seed: derived.seed,
+        hasCycleSeed: derived.hasCycleSeed,
+        checkIn:
+          date === state.currentLocalDate
+            ? currentCheckInForRole(action.payload, state.isLogger)
+            : state.checkIn,
         lastSavedAt: new Date().toISOString(),
       };
     }
-    case 'DELETE_DAILY_LOG':
+    case 'DELETE_DAILY_LOG': {
+      const dailyHistory = state.dailyHistory.filter(
+        entry => entry.localDate !== action.payload,
+      );
+      const derived = cycleSetupForPeriodChange(
+        { ...state, dailyHistory },
+        { localDate: action.payload, periodStarted: false, periodEnded: false },
+      );
       return {
         ...state,
-        dailyHistory: state.dailyHistory.filter(
-          entry => entry.localDate !== action.payload,
-        ),
+        dailyHistory,
+        seed: derived.seed,
+        hasCycleSeed: derived.hasCycleSeed,
         checkIn:
           action.payload === state.currentLocalDate
             ? emptyDailyCheckIn()
             : state.checkIn,
         lastSavedAt: new Date().toISOString(),
       };
+    }
     case 'SET_NOTIFICATIONS_ENABLED':
       return { ...state, neutralNotifications: action.payload };
     case 'SET_NOTIFICATION_QUIET_HOURS':
@@ -727,6 +718,8 @@ function backendErrorMessage(error: unknown): string {
     typeof error === 'object' && error !== null && 'code' in error
       ? String((error as { code?: unknown }).code)
       : '';
+  if (code.includes('record-conflict'))
+    return '저장된 기록이 바뀌었어요. 최신 기록을 불러온 뒤 다시 저장해 주세요.';
   if (code.includes('network'))
     return '네트워크 연결을 확인한 뒤 다시 시도해 주세요.';
   if (code.includes('resource-exhausted'))
@@ -861,7 +854,18 @@ interface CyclePairContextValue {
   useRecommendedSharing(): void;
   completeSharing(): Promise<void>;
   setTab(tab: MainTab): void;
-  saveCheckIn(checkIn: DailyCheckIn): Promise<boolean>;
+  saveCheckIn(
+    checkIn: DailyCheckIn,
+    options?: { localDate?: string; preservePeriod?: boolean },
+  ): Promise<boolean>;
+  savePeriodBoundary(
+    localDate: string,
+    value: PeriodBoundaryState,
+  ): Promise<boolean>;
+  reloadPrivateHistory(): Promise<void>;
+  recoverDailyDraft(
+    localDate: string,
+  ): Promise<{ checkIn: DailyCheckIn; periodEdited: boolean } | null>;
   deleteDailyLog(localDate: string): Promise<boolean>;
   upsertPairEvent(event: PairEventInput): Promise<boolean>;
   deletePairEvent(eventId: string): Promise<boolean>;
@@ -940,7 +944,9 @@ export function CyclePairProvider({
   useEffect(() => {
     if (!backendSession || dailyHistoryStatus !== 'loading') return;
     const timer = setTimeout(() => {
-      setDailyHistoryStatus(current => current === 'loading' ? 'slow' : current);
+      setDailyHistoryStatus(current =>
+        current === 'loading' ? 'slow' : current,
+      );
     }, 15_000);
     return () => clearTimeout(timer);
   }, [backendSession, dailyHistoryStatus]);
@@ -1426,7 +1432,8 @@ export function CyclePairProvider({
     if (localHydrating) return;
     const preferences: PersistedShellPreferences = {
       schemaVersion: SHELL_PREFERENCES_SCHEMA_VERSION,
-      onboardingComplete: state.stage !== 'onboarding' && state.stage !== 'setup',
+      onboardingComplete:
+        state.stage !== 'onboarding' && state.stage !== 'setup',
       neutralNotifications: state.neutralNotifications,
       notificationQuietHours: state.notificationQuietHours,
       diagnosticsEnabled: state.diagnosticsEnabled,
@@ -1886,87 +1893,109 @@ export function CyclePairProvider({
     },
     [analytics],
   );
-  const saveCheckIn = useCallback(
-    async (payload: DailyCheckIn) => {
+  const persistDailyChange = useCallback(
+    async (
+      localDate: string,
+      value: PeriodBoundaryState,
+      record?: import('../platform/backend/CyclePairBackend').PrivateDailyLogRecord,
+      preservePeriod = false,
+    ) => {
       if (
-        dailyHistoryStatus !== 'ready' ||
         !backendSession ||
+        dailyHistoryStatus !== 'ready' ||
+        !isLocalDate(localDate) ||
+        localDate > toDeviceLocalDate() ||
         !hasCurrentSensitiveHealthConsent(
           state.sensitiveDataConsentAcceptedAt,
           state.sensitiveDataConsentVersion,
         )
       ) {
         reportBackendError(
-          new Error('current sensitive health consent unavailable'),
+          new Error('Daily history or health consent unavailable.'),
         );
         return false;
       }
-      const checkIn = state.isLogger
-        ? payload
+      const existing = state.dailyHistory.find(
+        entry => entry.localDate === localDate,
+      );
+      const expectedSetup: PrivateSetupSnapshot = {
+        recordsCycle: state.isLogger,
+        consentAcceptedAt: state.sensitiveDataConsentAcceptedAt!,
+        consentVersion: state.sensitiveDataConsentVersion!,
+        ...(state.isLogger && state.hasCycleSeed
+          ? { cycle: toPrivateCycleRecord(state.seed) }
+          : {}),
+      };
+      const derived = cycleSetupForPeriodChange(state, { localDate, ...value });
+      const setup: PrivateSetupSnapshot = preservePeriod
+        ? expectedSetup
         : {
-            ...payload,
-            periodStarted: false,
-            periodEnded: false,
+            ...expectedSetup,
+            ...(derived.hasCycleSeed
+              ? { cycle: toPrivateCycleRecord(derived.seed) }
+              : { cycle: undefined }),
           };
-      const localDate = toDeviceLocalDate();
-      const nextSeed = checkIn.periodStarted
-        ? {
-            ...state.seed,
-            lastPeriodStart: localDate,
-            lastPeriodEnd: undefined,
-            averageCycleLength: observedAverageCycleLength(
-              { seed: state.seed, dailyHistory: state.dailyHistory },
-              localDate,
-            ),
-          }
-        : checkIn.periodEnded
-        ? { ...state.seed, lastPeriodEnd: localDate }
-        : state.seed;
-      const mutationId = createMutationId('daily');
+      const mutationId = createMutationId('daily-change');
       setBackendBusy(true);
       setBackendFailure(null);
       dispatch({ type: 'SET_SYNC_STATUS', payload: 'syncing' });
       try {
-        const write = await backend.saveDailyLog(
+        const write = await backend.saveDailyLogChange(
           backendSession.uid,
-          localDate,
-          toPrivateDailyLogRecord(checkIn),
+          {
+            localDate,
+            expected: {
+              periodStarted: existing?.checkIn.periodStarted === true,
+              periodEnded: existing?.checkIn.periodEnded === true,
+            },
+            value,
+            expectedSetup,
+            setup,
+            ...(record !== undefined
+              ? {
+                  record,
+                  expectedRecord: existing
+                    ? toPrivateDailyLogRecord(existing.checkIn)
+                    : null,
+                }
+              : {}),
+            ...(preservePeriod ? { preservePeriod: true } : {}),
+          },
           mutationId,
         );
-        dispatch({ type: 'SAVE_CHECK_IN', payload: checkIn });
-        dispatch({
-          type: 'SET_SYNC_STATUS',
-          payload: write.status === 'queued' ? 'queued' : 'synced',
-        });
-        await analytics
-          .track({
-            name: 'cp_cycle_log',
-            params: { sync_state: write.status },
-          })
-          .catch(() => undefined);
-        if (write.status === 'synced' && state.isLogger && state.hasCycleSeed) {
-          if (
-            !hasCurrentSensitiveHealthConsent(
-              state.sensitiveDataConsentAcceptedAt,
-              state.sensitiveDataConsentVersion,
+        const apply = (
+          date: string,
+          log:
+            | import('../platform/backend/CyclePairBackend').PrivateDailyLogSnapshot
+            | null,
+        ) => {
+          if (log) {
+            const entry = fromPrivateDailyLogSnapshot(log);
+            dispatch({
+              type: 'SAVE_CHECK_IN',
+              localDate: date,
+              payload: entry.checkIn,
+              updatedAt: entry.updatedAt,
+            });
+          } else dispatch({ type: 'DELETE_DAILY_LOG', payload: date });
+        };
+        for (const related of write.related)
+          apply(related.localDate, related.log);
+        apply(localDate, write.log);
+        const restored = restoredSetup(write.setup);
+        lastCyclePersistenceKey.current = restored.seed
+          ? cyclePersistenceKey(
+              backendSession.uid,
+              state.currentLocalDate,
+              write.setup.consentAcceptedAt,
+              restored.seed,
             )
-          ) {
-            throw new Error('sensitive data consent unavailable');
-          }
-          await backend.savePrivateSetup(
-            backendSession.uid,
-            true,
-            state.sensitiveDataConsentAcceptedAt!,
-            state.sensitiveDataConsentVersion!,
-            toPrivateCycleRecord(nextSeed),
-          );
-          lastCyclePersistenceKey.current = cyclePersistenceKey(
-            backendSession.uid,
-            localDate,
-            state.sensitiveDataConsentAcceptedAt!,
-            nextSeed,
-          );
-        }
+          : '';
+        dispatch({ type: 'APPLY_SAVED_PRIVATE_SETUP', payload: restored });
+        dispatch({ type: 'SET_SYNC_STATUS', payload: write.status });
+        await analytics
+          .track({ name: 'cp_cycle_log', params: { sync_state: write.status } })
+          .catch(() => undefined);
         return true;
       } catch (error) {
         dispatch({ type: 'SET_SYNC_STATUS', payload: 'error' });
@@ -1980,18 +2009,113 @@ export function CyclePairProvider({
       backend,
       backendSession,
       dailyHistoryStatus,
+      state,
       analytics,
       reportBackendError,
-      state.dailyHistory,
-      state.hasCycleSeed,
-      state.isLogger,
-      state.seed,
+    ],
+  );
+  const saveCheckIn = useCallback(
+    async (
+      payload: DailyCheckIn,
+      options?: { localDate?: string; preservePeriod?: boolean },
+    ) => {
+      const localDate = options?.localDate ?? toDeviceLocalDate();
+      const value = state.isLogger
+        ? {
+            periodStarted: payload.periodStarted,
+            periodEnded: payload.periodEnded,
+          }
+        : { periodStarted: false, periodEnded: false };
+      return persistDailyChange(
+        localDate,
+        value,
+        toPrivateDailyLogRecord({ ...payload, ...value }),
+        options?.preservePeriod === true || !state.isLogger,
+      );
+    },
+    [persistDailyChange, state.isLogger],
+  );
+  const savePeriodBoundary = useCallback(
+    async (localDate: string, value: PeriodBoundaryState) => {
+      if (!state.isLogger) return false;
+      return persistDailyChange(localDate, value);
+    },
+    [persistDailyChange, state.isLogger],
+  );
+  const reloadPrivateHistory = useCallback(async () => {
+    if (!backendSession) return;
+    setBackendBusy(true);
+    setBackendFailure(null);
+    setDailyHistoryStatus('loading');
+    try {
+      const setup = await backend.loadPrivateSetup(backendSession.uid);
+      const logs = await backend.syncDailyLogs(backendSession.uid);
+      if (!setup) throw new Error('Saved setup unavailable.');
+      dispatch({
+        type: 'APPLY_SAVED_PRIVATE_SETUP',
+        payload: restoredSetup(setup),
+      });
+      dispatch({
+        type: 'RESTORE_DAILY_HISTORY',
+        payload: logs.map(fromPrivateDailyLogSnapshot),
+      });
+      setDailyHistoryStatus('ready');
+    } catch (error) {
+      setDailyHistoryStatus('error');
+      reportBackendError(error);
+      throw error;
+    } finally {
+      setBackendBusy(false);
+    }
+  }, [backend, backendSession, reportBackendError]);
+  const recoverDailyDraft = useCallback(
+    async (localDate: string) => {
+      if (
+        !backendSession ||
+        !hasCurrentSensitiveHealthConsent(
+          state.sensitiveDataConsentAcceptedAt,
+          state.sensitiveDataConsentVersion,
+        )
+      )
+        return null;
+      const draft = await backend.loadFailedDailyDraft(
+        backendSession.uid,
+        localDate,
+      );
+      if (!draft) return null;
+      const existing = latestState.current.dailyHistory.find(
+        entry => entry.localDate === localDate,
+      );
+      return {
+        checkIn: draft.record
+          ? fromPrivateDailyLogSnapshot({
+              localDate,
+              record: { ...draft.record, ...draft.value },
+            }).checkIn
+          : { ...(existing?.checkIn ?? emptyDailyCheckIn()), ...draft.value },
+        periodEdited: draft.periodEdited,
+      };
+    },
+    [
+      backend,
+      backendSession,
       state.sensitiveDataConsentAcceptedAt,
       state.sensitiveDataConsentVersion,
     ],
   );
   const deleteDailyLog = useCallback(
     async (localDate: string) => {
+      if (
+        hasCurrentSensitiveHealthConsent(
+          state.sensitiveDataConsentAcceptedAt,
+          state.sensitiveDataConsentVersion,
+        )
+      )
+        return persistDailyChange(
+          localDate,
+          { periodStarted: false, periodEnded: false },
+          {},
+        );
       // Deletion is always available to the authenticated owner. The current
       // consent gate applies to creating or updating health data, not erasure.
       if (!backendSession) {
@@ -2022,7 +2146,14 @@ export function CyclePairProvider({
         setBackendBusy(false);
       }
     },
-    [backend, backendSession, reportBackendError],
+    [
+      backend,
+      backendSession,
+      reportBackendError,
+      persistDailyChange,
+      state.sensitiveDataConsentAcceptedAt,
+      state.sensitiveDataConsentVersion,
+    ],
   );
   const upsertPairEvent = useCallback(
     async (event: PairEventInput) => {
@@ -2429,6 +2560,9 @@ export function CyclePairProvider({
       completeSharing,
       setTab,
       saveCheckIn,
+      savePeriodBoundary,
+      reloadPrivateHistory,
+      recoverDailyDraft,
       deleteDailyLog,
       upsertPairEvent,
       deletePairEvent,
@@ -2475,6 +2609,9 @@ export function CyclePairProvider({
       completeSharing,
       setTab,
       saveCheckIn,
+      savePeriodBoundary,
+      reloadPrivateHistory,
+      recoverDailyDraft,
       deleteDailyLog,
       upsertPairEvent,
       deletePairEvent,

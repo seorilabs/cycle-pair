@@ -8,6 +8,12 @@ import type {
   PrivateDailyLogSnapshot,
   RemotePartnerProjection,
 } from './CyclePairBackend';
+import {
+  hasDailyLogContent,
+  mergePeriodBoundary,
+  seedBoundaryDates,
+} from './periodBoundaryChange';
+import { toDeviceLocalDate } from './backendPayloads';
 
 function unsupported(): never {
   throw new Error('Firebase 개발 프로젝트에서만 사용할 수 있습니다.');
@@ -62,6 +68,47 @@ export const previewCyclePairBackend: CyclePairBackend = {
   },
   async syncDailyLogs(uid) {
     return this.loadCachedDailyLogs(uid);
+  },
+  async saveDailyLogChange(uid, change, mutationId) {
+    const related = seedBoundaryDates(change, toDeviceLocalDate()).map(seed => {
+      const old = dailyLogs.get(dailyKey(uid, seed.localDate));
+      const record = mergePeriodBoundary(old?.record ?? {}, {
+        periodStarted: old?.record.periodStarted ?? seed.periodStarted ?? false,
+        periodEnded: old?.record.periodEnded ?? seed.periodEnded ?? false,
+      });
+      const log = {
+        localDate: seed.localDate,
+        record,
+        mutationId,
+        updatedAt: new Date().toISOString(),
+      };
+      dailyLogs.set(dailyKey(uid, seed.localDate), log);
+      return { localDate: seed.localDate, log };
+    });
+    const previous = dailyLogs.get(dailyKey(uid, change.localDate));
+    const record = mergePeriodBoundary(
+      change.record ?? previous?.record ?? {},
+      change.preservePeriod
+        ? {
+            periodStarted: previous?.record.periodStarted === true,
+            periodEnded: previous?.record.periodEnded === true,
+          }
+        : change.value,
+    );
+    const log = hasDailyLogContent({ ...record })
+      ? {
+          localDate: change.localDate,
+          record,
+          mutationId,
+          updatedAt: new Date().toISOString(),
+        }
+      : null;
+    if (log) dailyLogs.set(dailyKey(uid, change.localDate), log);
+    else dailyLogs.delete(dailyKey(uid, change.localDate));
+    return { status: 'synced', mutationId, log, setup: change.setup, related };
+  },
+  async loadFailedDailyDraft() {
+    return null;
   },
   async saveDailyLog(uid, localDate, record, mutationId) {
     dailyLogs.set(dailyKey(uid, localDate), {

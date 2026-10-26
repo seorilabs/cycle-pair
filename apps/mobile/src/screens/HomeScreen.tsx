@@ -59,7 +59,7 @@ export function HomeScreen({onOpenRecord}: {onOpenRecord():void}) {
               <Body>{model.predictionStart && model.predictionEnd ? `${formatDate(model.predictionStart,locale)} – ${formatDate(model.predictionEnd,locale)}` : t('More records needed')}</Body>
               {model.advancedPrediction ? (
                 <Body muted>{model.advancedPrediction.sampleSize === 0
-                  ? t('Based on your entered {days}-day cycle. Recorded cycle intervals: 0.', {days:model.advancedPrediction.averageCycleLengthDays})
+                  ? t('Based on the current {days}-day cycle setting. Recorded cycle intervals: 0.', {days:model.advancedPrediction.averageCycleLengthDays})
                   : model.advancedPrediction.sampleSize === 1
                   ? t('Based on 1 recorded cycle interval. Average {days} days.', {days:model.advancedPrediction.averageCycleLengthDays})
                   : t('Based on {count} recorded cycle intervals. Average {days} days.', {count:model.advancedPrediction.sampleSize, days:model.advancedPrediction.averageCycleLengthDays})}</Body>

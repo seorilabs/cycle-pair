@@ -19,7 +19,9 @@
         "apps/mobile/src/screens/RecordScreen.tsx",
         "apps/mobile/src/platform/local/**",
         "apps/mobile/src/app/CyclePairStore.tsx",
-        "apps/mobile/src/CyclePairApp.tsx"
+        "apps/mobile/src/CyclePairApp.tsx",
+        "apps/mobile/src/platform/backend/periodBoundaryChange.ts",
+        "apps/mobile/src/platform/firebase/FirebaseCyclePairBackend.ts"
       ]
     },
     {
@@ -52,7 +54,10 @@
         "apps/mobile/src/screens/CalendarScreen.tsx",
         "firebase/functions/src/domain/pairEvent.ts",
         "apps/mobile/src/app/observedRecordSummary.ts",
-        "apps/mobile/src/components/ObservedDays.tsx"
+        "apps/mobile/src/components/ObservedDays.tsx",
+        "apps/mobile/src/app/periodCalendar.ts",
+        "apps/mobile/src/components/PeriodBoundaryEditor.tsx",
+        "packages/product-core/src/domain/period-history.ts"
       ]
     },
     {

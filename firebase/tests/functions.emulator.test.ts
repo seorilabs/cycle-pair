@@ -730,10 +730,11 @@ describe("pair lifecycle callables", () => {
     );
     const dailyTombstonePath =
       `users/${aliceUid}/privateDailyLogTombstones/2026-07-14`;
+    // Projection refreshes can also come from an earlier record event.
+    // Wait for the deletion receipt itself before asserting its contents.
     expect(
-      (
-        await getDocFromServer(doc(alice.firestore, dailyTombstonePath))
-      ).data(),
+      await waitForProjection(alice.firestore, dailyTombstonePath, data =>
+        data.lastMutationId === "daily-latest"),
     ).toMatchObject({
       schemaVersion: 1,
       localDate: "2026-07-14",
