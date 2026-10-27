@@ -3,16 +3,18 @@
   "app": {
     "name": "Cycle Pair",
     "repo": "seorilabs/cycle-pair",
-    "sourceRevision": "0360e7a174570818d48f372bead80517a6f73695"
+    "sourceRevision": "44618b708d19af4bd0b5848d060398085753a79c"
   },
   "release": {
-    "version": "1.2.1",
-    "tag": "v1.2.1",
+    "version": "1.3.1",
+    "tag": "v1.3.1",
     "objective": "public_live",
-    "countries": [],
-    "rolloutMode": "full (approved rollout=1)",
-    "countryIntent": "worldwide; preserve configured storefronts and reread exact country list before promotion",
-    "pricing": "free; no ads or IAP"
+    "countries": [
+      "Google Play: 177 named countries and other countries (178 Console targets)",
+      "Apple App Store: all 175 storefronts and future territories"
+    ],
+    "rolloutMode": "full; Google managed publishing off; Apple AFTER_APPROVAL",
+    "pricing": "free; no ads; no IAP"
   },
   "deploymentApproval": {
     "status": "approved",
@@ -21,342 +23,335 @@
       "app_store"
     ],
     "objective": "public_live",
-    "approvedAt": "2026-10-25T09:13:32.504557+00:00",
+    "approvedAt": "2026-10-27T11:32:36Z",
     "evidence": [
-      "docs/design/2026-10-25-onboarding-navigation/test-plan.json@4a7f9ee68cef39eee8662aaeee61de241140de4c release.markets=google-play,app-store; release.until=public; rollout=1",
-      "https://github.com/seorilabs/cycle-pair/releases/tag/v1.2.0 development-evidence files retain the human approval and independent review history",
-      "https://github.com/seorilabs/cycle-pair/releases/tag/v1.2.1 기존 사람 승인과 독립 검수 이력을 유지한 현재 후보 근거"
+      "docs/design/2026-10-26-tab-selection-loading/release-plan-alignment-proposal.md at release source44618b7; user public submission instruction and R6 approval retained in Release evidence"
     ]
   },
   "commonGates": {
     "candidate": {
-      "status": "pending",
+      "status": "pass",
       "evidence": [
-        "https://github.com/seorilabs/cycle-pair/releases/tag/v1.2.1 source 0360e7a174570818d48f372bead80517a6f73695; Android1000110; Apple1002001",
-        "공개 승격 직전 실제 국가 목록을 다시 확인해야 한다."
+        "https://github.com/seorilabs/cycle-pair/releases/tag/v1.3.1 fixed source 44618b708d19af4bd0b5848d060398085753a79c; Android1000112; Apple1003001",
+        "Worldwide and free price read back in both providers."
       ],
-      "checkedAt": "2026-10-26T06:41:19.201032+00:00",
+      "checkedAt": "2026-10-27T14:16:47.862950+00:00",
       "blocker": null
     },
     "quality": {
       "status": "pass",
       "evidence": [
-        "https://github.com/seorilabs/cycle-pair/releases/tag/v1.2.1 최종 코드에서 독립 개발 기능 10개와 11시나리오, 호스트 795개 통과",
-        "기존 R1~R5 원문, 시각과 실패 해결 근거를 보존했다. UI 소스는 R5와 같다.",
-        "https://github.com/seorilabs/cycle-pair/pull/163",
-        "https://github.com/seorilabs/cycle-pair/actions/runs/40270347030",
-        "두 마켓 중앙 L3 before-build와 before-deploy 통과. 기기 SDK 통과를 뜻하지 않는다."
+        "https://github.com/seorilabs/cycle-pair/releases/tag/v1.3.1 development-evidence assets and central L3 all6 phases passed",
+        "NAS1dual cycle-pair/2026-10-27/44618b708d19af4bd0b5848d060398085753a79c/period-calendar-independent-round6-7a4dedd6d9/manifest.json; 422files directly read twice; SHA256 ba1d1df92d70e7ba799136bcd118df5ba0894198c2ba3f5bb89b42820cffb385"
       ],
-      "checkedAt": "2026-10-26T06:41:19.201032+00:00",
+      "checkedAt": "2026-10-27T12:59:32.297548+00:00",
       "blocker": null
     },
     "production_dependencies": {
-      "status": "blocked",
+      "status": "pass",
       "evidence": [
-        "운영 함수 23개 최신 Ready 리비전과 트래픽 100퍼센트, 배포 소스와 현재 Git 원본 16개 및 컴파일 JavaScript14개 일치",
-        "Firestore Rules 현재 원본 SHA256 96fc2fa10bc2f80104f25a8a3872fa58269b6ce347d7f45ea23bfdb50b21fe66 일치, 필요한 인덱스 2개 READY",
-        "기존 권한 바인딩과 CPU, 메모리 등 실행 설정 유지. 폐기한 IAP 함수 4개는 404, 구독 원본과 컴파일 모듈은 새 묶음에서 제외",
-        "Play 관리 앱 서명 공개 SHA256을 기존 Firebase Android 앱과 로컬 목록에 등록, 변경 전후 백업과 복원 검증 완료",
-        "기존 APNs 키와 Apple 팀, 표시된 iOS bundle 연결 확인. 전용 심사 계정 2개 서버 로그인 통과",
-        "Firestore, Auth, Storage App Check 강제 적용과 23개 함수의 ENFORCE_APP_CHECK 환경은 기존 상태 유지"
+        "Production 23 Functions ACTIVE, same Functions source since v1.2.1; deployed Firestore Rules SHA256 ddc12706db0cc8316d3eb3c9499ac529636c630ba84fa9d97406fa14ecea12f9 equals candidate.",
+        "Email provider enabled; production guests use Platform Custom Token, not Firebase anonymous provider. No Auth config changed.",
+        "Current App Check providers registered; Firestore/Auth/Storage UNENFORCED. Play Integrity not integrated in Console. Enforcement was not enabled; native token and push receipt are unrun.",
+        "Privacy, deletion and support pages HTTP200. No production user-data calls or new accounts in this run."
       ],
-      "checkedAt": "2026-10-26T06:41:19.201032+00:00",
-      "blocker": "Play Integrity의 기존 Cloud 프로젝트 연결에 수반되는 서비스 약관 동의 승인 대기. 네이티브 인증, 보안 저장, 무결성 증명과 실제 푸시 수신은 미실행이다."
+      "checkedAt": "2026-10-27T14:16:47.862950+00:00",
+      "blocker": null
     },
     "observability": {
       "status": "pending",
       "evidence": [
-        "Development behavior tested; current release production analytics/crash signals not yet observed"
+        "Allowlisted analytics and scrubbed crash reporting covered by current development regression; Firebase platform app IDs and release binary version binding checked. Current 1.3.1 production event receipt has not been observed; no device was used."
       ],
-      "checkedAt": "2026-10-26T02:17:54.687416+00:00",
+      "checkedAt": "2026-10-27T14:16:47.862950+00:00",
       "blocker": null
     }
   },
   "markets": {
     "google_play": {
       "objective": "public_live",
-      "state": "pending",
+      "state": "submission",
       "identity": {
         "applicationId": "com.seorilabs.cyclepair",
-        "version": "1.2.1",
-        "build": "1000110",
-        "developerId": "7593567020638200144"
+        "version": "1.3.1",
+        "build": "1000112"
       },
       "gates": {
         "candidate": {
-          "status": "pending",
+          "status": "pass",
           "evidence": [
-            "공개 국가 목록의 최종 재조회가 남아 있다."
+            "https://github.com/seorilabs/cycle-pair/releases/tag/v1.3.1 44618b708d19af4bd0b5848d060398085753a79c; 1.3.1/1000112"
           ],
-          "checkedAt": "2026-10-26T06:41:19.201032+00:00",
+          "checkedAt": "2026-10-27T14:16:47.862950+00:00",
           "blocker": null
         },
         "artifact": {
           "status": "pass",
           "evidence": [
-            "https://github.com/seorilabs/cycle-pair/actions/runs/40272328036",
-            "CI와 Publisher AAB SHA256 a42c377c7261f0e350d775a4c9f64eb1f2035df1df160a4d3619f1ab6122bce1 일치",
-            "Play 생성 APK 서명과 package, version 검증, APK SHA256 b30044f84c728a554576a45e03cf22d42fb2f45313125727e1f0031334ef98ff",
-            "BILLING과 AD_ID 권한 없음, Firebase project와 Android app ID 일치"
+            "https://github.com/seorilabs/cycle-pair/actions/runs/40508528921 completed success; exact source and release artifact identity verified in CI.",
+            "AAB SHA256 ac8554ab5fdd44327e35e91cf6ef528cc3024288e7933eb246435382968f76d2 equals Publisher bundle."
           ],
-          "checkedAt": "2026-10-26T05:16:28.612106+00:00",
+          "checkedAt": "2026-10-27T14:16:47.862950+00:00",
           "blocker": null
         },
         "upload": {
           "status": "pass",
           "evidence": [
-            "Publisher internal1.2.1 versionCode1000110 completed",
-            "두 언어 출시 문구와 현재 소스의 등록 문구, 이미지 19개(기존 아이콘 1개 포함)의 해시와 순서 일치",
-            "production, alpha, beta release 없음"
+            "https://github.com/seorilabs/cycle-pair/actions/runs/40508528921",
+            "Current exact build read back from provider."
           ],
-          "checkedAt": "2026-10-26T05:16:28.612106+00:00",
+          "checkedAt": "2026-10-27T14:16:47.862950+00:00",
           "blocker": null
         },
         "processing": {
           "status": "pass",
           "evidence": [
-            "Publisher가 현재 서명 인증서로 생성한 universal APK를 다운로드하고 호스트에서 검증했다."
+            "Publisher accepted 1000112; release has no blocking error. Nonblocking mapping warning: ProGuard minify disabled in candidate."
           ],
-          "checkedAt": "2026-10-26T05:16:28.612106+00:00",
+          "checkedAt": "2026-10-27T14:16:47.862950+00:00",
           "blocker": null
         },
         "qa": {
-          "status": "pending",
+          "status": "pass",
           "evidence": [
-            "https://github.com/seorilabs/cycle-pair/releases/tag/v1.2.1 독립 개발 회귀 통과. 현재 APK의 네이티브 SDK와 OS 동작은 미실행이며 기기 승인은 없다."
+            "https://github.com/seorilabs/cycle-pair/releases/download/v1.3.1/development-evidence.google-play.json",
+            "R6 exact44618b7 actual development runtime passed; no device or simulator execution."
           ],
-          "checkedAt": "2026-10-26T06:41:19.201032+00:00",
+          "checkedAt": "2026-10-27T12:59:32.297548+00:00",
           "blocker": null
         },
         "metadata": {
           "status": "pass",
           "evidence": [
-            "ko-KR, en-US 실제 Publisher 문구가 현재 Git 원본과 일치",
-            "등록 이미지 18개와 기존 아이콘 1개의 해시 및 순서 일치"
+            "Two locales and original images verified: Google19, Apple8. No provider image replacement needed.",
+            "Exact release note and review access readbacks match privately; no secret values stored."
           ],
-          "checkedAt": "2026-10-26T05:16:28.612106+00:00",
+          "checkedAt": "2026-10-27T14:16:47.862950+00:00",
           "blocker": null
         },
         "policy": {
-          "status": "pending",
+          "status": "pass",
           "evidence": [
-            "2026-10-25 policy registration record in docs/launch/market-registration-20261025.md; final current-candidate Console gate readback remains before submission"
+            "Google Data Safety 782 normalized machine responses match reviewed source; 10 declarations acted, no blocking task, worldwide/free readback."
           ],
-          "checkedAt": "2026-10-26T02:17:54.687416+00:00",
+          "checkedAt": "2026-10-27T14:16:47.862950+00:00",
           "blocker": null
         },
         "submission": {
-          "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
+          "status": "pass",
+          "evidence": [
+            "https://play.google.com/console/u/0/developers/7593567020638200144/app/4976040327651655563/publishing/submission-activity/1/details submission1; 12changes; 1.3.1 full rollout; status 검토 중."
+          ],
+          "checkedAt": "2026-10-27T14:21:10.612534+00:00",
           "blocker": null
         },
         "approval": {
           "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
+          "evidence": [
+            "Store review remains pending; automatic publication is configured. No approval, public listing or native runtime pass is claimed."
+          ],
+          "checkedAt": "2026-10-27T14:16:47.862950+00:00",
           "blocker": null
         },
         "release": {
           "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
+          "evidence": [
+            "Store review remains pending; automatic publication is configured. No approval, public listing or native runtime pass is claimed."
+          ],
+          "checkedAt": "2026-10-27T14:16:47.862950+00:00",
           "blocker": null
         },
         "live_smoke": {
           "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
+          "evidence": [
+            "Store review remains pending; automatic publication is configured. No approval, public listing or native runtime pass is claimed."
+          ],
+          "checkedAt": "2026-10-27T14:16:47.862950+00:00",
           "blocker": null
         }
       },
       "currentDistribution": {
-        "channel": "internal",
-        "status": "completed",
-        "readAt": "2026-10-26T05:16:28.612106+00:00",
-        "aabSha256": "a42c377c7261f0e350d775a4c9f64eb1f2035df1df160a4d3619f1ab6122bce1",
-        "universalApkSha256": "b30044f84c728a554576a45e03cf22d42fb2f45313125727e1f0031334ef98ff",
-        "productionReleasePresent": false
+        "sourceSha": "44618b708d19af4bd0b5848d060398085753a79c",
+        "packageName": "com.seorilabs.cyclepair",
+        "version": "1.3.1",
+        "versionCode": 1000112,
+        "submissionId": "1",
+        "submissionSource": "Play Console",
+        "submittedAtConsole": "2026-10-27 23:11 Asia/Seoul",
+        "checkedAt": "2026-10-27T14:21:10.612534+00:00",
+        "state": "검토 중",
+        "changes": 12,
+        "rollout": "full",
+        "countries": 177,
+        "restOfWorld": true,
+        "managedPublishing": false,
+        "preReviewQuickChecks": "No running quick-check notice or blocking error on publishing overview at 2026-10-27T14:20:32.515242+00:00; submission1 remains in review.",
+        "public": false,
+        "url": "https://play.google.com/console/u/0/developers/7593567020638200144/app/4976040327651655563/publishing/submission-activity/1/details"
       }
     },
     "app_store": {
       "objective": "public_live",
-      "state": "pending",
+      "state": "submission",
       "identity": {
-        "applicationId": "com.seorilabs.cyclepair",
-        "appStoreConnectAppId": "6792393652",
-        "version": "1.2.1",
-        "build": "1002001"
+        "applicationId": "6792393652",
+        "version": "1.3.1",
+        "build": "1003001"
       },
       "gates": {
         "candidate": {
-          "status": "pending",
+          "status": "pass",
           "evidence": [
-            "공개 storefront 목록의 최종 재조회가 남아 있다."
+            "https://github.com/seorilabs/cycle-pair/releases/tag/v1.3.1 44618b708d19af4bd0b5848d060398085753a79c; 1.3.1/1003001"
           ],
-          "checkedAt": "2026-10-26T06:41:19.201032+00:00",
+          "checkedAt": "2026-10-27T14:16:47.862950+00:00",
           "blocker": null
         },
         "artifact": {
           "status": "pass",
           "evidence": [
-            "https://github.com/seorilabs/cycle-pair/actions/runs/40272297924",
-            "기존 수락된 App Store 프로파일을 앱 Release에 연결, 서명 archive와 export 및 업로드 성공",
-            "App Store Connect 앱 6792393652, 버전 1.2.1, 빌드 1002001 VALID"
+            "https://github.com/seorilabs/cycle-pair/actions/runs/40508528463 completed success; exact source and release artifact identity verified in CI.",
+            "Archive Info.plist marketing version 1.3.1/build1003001 verified; App Store eligible VALID build selected."
           ],
-          "checkedAt": "2026-10-26T05:38:34.976109+00:00",
+          "checkedAt": "2026-10-27T14:16:47.862950+00:00",
           "blocker": null
         },
         "upload": {
           "status": "pass",
           "evidence": [
-            "App Store Connect build 776ecbfc-8c21-4540-b12e-df5354332e33 수신과 처리 확인"
+            "https://github.com/seorilabs/cycle-pair/actions/runs/40508528463",
+            "Current exact build read back from provider."
           ],
-          "checkedAt": "2026-10-26T05:38:34.976109+00:00",
+          "checkedAt": "2026-10-27T14:16:47.862950+00:00",
           "blocker": null
         },
         "processing": {
           "status": "pass",
           "evidence": [
-            "VALID, expired=false, 기존 내부 그룹 0e8695fc-459e-4d3d-8d34-d1c855b7a2fa에 빌드 제공 확인"
+            "Build df878b9d-61ad-42dd-a3b4-1e76a9cc336d VALID, expired=false, internal group IN_BETA_TESTING."
           ],
-          "checkedAt": "2026-10-26T05:38:34.976109+00:00",
+          "checkedAt": "2026-10-27T14:16:47.862950+00:00",
           "blocker": null
         },
         "qa": {
-          "status": "pending",
+          "status": "pass",
           "evidence": [
-            "https://github.com/seorilabs/cycle-pair/releases/tag/v1.2.1 독립 개발 회귀 통과. TestFlight 빌드의 네이티브 SDK와 OS 동작은 미실행이며 기기 승인은 없다."
+            "https://github.com/seorilabs/cycle-pair/releases/download/v1.3.1/development-evidence.app-store.json",
+            "R6 exact44618b7 actual development runtime passed; no device or simulator execution."
           ],
-          "checkedAt": "2026-10-26T06:41:19.201032+00:00",
+          "checkedAt": "2026-10-27T12:59:32.297548+00:00",
           "blocker": null
         },
         "metadata": {
           "status": "pass",
           "evidence": [
-            "초안 버전 1.2.1 PREPARE_FOR_SUBMISSION에 빌드 1002001 연결",
-            "ko, en-US 이미지 8장 COMPLETE, 기존 이미지 ID와 순서 유지. 첫 출시 What's New는 비어 있다."
+            "Two locales and original images verified: Google19, Apple8. No provider image replacement needed.",
+            "Exact release note and review access readbacks match privately; no secret values stored."
           ],
-          "checkedAt": "2026-10-26T05:59:28.204927+00:00",
+          "checkedAt": "2026-10-27T14:16:47.862950+00:00",
           "blocker": null
         },
         "policy": {
-          "status": "pending",
+          "status": "pass",
           "evidence": [
-            "2026-10-25 policy registration record in docs/launch/market-registration-20261025.md; recheck against final signed Info.plist before submission"
+            "Nine App Privacy types published, no tracking; age/content/export/trader and 175 free/available storefronts verified. Legacy subscription sales countries zero, no IAP review items."
           ],
-          "checkedAt": "2026-10-26T02:17:54.687416+00:00",
+          "checkedAt": "2026-10-27T14:16:47.862950+00:00",
           "blocker": null
         },
         "submission": {
-          "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
+          "status": "pass",
+          "evidence": [
+            "App Review 8e726754-fe58-41e0-89b1-5aa8fe14df49; exact version/build selected; WAITING_FOR_REVIEW."
+          ],
+          "checkedAt": "2026-10-27T14:21:10.425587+00:00",
           "blocker": null
         },
         "approval": {
           "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
+          "evidence": [
+            "Store review remains pending; automatic publication is configured. No approval, public listing or native runtime pass is claimed."
+          ],
+          "checkedAt": "2026-10-27T14:16:47.862950+00:00",
           "blocker": null
         },
         "release": {
           "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
+          "evidence": [
+            "Store review remains pending; automatic publication is configured. No approval, public listing or native runtime pass is claimed."
+          ],
+          "checkedAt": "2026-10-27T14:16:47.862950+00:00",
           "blocker": null
         },
         "live_smoke": {
           "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
+          "evidence": [
+            "Store review remains pending; automatic publication is configured. No approval, public listing or native runtime pass is claimed."
+          ],
+          "checkedAt": "2026-10-27T14:16:47.862950+00:00",
           "blocker": null
         }
       },
       "currentDistribution": {
-        "channel": "TestFlight internal",
-        "versionState": "PREPARE_FOR_SUBMISSION",
-        "linkedBuild": "776ecbfc-8c21-4540-b12e-df5354332e33",
-        "uploadedNewBuild": true,
-        "processingState": "VALID",
-        "existingInternalGroup": "0e8695fc-459e-4d3d-8d34-d1c855b7a2fa",
-        "buildAvailableInGroup": true,
-        "readAt": "2026-10-26T05:38:34.976109+00:00"
+        "version": "1.3.1",
+        "build": "1003001",
+        "submissionId": "8e726754-fe58-41e0-89b1-5aa8fe14df49",
+        "versionId": "c4a4f720-9ded-40fb-9cb4-9af3f74f05d2",
+        "buildId": "df878b9d-61ad-42dd-a3b4-1e76a9cc336d",
+        "state": "WAITING_FOR_REVIEW",
+        "checkedAt": "2026-10-27T14:21:10.425587+00:00",
+        "releaseType": "AFTER_APPROVAL",
+        "public": false
       }
     }
   },
-  "updatedAt": "2026-10-26T06:41:19.201032+00:00",
+  "updatedAt": "2026-10-27T14:22:04.470431+00:00",
   "nativeExecution": {
     "status": "unrun",
     "deviceApproval": false,
-    "reason": "현재 1.2.1 두 마켓 빌드는 내부 제공 중이다. 네이티브 SDK와 OS 항목은 별도 범위 소명과 명시적 기기 승인이 필요하며, 조회와 실행은 0회다."
+    "deviceQueries": 0,
+    "simulatorQueries": 0,
+    "reason": "Approved dev-only plans and R6 current-source runtime passed. No additional essential device-only condition was identified for this unchanged native integration."
+  },
+  "securityReadiness": {
+    "appCheckMode": "monitoring-only",
+    "enforcementChanged": false,
+    "nativeTokenReceipt": "unrun",
+    "nativePushReceipt": "unrun",
+    "playIntegrityConsole": "not integrated",
+    "authConfigMutations": 0,
+    "anonymousDiagnosticCorrected": true
   },
   "evidenceArchive": {
-    "round5": "cycle-pair/2026-10-26/fc60c9e7c8e875104388ef03a4c6c27176554726/ui-independent-round5-100044-41898e",
-    "round5ManifestSha256": "0a955216ad0236bd64923b5f4f05f9ad54911a3aa16593a974e7ce1aaaa46097",
-    "metadata": "cycle-pair/2026-10-26/fc60c9e7c8e875104388ef03a4c6c27176554726/market-metadata-completed-110100-6d5f6e",
-    "metadataManifestSha256": "f66986ff3d1b61e8fd12b3602bbe16ae2d12f7459c52b5e1a4fd4601d2e6b805",
-    "functional121": "cycle-pair/2026-10-26/0360e7a174570818d48f372bead80517a6f73695/signing-121-independent-functional-135643-6c6d4d/manifest.json",
-    "functional121ManifestSha256": "e0189bd53b105906344ba4fd3f09e308965d7b694be88c2620ff2fd845346b5b",
-    "launch121Originals": "cycle-pair/2026-10-26/0360e7a174570818d48f372bead80517a6f73695/launch-121-verified-063002-2b8786/VERIFIED-MANIFEST.json",
-    "launch121OriginalsManifestSha256": "9b2278cfd510120cd2cad30ec8021810854a3ac6c09f68ce40bc3f7e8ed5c4b2"
-  },
-  "iapDecommission": {
-    "sourceSha": "fc60c9e7c8e875104388ef03a4c6c27176554726",
-    "status": "completed",
-    "completedAt": "2026-10-26T02:32:47.230060+00:00",
-    "functions": [
-      "getPurchaseAccountToken",
-      "verifySubscriptionPurchase",
-      "handleGooglePlaySubscriptionRtdn",
-      "handleAppStoreServerNotificationV2"
-    ],
-    "providerReadback": {
-      "getPurchaseAccountToken": 404,
-      "verifySubscriptionPurchase": 404,
-      "handleGooglePlaySubscriptionRtdn": 404,
-      "handleAppStoreServerNotificationV2": 404
+    "root": "NAS1dual Data/Backup/agent-artifacts/cycle-pair/2026-10-27/44618b708d19af4bd0b5848d060398085753a79c/",
+    "independentRound6": {
+      "path": "period-calendar-independent-round6-7a4dedd6d9/manifest.json",
+      "sha256": "ba1d1df92d70e7ba799136bcd118df5ba0894198c2ba3f5bb89b42820cffb385",
+      "files": 422,
+      "bytes": 8712422,
+      "directReadPasses": 2
     },
-    "managedResources": {
-      "getPurchaseAccountToken": {
-        "runServiceHttpStatus": 404
-      },
-      "verifySubscriptionPurchase": {
-        "runServiceHttpStatus": 404
-      },
-      "handleGooglePlaySubscriptionRtdn": {
-        "runServiceHttpStatus": 404,
-        "managedTriggerHttpStatus": 404
-      },
-      "handleAppStoreServerNotificationV2": {
-        "runServiceHttpStatus": 404
-      }
+    "imagesAndAuthor": {
+      "path": "public-submit-131-images-and-author/manifest.json",
+      "sha256": "47d805f7a8969e311d674a1e2c489ca2f964d97fe9827611446010eeb875780c",
+      "files": 97,
+      "bytes": 13191331,
+      "directReadPasses": 2
     },
-    "otherFunctionMetadataUnchanged": true,
-    "userDataAndAccountsChanged": false,
-    "newKeysOrCredentials": false,
-    "backupManifestSha256": "b9c49d9600b2e1c188479a2f1afc068951722bf7e17a688acdc6fead90dab9d9",
-    "evidence": "NAS1dual cycle-pair/2026-10-26/fc60c9e7c8e875104388ef03a4c6c27176554726/retired-iap-backup-112919-30a321/VERIFIED-MANIFEST.json; encrypted source/config/IAM restored in memory before deletion",
-    "bundledSourceRetirement": {
-      "status": "completed",
-      "sourceSha": "0360e7a174570818d48f372bead80517a6f73695",
-      "verifiedAt": "2026-10-26T06:22:36.529952+00:00",
-      "functionCount": 23,
-      "firebaseFunctionsHash": "6637c2c8605b3dd4d7be62a3db2bad6030798e31",
-      "sourceAndCompiledModulesAbsent": true,
-      "historicalUserDataMigration": false,
-      "rulesSourceSha256": "96fc2fa10bc2f80104f25a8a3872fa58269b6ce347d7f45ea23bfdb50b21fe66"
+    "submissionOriginals": {
+      "path": "public-submit-131-provider-141745/manifest.json",
+      "sha256": "6c9a50da59fa8b7e0056e5cc9a677bded70e22e50bbb4d661d202a666ce6c50a",
+      "files": 301,
+      "bytes": 31255281,
+      "directReadPasses": 2
+    },
+    "retention": "No expiry authorized; retain NAS originals.",
+    "finalReadback": {
+      "files": 13,
+      "bytes": 210422,
+      "manifestSha256": "de761fb0e968970a339dd77591188cbbb9d9968b2c5709e1a570d5dc866d0568",
+      "directReadPasses": 2,
+      "path": "public-submit-131-final-readback-142204/manifest.json"
     }
-  },
-  "backendUpdate": {
-    "status": "verified-current-serving-source",
-    "sourceSha": "0360e7a174570818d48f372bead80517a6f73695",
-    "verifiedAt": "2026-10-26T06:22:36.529952+00:00",
-    "functionCount": 23,
-    "firebaseFunctionsHash": "6637c2c8605b3dd4d7be62a3db2bad6030798e31",
-    "iamAndRuntimeResourcesPreserved": true,
-    "appCheckEnforcementChanged": false,
-    "initialParallelQuotaFailures": "원문과 순차 복구 기록을 보존했다. 한도와 과금 설정은 변경하지 않았다.",
-    "dataMigration": false
   }
 }
