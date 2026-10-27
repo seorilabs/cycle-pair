@@ -142,7 +142,7 @@
           "evidence": [
             "https://play.google.com/console/u/0/developers/7593567020638200144/app/4976040327651655563/publishing/submission-activity/1/details submission1; 12changes; 1.3.1 full rollout; status 검토 중."
           ],
-          "checkedAt": "2026-10-27T14:16:47.862950+00:00",
+          "checkedAt": "2026-10-27T14:21:10.612534+00:00",
           "blocker": null
         },
         "approval": {
@@ -178,14 +178,14 @@
         "submissionId": "1",
         "submissionSource": "Play Console",
         "submittedAtConsole": "2026-10-27 23:11 Asia/Seoul",
-        "checkedAt": "2026-10-27T14:12:59.966180+00:00",
+        "checkedAt": "2026-10-27T14:21:10.612534+00:00",
         "state": "검토 중",
         "changes": 12,
         "rollout": "full",
         "countries": 177,
         "restOfWorld": true,
         "managedPublishing": false,
-        "preReviewQuickChecks": "Running at 14:12 UTC; accepted submission ID1 is present. Final check readback pending.",
+        "preReviewQuickChecks": "No running quick-check notice or blocking error on publishing overview at 2026-10-27T14:20:32.515242+00:00; submission1 remains in review.",
         "public": false,
         "url": "https://play.google.com/console/u/0/developers/7593567020638200144/app/4976040327651655563/publishing/submission-activity/1/details"
       }
@@ -264,7 +264,7 @@
           "evidence": [
             "App Review 8e726754-fe58-41e0-89b1-5aa8fe14df49; exact version/build selected; WAITING_FOR_REVIEW."
           ],
-          "checkedAt": "2026-10-27T14:16:47.862950+00:00",
+          "checkedAt": "2026-10-27T14:21:10.425587+00:00",
           "blocker": null
         },
         "approval": {
@@ -299,13 +299,13 @@
         "versionId": "c4a4f720-9ded-40fb-9cb4-9af3f74f05d2",
         "buildId": "df878b9d-61ad-42dd-a3b4-1e76a9cc336d",
         "state": "WAITING_FOR_REVIEW",
-        "checkedAt": "2026-10-27T14:11:12.657452+00:00",
+        "checkedAt": "2026-10-27T14:21:10.425587+00:00",
         "releaseType": "AFTER_APPROVAL",
         "public": false
       }
     }
   },
-  "updatedAt": "2026-10-27T14:16:47.862950+00:00",
+  "updatedAt": "2026-10-27T14:22:04.470431+00:00",
   "nativeExecution": {
     "status": "unrun",
     "deviceApproval": false,
@@ -345,6 +345,13 @@
       "bytes": 31255281,
       "directReadPasses": 2
     },
-    "retention": "No expiry authorized; retain NAS originals."
+    "retention": "No expiry authorized; retain NAS originals.",
+    "finalReadback": {
+      "files": 13,
+      "bytes": 210422,
+      "manifestSha256": "de761fb0e968970a339dd77591188cbbb9d9968b2c5709e1a570d5dc866d0568",
+      "directReadPasses": 2,
+      "path": "public-submit-131-final-readback-142204/manifest.json"
+    }
   }
 }
