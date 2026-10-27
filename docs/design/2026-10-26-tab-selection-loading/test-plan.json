@@ -2,8 +2,16 @@
   "schemaVersion": 1,
   "level": "L3",
   "baseline": null,
-  "changedFeatures": ["home", "records", "calendar", "pairing-sharing", "settings-language"],
-  "environments": ["dev"],
+  "changedFeatures": [
+    "home",
+    "records",
+    "calendar",
+    "pairing-sharing",
+    "settings-language"
+  ],
+  "environments": [
+    "dev"
+  ],
   "redesign": false,
   "foundationRerun": true,
   "floorOverrides": [
@@ -16,10 +24,18 @@
       "rule": "foundation",
       "featureId": "pairing-sharing",
       "reason": "공통 탭의 선택 표시만 수정한다. 연결, 공유 설정, 기록 공개와 전송 경로는 변경하지 않고 개발 환경 회귀로 확인한다. 네이티브 SDK와 OS 연동은 변경하지 않는다."
+    },
+    {
+      "rule": "foundation",
+      "featureId": "privacy",
+      "reason": "별도 승인된 생리 달력 설계와 한 후보로 합칠 때의 개인정보 회귀 범위를 맞춘다. 탭과 대기 안내는 개인정보 코드를 바꾸지 않는다. 동의 전 차단, 계정 경계, 삭제와 내보내기는 기존 L3 개발 환경 전체 회귀에서 확인하며, 수집 항목과 외부 전송처, 네이티브 SDK와 OS 연동은 바꾸지 않는다."
     }
   ],
   "release": {
-    "markets": ["google-play", "app-store"],
+    "markets": [
+      "google-play",
+      "app-store"
+    ],
     "until": "public",
     "rollout": 1
   }
