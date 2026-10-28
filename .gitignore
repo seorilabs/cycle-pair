@@ -47,3 +47,4 @@ scripts/dev-rn-web/shims/
 scripts/dev-rn-web/entry.tsx
 scripts/dev-rn-web/bundle-metafile.json
 scripts/dev-rn-web/fixture-plan.json
+.serena/
