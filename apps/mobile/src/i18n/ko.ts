@@ -152,8 +152,6 @@ export const ko = {
   'Invitation expired': '초대가 만료됐어요',
   'Create a new invitation': '새 초대 만들기',
   'Expires {date}': '{date} 만료',
-  'Enter this code in Cycle Pair before {date}:\n{code}':
-    '{date} 전까지 사이클 페어에서 이 코드를 입력해 주세요:\n{code}',
   'Connect to share selected updates.':
     '파트너와 연결하고 원하는 항목만 공유해요.',
   'Preview for your partner': '상대에게 보이는 모습',

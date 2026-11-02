@@ -1568,7 +1568,7 @@ describe('CyclePair mobile app', () => {
     await fireEvent.press(view.getByLabelText('파트너'));
     expect(view.getByText('가임 가능성이 높은 시기예요')).toBeTruthy();
     expect(view.queryByLabelText('오늘 어때요?')).toBeNull();
-    expect(view.getByLabelText('확인했어요, 챙겨볼게요')).toBeTruthy();
+    expect(view.getByLabelText('확인했어요')).toBeTruthy();
 
     await act(async () => {
       emitNudge?.({
@@ -1585,7 +1585,7 @@ describe('CyclePair mobile app', () => {
     });
     await waitFor(() =>
       expect(
-        view.getByText('파트너가 “확인했어요, 챙겨볼게요”라고 전했어요.'),
+        view.getByText('파트너가 “확인했어요”라고 전했어요.'),
       ).toBeTruthy(),
     );
     await fireEvent.press(view.getByText('확인'));
@@ -1596,7 +1596,7 @@ describe('CyclePair mobile app', () => {
       ),
     );
 
-    await fireEvent.press(view.getByLabelText('확인했어요, 챙겨볼게요'));
+    await fireEvent.press(view.getByLabelText('확인했어요'));
     await waitFor(() =>
       expect(sendPartnerNudge).toHaveBeenCalledWith(
         'preview-self',
@@ -1607,7 +1607,7 @@ describe('CyclePair mobile app', () => {
     );
     expect(view.getByText('파트너에게 넛지를 남겼어요.')).toBeTruthy();
     expect(
-      view.getByLabelText('확인했어요, 챙겨볼게요').props.accessibilityState
+      view.getByLabelText('확인했어요').props.accessibilityState
         .disabled,
     ).toBe(true);
 

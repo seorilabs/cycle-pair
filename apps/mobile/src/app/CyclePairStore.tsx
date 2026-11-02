@@ -934,6 +934,7 @@ export function CyclePairProvider({
   );
   const [nudgeBusy, setNudgeBusy] = useState(false);
   const [nudgeFeedback, setNudgeFeedback] = useState<string | null>(null);
+  const lastNudgeNotice = useRef('');
   const inAppNoticesRef = useRef<readonly InAppNotice[]>([]);
   const noticeSequence = useRef(0);
   const shareWriteChain = useRef<Promise<void>>(Promise.resolve());
@@ -1013,20 +1014,24 @@ export function CyclePairProvider({
     [reportFailure],
   );
 
-  const enqueueInAppNotice = useCallback((kind: InAppNoticeKind) => {
-    const copy = noticeCopy(kind);
-    const notice: InAppNotice = {
-      id: `notice-${Date.now().toString(36)}-${++noticeSequence.current}`,
-      kind,
-      ...copy,
-    };
-    setInAppNotices(current => {
-      const next = [notice, ...current].slice(0, 5);
-      inAppNoticesRef.current = next;
-      return next;
-    });
-    setToastNotice(notice);
-  }, []);
+  const enqueueInAppNotice = useCallback(
+    (kind: InAppNoticeKind, sourceId?: string) => {
+      const copy = noticeCopy(kind);
+      const notice: InAppNotice = {
+        id: `notice-${Date.now().toString(36)}-${++noticeSequence.current}`,
+        kind,
+        ...(sourceId ? { sourceId } : {}),
+        ...copy,
+      };
+      setInAppNotices(current => {
+        const next = [notice, ...current].slice(0, 5);
+        inAppNoticesRef.current = next;
+        return next;
+      });
+      setToastNotice(notice);
+    },
+    [],
+  );
 
   const dismissToastNotice = useCallback(() => setToastNotice(null), []);
   const openInAppNotice = useCallback((noticeId: string) => {
@@ -1333,6 +1338,7 @@ export function CyclePairProvider({
   useEffect(() => {
     setPartnerNudgeState({ received: null, nextAllowedAt: {} });
     setNudgeFeedback(null);
+    lastNudgeNotice.current = '';
   }, [activePair?.pairId]);
 
   useEffect(() => {
@@ -1409,7 +1415,13 @@ export function CyclePairProvider({
       backendSession.uid,
       activePair,
       value => {
-        if (active) setPartnerNudgeState(value);
+        if (!active) return;
+        setPartnerNudgeState(value);
+        const requestId = value.received?.requestId;
+        if (requestId && lastNudgeNotice.current !== requestId) {
+          lastNudgeNotice.current = requestId;
+          enqueueInAppNotice('partner-nudge', requestId);
+        }
       },
       reportPairError,
     );
@@ -2331,7 +2343,21 @@ export function CyclePairProvider({
     setNudgeFeedback(null);
     try {
       await backend.acknowledgePartnerNudge(pairId, received.requestId);
-      setPartnerNudgeState(current => ({ ...current, received: null }));
+      setPartnerNudgeState(current =>
+        current.received?.requestId === received.requestId
+          ? { ...current, received: null }
+          : current,
+      );
+      setInAppNotices(current => {
+        const next = current.filter(
+          notice => notice.sourceId !== received.requestId,
+        );
+        inAppNoticesRef.current = next;
+        return next;
+      });
+      setToastNotice(current =>
+        current?.sourceId === received.requestId ? null : current,
+      );
       return true;
     } catch (error) {
       setNudgeFeedback('인터넷에 연결한 뒤 다시 확인해 주세요.');
