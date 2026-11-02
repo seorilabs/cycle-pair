@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "level": "L1",
   "baseline": "v1.3.1",
-  "changedFeatures": ["pairing-sharing", "notifications", "settings-language"],
+  "changedFeatures": ["pairing-sharing", "notifications", "settings-language", "records"],
   "environments": ["dev"],
   "redesign": false,
   "foundationRerun": false,
@@ -11,5 +11,5 @@
     {"rule":"foundation","featureId":"records","reason":"공통 Store의 기존 넛지 구독에 새 소식을 연결한다. 기록과 저장 경로는 변경하지 않고 관련 Store 회귀를 실행한다."},
     {"rule":"foundation","featureId":"notifications","reason":"기존 앱 내 새 소식에 넛지 수신을 연결한다. 네이티브 푸시, 권한, 토큰 등록은 변경하지 않는다."}
   ],
-  "release": null
+  "release": {"markets":["google-play","app-store"],"until":"test-track"}
 }
