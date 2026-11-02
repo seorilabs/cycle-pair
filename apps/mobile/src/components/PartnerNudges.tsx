@@ -8,7 +8,7 @@ import { colors, radius, spacing } from '../theme';
 
 const nudgeCopy: Record<PartnerNudgeType, string> = {
   'check-in-request': '파트너가 “오늘 어때요?”라고 물었어요.',
-  'care-acknowledgement': '파트너가 “확인했어요, 챙겨볼게요”라고 전했어요.',
+  'care-acknowledgement': '파트너가 “확인했어요”라고 전했어요.',
 };
 
 function remainingMinutes(value: string | undefined, now: number): number {
@@ -135,7 +135,7 @@ export function PartnerNudgeActions({
       {canAcknowledgeCare ? (
         <NudgeButton
           type="care-acknowledgement"
-          label={l('확인했어요, 챙겨볼게요')}
+          label={l('확인했어요')}
           disabled={false}
           remaining={remaining.care}
         />

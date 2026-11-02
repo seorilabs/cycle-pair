@@ -1,7 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Platform, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  Platform,
+  Share,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { useCyclePair } from '../app/CyclePairStore';
 import { buildInviteExpiryPresentation } from '../app/inviteExpiryPresentation';
+import { normalizeInviteCode } from '../app/inviteCode';
 import {
   Body,
   Card,
@@ -101,7 +109,9 @@ export function InviteScreen({
               />
               <SecondaryButton
                 label={t('Receive invitation')}
-                onPress={() => onDraftChange({ ...draft, direction: 'receive' })}
+                onPress={() =>
+                  onDraftChange({ ...draft, direction: 'receive' })
+                }
               />
             </View>
           ) : (
@@ -148,10 +158,7 @@ export function InviteScreen({
                           onPress={() => {
                             Share.share({
                               title: t('Cycle Pair'),
-                              message: t(
-                                'Enter this code in Cycle Pair before {date}:\n{code}',
-                                { date: expiryDate, code: invite.inviteToken },
-                              ),
+                              message: invite.inviteToken,
                             }).catch(() => undefined);
                           }}
                         />
@@ -188,12 +195,14 @@ export function InviteScreen({
                       keyboardType={
                         Platform.OS === 'ios' ? 'ascii-capable' : 'default'
                       }
-                      maxLength={43}
                       placeholder={t('Paste your invitation code')}
                       placeholderTextColor={colors.textSubtle}
                       value={code}
                       onChangeText={value =>
-                        onDraftChange({ ...draft, code: value })
+                        onDraftChange({
+                          ...draft,
+                          code: normalizeInviteCode(value),
+                        })
                       }
                       style={styles.input}
                     />

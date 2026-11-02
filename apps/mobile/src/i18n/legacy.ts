@@ -339,7 +339,7 @@ export const legacyEnglish: Readonly<Record<string, string>> = {
   '혼자 기록 중': 'Recording on my own',
   확인: 'Confirm',
   '확인 중…': 'Checking…',
-  '확인했어요, 챙겨볼게요': 'Got it, I’ll check in',
+  확인했어요: 'Got it',
   '5분 동안 유효한 단회 다운로드 링크를 만들었습니다.':
     'Created a single-use download link valid for 5 minutes.',
   '계정 삭제 상태를 다시 확인했습니다.':
@@ -438,14 +438,15 @@ export const legacyEnglish: Readonly<Record<string, string>> = {
   '파트너가 공동 일정을 업데이트했어요.':
     'Your partner updated a shared event.',
   '파트너가 새 기록을 공유했어요.': 'Your partner shared a new record.',
+  '파트너의 넛지가 도착했어요.': 'You have a message from your partner.',
   '파트너에게 넛지를 남겼어요.': 'Message sent to your partner.',
   '현재 계정으로 접근할 수 없습니다.': 'This account does not have access.',
   '현재 이메일 로그인을 사용할 수 없습니다. 운영 설정을 확인해 주세요.':
     'Email sign-in is currently unavailable. Please try again later.',
   '파트너가 “오늘 어때요?”라고 물었어요.':
     'Your partner asked how you are today.',
-  '파트너가 “확인했어요, 챙겨볼게요”라고 전했어요.':
-    'Your partner has seen your update and will check in.',
+  '파트너가 “확인했어요”라고 전했어요.':
+    'Your partner said “Got it”.',
   '이미 저장된 주기 시작·종료 기준은 유지돼요.':
     'Previously saved cycle start and end dates are kept.',
   '현재 주기 국면': 'Cycle phase',

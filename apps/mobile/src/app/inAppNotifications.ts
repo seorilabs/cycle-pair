@@ -3,13 +3,14 @@ import type {
   RemotePartnerProjection,
 } from '../platform/backend/CyclePairBackend';
 
-export type InAppNoticeKind = 'partner-record' | 'shared-event';
+export type InAppNoticeKind = 'partner-record' | 'shared-event' | 'partner-nudge';
 
 export interface InAppNotice {
   readonly id: string;
   readonly kind: InAppNoticeKind;
   readonly destination: 'home' | 'calendar' | 'partner' | 'settings';
   readonly message: string;
+  readonly sourceId?: string;
 }
 
 const projectionContentFields = [
@@ -66,6 +67,12 @@ export function hasPartnerPairEventUpdate(
 export function noticeCopy(
   kind: InAppNoticeKind,
 ): Pick<InAppNotice, 'destination' | 'message'> {
+  if (kind === 'partner-nudge') {
+    return {
+      destination: 'partner',
+      message: '파트너의 넛지가 도착했어요.',
+    };
+  }
   return kind === 'partner-record'
     ? {
         destination: 'partner',
